@@ -1,0 +1,3 @@
+-m cvoa -vR R1 350.0 10000.0 0.5 -vI I1 1 10 2 -vC C1 l1 l2 l3 -s strA 5 -s strB 10 -f /Users/davgutavi/Desktop/test.py
+-m cvoa -t f1
+-m cvoa -t f2
