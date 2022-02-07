@@ -15,7 +15,7 @@ setuptools.setup(
     description="A Python Package for Hyperparameter Tuning in Machine and Deep Learning Models Based on the Coronavirus Optimization Algorithm",
     long_description="A Python Package for Hyperparameter Tuning in Machine and Deep Learning Models Based on the Coronavirus Optimization Algorithm",
     long_description_content_type="text/markdown",
-    url="https://github.com/DataLabUPO/ParallelCVOA",
+    url="https://github.com/DataLabUPO/PyCVOA/",
     packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
