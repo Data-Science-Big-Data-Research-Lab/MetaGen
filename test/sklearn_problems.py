@@ -1,4 +1,4 @@
-from cvoa import ProblemDefinition
+from src.pycvoa import ProblemDefinition
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.datasets import make_classification, make_regression
 from sklearn.model_selection import cross_val_score

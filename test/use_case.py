@@ -1,8 +1,8 @@
-from cvoa import *
+from src.pycvoa import *
 from test.pre_defined_problems import *
 from test.sklearn_problems import *
 
-problem_name = "sgdregr"
+problem_name = "ex1"
 
 # Step 1. Build the problem and the fitness function
 if problem_name == "ex1":

@@ -1,7 +1,6 @@
-from cvoa.cli import cvoa_cli
-from cvoa.core import *
-from cvoa.individual import *
-from cvoa.support import *
+from src.pycvoa.core import *
+from src.pycvoa.individual import *
+from src.pycvoa.support import *
 
 __all__ = ["CVOA", "cvoa_launcher", "REAL", "INTEGER", "CATEGORICAL","LAYER","VECTOR", "Individual",
            "ProblemDefinition",

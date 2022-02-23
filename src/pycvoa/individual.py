@@ -1,6 +1,6 @@
 import sys
 
-from cvoa.support import INTEGER, REAL, CATEGORICAL, LAYER, VECTOR, variable_definition_to_string
+from src.pycvoa.support import INTEGER, REAL, CATEGORICAL, LAYER, VECTOR, variable_definition_to_string
 
 
 class ProblemDefinition:

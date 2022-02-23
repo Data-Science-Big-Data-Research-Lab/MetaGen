@@ -1,10 +1,9 @@
 import argparse
 
-from cvoa.core import *
-from cvoa.individual import *
+from src.pycvoa.individual import *
 
 parser = argparse.ArgumentParser(description="Coronavirus Optimization Algorithm.")
-parser.add_argument("-t", "--test", help="Test cvoa")
+parser.add_argument("-t", "--test", help="Test pycvoa")
 parser.add_argument("-vR", "--varR", help="Definition of a Real component of the individuals", nargs=4,
                     action="append")
 parser.add_argument("-vI", "--varI", help="Definition of an Integer component of the individuals", nargs=4,
@@ -61,7 +60,7 @@ def test_run(test):
     idef = ProblemDefinition()
     idef.register_numeric_variable(REAL, "X", 0.0, 1000.0, 0.05)
     print(idef)
-    fitness_function = getattr(sys.modules["cvoa.functions"], test)
+    fitness_function = getattr(sys.modules["pycvoa.functions"], test)
     print(str(fitness_function))
     s = CVOA("Test", 10)
     print(str(s))

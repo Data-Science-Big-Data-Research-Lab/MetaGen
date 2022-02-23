@@ -6,8 +6,8 @@ from datetime import timedelta
 from math import *
 from random import *
 from time import time
-from cvoa.individual import *
-from cvoa.support import get_random_value_for_simple_variable, get_number_from_interval, inoculate_individual
+from src.pycvoa.individual import *
+from src.pycvoa.support import get_random_value_for_simple_variable, get_number_from_interval, inoculate_individual
 
 logging.basicConfig(level=logging.INFO)
 
