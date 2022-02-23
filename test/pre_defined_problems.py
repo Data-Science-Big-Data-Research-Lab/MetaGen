@@ -1,6 +1,6 @@
 from random import randint
 
-from cvoa import ProblemDefinition
+from src.pycvoa import ProblemDefinition
 
 """
 Example problem: (x-15)^2 
