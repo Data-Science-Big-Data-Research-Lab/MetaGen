@@ -14,7 +14,6 @@ X_classification, y_classification = make_classification(n_samples=1000, n_featu
                                                          n_informative=2, n_redundant=0,
                                                          random_state=0, shuffle=False)
 
-
 """
 Random Forest classifier optimization
 """
@@ -56,7 +55,7 @@ def random_forest_regressor_fitness(individual):
     max_features = individual.get_variable_value("max_features")
 
     clf = RandomForestRegressor(max_depth=max_depth, n_estimators=n_estimators, criterion=criterion,
-                                 max_features=max_features, random_state=0, n_jobs=-1)
+                                max_features=max_features, random_state=0, n_jobs=-1)
     scores = cross_val_score(clf, X_regression, y_regression,
                              scoring="neg_root_mean_squared_error", cv=10, n_jobs=-1)
 
@@ -85,6 +84,7 @@ def knn_classifier_fitness(individual):
 
     return -scores.mean()
 
+
 """
 KNN regressor optimization
 """
@@ -108,7 +108,6 @@ def knn_regressor_fitness(individual):
     return -scores.mean()
 
 
-
 """
 Support vector classifier optimization
 """
@@ -128,6 +127,7 @@ def support_vector_classifier_fitness(individual):
                              scoring="accuracy", cv=10, n_jobs=-1)
 
     return -scores.mean()
+
 
 """
 Support vector regressor optimization
@@ -149,16 +149,19 @@ def support_vector_regressor_fitness(individual):
 
     return -scores.mean()
 
+
 """
 SGD classifier optimization
 """
 sgd_classifier_definition = ProblemDefinition()
-sgd_classifier_definition.register_categorical_variable("loss", ['hinge', 'log', 'modified_huber', 'squared_hinge', 'perceptron'])
+sgd_classifier_definition.register_categorical_variable("loss", ['hinge', 'log', 'modified_huber', 'squared_hinge',
+                                                                 'perceptron'])
 sgd_classifier_definition.register_categorical_variable("penalty", ['l2', 'l1', 'elasticnet'])
 sgd_classifier_definition.register_real_variable("alpha", .0001, .0001, .01)
 sgd_classifier_definition.register_integer_variable("max_iter", 50, 2000, 5)
 sgd_classifier_definition.register_real_variable("tol", 1e-3, .1, 1e-3)
-sgd_classifier_definition.register_categorical_variable("learning_rate", ['constant', 'optimal', 'invscaling', 'adaptive'])
+sgd_classifier_definition.register_categorical_variable("learning_rate",
+                                                        ['constant', 'optimal', 'invscaling', 'adaptive'])
 
 
 def sgd_classifier_fitness(individual):
@@ -169,7 +172,8 @@ def sgd_classifier_fitness(individual):
     tol = individual.get_variable_value("tol")
     learning_rate = individual.get_variable_value("learning_rate")
 
-    clf = SGDClassifier(loss=loss, penalty=penalty, alpha=alpha, max_iter=max_iter, tol=tol, learning_rate=learning_rate, n_jobs=-1)
+    clf = SGDClassifier(loss=loss, penalty=penalty, alpha=alpha, max_iter=max_iter, tol=tol,
+                        learning_rate=learning_rate, n_jobs=-1)
     scores = cross_val_score(clf, X_regression, y_regression,
                              scoring="accuracy", cv=10, n_jobs=-1)
 
@@ -180,12 +184,14 @@ def sgd_classifier_fitness(individual):
 SGD regressor optimization
 """
 sgd_regressor_definition = ProblemDefinition()
-sgd_regressor_definition.register_categorical_variable("loss", ['hinge', 'log', 'modified_huber', 'squared_hinge', 'perceptron'])
+sgd_regressor_definition.register_categorical_variable("loss", ['hinge', 'log', 'modified_huber', 'squared_hinge',
+                                                                'perceptron'])
 sgd_regressor_definition.register_categorical_variable("penalty", ['l2', 'l1', 'elasticnet'])
 sgd_regressor_definition.register_real_variable("alpha", .0001, .0001, .01)
 sgd_regressor_definition.register_integer_variable("max_iter", 50, 2000, 5)
 sgd_regressor_definition.register_real_variable("tol", 1e-3, .1, 1e-3)
-sgd_regressor_definition.register_categorical_variable("learning_rate", ['constant', 'optimal', 'invscaling', 'adaptive'])
+sgd_regressor_definition.register_categorical_variable("learning_rate",
+                                                       ['constant', 'optimal', 'invscaling', 'adaptive'])
 
 
 def sgd_regressor_fitness(individual):
@@ -196,7 +202,8 @@ def sgd_regressor_fitness(individual):
     tol = individual.get_variable_value("tol")
     learning_rate = individual.get_variable_value("learning_rate")
 
-    clf = SGDRegressor(loss=loss, penalty=penalty, alpha=alpha, max_iter=max_iter, tol=tol, learning_rate=learning_rate, n_jobs=-1)
+    clf = SGDRegressor(loss=loss, penalty=penalty, alpha=alpha, max_iter=max_iter, tol=tol, learning_rate=learning_rate,
+                       n_jobs=-1)
     scores = cross_val_score(clf, X_regression, y_regression,
                              scoring="neg_root_mean_squared_error", cv=10, n_jobs=-1)
 
