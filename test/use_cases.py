@@ -1,6 +1,6 @@
 from src.pycvoa import *
-from test.pre_defined_problems import *
-from test.sklearn_problems import *
+from test.simple_problems import *
+from test.machine_learning_problems import *
 
 problem_name = "ex1"
 

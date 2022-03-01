@@ -11,6 +11,7 @@ from src.pycvoa.support import get_random_value_for_simple_variable, get_number_
 
 logging.basicConfig(level=logging.INFO)
 
+
 class CVOA:
     # Shared properties for multi-threading execution
     __recovered = None
@@ -26,11 +27,12 @@ class CVOA:
     __update_isolated = None
     __verbosity = None
 
-    def __init__(self, strainID, max_time=10, maxSpread=5, minSuperSpread=6, maxSuperSpread=15, socialDistancing=10,
-                 pIsolation=0.7, pTravel=0.1, pReInfection=0.0014, superSpreaderPerc=0.1, deathPerc=0.05):
+    def __init__(self, strain_id, max_time=10, max_spread=5, min_super_spread=6, max_super_spread=15,
+                 social_distancing=10, p_isolation=0.7, p_travel=0.1, p_re_infection=0.0014, super_spreader_perc=0.1,
+                 death_perc=0.05):
 
         # Specific properties for each strain.
-        self.__strainID = strainID
+        self.__strainID = strain_id
         self.__max_time = max_time
         self.__infectedStrain = set()
         self.__superSpreaderStrain = set()
@@ -39,21 +41,21 @@ class CVOA:
         self.__bestSolutionStrain = Individual()
         self.__bestDeadIndividualStrain = None
         self.__worstSuperSpreaderIndividualStrain = None
-        self.__infectedStrainsuperSpreaderStrain = set()
+        self.__infected_strain_super_spreader_strain = set()
 
-        # Strain paremeters
-        self.__MAX_SPREAD = maxSpread
-        self.__MIN_SUPERSPREAD = minSuperSpread
-        self.__MAX_SUPERSPREAD = maxSuperSpread
-        self.__SOCIAL_DISTANCING = socialDistancing
-        self.__P_ISOLATION = pIsolation
-        self.__P_TRAVEL = pTravel
-        self.__P_REINFECTION = pReInfection
-        self.__SUPERSPREADER_PERC = superSpreaderPerc
-        self.__DEATH_PERC = deathPerc
+        # Strain parameters
+        self.__MAX_SPREAD = max_spread
+        self.__MIN_SUPERSPREAD = min_super_spread
+        self.__MAX_SUPERSPREAD = max_super_spread
+        self.__SOCIAL_DISTANCING = social_distancing
+        self.__P_ISOLATION = p_isolation
+        self.__P_TRAVEL = p_travel
+        self.__P_REINFECTION = p_re_infection
+        self.__SUPERSPREADER_PERC = super_spreader_perc
+        self.__DEATH_PERC = death_perc
 
     @staticmethod
-    def initialize_pandemic(individualDefinition, fitnessFunction, update_isolated=False):
+    def initialize_pandemic(individual_definition, fitness_function, update_isolated=False):
 
         CVOA.__recovered = set()
         CVOA.__deaths = set()
@@ -61,8 +63,8 @@ class CVOA:
         CVOA.__bestSolution = Individual(False)
         CVOA.__bestSolutionFound = False
 
-        CVOA.__fitnessFunction = fitnessFunction
-        CVOA.__individualDefinition = individualDefinition
+        CVOA.__fitnessFunction = fitness_function
+        CVOA.__individualDefinition = individual_definition
         CVOA.__update_isolated = update_isolated
 
     @staticmethod
@@ -94,7 +96,7 @@ class CVOA:
         # Step 2. Initialize strain: infected and best solution.
         self.__infectedStrain.add(pz)
         self.__bestSolutionStrain = pz
-        self.__infectedStrainsuperSpreaderStrain.add(pz)
+        self.__infected_strain_super_spreader_strain.add(pz)
         CVOA.__verbosity("\nPatient Zero (" + self.__strainID + "): \n" + str(pz))
         self.__worstSuperSpreaderIndividualStrain = Individual(best=True)
         self.__bestDeadIndividualStrain = Individual()
@@ -117,7 +119,7 @@ class CVOA:
             #     CVOA.__lock.acquire()
             #     CVOA.__bestSolutionFound = True
             #     CVOA.__lock.release()
-            #     CVOA.__verboseprint("Best solution (by fitness) found by " + self.__strainID)
+            #     CVOA.__verbose print("Best solution (by fitness) found by " + self.__strainID)
 
             self.__time += 1
 
@@ -142,7 +144,7 @@ class CVOA:
         # Each individual infects new ones and add them to newInfectedPopulation
         for individual in self.__infectedStrain:
             # Calculation of number of new infected and whether they travel or not
-            # 1. Determine the number of new individuals depending of SuperSpreader or Common
+            # 1. Determine the number of new individuals depending on SuperSpreader or Common
             if individual in self.__superSpreaderStrain:
                 n_infected = randint(self.__MIN_SUPERSPREAD, self.__MAX_SUPERSPREAD)
             else:
@@ -249,7 +251,7 @@ class CVOA:
 
         return dead
 
-    # Insert the individual in the strain sets (death or super  spreader)
+    # Insert the individual in the strain sets (death or superspreader)
     # Code re-utilization needs to be improved
     def __insert_into_set_strain(self, bag, to_insert, remaining, ty):
 
@@ -300,7 +302,7 @@ class CVOA:
 
     def __update_death_super_spreader_strain(self):
 
-        # Super spreader and deaths strain sets for each iteration
+        # Superspreader and deaths strain sets for each iteration
         number_of_super_spreaders = ceil(self.__SUPERSPREADER_PERC * len(self.__infectedStrain))
         number_of_deaths = ceil(self.__DEATH_PERC * len(self.__infectedStrain))
 
@@ -375,4 +377,3 @@ def cvoa_launcher(strains, verbose=True):
     verbosity(CVOA.pandemic_report())
 
     return CVOA.get_best_solution()
-
