@@ -12,6 +12,17 @@ VECTOR: Final = "vector"
 
 
 def inoculate_individual(infected, variable, definition):
+    """
+        Return a list of random ingredients as strings.
+
+        :param kind: Optional "kind" of ingredients.
+        :type kind: list[str] or None
+        :raise lumache.InvalidKindError: If the kind is invalid.
+        :return: The ingredients list.
+        :rtype: list[str]
+
+    """
+
     logging.debug("inoculate_individual")
     if definition[0] is INTEGER or definition[0] is REAL or definition[0] == CATEGORICAL:
         inoculate_individual_simple_variable(infected, variable, definition)

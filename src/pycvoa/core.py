@@ -1,13 +1,10 @@
-import logging
 import threading
 from concurrent.futures.thread import ThreadPoolExecutor
-from copy import *
 from datetime import timedelta
-from math import *
-from random import *
 from time import time
-from src.pycvoa.individual import *
-from src.pycvoa.support import get_random_value_for_simple_variable, get_number_from_interval, inoculate_individual
+
+from pycvoa.individual import *
+from pycvoa.support import *
 
 logging.basicConfig(level=logging.INFO)
 
