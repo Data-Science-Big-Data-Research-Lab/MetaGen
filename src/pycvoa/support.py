@@ -13,53 +13,67 @@ VECTOR: Final = "vector"
 
 def inoculate_individual(infected, variable, definition):
     """
-        Return a list of random ingredients as strings.
+        Inoculate a change into an individual variable.
 
-        :param kind: Optional "kind" of ingredients.
-        :type kind: list[str] or None
-        :raise lumache.InvalidKindError: If the kind is invalid.
-        :return: The ingredients list.
-        :rtype: list[str]
+        :param infected: Individual to be changed.
+        :param variable: Variable from the individual to be changed.
+        :param definition: Definition of the variable from the individual to be changed.
 
     """
-
     logging.debug("inoculate_individual")
+
+    # If variable is an INTEGER or REAL apply inoculate_individual_simple_variable
     if definition[0] is INTEGER or definition[0] is REAL or definition[0] == CATEGORICAL:
         inoculate_individual_simple_variable(infected, variable, definition)
 
+    # If variable is a LAYER
     elif definition[0] == LAYER:
 
+        # Get the layer definition and select the elements of the layer to be changed
         layer_definition = definition[1]
         n_changed_elements = randint(1, len(layer_definition))
         selected_elements = sample(list(layer_definition.keys()), n_changed_elements)
 
+        # For each selected element of the layer
         for element_name in selected_elements:
+
             logging.debug("Changing %s.%s", variable, element_name)
             element_definition = layer_definition[element_name]
+
+            # If the element is an INTEGER or REAL set it with modify_number_from_interval_random_way
             if element_definition[0] is INTEGER or element_definition[0] is REAL:
                 infected.set_layer_element_value(variable, element_name,
                                                  modify_number_from_interval_random_way(
                                                      infected.get_layer_element_value(variable, element_name),
                                                      element_definition[1], element_definition[2],
                                                      element_definition[3]))
+
+            # If the element is an CATEGORICAL set it another random label
             elif element_definition[0] == CATEGORICAL:
                 current_category = infected.get_layer_element_value(variable, element_name)
                 categories = set(deepcopy(element_definition[1]))
                 categories.remove(current_category)
                 infected.set_layer_element_value(variable, element_name, sample(list(categories), 1)[0])
 
+    # If variable is a VECTOR
     elif definition[0] == VECTOR:
-        action = choice([1, 2, 3])
-        # action = 2
 
+        # Select an action out of three: resizing (1), changing (2) and resizing and changing (3)
+        action = choice([1, 2, 3])
         logging.debug(">>>> INPUT: %s", infected.get_variable_value(variable))
 
+        # If the action is resizing, resize the vector with resize_vector_variable
         if action == 1:
             logging.debug("Resizing")
             resize_vector_variable(infected, variable, definition)
+
+        # If the action is changing, change the vector with change_vector_variable
         elif action == 2:
             logging.debug("Changing")
             change_vector_variable(infected, variable, definition)
+
+        # If the action is resizing and changing, resize the vector with resize_vector_variable
+        # and change the vector with change_vector_variable
         else:
             logging.debug("Resizing and changing")
             resize_vector_variable(infected, variable, definition)
@@ -70,31 +84,56 @@ def inoculate_individual(infected, variable, definition):
 
 
 def change_vector_variable(individual, variable, definition):
+    """
+          Change the values of a vector variable.
+
+          :param individual: Individual to be changed.
+          :param variable: Variable (type VECTOR) from the individual to be changed.
+          :param definition: Definition of the variable from the individual to be changed.
+
+    """
+
+    # Get a list of positions of the vector to be changed randomly
     current_size = individual.get_vector_size(variable)
     number_of_changes = randint(1, current_size)
     index_to_change = sample(list(range(0, current_size)), number_of_changes)
     vector_element_definition = definition[4]
+
+    # For each position
     for i in index_to_change:
+
         logging.debug("[%s] vector_element_definition = %s", i, str(vector_element_definition))
+
+        # If it is a vector of integer or real modify the value with modify_number_from_interval_random_way
         if vector_element_definition[0] is INTEGER or vector_element_definition[0] is REAL:
             individual.set_vector_element_by_index(variable,
                                                    i, modify_number_from_interval_random_way(
                     individual.get_vector_component_value(variable, i),
                     vector_element_definition[1], vector_element_definition[2],
                     vector_element_definition[3]))
+
+        # If it is a vector of categorical modify the value with a new label randomly selected
         elif vector_element_definition[0] is CATEGORICAL:
             logging.debug("CAT")
             current_category = individual.get_vector_component_value(variable, i)
             categories = set(deepcopy(vector_element_definition[1]))
             categories.remove(current_category)
             individual.set_vector_element_by_index(variable, i, sample(list(categories), 1)[0])
+
+        # If it is a vector of layer
         elif vector_element_definition[0] == LAYER:
             logging.debug("LAYER")
+
+            # Select a random set of elements of the layer to be changed
             layer_definition = vector_element_definition[1]
             n_changed_elements = randint(1, len(layer_definition))
             selected_elements = sample(list(layer_definition.keys()), n_changed_elements)
+
+            # For each selected element
             for element_name in selected_elements:
                 layer_element_definition = layer_definition[element_name]
+
+                # If that element is an integer or a real modify its value with modify_number_from_interval_random_way
                 if layer_element_definition[0] is INTEGER or layer_element_definition[0] is REAL:
                     individual.set_vector_layer_element_by_index(variable, i, element_name,
                                                                  modify_number_from_interval_random_way(
@@ -104,12 +143,22 @@ def change_vector_variable(individual, variable, definition):
                                                                      layer_element_definition[1],
                                                                      layer_element_definition[2],
                                                                      layer_element_definition[3]))
+
+                # If that element is a categorical one modify its value with a new label randomly selected
                 elif layer_element_definition[0] == CATEGORICAL:
                     individual.set_vector_layer_element_by_index(variable, i, element_name,
                                                                  sample(layer_element_definition[1], 1)[0])
 
 
 def resize_vector_variable(individual, variable, definition):
+    """
+            Resize a vector variable.
+
+            :param individual: Individual to be changed.
+            :param variable: Variable (type VECTOR) from the individual to be changed.
+            :param definition: Definition of the variable from the individual to be changed.
+
+    """
     current_size = individual.get_vector_size(variable)
 
     new_size = modify_number_from_interval_random_way(current_size, definition[1],
@@ -160,10 +209,19 @@ def inoculate_individual_simple_variable(infected, variable, definition):
         infected.set_variable_value(variable, sample(list(categories), 1)[0])
 
 
-# ***********************************************************************
-# ********************* Auxiliary methods *******************************
-# ***********************************************************************
+# ** Auxiliary methods
+
 def modify_number_from_interval_random_way(value, left, right, step_size):
+    """
+               Compute a random value from a given interval centered in the input value.
+
+               :param value: Value to be changed.
+               :param left: Left value of the interval.
+               :param right: Right value of the interval.
+               :param step_size: Step size of the interval.
+               :return A random value.
+
+       """
     logging.debug("value = %s, left = %s, right = %s, step_size = %s", value, left, right, step_size)
     left_max_steps = floor((value - left) / step_size)
     right_max_steps = floor((right - value) / step_size)
@@ -200,18 +258,15 @@ def modify_number_from_interval_random_way(value, left, right, step_size):
     return res
 
 
-def get_number_from_interval(left, right, step_size):
-    max_steps = floor((right - left) / step_size)
-    rstep = randint(0, int(max_steps))
-    res = left + (rstep * step_size)
-    # print("left = " + str(left) + " right = " + str(right) + " step_size = " + str(step_size) + " max_steps = " +
-    # str(max_steps)+" res = " + str(res))
-    return res
-
-
 def get_random_value_for_simple_variable(definition):
-    res = 0
+    """
+          Get a random value from a variable of type REAL, INTEGER OR CATEGORICAL.
 
+          :param definition: Definition of the variable
+          :return A random value.
+
+    """
+    res = 0
     if definition[0] == REAL:
         res = get_number_from_interval(definition[1], definition[2], definition[3])
     elif definition[0] == INTEGER:
@@ -222,11 +277,53 @@ def get_random_value_for_simple_variable(definition):
     return res
 
 
+def get_number_from_interval(left, right, step_size):
+    """
+       Compute a random value from a given interval.
+
+       :param left: Left value of the interval.
+       :param right: Right value of the interval.
+       :param step_size: Step size of the interval.
+       :return A random value.
+
+    """
+    max_steps = floor((right - left) / step_size)
+    random_step = randint(0, int(max_steps))
+    res = left + (random_step * step_size)
+    return res
+
+
+def variable_definition_to_string(variable_name, definition):
+    """
+                  Get a string representation of a variable.
+
+                  :param variable_name: Variable name.
+                  :param definition: Definition of the variable.
+                  :return A string representation of the input variable.
+
+    """
+    res = ""
+    if definition[0] is VECTOR:
+        res += vector_definition_to_string(variable_name, definition)
+    elif definition[0] is LAYER:
+        res += layer_definition_to_string(variable_name, definition)
+    else:
+        res += simple_definition_to_string(variable_name, definition)
+    return res
+
+
 def vector_definition_to_string(variable_name, definition):
+    """
+            Get a string representation of a VECTOR variable.
+
+            :param variable_name: Variable name.
+            :param definition: Definition of the variable.
+            :return A string representation of the input VECTOR variable.
+
+      """
     res = "[" + definition[0] + "] " + variable_name + " {Minimum size = " + str(definition[1]) + \
           ", Maximum size = " + str(definition[2]) + ", Step size = " \
           + str(definition[3]) + "}"
-    # print("NAME: "+str(definition[4])+" DEF:"+str(self.__definitions[definition[4]]))
 
     component_definition = definition[4]
 
@@ -251,6 +348,14 @@ def vector_definition_to_string(variable_name, definition):
 
 
 def layer_definition_to_string(variable_name, definition):
+    """
+               Get a string representation of a LAYER variable.
+
+               :param variable_name: Variable name.
+               :param definition: Definition of the variable.
+               :return A string representation of the input LAYER variable.
+
+         """
     res = "[" + definition[0] + "] " + variable_name + " "
     res += "\n"
     cnt = 1
@@ -262,18 +367,15 @@ def layer_definition_to_string(variable_name, definition):
     return res
 
 
-def variable_definition_to_string(variable_name, definition):
-    res = ""
-    if definition[0] is VECTOR:
-        res += vector_definition_to_string(variable_name, definition)
-    elif definition[0] is LAYER:
-        res += layer_definition_to_string(variable_name, definition)
-    else:
-        res += simple_definition_to_string(variable_name, definition)
-    return res
-
-
 def simple_definition_to_string(variable_name, definition):
+    """
+        Get a string representation of a REAL, INTEGER or CATEGORICAL variable.
+
+        :param variable_name: Variable name.
+        :param definition: Definition of the variable.
+        :return A string representation of the input REAL, INTEGER or CATEGORICAL variable.
+
+    """
     res = "[" + definition[0] + "] " + variable_name + " "
     if definition[0] is not CATEGORICAL:
         res += "{Minimum = " + str(definition[1]) + ", Maximum = " + str(definition[2]) + ", Step = " + str(

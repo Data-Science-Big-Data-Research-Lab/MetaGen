@@ -1,4 +1,4 @@
-from src.pycvoa import ProblemDefinition
+from pycvoa import ProblemDefinition
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.datasets import make_classification, make_regression
 from sklearn.model_selection import cross_val_score
@@ -25,6 +25,9 @@ random_forest_classifier_definition.register_categorical_variable("max_features"
 
 
 def random_forest_classifier_fitness(individual):
+    """
+    Random Forest classifier optimization
+    """
     max_depth = individual.get_variable_value("max_depth")
     n_estimators = individual.get_variable_value("n_estimators")
     criterion = individual.get_variable_value("criterion")
@@ -49,6 +52,9 @@ random_forest_regressor_definition.register_categorical_variable("max_features",
 
 
 def random_forest_regressor_fitness(individual):
+    """
+       Example problem: x^2
+    """
     max_depth = individual.get_variable_value("max_depth")
     n_estimators = individual.get_variable_value("n_estimators")
     criterion = individual.get_variable_value("criterion")

@@ -1,9 +1,11 @@
-from src.pycvoa import *
-from test.simple_problems import *
-from test.machine_learning_problems import *
+from pycvoa import *
+from simple_problems import *
+from machine_learning_problems import *
 
 problem_name = "ex1"
-
+"""
+   Example problem: x^2
+"""
 # Step 1. Build the problem and the fitness function
 if problem_name == "ex1":
     problem = x_minus_15_raised_to_2_definition

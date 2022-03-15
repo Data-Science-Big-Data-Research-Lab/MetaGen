@@ -1,6 +1,5 @@
 from random import randint
-
-from src.pycvoa import ProblemDefinition
+from pycvoa import ProblemDefinition
 
 """
 Example problem: (x-15)^2 
@@ -22,6 +21,9 @@ x_raised_to_2_definition.register_real_variable("x", 0.0, 100.0, 0.05)
 
 
 def x_raised_to_2_fitness(individual):
+    """
+    Example problem: x^2
+    """
     x = individual.get_variable_value("x")
     return pow(x, 2)
 
