@@ -1,11 +1,9 @@
 import argparse
 import sys
-
-from src.pycvoa import *
+from pycvoa import *
 
 """
     This 
-
 
 """
 
@@ -21,8 +19,14 @@ parser.add_argument("-f", "--fitnessFunction", help="Fitness function Python cod
 parser.add_argument("-s", "--strain", help="Strain definition", nargs="*",
                     action="append")
 
-
-def user_defined_run(args):
+def cvoa_cli():
+    args = parser.parse_args(sys.argv[1:])
+    # args = parser.parse_args("-vR R1 350.0 10000.0 0.5 "
+    #                          "-vI I1 1 10 2 "
+    #                          "-vC C1 l1 l2 l3 "
+    #                          "-s strA 5 "
+    #                          "-s strB 10 "
+    #                          "-f /Users/davgutavi/Desktop/test.py".split())
     # Building definition
     idef = ProblemDefinition()
     for av in args.varR:
@@ -62,14 +66,3 @@ def user_defined_run(args):
 
     print("DONE!")
     print("Solution: " + str(solution))
-
-
-def cvoa_cli():
-    args = parser.parse_args(sys.argv[1:])
-    # args = parser.parse_args("-vR R1 350.0 10000.0 0.5 "
-    #                          "-vI I1 1 10 2 "
-    #                          "-vC C1 l1 l2 l3 "
-    #                          "-s strA 5 "
-    #                          "-s strB 10 "
-    #                          "-f /Users/davgutavi/Desktop/test.py".split())
-    user_defined_run(args)

@@ -10,6 +10,12 @@ logging.basicConfig(level=logging.INFO)
 
 
 class CVOA:
+    """
+        This is the core class of CVOA algorithm. This
+
+
+    """
+
     # Shared properties for multi-threading execution
     __recovered = None
     __deaths = None
@@ -354,6 +360,9 @@ class CVOA:
 
 
 def cvoa_launcher(strains, verbose=True):
+    """
+         Return a list of random ingredients as strings.
+    """
     verbosity = print if verbose else lambda *a, **k: None
     CVOA.set_verbosity(verbosity)
 
