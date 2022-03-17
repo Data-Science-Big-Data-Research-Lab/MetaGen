@@ -4,33 +4,90 @@ from pycvoa.support import INTEGER, REAL, CATEGORICAL, LAYER, VECTOR, variable_d
 
 
 class ProblemDefinition:
+    """
+    This class provides the required functionality to define a problem. The user must instantiate the class into a
+    variable and, next, define the problem variables using the member methods of the class.
+    """
 
     def __init__(self):
         self.__definitions = {}
 
-    # Registration methods for simple variables
     def register_integer_variable(self, name, min_value, max_value, step):
+        """
+        It defines an integer variable receiving the variable name, the minimum and maximum values that it will be able
+        to have, and the step size to traverse the interval.
+        :param name: Variable name.
+        :param min_value: Minimum value.
+        :param max_value: Maximum value.
+        :param step: Step size.
+        """
         self.__definitions[name] = [INTEGER, min_value, max_value, step]
 
     def register_real_variable(self, name, min_value, max_value, step):
+        """
+        It defines a real variable receiving the variable name, the minimum and maximum values that it will be able to
+        have, and the step size to traverse the interval.
+        :param name: Variable name.
+        :param min_value: Minimum value.
+        :param max_value: Maximum value.
+        :param step: Step size.
+        """
         self.__definitions[name] = [REAL, min_value, max_value, step]
 
     def register_categorical_variable(self, name, categories):
+        """
+        It defines a categorical variable receiving the variable name, and a list with the labels that it will be
+        able to have.
+        :param name: Variable name.
+        :param categories: List of labels
+        """
         self.__definitions[name] = [CATEGORICAL, categories]
 
-    # Registration method for layer variables
     def register_layer_variable(self, name):
+        """
+        It defines an layer variable receiving the variable name. Next, the layer elements have to be defined using the
+        methods:
+        * :py:meth:`~individual.ProblemDefinition.insert_layer_integer`
+        * :py:meth:`~individual.ProblemDefinition.insert_layer_real`
+        * :py:meth:`~individual.ProblemDefinition.insert_layer_categorical`
+        :param name: Variable name
+        """
         self.__definitions[name] = [LAYER, {}]
 
     def insert_layer_integer(self, layer_name, element_name, min_value, max_value, step):
+        """
+        It inserts an integer element into the layer_name variable by receiving the element name, the minimum and
+        maximum values that it will be able to have, and the step size to traverse the interval.
+        :param layer_name: Layer variable where the new element will be inserted.
+        :param element_name: Element name.
+        :param min_value: Minimum value.
+        :param max_value: Maximum value.
+        :param step: Step size.
+        """
         layer_elements = self.__definitions[layer_name][1]
         layer_elements[element_name] = [INTEGER, min_value, max_value, step]
 
     def insert_layer_real(self, layer_name, element_name, min_value, max_value, step):
+        """
+        It inserts a real element into the layer_name variable by receiving the element name, the minimum and
+        maximum values that it will be able to have, and the step size to traverse the interval.
+        :param layer_name: Layer variable where the new element will be inserted.
+        :param element_name: Element name.
+        :param min_value: Minimum value.
+        :param max_value: Maximum value.
+        :param step: Step size.
+        """
         layer_elements = self.__definitions[layer_name][1]
         layer_elements[element_name] = [REAL, min_value, max_value, step]
 
     def insert_layer_categorical(self, layer_name, element_name, categories):
+        """
+        It inserts a categorical element into the layer_name variable by receiving the element name, and a list with
+        the labels that it will be able to have.
+        :param layer_name: Layer variable where the new element will be inserted.
+        :param element_name: Element name.
+        :param categories: List of labels
+        """
         layer_elements = self.__definitions[layer_name][1]
         layer_elements[element_name] = [CATEGORICAL, categories]
 
