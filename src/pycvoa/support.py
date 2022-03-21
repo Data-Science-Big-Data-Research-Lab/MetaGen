@@ -1,7 +1,7 @@
 import logging
-from copy import *
-from math import *
-from random import *
+import copy
+import random
+import math
 from typing import Final
 
 REAL: Final = "real"
@@ -12,13 +12,14 @@ VECTOR: Final = "vector"
 
 
 def inoculate_individual(infected, variable, definition):
-    """
-        Inoculate a change into an individual variable.
+    """ Inoculate a change into an individual variable.
 
-        :param infected: Individual to be changed.
-        :param variable: Variable from the individual to be changed.
-        :param definition: Definition of the variable from the individual to be changed.
-
+    :param infected: Individual to be changed.
+    :param variable: Variable from the individual to be changed.
+    :param definition: Internal definition of the variable from the individual to be changed.
+    :type infected: :py:class:`~individual.Individual`
+    :type variable: str
+    :type definition: list
     """
     logging.debug("inoculate_individual")
 
@@ -31,8 +32,8 @@ def inoculate_individual(infected, variable, definition):
 
         # Get the layer definition and select the elements of the layer to be changed
         layer_definition = definition[1]
-        n_changed_elements = randint(1, len(layer_definition))
-        selected_elements = sample(list(layer_definition.keys()), n_changed_elements)
+        n_changed_elements = random.randint(1, len(layer_definition))
+        selected_elements = random.sample(list(layer_definition.keys()), n_changed_elements)
 
         # For each selected element of the layer
         for element_name in selected_elements:
@@ -51,15 +52,15 @@ def inoculate_individual(infected, variable, definition):
             # If the element is an CATEGORICAL set it another random label
             elif element_definition[0] == CATEGORICAL:
                 current_category = infected.get_layer_element_value(variable, element_name)
-                categories = set(deepcopy(element_definition[1]))
+                categories = set(copy.deepcopy(element_definition[1]))
                 categories.remove(current_category)
-                infected.set_layer_element_value(variable, element_name, sample(list(categories), 1)[0])
+                infected.set_layer_element_value(variable, element_name, random.sample(list(categories), 1)[0])
 
     # If variable is a VECTOR
     elif definition[0] == VECTOR:
 
         # Select an action out of three: resizing (1), changing (2) and resizing and changing (3)
-        action = choice([1, 2, 3])
+        action = random.choice([1, 2, 3])
         logging.debug(">>>> INPUT: %s", infected.get_variable_value(variable))
 
         # If the action is resizing, resize the vector with resize_vector_variable
@@ -84,19 +85,20 @@ def inoculate_individual(infected, variable, definition):
 
 
 def change_vector_variable(individual, variable, definition):
-    """
-          Change the values of a vector variable.
+    """ Change the values of a vector variable.
 
-          :param individual: Individual to be changed.
-          :param variable: Variable (type VECTOR) from the individual to be changed.
-          :param definition: Definition of the variable from the individual to be changed.
-
+    :param individual: Individual to be changed.
+    :param variable: Variable (type VECTOR) from the individual to be changed.
+    :param definition: Definition of the variable from the individual to be changed.
+    :type individual: :py:class:`~individual.Individual`
+    :type variable: str
+    :type definition: list
     """
 
     # Get a list of positions of the vector to be changed randomly
     current_size = individual.get_vector_size(variable)
-    number_of_changes = randint(1, current_size)
-    index_to_change = sample(list(range(0, current_size)), number_of_changes)
+    number_of_changes = random.randint(1, current_size)
+    index_to_change = random.sample(list(range(0, current_size)), number_of_changes)
     vector_element_definition = definition[4]
 
     # For each position
@@ -116,9 +118,9 @@ def change_vector_variable(individual, variable, definition):
         elif vector_element_definition[0] is CATEGORICAL:
             logging.debug("CAT")
             current_category = individual.get_vector_component_value(variable, i)
-            categories = set(deepcopy(vector_element_definition[1]))
+            categories = set(copy.deepcopy(vector_element_definition[1]))
             categories.remove(current_category)
-            individual.set_vector_element_by_index(variable, i, sample(list(categories), 1)[0])
+            individual.set_vector_element_by_index(variable, i, random.sample(list(categories), 1)[0])
 
         # If it is a vector of layer
         elif vector_element_definition[0] == LAYER:
@@ -126,8 +128,8 @@ def change_vector_variable(individual, variable, definition):
 
             # Select a random set of elements of the layer to be changed
             layer_definition = vector_element_definition[1]
-            n_changed_elements = randint(1, len(layer_definition))
-            selected_elements = sample(list(layer_definition.keys()), n_changed_elements)
+            n_changed_elements = random.randint(1, len(layer_definition))
+            selected_elements = random.sample(list(layer_definition.keys()), n_changed_elements)
 
             # For each selected element
             for element_name in selected_elements:
@@ -147,17 +149,18 @@ def change_vector_variable(individual, variable, definition):
                 # If that element is a categorical one modify its value with a new label randomly selected
                 elif layer_element_definition[0] == CATEGORICAL:
                     individual.set_vector_layer_element_by_index(variable, i, element_name,
-                                                                 sample(layer_element_definition[1], 1)[0])
+                                                                 random.sample(layer_element_definition[1], 1)[0])
 
 
 def resize_vector_variable(individual, variable, definition):
-    """
-            Resize a vector variable.
+    """ Resize a vector variable.
 
-            :param individual: Individual to be changed.
-            :param variable: Variable (type VECTOR) from the individual to be changed.
-            :param definition: Definition of the variable from the individual to be changed.
-
+    :param individual: Individual to be changed.
+    :param variable: Variable (type VECTOR) from the individual to be changed.
+    :param definition: Definition of the variable from the individual to be changed.
+    :type individual: :py:class:`~individual.Individual`
+    :type variable: str
+    :type definition: list
     """
     current_size = individual.get_vector_size(variable)
 
@@ -173,7 +176,7 @@ def resize_vector_variable(individual, variable, definition):
 
     if new_size > current_size:
         for i in range(0, diff):
-            selected_index = randint(0, current_size)
+            selected_index = random.randint(0, current_size)
             logging.debug("add index %s", selected_index)
             if vector_element_definition[0] is INTEGER or vector_element_definition[0] is REAL or \
                     vector_element_definition[0] is CATEGORICAL:
@@ -191,7 +194,7 @@ def resize_vector_variable(individual, variable, definition):
     elif new_size < current_size:
         for i in range(0, diff):
             current_size = individual.get_vector_size(variable)
-            selected_index = randint(0, current_size - 1)
+            selected_index = random.randint(0, current_size - 1)
             logging.debug("current_size = %s, remove index = %s", current_size, selected_index)
             individual.remove_vector_element_by_index(variable, selected_index)
 
@@ -204,33 +207,34 @@ def inoculate_individual_simple_variable(infected, variable, definition):
                                                                            definition[3]))
     elif definition[0] == CATEGORICAL:
         current_category = infected.get_variable_value(variable)
-        categories = set(deepcopy(definition[1]))
+        categories = set(copy.deepcopy(definition[1]))
         categories.remove(current_category)
-        infected.set_variable_value(variable, sample(list(categories), 1)[0])
+        infected.set_variable_value(variable, random.sample(list(categories), 1)[0])
 
-
-# ** Auxiliary methods
 
 def modify_number_from_interval_random_way(value, left, right, step_size):
+    """ Compute a random value from a given interval centered in the input value.
+
+    :param value: Value to be changed.
+    :param left: Left value of the interval.
+    :param right: Right value of the interval.
+    :param step_size: Step size of the interval.
+    :type value: int, float
+    :type left: int, float
+    :type right: int, float
+    :type step_size: int, float
+    :returns: A random value.
+    :rtype: int, float
     """
-               Compute a random value from a given interval centered in the input value.
-
-               :param value: Value to be changed.
-               :param left: Left value of the interval.
-               :param right: Right value of the interval.
-               :param step_size: Step size of the interval.
-               :return A random value.
-
-       """
     logging.debug("value = %s, left = %s, right = %s, step_size = %s", value, left, right, step_size)
-    left_max_steps = floor((value - left) / step_size)
-    right_max_steps = floor((right - value) / step_size)
+    left_max_steps = math.floor((value - left) / step_size)
+    right_max_steps = math.floor((right - value) / step_size)
     logging.debug("left_max_steps = %s, right_max_steps = %s", left_max_steps, right_max_steps)
     max_steps = 0
     way = 0
 
     if left_max_steps > 0 and right_max_steps > 0:
-        way = randint(0, 1)
+        way = random.randint(0, 1)
         if way == 0:
             max_steps = left_max_steps
         else:
@@ -245,7 +249,7 @@ def modify_number_from_interval_random_way(value, left, right, step_size):
     logging.debug("way = %s", way)
     logging.debug("max_steps = %s", max_steps)
 
-    step_radio = randint(1, int(max_steps))
+    step_radio = random.randint(1, int(max_steps))
     logging.debug("step_radio = %s", step_radio)
 
     if way == 0:
@@ -259,48 +263,51 @@ def modify_number_from_interval_random_way(value, left, right, step_size):
 
 
 def get_random_value_for_simple_variable(definition):
-    """
-          Get a random value from a variable of type REAL, INTEGER OR CATEGORICAL.
+    """ Get a random value from a variable of type REAL, INTEGER OR CATEGORICAL.
 
-          :param definition: Definition of the variable
-          :return A random value.
-
+    :param definition: Definition of the variable
+    :type definition: list
+    :returns: A random value.
+    :rtype: int, float, str
     """
     res = 0
     if definition[0] == REAL:
         res = get_number_from_interval(definition[1], definition[2], definition[3])
     elif definition[0] == INTEGER:
-        res = randrange(definition[1], definition[2], definition[3])
+        res = random.randrange(definition[1], definition[2], definition[3])
     elif definition[0] == CATEGORICAL:
-        res = sample(definition[1], 1)[0]
+        res = random.sample(definition[1], 1)[0]
 
     return res
 
 
 def get_number_from_interval(left, right, step_size):
-    """
-       Compute a random value from a given interval.
+    """ Compute a random value from a given interval.
 
-       :param left: Left value of the interval.
-       :param right: Right value of the interval.
-       :param step_size: Step size of the interval.
-       :return A random value.
-
+    :param left: Left value of the interval.
+    :param right: Right value of the interval.
+    :param step_size: Step size of the interval.
+    :type left: float
+    :type right: float
+    :type step_size: float
+    :returns: A random value.
+    :rtype: float
     """
-    max_steps = floor((right - left) / step_size)
-    random_step = randint(0, int(max_steps))
+    max_steps = math.floor((right - left) / step_size)
+    random_step = random.randint(0, int(max_steps))
     res = left + (random_step * step_size)
     return res
 
 
 def variable_definition_to_string(variable_name, definition):
-    """
-                  Get a string representation of a variable.
+    """ Get a string representation of a variable.
 
-                  :param variable_name: Variable name.
-                  :param definition: Definition of the variable.
-                  :return A string representation of the input variable.
-
+    :param variable_name: Variable name.
+    :param definition: Definition of the variable.
+    :type variable_name: str
+    :type definition: list
+    :returns: A string representation of the input variable.
+    :rtype: str
     """
     res = ""
     if definition[0] is VECTOR:
@@ -313,14 +320,15 @@ def variable_definition_to_string(variable_name, definition):
 
 
 def vector_definition_to_string(variable_name, definition):
+    """ Get a string representation of a VECTOR variable.
+
+    :param variable_name: Variable name.
+    :param definition: Definition of the variable.
+    :type variable_name: str
+    :type definition: list
+    :returns: A string representation of the input VECTOR variable.
+    :rtype: str
     """
-            Get a string representation of a VECTOR variable.
-
-            :param variable_name: Variable name.
-            :param definition: Definition of the variable.
-            :return A string representation of the input VECTOR variable.
-
-      """
     res = "[" + definition[0] + "] " + variable_name + " {Minimum size = " + str(definition[1]) + \
           ", Maximum size = " + str(definition[2]) + ", Step size = " \
           + str(definition[3]) + "}"
@@ -348,14 +356,15 @@ def vector_definition_to_string(variable_name, definition):
 
 
 def layer_definition_to_string(variable_name, definition):
+    """ Get a string representation of a LAYER variable.
+
+    :param variable_name: Variable name.
+    :param definition: Definition of the variable.
+    :type variable_name: str
+    :type definition: list
+    :returns: A string representation of the input LAYER variable.
+    :rtype: str
     """
-               Get a string representation of a LAYER variable.
-
-               :param variable_name: Variable name.
-               :param definition: Definition of the variable.
-               :return A string representation of the input LAYER variable.
-
-         """
     res = "[" + definition[0] + "] " + variable_name + " "
     res += "\n"
     cnt = 1
@@ -368,13 +377,14 @@ def layer_definition_to_string(variable_name, definition):
 
 
 def simple_definition_to_string(variable_name, definition):
-    """
-        Get a string representation of a REAL, INTEGER or CATEGORICAL variable.
+    """ Get a string representation of a REAL, INTEGER or CATEGORICAL variable.
 
-        :param variable_name: Variable name.
-        :param definition: Definition of the variable.
-        :return A string representation of the input REAL, INTEGER or CATEGORICAL variable.
-
+    :param variable_name: Variable name.
+    :param definition: Definition of the variable.
+    :type variable_name: str
+    :type definition: list
+    :returns: A string representation of the input REAL, INTEGER or CATEGORICAL variable.
+    :rtype: str
     """
     res = "[" + definition[0] + "] " + variable_name + " "
     if definition[0] is not CATEGORICAL:
