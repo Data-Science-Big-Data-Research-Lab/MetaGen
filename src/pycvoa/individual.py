@@ -6,9 +6,21 @@ from pycvoa.support import INTEGER, REAL, CATEGORICAL, LAYER, VECTOR, variable_d
 class ProblemDefinition:
     """ This class provides the required functionality to define a problem. The user must instantiate the class into a
     variable and, next, define the problem variables using the member methods of the class.
+
+    **Example:**
+
+    .. code-block:: python
+
+        problem_definition = ProblemDefinition()
+        problem_definition.register_categorical_variable("Categorical",["C1","C2","C3"])
     """
 
     def __init__(self):
+        """ It is the default, and unique, constructor without parameters.
+
+        :ivar __definitions: Data structure where the Problem Definition is stored.
+        :vartype __definitions: dict
+        """
         self.__definitions = {}
 
     def register_integer_variable(self, name, min_value, max_value, step):
@@ -53,12 +65,12 @@ class ProblemDefinition:
         self.__definitions[name] = [CATEGORICAL, categories]
 
     def register_layer_variable(self, name):
-        """ It defines a layer variable receiving the variable name. Next, the layer elements have to be defined using the
-        methods:
+        """ It defines a layer variable receiving the variable name. Next, the layer elements have to be defined using
+        the methods:
 
-        - :py:meth:`~individual.ProblemDefinition.insert_layer_integer`
-        - :py:meth:`~individual.ProblemDefinition.insert_layer_real`
-        - :py:meth:`~individual.ProblemDefinition.insert_layer_categorical`
+        - :py:meth:`~pycvoa.individual.ProblemDefinition.insert_layer_integer`
+        - :py:meth:`~pycvoa.individual.ProblemDefinition.insert_layer_real`
+        - :py:meth:`~pycvoa.individual.ProblemDefinition.insert_layer_categorical`
 
         :param name: Variable name.
         :type name: str
@@ -181,9 +193,9 @@ class ProblemDefinition:
         """ It set the component type of the vector variable to layer. Afterwards, the components of
         the layer must be set using the methods:
 
-        - :py:meth:`~individual.ProblemDefinition.insert_integer_in_vector_layer_component`
-        - :py:meth:`~individual.ProblemDefinition.insert_real_in_vector_layer_component`
-        - :py:meth:`~individual.ProblemDefinition.insert_categorical_in_vector_layer_component`
+        - :py:meth:`~pycvoa.individual.ProblemDefinition.insert_integer_in_vector_layer_component`
+        - :py:meth:`~pycvoa.individual.ProblemDefinition.insert_real_in_vector_layer_component`
+        - :py:meth:`~pycvoa.individual.ProblemDefinition.insert_categorical_in_vector_layer_component`
 
         :param vector_variable_name: Vector variable name previously defined.
         :type vector_variable_name: str
@@ -244,7 +256,7 @@ class ProblemDefinition:
         layer_elements[element_name] = [CATEGORICAL, categories]
 
     def get_definition(self):
-        """ Get the internal data structure for the :py:meth:`~individual.ProblemDefinition`
+        """ Get the internal data structure for the :py:class:`~pycvoa.individual.ProblemDefinition`
 
         :returns: Internal structure of the Problem Definition.
         :rtype: list
@@ -253,6 +265,8 @@ class ProblemDefinition:
         return self.__definitions
 
     def __str__(self):
+        """ String representation of a :py:class:`~pycvoa.individual.ProblemDefinition` object
+        """
         res = ""
         count = 1
         for k, v in self.__definitions.items():
@@ -265,8 +279,35 @@ class ProblemDefinition:
 
 
 class Individual:
+    """ This class provides the abstraction of an individual for the :py:class:`~pycvoa.core.CVOA` algorithm or any
+    meta-heuristic that third-party provides. The default, and unique, constructor builds an empty individual with
+    the best fitness value (:math:`best=True`, by default) or the worst fitness value (:math:`best=False`).
+
+    **Example:**
+
+    .. code-block:: python
+
+        >>> best_individual  = Individual()
+        >>> best_individual.fitness
+        0.0
+        >>> worst_individual  = Individual(False)
+        >>> worst_individual.fitness
+        1.7976931348623157e+308
+    """
 
     def __init__(self, best=True):
+        """ It is the default, and unique, constructor. It builds an empty individual with
+        the best fitness value (:math:`best=True`, by default) or the worst fitness value (:math:`best=False`)
+
+        :param best: If true, build an individual with the best fitness value.
+        :type best: bool
+        :ivar __variables: Data structure where the variables of an individual are stored.
+        :vartype __variables: dict
+        :ivar discovering_iteration_time: Pandemic time when a solution is discovered.
+        :vartype discovering_iteration_time: int
+        :ivar fitness: Fitness value.
+        :vartype fitness: float
+        """
         self.__variables = {}
         self.discovering_iteration_time = 0
         if best:
@@ -274,14 +315,38 @@ class Individual:
         else:
             self.fitness = sys.float_info.max
 
-    # Getters
     def get_variable_value(self, variable_name):
+        """ It returns a variable value of the individual.
+
+        **Precondition:**
+
+        The queried variable must be **INTEGER**, **REAL** or **CATEGORICAL**. For **LAYER** and
+        **VECTOR** variables there are specific getters (:py:meth:`~pycvoa.individual.Individual.get_layer_element_value`
+        and :py:meth:`~pycvoa.individual.Individual.get_vector_component_value` respectively)
+
+        :param variable_name: The variable name.
+        :type variable_name: str
+        :returns: The variable value.
+        :rtype: int, float, str
+        :raise NotDefinedVariableError: The variable is not defined in the individual.
+        """
         if variable_name in self.__variables:
             return self.__variables.get(variable_name)
         else:
             raise NotDefinedVariableError("The variable " + variable_name + " is not defined")
 
     def get_layer_element_value(self, layer_name, element_name):
+        """ It returns an element value of a **LAYER** variable of the individual.
+
+        :param layer_name: The **LAYER** variable name.
+        :param element_name: The **LAYER** element name.
+        :type layer_name: str
+        :type element_name: str
+        :returns: The element value of the **LAYER** variable.
+        :rtype: int, float, str
+        :raise NotDefinedLayerElementError: The element of the layer is not defined in the individual.
+        :raise NotLayerError: The layer variable is not defined as a **LAYER** type.
+        """
         if layer_name in self.__variables:
             layer = self.__variables.get(layer_name)
             if type(layer) is dict:
@@ -296,6 +361,13 @@ class Individual:
             raise NotDefinedLayerElementError("The variable " + layer_name + " is not defined")
 
     def get_vector_size(self, vector_name):
+        """ It returns the size of a **VECTOR** variable of the individual.
+
+        :param vector_name: The **VECTOR** variable name.
+        :type vector_name: str
+        :returns: The size of the **VECTOR** variable.
+        :rtype: int
+        """
         if vector_name in self.__variables:
             vector = self.__variables.get(vector_name)
             if type(vector) is list:
