@@ -2,13 +2,7 @@ import logging
 import copy
 import random
 import math
-from typing import Final
-
-REAL: Final = "real"
-INTEGER: Final = "integer"
-CATEGORICAL: Final = "categorical"
-LAYER: Final = "layer"
-VECTOR: Final = "vector"
+from pycvoa import INTEGER, REAL, CATEGORICAL, LAYER, VECTOR
 
 
 def inoculate_individual(infected, variable, definition):

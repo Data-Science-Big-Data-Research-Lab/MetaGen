@@ -2,7 +2,6 @@ import threading
 from concurrent.futures.thread import ThreadPoolExecutor
 from datetime import timedelta
 from time import time
-
 from pycvoa.individual import *
 from pycvoa.support import *
 
@@ -149,13 +148,13 @@ class CVOA:
             # Calculation of number of new infected and whether they travel or not
             # 1. Determine the number of new individuals depending on SuperSpreader or Common
             if individual in self.__superSpreaderStrain:
-                n_infected = randint(self.__MIN_SUPERSPREAD, self.__MAX_SUPERSPREAD)
+                n_infected = random.randint(self.__MIN_SUPERSPREAD, self.__MAX_SUPERSPREAD)
             else:
-                n_infected = randint(0, self.__MAX_SUPERSPREAD)
+                n_infected = random.randint(0, self.__MAX_SUPERSPREAD)
 
             # 2. Determine the travel distance, which is how far is the new infected individual
-            if random() < self.__P_TRAVEL:
-                travel_distance = randint(0, len(CVOA.__individualDefinition.get_definition().keys()))
+            if random.random() < self.__P_TRAVEL:
+                travel_distance = random.randint(0, len(CVOA.__individualDefinition.get_definition().keys()))
                 # travel_distance = randint(1, ceil(len(CVOA.__individualDefinition.keys())*self.__P_TRAVEL))
 
             # 3. Every individual infects as many times as indicated by n_infected
@@ -168,7 +167,7 @@ class CVOA:
                 # travel_distance is set to 1, simulating an individual cannot travel anymore
                 else:
                     new_infected_individual = self.__infect(individual, 1)
-                    if random() < self.__P_ISOLATION:
+                    if random.random() < self.__P_ISOLATION:
                         self.__update_new_infected_population(new_infected_population, new_infected_individual)
                     # This effect is similar to sending them to the deaths set
                     else:
@@ -230,9 +229,9 @@ class CVOA:
     def __infect(self, individual, travel_distance):
         # logging.debug("Infect")
         definition = CVOA.__individualDefinition.get_definition()
-        infected = deepcopy(individual)
+        infected = copy.deepcopy(individual)
 
-        infected_variables = sample(list(definition.keys()), travel_distance)
+        infected_variables = random.sample(list(definition.keys()), travel_distance)
         infected_variables_set = set(infected_variables)
 
         for variable in infected_variables_set:
@@ -294,7 +293,7 @@ class CVOA:
         if new_infected_individual not in CVOA.__deaths and new_infected_individual not in CVOA.__recovered:
             new_infected_population.add(new_infected_individual)
         elif new_infected_individual in CVOA.__recovered:
-            if random() < self.__P_REINFECTION:
+            if random.random() < self.__P_REINFECTION:
                 new_infected_population.add(new_infected_individual)
                 CVOA.__recovered.remove(new_infected_individual)
 
@@ -306,8 +305,8 @@ class CVOA:
     def __update_death_super_spreader_strain(self):
 
         # Superspreader and deaths strain sets for each iteration
-        number_of_super_spreaders = ceil(self.__SUPERSPREADER_PERC * len(self.__infectedStrain))
-        number_of_deaths = ceil(self.__DEATH_PERC * len(self.__infectedStrain))
+        number_of_super_spreaders = math.ceil(self.__SUPERSPREADER_PERC * len(self.__infectedStrain))
+        number_of_deaths = math.ceil(self.__DEATH_PERC * len(self.__infectedStrain))
 
         if len(self.__infectedStrain) != 1:
 
