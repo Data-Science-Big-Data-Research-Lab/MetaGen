@@ -101,6 +101,15 @@ class Individual:
             raise NotDefinedVariableError("The variable " + vector_name + " is not defined")
 
     def get_vector_component_value(self, vector_name, index):
+        """ It returns the **index**-nh value of a **VECTOR** variable of the individual.
+
+        :param vector_name: The **VECTOR** variable name.
+        :param index: The index of the element to get.
+        :type vector_name: str
+        :type index: int
+        :returns: The **index**-nh value of the size **VECTOR** variable.
+        :rtype: float, int, str
+        """
         if vector_name in self.__variables:
             vector = self.__variables.get(vector_name)
             if type(vector) is list:
@@ -115,6 +124,7 @@ class Individual:
             raise NotDefinedVariableError("The variable " + vector_name + " is not defined")
 
     def get_vector_layer_component_value(self, vector_name, index, layer_element):
+
         if vector_name in self.__variables:
             vector = self.__variables.get(vector_name)
             if type(vector) is list:
