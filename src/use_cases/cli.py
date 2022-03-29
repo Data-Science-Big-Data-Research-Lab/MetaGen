@@ -13,6 +13,6 @@ parser.add_argument("run",
                     default="simple-1")
 
 
-def cli_run():
+def main():
     example = parser.parse_args(sys.argv[1:])
     example_dispacher(example)
