@@ -43,7 +43,7 @@ class Individual:
 
         **Precondition:**
 
-        The queried variable must be **INTEGER**, **REAL** or **CATEGORICAL**. For **LAYER** and **VECTOR** variables
+        The queried variable must be **INTEGER**, **REAL** or **CATEGORICAL**. For **LAYER** and **VECTOR** variables,
         there are specific getters (:py:meth:`~pycvoa.individual.Individual.get_layer_element_value` and
         :py:meth:`~pycvoa.individual.Individual.get_vector_component_value` respectively)
 
