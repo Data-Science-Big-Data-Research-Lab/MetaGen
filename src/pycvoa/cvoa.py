@@ -9,33 +9,47 @@ logging.basicConfig(level=logging.INFO)
 
 
 class CVOA:
+    """ This class implements the *CVOA* algorithm. It uses the :py:class:`~pycvoa.individual.Individual` class as an
+    abstraction of an individual for the meta-heuristic.
+
+    It solves an optimization problem defined by a :py:class:`~pycvoa.definition.ProblemDefinition` object and an
+    implementation of a fitness function.
+
+    By instantiate :py:class:`~pycvoa.cvoa.CVOA` object, i.e. a strain, the configuration parameters must be provided.
+
+    This class supports multiple strain execution by means of multy-threading. Each strain
+    (:py:class:`~pycvoa.cvoa.CVOA` object) will execute its *CVOA* algorithm (:py:meth:`~pycvoa.cvoa.CVOA.cvoa`)
+    in a thread and, finally, the best :py:class:`~pycvoa.individual.Individual` (i.e. the best fitness function
+    is obtained).
+
+    To launch a multi-strain execution, this module provides the :py:meth:`~pycvoa.cvoa.cvoa_launcher`
+    method.
+
     """
-        This is the core class of CVOA algorithm. This
 
-
-    """
-
-    # Shared properties for multi-threading execution
+    # ** Common and shared properties to all strains for multi-spreading (multi-threading) execution
+    # Stores the  recovered, deaths and isolated individuals respectively for all the launched strains
     __recovered = None
     __deaths = None
     __isolated = None
+    # Stores the global best solution found among all the launched strains
     __bestSolution = None
     __bestSolutionFound = None
     __lock = threading.Lock()
 
-    # Common properties to all strains
+    # ** Common properties to all strains
     __fitnessFunction = None
     __individualDefinition = None
     __update_isolated = None
     __verbosity = None
 
-    def __init__(self, strain_id, max_time=10, max_spread=5, min_super_spread=6, max_super_spread=15,
-                 social_distancing=10, p_isolation=0.7, p_travel=0.1, p_re_infection=0.0014, super_spreader_perc=0.1,
-                 death_perc=0.05):
+    def __init__(self, strain_id, pandemic_duration=10, spreading_rate=6, min_super_spreading_rate=6,
+                 max_super_spreading_rate=15, social_distancing=10, p_isolation=0.7, p_travel=0.1,
+                 p_re_infection=0.0014, p_superspreader=0.1, p_die=0.05):
 
         # Specific properties for each strain.
         self.__strainID = strain_id
-        self.__max_time = max_time
+        self.__pandemic_duration = pandemic_duration
         self.__infectedStrain = set()
         self.__superSpreaderStrain = set()
         self.__deathStrain = set()
@@ -46,15 +60,15 @@ class CVOA:
         self.__infected_strain_super_spreader_strain = set()
 
         # Strain parameters
-        self.__MAX_SPREAD = max_spread
-        self.__MIN_SUPERSPREAD = min_super_spread
-        self.__MAX_SUPERSPREAD = max_super_spread
+        self.__SPREADING_RATE = spreading_rate
+        self.__MIN_SUPERSPREADING_RATE = min_super_spreading_rate
+        self.__MAX_SUPERSPREADING_RATE = max_super_spreading_rate
         self.__SOCIAL_DISTANCING = social_distancing
         self.__P_ISOLATION = p_isolation
         self.__P_TRAVEL = p_travel
         self.__P_REINFECTION = p_re_infection
-        self.__SUPERSPREADER_PERC = super_spreader_perc
-        self.__DEATH_PERC = death_perc
+        self.__P_SUPERSPREADER = p_superspreader
+        self.__P_DIE = p_die
 
     @staticmethod
     def initialize_pandemic(individual_definition, fitness_function, update_isolated=False):
@@ -107,7 +121,7 @@ class CVOA:
         self.__time = 0
 
         # Suggestion: add another stop criterion if bestSolution does not change after X consecutive iterations
-        while epidemic and self.__time < self.__max_time and not CVOA.__bestSolutionFound:
+        while epidemic and self.__time < self.__pandemic_duration and not CVOA.__bestSolutionFound:
 
             self.__propagate_disease()
 
@@ -148,9 +162,9 @@ class CVOA:
             # Calculation of number of new infected and whether they travel or not
             # 1. Determine the number of new individuals depending on SuperSpreader or Common
             if individual in self.__superSpreaderStrain:
-                n_infected = random.randint(self.__MIN_SUPERSPREAD, self.__MAX_SUPERSPREAD)
+                n_infected = random.randint(self.__MIN_SUPERSPREADING_RATE, self.__MAX_SUPERSPREADING_RATE)
             else:
-                n_infected = random.randint(0, self.__MAX_SUPERSPREAD)
+                n_infected = random.randint(0, self.__MAX_SUPERSPREADING_RATE)
 
             # 2. Determine the travel distance, which is how far is the new infected individual
             if random.random() < self.__P_TRAVEL:
@@ -305,8 +319,8 @@ class CVOA:
     def __update_death_super_spreader_strain(self):
 
         # Superspreader and deaths strain sets for each iteration
-        number_of_super_spreaders = math.ceil(self.__SUPERSPREADER_PERC * len(self.__infectedStrain))
-        number_of_deaths = math.ceil(self.__DEATH_PERC * len(self.__infectedStrain))
+        number_of_super_spreaders = math.ceil(self.__P_SUPERSPREADER * len(self.__infectedStrain))
+        number_of_deaths = math.ceil(self.__P_DIE * len(self.__infectedStrain))
 
         if len(self.__infectedStrain) != 1:
 
@@ -342,19 +356,19 @@ class CVOA:
 
         res = ""
         res += self.__strainID + "\n"
-        res += "Max time = " + str(self.__max_time) + "\n"
+        res += "Max time = " + str(self.__pandemic_duration) + "\n"
         res += "Infected strain = " + str(self.__infectedStrain) + "\n"
         res += "Super spreader strain = " + str(self.__superSpreaderStrain) + "\n"
         res += "Death strain = " + str(self.__deathStrain) + "\n"
-        res += "MAX_SPREAD = " + str(self.__MAX_SPREAD) + "\n"
-        res += "MIN_SUPERSPREAD = " + str(self.__MIN_SUPERSPREAD) + "\n"
-        res += "MAX_SUPERSPREAD = " + str(self.__MAX_SUPERSPREAD) + "\n"
+        res += "MAX_SPREAD = " + str(self.__SPREADING_RATE) + "\n"
+        res += "MIN_SUPERSPREAD = " + str(self.__MIN_SUPERSPREADING_RATE) + "\n"
+        res += "MAX_SUPERSPREAD = " + str(self.__MAX_SUPERSPREADING_RATE) + "\n"
         res += "SOCIAL_DISTANCING = " + str(self.__SOCIAL_DISTANCING) + "\n"
         res += "P_ISOLATION = " + str(self.__P_ISOLATION) + "\n"
         res += "P_TRAVEL = " + str(self.__P_TRAVEL) + "\n"
         res += "P_REINFECTION = " + str(self.__P_REINFECTION) + "\n"
-        res += "SUPERSPREADER_PERC = " + str(self.__SUPERSPREADER_PERC) + "\n"
-        res += "DEATH_PERC = " + str(self.__DEATH_PERC) + "\n"
+        res += "SUPERSPREADER_PERC = " + str(self.__P_SUPERSPREADER) + "\n"
+        res += "DEATH_PERC = " + str(self.__P_DIE) + "\n"
         return res
 
 
