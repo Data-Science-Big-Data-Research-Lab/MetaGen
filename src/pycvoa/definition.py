@@ -67,9 +67,9 @@ class ProblemDefinition:
         """ It defines a layer variable receiving the variable name. Next, the layer elements have to be defined using
         the methods:
 
-        - :py:meth:`~pycvoa.individual.ProblemDefinition.insert_layer_integer`
-        - :py:meth:`~pycvoa.individual.ProblemDefinition.insert_layer_real`
-        - :py:meth:`~pycvoa.individual.ProblemDefinition.insert_layer_categorical`
+        - :py:meth:`~pycvoa.definition.ProblemDefinition.insert_layer_integer`
+        - :py:meth:`~pycvoa.definition.ProblemDefinition.insert_layer_real`
+        - :py:meth:`~pycvoa.definition.ProblemDefinition.insert_layer_categorical`
 
         :param name: Variable name.
         :type name: str
@@ -131,10 +131,10 @@ class ProblemDefinition:
         to have, and the step size to select the size from the :math:`[min\_size, max\_size]`. Afterwards, the vector
         type must be set using the following methods:
 
-        - :py:meth:`~individual.ProblemDefinition.set_vector_component_to_integer`
-        - :py:meth:`~individual.ProblemDefinition.set_vector_component_to_real`
-        - :py:meth:`~individual.ProblemDefinition.set_vector_component_to_categorical`
-        - :py:meth:`~individual.ProblemDefinition.set_vector_component_to_layer`
+        - :py:meth:`~definition.ProblemDefinition.set_vector_component_to_integer`
+        - :py:meth:`~definition.ProblemDefinition.set_vector_component_to_real`
+        - :py:meth:`~definition.ProblemDefinition.set_vector_component_to_categorical`
+        - :py:meth:`~definition.ProblemDefinition.set_vector_component_to_layer`
 
         :param name: Variable name.
         :param min_size: Minimum size.
@@ -192,9 +192,9 @@ class ProblemDefinition:
         """ It set the component type of the vector variable to layer. Afterwards, the components of
         the layer must be set using the methods:
 
-        - :py:meth:`~pycvoa.individual.ProblemDefinition.insert_integer_in_vector_layer_component`
-        - :py:meth:`~pycvoa.individual.ProblemDefinition.insert_real_in_vector_layer_component`
-        - :py:meth:`~pycvoa.individual.ProblemDefinition.insert_categorical_in_vector_layer_component`
+        - :py:meth:`~pycvoa.definition.ProblemDefinition.insert_integer_in_vector_layer_component`
+        - :py:meth:`~pycvoa.definition.ProblemDefinition.insert_real_in_vector_layer_component`
+        - :py:meth:`~pycvoa.definition.ProblemDefinition.insert_categorical_in_vector_layer_component`
 
         :param vector_variable_name: Vector variable name previously defined.
         :type vector_variable_name: str
@@ -264,7 +264,7 @@ class ProblemDefinition:
         return self.__definitions
 
     def __str__(self):
-        """ String representation of a :py:class:`~pycvoa.individual.ProblemDefinition` object
+        """ String representation of a :py:class:`~pycvoa.definition.ProblemDefinition` object
         """
         res = ""
         count = 1

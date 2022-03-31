@@ -59,9 +59,9 @@ def problem_dispatcher(example):
 
 def cvoa_dispatcher(problem, fitness):
     CVOA.initialize_pandemic(problem, fitness)
-    strain_a = CVOA("Strain A", 5)
-    strain_b = CVOA("Strain B", 5)
-    strain_c = CVOA("Strain C", 5)
+    strain_a = CVOA("Strain A", pandemic_duration=2)
+    strain_b = CVOA("Strain B", pandemic_duration=5)
+    strain_c = CVOA("Strain C", pandemic_duration=8)
     solution = cvoa_launcher([strain_a, strain_b, strain_c], verbose=True)
     print("DONE!")
     print("Solution: " + str(solution))
