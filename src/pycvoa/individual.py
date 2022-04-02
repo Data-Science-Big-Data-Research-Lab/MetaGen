@@ -16,14 +16,15 @@ class Individual:
         >>> worst_individual  = Individual(False)
         >>> worst_individual.fitness
         1.7976931348623157e+308
+
+    :param best: If true, build an individual with the best fitness value, defaults to True.
+    :type best: bool
     """
 
     def __init__(self, best=True):
         """ It is the default, and unique, constructor. It builds an empty individual with
         the best fitness value (:math:`best=True`, by default) or the worst fitness value (:math:`best=False`)
 
-        :param best: If true, build an individual with the best fitness value.
-        :type best: bool
         :ivar __variables: Data structure where the variables of an individual are stored.
         :vartype __variables: dict
         :ivar discovering_iteration_time: Pandemic time when a solution is discovered.
