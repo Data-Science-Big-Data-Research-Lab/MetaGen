@@ -213,8 +213,6 @@ class CVOA:
         # The best strain-specific death individual will initially be the worst individual.
         self.__bestDeadIndividualStrain = Individual()
 
-        # ***** STEP 2. SPREADING THE DISEASE. *****
-
         # Logical condition to control the epidemic (main iteration).
         # If True, the iteration continues.
         # When there are no infected individuals, the epidemic finishes.
@@ -229,7 +227,7 @@ class CVOA:
         # consecutive iterations
         while epidemic and self.__time < self.__pandemic_duration and not CVOA.__bestSolutionFound:
 
-            # ***** STEP 2.1. PROPAGATE THE DISEASE. *****
+            # ***** STEP 2. SPREADING THE DISEASE. *****
             self.__propagate_disease()
 
             # ***** STEP 4. STOP CRITERION. *****
