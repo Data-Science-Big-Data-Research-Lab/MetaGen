@@ -25,41 +25,60 @@ class CVOA:
     To launch a multi-strain execution, this module provides the :py:meth:`~pycvoa.cvoa.cvoa_launcher`
     method.
 
+    :param strain_id: The strain name
+    :param pandemic_duration: The pandemic duration, defaults to 10
+    :param spreading_rate: The spreading rate, defaults to 6
+    :param min_super_spreading_rate: The minimum super spreading rate, defaults to 6
+    :param max_super_spreading_rate: The maximum super spreading rate, defaults to 15
+    :param social_distancing: , defaults to 10
+    :param p_isolation: The probability of an individual being isolated, defaults to 0.7
+    :param p_travel: The probability that an individual will travel, defaults to 0.1
+    :param p_re_infection: The probability of an individual being re-infected, defaults to 0.0014
+    :param p_superspreader: The probability of an individual being a super-spreader, defaults to 0.1
+    :param p_die: The probability that an individual will die, defaults to 0.05
+    :type strain_id: str
+    :type pandemic_duration: int
+    :type spreading_rate: int
+    :type min_super_spreading_rate: int
+    :type max_super_spreading_rate: int
+    :type social_distancing: int
+    :type p_isolation: float
+    :type p_travel: float
+    :type p_re_infection: float
+    :type p_superspreader: float
+    :type p_die: float
     """
 
     # ** Common and shared properties to all strains for multi-spreading (multi-threading) execution
-    # Stores the  recovered, deaths and isolated individuals respectively for all the launched strains
+    # These stores the recovered, deaths and isolated individuals respectively for all the launched strains.
     __recovered = None
     __deaths = None
     __isolated = None
-    # Stores the global best solution found among all the launched strains
+    # It stores the global best solution found among all the launched strains.
     __bestSolution = None
+    # If true, a best solution has been found.
     __bestSolutionFound = None
+    # Lock fot multi-threading safety access to the shared structures.
     __lock = threading.Lock()
-
-    # ** Common properties to all strains
+    # Fitness function to apply to the individuals.
     __fitnessFunction = None
+    # Problem definition object.
     __individualDefinition = None
+    # If true, the isolated set is updated.
     __update_isolated = None
+    # If true show log messages.
     __verbosity = None
 
     def __init__(self, strain_id, pandemic_duration=10, spreading_rate=6, min_super_spreading_rate=6,
                  max_super_spreading_rate=15, social_distancing=10, p_isolation=0.7, p_travel=0.1,
                  p_re_infection=0.0014, p_superspreader=0.1, p_die=0.05):
+        """ The constructor of the :py:class:`~pycvoa.cvoa.CVOA` class. It set the specific properties
+        of a strain.
+        """
 
-        # Specific properties for each strain.
+        # Properties set by arguments.
         self.__strainID = strain_id
         self.__pandemic_duration = pandemic_duration
-        self.__infectedStrain = set()
-        self.__superSpreaderStrain = set()
-        self.__deathStrain = set()
-        self.__time = None
-        self.__bestSolutionStrain = Individual()
-        self.__bestDeadIndividualStrain = None
-        self.__worstSuperSpreaderIndividualStrain = None
-        self.__infected_strain_super_spreader_strain = set()
-
-        # Strain parameters
         self.__SPREADING_RATE = spreading_rate
         self.__MIN_SUPERSPREADING_RATE = min_super_spreading_rate
         self.__MAX_SUPERSPREADING_RATE = max_super_spreading_rate
@@ -70,21 +89,62 @@ class CVOA:
         self.__P_SUPERSPREADER = p_superspreader
         self.__P_DIE = p_die
 
-    @staticmethod
-    def initialize_pandemic(individual_definition, fitness_function, update_isolated=False):
+        # Main strain sets: infected, superspreaders, infected superspreaders and deaths.
+        self.__infectedStrain = set()
+        self.__superSpreaderStrain = set()
+        self.__infected_strain_super_spreader_strain = set()
+        self.__deathStrain = set()
 
+        # Other specific properties:
+        # Iteration counter.
+        self.__time = None
+        # Best strain individual. It is initialized to a empty one.
+        self.__bestSolutionStrain = Individual()
+        # Best dead individual and worst superspreader individuals. For debug and pandemic analysis purposes.
+        # They are initialized to None.
+        self.__bestDeadIndividualStrain = None
+        self.__worstSuperSpreaderIndividualStrain = None
+
+
+    @staticmethod
+    def initialize_pandemic(problem_definition, fitness_function, update_isolated=False):
+        """ It initializes a **CVOA** pandemic. A pandemic can be composed by one or more strains. Each strain is
+        built by instantiate the :py:class:`~pycvoa.cvoa.CVOA` class. The common characteristic of all strains are
+        the problem definition (:py:class:`~pycvoa.definition.ProblemDefinition` class) and the implementation
+        of a fitness function.
+
+        :param problem_definition: The problem definition.
+        :param fitness_function: The fitness function.
+        :param update_isolated: If true the isolated set will be updated on each iteration.
+        :type problem_definition: :py:class:`~pycvoa.definition.ProblemDefinition`
+        :type fitness_function: function
+        :type update_isolated: bool
+        """
+
+        # The recovered, death and isolated sets are initialized to a void set
         CVOA.__recovered = set()
         CVOA.__deaths = set()
         CVOA.__isolated = set()
+
+        # The best solution individual is initialized to the worst one
+        # And the best solution condition is initialized to false
+        # It is a standard search scheme.
         CVOA.__bestSolution = Individual(False)
         CVOA.__bestSolutionFound = False
 
+        # Properties set by arguments.
         CVOA.__fitnessFunction = fitness_function
-        CVOA.__individualDefinition = individual_definition
+        CVOA.__individualDefinition = problem_definition
         CVOA.__update_isolated = update_isolated
 
     @staticmethod
     def pandemic_report():
+        """ It provides a report of the running pandemic as a string representation. It includes information about
+        the best solution found and the content of the recovered, death and isolated sets.
+
+        :returns: A report of the running pandemic.
+        :rtype: str
+        """
         res = "Best solution = " + str(CVOA.__bestSolution) + "\n"
         res += "Recovered: " + str(len(CVOA.__recovered)) + "\n"
         res += "Death: " + str(len(CVOA.__deaths)) + "\n"
@@ -93,43 +153,92 @@ class CVOA:
 
     @staticmethod
     def get_best_solution():
+        """ It provides the best solution found by the **CVOA** algorithm.
+
+        :returns: The best solution found by the **CVOA** algorithm
+        :rtype: :py:class:`~pycvoa.individual.Individual`
+        """
         return CVOA.__bestSolution
 
     @staticmethod
     def set_verbosity(verbosity):
+        """ It sets the verbosity of the **CVOA** algorithm execution. If True, when the
+        :py:meth:`~pycvoa.cvoa.CVOA.cvoa` method is running, messages about the status of the pandemic
+        will be shown in the standard output console.
+
+        :param verbosity: The verbosity option
+        :type verbosity: bool
+        """
         CVOA.__verbosity = verbosity
 
     def get_strain_id(self):
+        """ It returns the identification of the strain.
+
+        :returns: The identification of the strain.
+        :rtype: str
+        """
         return self.__strainID
 
     def cvoa(self):
+        """ This function runs the **CVOA** algorithm. Before run the algorithm, two taks must be accomplished:
 
-        epidemic = True
+        #. Initialize the pandemic (:py:meth:`~pycvoa.cvoa.CVOA.initialize_pandemic` method)
 
-        # Step 1. Infect patient zero (PZ)
+            * Set the problem definition (:py:class:`~pycvoa.definition.ProblemDefinition` class)
+            * Implements the fitness function
+
+        #. Initialize a strain (instantiate a :py:class:`~pycvoa.cvoa.CVOA` class)
+
+        **NOTE**
+        If a mult-strain experiment is performed, the global best solution must be obtained by
+        the:py:meth:`~pycvoa.cvoa.CVOA.get_best_solution` method after the algorithm finishes.
+
+        :returns: The best solution found by the **CVOA** algorithm for the specific strain.
+        :rtype: :py:class:`~pycvoa.individual.Individual`
+        """
+
+        # ***** STEP 1. PATIENT ZERO (PZ) GENERATION. *****
+
         pz = self.__infect_pz()
-
-        # Step 2. Initialize strain: infected and best solution.
-        self.__infectedStrain.add(pz)
-        self.__bestSolutionStrain = pz
-        self.__infected_strain_super_spreader_strain.add(pz)
         CVOA.__verbosity("\nPatient Zero (" + self.__strainID + "): \n" + str(pz))
+
+        # Initialize strain:
+        # Add the patient zero to the strain-specific infected set.
+        self.__infectedStrain.add(pz)
+        self.__infected_strain_super_spreader_strain.add(pz)
+        # The best strain-specific solution will initially be the patient zero.
+        self.__bestSolutionStrain = pz
+        # The worst strain-specific superspreader individual will initially be the best individual.
         self.__worstSuperSpreaderIndividualStrain = Individual(best=True)
+        # The best strain-specific death individual will initially be the worst individual.
         self.__bestDeadIndividualStrain = Individual()
 
-        # Step 3. The main loop for the disease propagation
+        # ***** STEP 2. SPREADING THE DISEASE. *****
+
+        # Logical condition to control the epidemic (main iteration).
+        # If True, the iteration continues.
+        # When there are no infected individuals, the epidemic finishes.
+        epidemic = True
+
+        # The iteration counter will be initially set to 0
         self.__time = 0
 
-        # Suggestion: add another stop criterion if bestSolution does not change after X consecutive iterations
+        # Stopping criterion: there are no new infected individuals or the pandemic duration is over
+        # or a solution has been found.
+        # Suggestion to third-party developers: add another stop criterion if bestSolution does not change after X
+        # consecutive iterations
         while epidemic and self.__time < self.__pandemic_duration and not CVOA.__bestSolutionFound:
 
+            # ***** STEP 2.1. PROPAGATE THE DISEASE. *****
             self.__propagate_disease()
 
-            # Stopping criteria
+            # ***** STEP 4. STOP CRITERION. *****
+            # Stop if no new infected individuals
             if not self.__infectedStrain:
-                # Stop if no new infected individuals
                 epidemic = False
                 CVOA.__verbosity("No new infected individuals in " + self.__strainID)
+
+            # Legacy:
             # elif self.__bestSolutionStrain.fitness == 0.0:
             #     # Stop if best known fitness is found ( or fitness satisfying your requirements)
             #     CVOA.__lock.acquire()
@@ -137,11 +246,15 @@ class CVOA:
             #     CVOA.__lock.release()
             #     CVOA.__verbose print("Best solution (by fitness) found by " + self.__strainID)
 
+            # Update the elapsed pandemic time
             self.__time += 1
 
         CVOA.__verbosity("\n\n" + self.__strainID + " converged after " + str(self.__time) + " iterations.")
         CVOA.__verbosity("Best individual: " + str(self.__bestSolutionStrain))
 
+        # When the CVOA algorithm finishes, returns the best solution found for the specific strain.
+        # If a mult-strain experiment is performed, the global best solution
+        # must be obtained by the get_best_solution method
         return self.__bestSolutionStrain
 
     def __propagate_disease(self):
