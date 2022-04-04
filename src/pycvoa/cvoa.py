@@ -105,7 +105,6 @@ class CVOA:
         self.__bestDeadIndividualStrain = None
         self.__worstSuperSpreaderIndividualStrain = None
 
-
     @staticmethod
     def initialize_pandemic(problem_definition, fitness_function, update_isolated=False):
         """ It initializes a **CVOA** pandemic. A pandemic can be composed by one or more strains. Each strain is
@@ -145,7 +144,7 @@ class CVOA:
         :returns: A report of the running pandemic.
         :rtype: str
         """
-        res = "Best solution = " + str(CVOA.__bestSolution) + "\n"
+        res = "Best solution: " + str(CVOA.__bestSolution) + "\n"
         res += "Recovered: " + str(len(CVOA.__recovered)) + "\n"
         res += "Death: " + str(len(CVOA.__deaths)) + "\n"
         res += "Isolated: " + str(len(CVOA.__isolated)) + "\n"
@@ -169,7 +168,7 @@ class CVOA:
         :param verbose: The verbosity option
         :type verbose: bool
         """
-        CVOA.__verbosity =  print if verbose else lambda *a, **k: None
+        CVOA.__verbosity = print if verbose else lambda *a, **k: None
 
     def get_strain_id(self):
         """ It returns the identification of the strain.
@@ -191,7 +190,7 @@ class CVOA:
 
         **NOTE**
         If a mult-strain experiment is performed, the global best solution must be obtained by
-        the:py:meth:`~pycvoa.cvoa.CVOA.get_best_solution` method after the algorithm finishes.
+        the :py:meth:`~pycvoa.cvoa.CVOA.get_best_solution` method after the algorithm finishes.
 
         :returns: The best solution found by the **CVOA** algorithm for the specific strain.
         :rtype: :py:class:`~pycvoa.individual.Individual`
@@ -513,7 +512,8 @@ class CVOA:
         CVOA.__lock.release()
 
     def __str__(self):
-
+        """ String representation of a :py:class:`~pycvoa.cvoa.CVOA` object (a strain).
+        """
         res = ""
         res += self.__strainID + "\n"
         res += "Max time = " + str(self.__pandemic_duration) + "\n"
@@ -544,28 +544,29 @@ def cvoa_launcher(strains, verbose=True):
     be provided.
 
     :param strains: The strain configurations (:py:class:`~pycvoa.cvoa.CVOA` objects)
-    :type strains: list
+    :param verbose: If true, the status of the pandemic will be shown in the standard output console, defaults to True.
+    :type strains: list of :py:class:`~pycvoa.cvoa.CVOA` objects
+    :type verbose: bool
     :returns: The best solution of the *CVOA* multi-strain run
     :rtype: :py:class:`~pycvoa.individual.Individual`
     """
 
-    verbosity = print if verbose else lambda *a, **k: None
-    CVOA.set_verbosity(verbosity)
+    CVOA.set_verbosity(verbose)
 
     t1 = time()
     with ThreadPoolExecutor(max_workers=len(strains)) as executor:
         futures = {strain.get_strain_id(): executor.submit(strain.cvoa) for strain in strains}
     t2 = time()
 
-    verbosity("\n********** Results by strain **********")
+    print("\n********** Results by strain **********")
     for strain_id, future in futures.items():
-        verbosity("[" + strain_id + "] Best solution: " + str(future.result()))
+        print("[" + strain_id + "] Best solution: " + str(future.result()))
 
-    verbosity("\n********** Best result **********")
-    verbosity("Best individual: " + str(CVOA.get_best_solution()))
+    print("\n********** Best result **********")
+    print("Best individual: " + str(CVOA.get_best_solution()))
 
-    verbosity("\n********** Performance **********")
-    verbosity("Execution time: " + str(timedelta(milliseconds=t2 - t1)))
-    verbosity(CVOA.pandemic_report())
+    print("\n********** Performance **********")
+    print("Execution time: " + str(timedelta(milliseconds=t2 - t1)))
+    print(CVOA.pandemic_report())
 
     return CVOA.get_best_solution()
