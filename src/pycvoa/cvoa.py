@@ -63,7 +63,7 @@ class CVOA:
     # Fitness function to apply to the individuals.
     __fitnessFunction = None
     # Problem definition object.
-    __individualDefinition = None
+    __problemDefinition = None
     # If true, the isolated set is updated.
     __update_isolated = None
     # If true show log messages.
@@ -121,20 +121,20 @@ class CVOA:
         :type update_isolated: bool
         """
 
-        # The recovered, death and isolated sets are initialized to a void set
+        # The recovered, death and isolated sets are initialized to a void set.
         CVOA.__recovered = set()
         CVOA.__deaths = set()
         CVOA.__isolated = set()
 
         # The best solution individual is initialized to the worst one
-        # And the best solution condition is initialized to false
+        # and the best solution condition is initialized to false.
         # It is a standard search scheme.
         CVOA.__bestSolution = Individual(False)
         CVOA.__bestSolutionFound = False
 
         # Properties set by arguments.
         CVOA.__fitnessFunction = fitness_function
-        CVOA.__individualDefinition = problem_definition
+        CVOA.__problemDefinition = problem_definition
         CVOA.__update_isolated = update_isolated
 
     @staticmethod
@@ -161,15 +161,15 @@ class CVOA:
         return CVOA.__bestSolution
 
     @staticmethod
-    def set_verbosity(verbosity):
+    def set_verbosity(verbose):
         """ It sets the verbosity of the **CVOA** algorithm execution. If True, when the
         :py:meth:`~pycvoa.cvoa.CVOA.cvoa` method is running, messages about the status of the pandemic
         will be shown in the standard output console.
 
-        :param verbosity: The verbosity option
-        :type verbosity: bool
+        :param verbose: The verbosity option
+        :type verbose: bool
         """
-        CVOA.__verbosity = verbosity
+        CVOA.__verbosity =  print if verbose else lambda *a, **k: None
 
     def get_strain_id(self):
         """ It returns the identification of the strain.
@@ -218,20 +218,20 @@ class CVOA:
         # When there are no infected individuals, the epidemic finishes.
         epidemic = True
 
-        # The iteration counter will be initially set to 0
+        # The iteration counter will be initially set to 0.
         self.__time = 0
 
         # Stopping criterion: there are no new infected individuals or the pandemic duration is over
         # or a solution has been found.
         # Suggestion to third-party developers: add another stop criterion if bestSolution does not change after X
-        # consecutive iterations
+        # consecutive iterations.
         while epidemic and self.__time < self.__pandemic_duration and not CVOA.__bestSolutionFound:
 
             # ***** STEP 2. SPREADING THE DISEASE. *****
             self.__propagate_disease()
 
             # ***** STEP 4. STOP CRITERION. *****
-            # Stop if no new infected individuals
+            # Stop if no new infected individuals.
             if not self.__infectedStrain:
                 epidemic = False
                 CVOA.__verbosity("No new infected individuals in " + self.__strainID)
@@ -244,7 +244,7 @@ class CVOA:
             #     CVOA.__lock.release()
             #     CVOA.__verbose print("Best solution (by fitness) found by " + self.__strainID)
 
-            # Update the elapsed pandemic time
+            # Update the elapsed pandemic time.
             self.__time += 1
 
         CVOA.__verbosity("\n\n" + self.__strainID + " converged after " + str(self.__time) + " iterations.")
@@ -252,50 +252,62 @@ class CVOA:
 
         # When the CVOA algorithm finishes, returns the best solution found for the specific strain.
         # If a mult-strain experiment is performed, the global best solution
-        # must be obtained by the get_best_solution method
+        # must be obtained by the get_best_solution method.
         return self.__bestSolutionStrain
 
     def __propagate_disease(self):
-
-        # New infected people will be stored here (from infectedStrain)
+        """ It spreads the disease through the individuals of the population.
+        """
+        # Initialize the new infected population set and the travel distance.
+        # Each new infected individual will be added to this set.
         new_infected_population = set()
         travel_distance = 1
 
-        # This condition replaces the instruction "Collections.sort(infected)" from the previous version with the aim
-        # of reducing the execution time
+        # Before the new propagation, update the death and superspreader sets for the strain.
+        # Then, add the best solution of the strain to the next population.
         self.__update_death_super_spreader_strain()
-
-        # Ensure the best solutions by strains are kept in the next iteration
         new_infected_population.add(self.__bestSolutionStrain)
 
-        # Each individual infects new ones and add them to newInfectedPopulation
+        # For each infected individual in the strain:
         for individual in self.__infectedStrain:
-            # Calculation of number of new infected and whether they travel or not
-            # 1. Determine the number of new individuals depending on SuperSpreader or Common
+
+            # ** 1. Determine the number of infections. **
+            # If the current individual is superspreader the number of infected ones will be in
+            # (MIN_SUPERSPREADING_RATE, MAX_SUPERSPREADING_RATE).
+            # If the current individual is common the number of infected ones will be in
+            # (0, MAX_SUPERSPREADING_RATE).
             if individual in self.__superSpreaderStrain:
                 n_infected = random.randint(self.__MIN_SUPERSPREADING_RATE, self.__MAX_SUPERSPREADING_RATE)
             else:
                 n_infected = random.randint(0, self.__MAX_SUPERSPREADING_RATE)
 
-            # 2. Determine the travel distance, which is how far is the new infected individual
+            # ** 2. Determine the travel distance. **
+            # If the current individual is a traveler, the travel distance will be in
+            # (0, number of variable defined in the problem), otherwise the travel distance will be 1.
             if random.random() < self.__P_TRAVEL:
-                travel_distance = random.randint(0, len(CVOA.__individualDefinition.get_definition().keys()))
+                travel_distance = random.randint(0, len(CVOA.__problemDefinition.get_definition().keys()))
                 # travel_distance = randint(1, ceil(len(CVOA.__individualDefinition.keys())*self.__P_TRAVEL))
 
-            # 3. Every individual infects as many times as indicated by n_infected
+            # ** 3. Infect the new individuals. **
+            # For each n_infected new individuals:
             for i in range(0, n_infected):
-                # Propagate with no social distancing measures
+                # If the current disease time is not affected by the SOCIAL DISTANCING policy, the current
+                # individual infects another with a travel distance (using __infect), and it is added
+                # to the newly infected population.
                 if self.__time < self.__SOCIAL_DISTANCING:
                     new_infected_individual = self.__infect(individual, travel_distance)
                     self.__update_new_infected_population(new_infected_population, new_infected_individual)
-                # After SOCIAL_DISTANCING iterations, there is a P_ISOLATION of not being infected
-                # travel_distance is set to 1, simulating an individual cannot travel anymore
+
+                # After SOCIAL_DISTANCING iterations (when the SOCIAL DISTANCING policy is applied),
+                # the current individual infects another with a travel distance of one (using __infect) then,
+                # the newly infected individual can be isolated or not.
                 else:
                     new_infected_individual = self.__infect(individual, 1)
                     if random.random() < self.__P_ISOLATION:
                         self.__update_new_infected_population(new_infected_population, new_infected_individual)
-                    # This effect is similar to sending them to the deaths set
                     else:
+                        # If the new individual is isolated, and __update_isolated is true, this is sent to the
+                        # __update_isolated_population.
                         if CVOA.__update_isolated:
                             self.__update_isolated_population(individual)
 
@@ -307,39 +319,66 @@ class CVOA:
                          + "\n\t#NewInfected = " + str(len(new_infected_population))
                          + "\n\tR0 = " + str(len(new_infected_population) / len(self.__infectedStrain)))
 
-        # Update infected populations for the next iteration
+        # Update the infected strain population for the next iteration
         self.__infectedStrain.clear()
         self.__infectedStrain.update(new_infected_population)
 
     def __infect_pz(self):
+        """ It builds the *patient zero*, **PZ**, for the **CVOA** algorithm.
+
+        :returns: The *patient zero*, **PZ**
+        :rtype: :py:class:`~pycvoa.individual.Individual`
+        """
+
         # logging.debug("Infect PZ")
+
+        # Build a void individual.
         patient_zero = Individual()
 
-        for variable, definition in CVOA.__individualDefinition.get_definition().items():
+        # For each variable on the problem definition:
+        for variable, definition in CVOA.__problemDefinition.get_definition().items():
             logging.debug(">>>>>>>> Variable = " + str(variable) + " definition = " + str(definition))
 
+            # If the variable is INTEGER, REAL or CATEGORICAL, set it with a random value
+            # using the get_random_value_for_simple_variable auxiliary method.
             if definition[0] is INTEGER or definition[0] is REAL or definition[0] is CATEGORICAL:
                 logging.debug(">INTEGER")
                 patient_zero.set_variable_value(variable, get_random_value_for_simple_variable(definition))
 
+            # If the variable is LAYER, iterate over its elements and set them with a random value
+            # using the get_random_value_for_simple_variable auxiliary method.
             elif definition[0] == LAYER:
                 logging.debug(">LAYER")
                 for element_name, element_definition in definition[1].items():
                     patient_zero.set_layer_element_value(variable, element_name,
                                                          get_random_value_for_simple_variable(element_definition))
+
+            # If the variable is VECTOR:
             elif definition[0] == VECTOR:
                 logging.debug(">VECTOR")
+
+                # Get a random size using the get_number_from_interval auxiliary method.
                 vector_size = get_number_from_interval(definition[1], definition[2], definition[3])
                 vector_component_type = definition[4]
 
                 logging.debug(">VECTOR, vector_component_type: %s", vector_component_type)
+
+                # For each element of the vector:
                 for i in range(0, vector_size):
+
+                    # If the vector type is INTEGER, REAL or CATEGORICAL,
+                    # add a random value (using the get_random_value_for_simple_variable auxiliary method)
+                    # to the current element.
                     if vector_component_type[0] is INTEGER or vector_component_type[0] is REAL or \
                             vector_component_type[0] is CATEGORICAL:
 
                         value = get_random_value_for_simple_variable(vector_component_type)
                         patient_zero.add_vector_element(variable, value)
                         logging.debug(">VECTOR, variable: %s, value = %s", variable, value)
+
+                    # If the vector type is LAYER,
+                    # build a random value for each element of the layer (using the
+                    # get_random_value_for_simple_variable auxiliary method) and add it to the current element.
                     elif vector_component_type[0] is LAYER:
                         layer_values = {}
                         for element_name, element_definition in vector_component_type[1].items():
@@ -347,21 +386,31 @@ class CVOA:
                         patient_zero.add_vector_element(variable, layer_values)
 
         # logging("Individual = %s"+str(patient_zero))
+        # Once the individual variables is built, the fitness function is computed.
         patient_zero.fitness = CVOA.__fitnessFunction(patient_zero)
 
         return patient_zero
 
     def __infect(self, individual, travel_distance):
+        """ The individual infects another one located at a specific distance from it.
+
+        :returns: The newly infected individual.
+        :rtype: :py:class:`~pycvoa.individual.Individual`
+        """
         # logging.debug("Infect")
-        definition = CVOA.__individualDefinition.get_definition()
+        # Initially, the infected individual will be a copy of the original one.
+        definition = CVOA.__problemDefinition.get_definition()
         infected = copy.deepcopy(individual)
 
+        # Select a random set of variables that will be altered based on the travel distance.
         infected_variables = random.sample(list(definition.keys()), travel_distance)
         infected_variables_set = set(infected_variables)
 
+        # For each selected variables, inoculate the disease with the inoculate_individual auxiliary function.
         for variable in infected_variables_set:
             inoculate_individual(infected, variable, definition[variable])
 
+        # Compute the fitness function of the new individual.
         infected.fitness = CVOA.__fitnessFunction(infected)
 
         return infected
@@ -484,9 +533,22 @@ class CVOA:
 
 
 def cvoa_launcher(strains, verbose=True):
+    """ It launches a multi-strain execution of the *CVOA* algorithm. Each strain
+    (:py:class:`~pycvoa.cvoa.CVOA` object) will execute its *CVOA* algorithm (:py:meth:`~pycvoa.cvoa.CVOA.cvoa`)
+    in a thread and, finally, the best :py:class:`~pycvoa.individual.Individual` (i.e. the best fitness function
+    is obtained).
+
+    Before call this function, the pandemic must be initialized using the
+    :py:meth:`~pycvoa.cvoa.CVOA.initialize_pandemic` method of the :py:class:`~pycvoa.cvoa.CVOA` class. A problem
+    definition (using the :py:class:`~pycvoa.definition.ProblemDefinition` class) and a fitness function must
+    be provided.
+
+    :param strains: The strain configurations (:py:class:`~pycvoa.cvoa.CVOA` objects)
+    :type strains: list
+    :returns: The best solution of the *CVOA* multi-strain run
+    :rtype: :py:class:`~pycvoa.individual.Individual`
     """
-         Return a list of random ingredients as strings.
-    """
+
     verbosity = print if verbose else lambda *a, **k: None
     CVOA.set_verbosity(verbosity)
 
