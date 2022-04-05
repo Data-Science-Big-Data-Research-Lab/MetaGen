@@ -6,6 +6,7 @@ from simple import *
 
 def example_dispacher(example):
     definition_fitness = problem_dispatcher(example)
+
     cvoa_dispatcher(definition_fitness[0], definition_fitness[1])
 
 
@@ -59,9 +60,9 @@ def problem_dispatcher(example):
 
 def cvoa_dispatcher(problem, fitness):
     CVOA.initialize_pandemic(problem, fitness)
-    strain_a = CVOA("Strain A", pandemic_duration=2)
-    strain_b = CVOA("Strain B", pandemic_duration=5)
-    strain_c = CVOA("Strain C", pandemic_duration=8)
+    strain_a = CVOA("Strain A", pandemic_duration=10)
+    strain_b = CVOA("Strain B", pandemic_duration=10)
+    strain_c = CVOA("Strain C", pandemic_duration=10)
     solution = cvoa_launcher([strain_a, strain_b, strain_c])
     print("DONE!")
     print("Solution: " + str(solution))

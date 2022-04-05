@@ -14,5 +14,6 @@ parser.add_argument("run",
 
 
 def main():
-    example = parser.parse_args(sys.argv[1:])
-    example_dispacher(example)
+    parameters = parser.parse_args()
+    run = vars(parameters)["run"][0]
+    example_dispacher(run)
