@@ -50,7 +50,7 @@ class CVOA:
     :type p_die: float
     """
 
-    # ** Common and shared properties to all strains for multi-spreading (multi-threading) execution
+    # ** Global properties to all strains for multi-spreading (multi-threading) execution
     # These stores the recovered, deaths and isolated individuals respectively for all the launched strains.
     __recovered = None
     __deaths = None
@@ -285,7 +285,7 @@ class CVOA:
             # If the current individual is a traveler, the travel distance will be in
             # (0, number of variable defined in the problem), otherwise the travel distance will be 1.
             if random.random() < self.__P_TRAVEL:
-                travel_distance = random.randint(0, len(CVOA.__problemDefinition.get_definition().keys()))
+                travel_distance = random.randint(0, len(CVOA.__problemDefinition.get_definitions().keys()))
                 # travel_distance = randint(1, ceil(len(CVOA.__individualDefinition.keys())*self.__P_TRAVEL))
 
             # ** 3. Infect the new individuals. **
@@ -336,7 +336,7 @@ class CVOA:
         patient_zero = Individual()
 
         # For each variable on the problem definition:
-        for variable, definition in CVOA.__problemDefinition.get_definition().items():
+        for variable, definition in CVOA.__problemDefinition.get_definitions().items():
             logging.debug(">>>>>>>> Variable = " + str(variable) + " definition = " + str(definition))
 
             # If the variable is INTEGER, REAL or CATEGORICAL, set it with a random value
@@ -399,7 +399,7 @@ class CVOA:
         """
         # logging.debug("Infect")
         # Initially, the infected individual will be a copy of the original one.
-        definition = CVOA.__problemDefinition.get_definition()
+        definition = CVOA.__problemDefinition.get_definitions()
         infected = copy.deepcopy(individual)
 
         # Select a random set of variables that will be altered based on the travel distance.
@@ -571,7 +571,9 @@ class CVOA:
         elif new_infected_individual in CVOA.__recovered:
             if random.random() < self.__P_REINFECTION:
                 new_infected_population.add(new_infected_individual)
+                CVOA.__lock.acquire()
                 CVOA.__recovered.remove(new_infected_individual)
+                CVOA.__lock.release()
 
     def __update_isolated_population(self, individual):
         """ It updates the global isolated set with an individual.
@@ -582,7 +584,9 @@ class CVOA:
 
         # If the individual is not in global death, recovered and isolation sets, then insert it in the isolated set.
         if individual not in CVOA.__deaths and individual not in CVOA.__recovered and individual not in CVOA.__isolated:
+            CVOA.__lock.acquire()
             CVOA.__isolated.add(individual)
+            CVOA.__lock.release()
 
     def __str__(self):
         """ String representation of a :py:class:`~pycvoa.cvoa.CVOA` object (a strain).

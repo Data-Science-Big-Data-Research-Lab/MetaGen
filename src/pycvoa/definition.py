@@ -254,14 +254,42 @@ class ProblemDefinition:
         layer_elements = layer_definition[1]
         layer_elements[element_name] = [CATEGORICAL, categories]
 
-    def get_definition(self):
+    def get_definition_variables(self):
+        """ Get a list with the registered variables and its definitions in a (key, value) form. It is useful to
+        iterate throw the registered variables using a for loop.
+
+        :returns: A (key, value) list with the registered variables.
+        :rtype: list
+        """
+        return self.__definitions.items()
+
+    def get_definitions(self):
         """ Get the internal data structure for the :py:class:`~pycvoa.individual.ProblemDefinition`
 
         :returns: Internal structure of the Problem Definition.
-        :rtype: list
-        :meta private:
+        :rtype: dict
         """
         return self.__definitions
+
+    def get_variable_definition(self, variable):
+        """ Get the definition of a variable.
+
+        :param variable: The variable.
+        :type variable: str
+        :returns: Definition of a variable.
+        :rtype: list
+        """
+        return self.__definitions[variable]
+
+    def get_variable_type(self, variable):
+        """ Get the variable type.
+
+        :param variable: The variable.
+        :type variable: str
+        :returns: The variable type.
+        :rtype: **INTEGER**, **REAL**, **CATEGORICAL**, **LAYER**, **VECTOR**
+        """
+        return self.__definitions[variable][0]
 
     def __str__(self):
         """ String representation of a :py:class:`~pycvoa.definition.ProblemDefinition` object

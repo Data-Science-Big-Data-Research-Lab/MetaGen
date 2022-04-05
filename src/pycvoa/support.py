@@ -3,6 +3,72 @@ import copy
 import random
 import math
 from pycvoa import INTEGER, REAL, CATEGORICAL, LAYER, VECTOR
+from pycvoa.individual import Individual
+
+
+def build_random_individual(problem_definition, fitness_function=None):
+    """ It builds a random individual using a problem definition. If the fitness function has been passed,
+    it is computed for the new individual.
+
+    :param problem_definition: The problem definition to build the individual.
+    :type problem_definition: :py:class:`~pycvoa.definition.ProblemDefinition`
+    :param fitness_function: The fitness function to evaluate the individual, defaults to None.
+    :type fitness_function: function
+    :returns: A randomly built individual.
+    :rtype: :py:class:`~pycvoa.individual.Individual`
+    """
+
+    # Build a void individual.
+    new_individual = Individual()
+
+    # For each variable on the problem definition:
+    for variable, definition in problem_definition.get_definition_variables():
+
+        # If the variable is INTEGER, REAL or CATEGORICAL, set it with a random value
+        # using the get_random_value_for_simple_variable auxiliary method.
+        if definition[0] is INTEGER or definition[0] is REAL or definition[0] is CATEGORICAL:
+            new_individual.set_variable_value(variable, get_random_value_for_simple_variable(definition))
+
+        # If the variable is LAYER, iterate over its elements and set them with a random value
+        # using the get_random_value_for_simple_variable auxiliary method.
+        elif definition[0] == LAYER:
+            for element_name, element_definition in definition[1].items():
+                new_individual.set_layer_element_value(variable, element_name,
+                                                       get_random_value_for_simple_variable(element_definition))
+
+        # If the variable is VECTOR:
+        elif definition[0] == VECTOR:
+
+            # Get a random size using the get_number_from_interval auxiliary method.
+            vector_size = get_number_from_interval(definition[1], definition[2], definition[3])
+            vector_component_type = definition[4]
+
+            # For each element of the vector:
+            for i in range(0, vector_size):
+
+                # If the vector type is INTEGER, REAL or CATEGORICAL,
+                # add a random value (using the get_random_value_for_simple_variable auxiliary method)
+                # to the current element.
+                if vector_component_type[0] is INTEGER or vector_component_type[0] is REAL or \
+                        vector_component_type[0] is CATEGORICAL:
+
+                    value = get_random_value_for_simple_variable(vector_component_type)
+                    new_individual.add_vector_element(variable, value)
+
+                # If the vector type is LAYER,
+                # build a random value for each element of the layer (using the
+                # get_random_value_for_simple_variable auxiliary method) and add it to the current element.
+                elif vector_component_type[0] is LAYER:
+                    layer_values = {}
+                    for element_name, element_definition in vector_component_type[1].items():
+                        layer_values[element_name] = get_random_value_for_simple_variable(element_definition)
+                    new_individual.add_vector_element(variable, layer_values)
+
+    # If the fitness function has been passed, it is computed for the new individual.
+    if fitness_function is not None:
+        new_individual.fitness = fitness_function(new_individual)
+
+    return new_individual
 
 
 def inoculate_individual(infected, variable, definition):
