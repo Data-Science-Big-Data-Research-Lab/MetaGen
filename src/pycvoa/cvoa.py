@@ -2,6 +2,7 @@ import threading
 from concurrent.futures.thread import ThreadPoolExecutor
 from datetime import timedelta
 from time import time
+
 from pycvoa.individual import *
 from pycvoa.support import *
 
@@ -262,9 +263,9 @@ class CVOA:
         new_infected_population = set()
         travel_distance = 1
 
-        # Before the new propagation, update the death and superspreader sets for the strain.
+        # Before the new propagation, update the strain (superspreader, death) and global (death, recovered) sets.
         # Then, add the best solution of the strain to the next population.
-        self.__update_death_super_spreader_strain()
+        self.__update_strain_global_sets()
         new_infected_population.add(self.__bestSolutionStrain)
 
         # For each infected individual in the strain:
@@ -414,10 +415,75 @@ class CVOA:
 
         return infected
 
-    def __update_recovered_death_strain(self, bag, to_insert, remaining):
+    def __update_strain_global_sets(self):
+        """ It updates the specific strain death and superspreader's sets and the global death and recovered sets.
+        """
 
-        dead = self.__insert_into_set_strain(bag, to_insert, remaining, 'd')
+        # A percentage,__P_SUPERSPREADER, of the infected individuals in the strain (__infectedStrain)
+        # will be superspreaders.
+        # A percentage, __P_DIE, of the infected individuals in the strain (__infectedStrain)
+        # will die.
+        number_of_super_spreaders = math.ceil(self.__P_SUPERSPREADER * len(self.__infectedStrain))
+        number_of_deaths = math.ceil(self.__P_DIE * len(self.__infectedStrain))
 
+        # If there are at least two infected individuals in the strain:
+        if len(self.__infectedStrain) != 1:
+
+            # For each infected individual:
+            for individual in self.__infectedStrain:
+
+                # Insert the current individual into superspreader set; if the insertion was successful, decrement
+                # the superspreader's counter.
+                if self.__insert_into_set_strain(self.__superSpreaderStrain, individual, number_of_super_spreaders,
+                                                 "s"):
+                    number_of_super_spreaders -= 1
+
+                # Update the recovered and death sets.
+                if self.__update_recovered_death_strain(individual, number_of_deaths):
+                    number_of_deaths -= 1
+
+                # If the current individual is better than the current global solution, a new global solution is
+                # found, and its global variable is updated.
+                if individual.fitness < CVOA.__bestSolution.fitness:
+                    CVOA.__lock.acquire()
+                    CVOA.__bestSolution = individual
+                    CVOA.__lock.release()
+                    CVOA.__verbosity("\nNew best solution found by " + self.__strainID + "!")
+
+                # If the current individual is better than the current strain solution, a new strain solution is
+                # found, and its variable is updated.
+                if individual.fitness < self.__bestSolutionStrain.fitness:
+                    self.__bestSolutionStrain = individual
+
+            # Increment the discovering iteration time.
+            self.__bestSolutionStrain.discovering_iteration_time = self.__time + 1
+
+            # Update the global death set with the strain death set.
+            CVOA.__lock.acquire()
+            CVOA.__deaths.update(self.__deathStrain)
+            CVOA.__lock.release()
+
+        # Remove the global dead individuals from the global recovered set.
+        CVOA.__lock.acquire()
+        CVOA.__recovered.difference_update(CVOA.__deaths)
+        CVOA.__lock.release()
+
+    def __update_recovered_death_strain(self, to_insert, remaining):
+        """ It updates the specific strain death set and the global recovered set.
+
+        :param to_insert: The individual that has to be inserted in the death set.
+        :param remaining: The number of individuals remaining to be added in the death set.
+        :type to_insert: :py:class:`~pycvoa.individual.Individual`
+        :type remaining: int
+        :returns: True, if the individual has been successfully inserted in the death set; otherwise False.
+        :rtype: bool
+        """
+
+        # Insert the current individual into death set; if the insertion was successful, the dead variable
+        # will be set to True; otherwise False.
+        dead = self.__insert_into_set_strain(self.__deathStrain, to_insert, remaining, 'd')
+
+        # If the current individual is not dead, it is added to the recovered set.
         if not dead:
             CVOA.__lock.acquire()
             if to_insert not in CVOA.__deaths:
@@ -426,17 +492,34 @@ class CVOA:
 
         return dead
 
-    # Insert the individual in the strain sets (death or superspreader)
-    # Code re-utilization needs to be improved
     def __insert_into_set_strain(self, bag, to_insert, remaining, ty):
+        """ Insert an individual in the strain sets (death or superspreader).
 
+        :param bag: The set where the individual has to be inserted.
+        :param to_insert: The individual that has to be inserted.
+        :param remaining: The number of individuals remaining to be added in the set.
+        :param ty: The set where the individual will be inserted ('s' if it is the superspreader set, 'd' if it is the
+        death set.
+        :type bag: set of :py:class:`~pycvoa.individual.Individual`
+        :type to_insert: :py:class:`~pycvoa.individual.Individual`
+        :type remaining: int
+        :type ty: str
+        :returns: True, if the individual has been successfully inserted; otherwise False
+        :rtype: bool
+        """
+
+        # Initialization of the returned value.
         r = False
 
+        # If there are still individuals to be added to the set:
         if remaining > 0:
-
+            # The individual is inserted and the returned value is True.
             bag.add(to_insert)
             r = True
 
+            # The worst superspreader individual (in the case of an insertion in the superspreader set) or the best
+            # death individual (in the case of an insertion in the death set) are updated considering the previous
+            # insertion. That is for the efficient updating of strain sets.
             if ty == 's':
                 if to_insert > self.__worstSuperSpreaderIndividualStrain:
                     self.__worstSuperSpreaderIndividualStrain = to_insert
@@ -444,14 +527,22 @@ class CVOA:
                 if to_insert < self.__bestDeadIndividualStrain:
                     self.__bestDeadIndividualStrain = to_insert
 
+        # If there are no individuals left to add to the set:
         else:
 
+            # If the current individual is worse than the worst in the superspreader set, the current individual
+            # replaces the worst. This operation ensures that the worst new individual will be a superspreader.
+            # This action adds more diversification to the metaheuristic.
             if ty == 's':
                 if to_insert > self.__worstSuperSpreaderIndividualStrain:
                     bag.remove(self.__worstSuperSpreaderIndividualStrain)
                     bag.add(to_insert)
                     r = True
                     self.__worstSuperSpreaderIndividualStrain = to_insert
+
+            # If the current individual is better than the best in the death set, the current individual
+            # replaces the best. This operation ensures that the best new individual will be death.
+            # This action adds more diversification to the metaheuristic.
             elif ty == 'd':
                 if to_insert < self.__bestDeadIndividualStrain:
                     bag.remove(self.__bestDeadIndividualStrain)
@@ -462,54 +553,36 @@ class CVOA:
         return r
 
     def __update_new_infected_population(self, new_infected_population, new_infected_individual):
+        """ It updates the next infected population with a new infected individual.
 
+        :param new_infected_population: The population of the next iteration.
+        :param new_infected_individual: The new infected individual that will be inserted into the netx iteration set.
+        :type new_infected_population: set of :py:class:`~pycvoa.individual.Individual`
+        :type new_infected_individual: :py:class:`~pycvoa.individual.Individual`
+        """
+
+        # If the new individual is not in global death and recovered sets, then insert it in the next population.
         if new_infected_individual not in CVOA.__deaths and new_infected_individual not in CVOA.__recovered:
             new_infected_population.add(new_infected_individual)
+
+        # If the new individual is in the global recovered set, then check if it can be reinfected with
+        # __P_REINFECTION. If it can be reinfected, insert it into the new population and remove it from the global
+        # recovered set.
         elif new_infected_individual in CVOA.__recovered:
             if random.random() < self.__P_REINFECTION:
                 new_infected_population.add(new_infected_individual)
                 CVOA.__recovered.remove(new_infected_individual)
 
-    # Update isolated population
     def __update_isolated_population(self, individual):
+        """ It updates the global isolated set with an individual.
+
+        :param individual: The individual that will be inserted into the global isolated set.
+        :type individual: :py:class:`~pycvoa.individual.Individual`
+        """
+
+        # If the individual is not in global death, recovered and isolation sets, then insert it in the isolated set.
         if individual not in CVOA.__deaths and individual not in CVOA.__recovered and individual not in CVOA.__isolated:
             CVOA.__isolated.add(individual)
-
-    def __update_death_super_spreader_strain(self):
-
-        # Superspreader and deaths strain sets for each iteration
-        number_of_super_spreaders = math.ceil(self.__P_SUPERSPREADER * len(self.__infectedStrain))
-        number_of_deaths = math.ceil(self.__P_DIE * len(self.__infectedStrain))
-
-        if len(self.__infectedStrain) != 1:
-
-            for individual in self.__infectedStrain:
-
-                if self.__insert_into_set_strain(self.__superSpreaderStrain, individual, number_of_super_spreaders,
-                                                 "s"):
-                    number_of_super_spreaders -= 1
-
-                if self.__update_recovered_death_strain(self.__deathStrain, individual, number_of_deaths):
-                    number_of_deaths -= 1
-
-                if individual.fitness < CVOA.__bestSolution.fitness:
-                    CVOA.__lock.acquire()
-                    CVOA.__bestSolution = individual
-                    CVOA.__lock.release()
-                    CVOA.__verbosity("\nNew best solution found by " + self.__strainID + "!")
-
-                if individual.fitness < self.__bestSolutionStrain.fitness:
-                    self.__bestSolutionStrain = individual
-
-            self.__bestSolutionStrain.discovering_iteration_time = self.__time + 1
-
-            CVOA.__lock.acquire()
-            CVOA.__deaths.update(self.__deathStrain)
-            CVOA.__lock.release()
-
-        CVOA.__lock.acquire()
-        CVOA.__recovered.difference_update(CVOA.__deaths)
-        CVOA.__lock.release()
 
     def __str__(self):
         """ String representation of a :py:class:`~pycvoa.cvoa.CVOA` object (a strain).
