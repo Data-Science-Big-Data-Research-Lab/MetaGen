@@ -285,7 +285,7 @@ class CVOA:
             # If the current individual is a traveler, the travel distance will be in
             # (0, number of variable defined in the problem), otherwise the travel distance will be 1.
             if random.random() < self.__P_TRAVEL:
-                travel_distance = random.randint(0, len(CVOA.__problemDefinition.get_definitions().keys()))
+                travel_distance = random.randint(0, len(CVOA.__problemDefinition.get_internal_definition().keys()))
                 # travel_distance = randint(1, ceil(len(CVOA.__individualDefinition.keys())*self.__P_TRAVEL))
 
             # ** 3. Infect the new individuals. **
@@ -336,7 +336,7 @@ class CVOA:
         patient_zero = Individual()
 
         # For each variable on the problem definition:
-        for variable, definition in CVOA.__problemDefinition.get_definitions().items():
+        for variable, definition in CVOA.__problemDefinition.get_internal_definition().items():
             logging.debug(">>>>>>>> Variable = " + str(variable) + " definition = " + str(definition))
 
             # If the variable is INTEGER, REAL or CATEGORICAL, set it with a random value
@@ -399,7 +399,7 @@ class CVOA:
         """
         # logging.debug("Infect")
         # Initially, the infected individual will be a copy of the original one.
-        definition = CVOA.__problemDefinition.get_definitions()
+        definition = CVOA.__problemDefinition.get_internal_definition()
         infected = copy.deepcopy(individual)
 
         # Select a random set of variables that will be altered based on the travel distance.
