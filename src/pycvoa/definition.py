@@ -254,7 +254,15 @@ class ProblemDefinition:
         layer_elements = layer_definition[1]
         layer_elements[element_name] = [CATEGORICAL, categories]
 
-    def get_definition_variables(self):
+    def get_internal_definition(self):
+        """ Get the internal data structure for the :py:class:`~pycvoa.individual.ProblemDefinition`
+
+        :returns: Internal structure of the Problem Definition.
+        :rtype: dict
+        """
+        return self.__definitions
+
+    def get_definition_list(self):
         """ Get a list with the registered variables and its definitions in a (key, value) form. It is useful to
         iterate throw the registered variables using a for loop.
 
@@ -263,13 +271,14 @@ class ProblemDefinition:
         """
         return self.__definitions.items()
 
-    def get_definitions(self):
-        """ Get the internal data structure for the :py:class:`~pycvoa.individual.ProblemDefinition`
+    def get_variable_list(self):
+        """ Get a list with the registered variables. It is useful to iterate throw the registered variables
+        using a for loop.
 
-        :returns: Internal structure of the Problem Definition.
-        :rtype: dict
+        :returns: A list with the registered variables.
+        :rtype: list
         """
-        return self.__definitions
+        return list(self.__definitions.keys())
 
     def get_variable_definition(self, variable):
         """ Get the definition of a variable.
@@ -290,6 +299,84 @@ class ProblemDefinition:
         :rtype: **INTEGER**, **REAL**, **CATEGORICAL**, **LAYER**, **VECTOR**
         """
         return self.__definitions[variable][0]
+
+    def get_layer_element_list(self, layer_variable):
+        """ Get a list with the elements of a registered **LAYER** variable. It is useful to iterate throw
+        the elements of a registered **LAYER** variable using a for loop.
+
+        :param layer_variable: The registered layer variable.
+        :type layer_variable: str
+        :returns: A list with the elements the registered **LAYER** variable.
+        :rtype: list
+        """
+        return list(self.__definitions[layer_variable][1].keys())
+
+    def get_layer_element_type(self, layer_variable, element):
+        """ Get the layer element type.
+
+        :param layer_variable: The registered layer variable.
+        :type layer_variable: str
+        :param element: The element.
+        :type element: str
+        :returns: The variable type.
+        :rtype: **INTEGER**, **REAL**, **CATEGORICAL**
+        """
+        return self.__definitions[layer_variable][1][element][0]
+
+    def get_layer_element_definition(self, layer_variable, element):
+        """ Get the layer element definition.
+
+        :param layer_variable: The registered layer variable.
+        :type layer_variable: str
+        :param element: The element.
+        :type element: str
+        :returns: The element definition.
+        :rtype: list
+        """
+        return self.__definitions[layer_variable][1][element]
+
+    def get_vector_component_type(self, vector_variable):
+        """ Get the type of the components of a registered **VECTOR** variable.
+
+        :param vector_variable: The registered **VECTOR** variable.
+        :type vector_variable: str
+        :returns: The **VECTOR** variable component type.
+        :rtype: **INTEGER**, **REAL**, **CATEGORICAL**, **LAYER**
+        """
+        return self.__definitions[vector_variable][4][0]
+
+    def get_vector_component_definition(self, vector_variable):
+        """ Get the definition of the components of a registered **VECTOR** variable.
+
+        :param vector_variable: The registered **VECTOR** variable.
+        :type vector_variable: str
+        :returns: The **VECTOR** variable component definition.
+        :rtype: list
+        """
+        return self.__definitions[vector_variable][4]
+
+    def get_vector_layer_element_list(self, vector_variable):
+        """ Get a list with the elements of a registered **VECTOR** variable registered as **LAYER**. It is useful to
+        iterate throw the elements of the layers in a registered **LAYER** variable using a for loop.
+
+        :param vector_variable: The registered **VECTOR** variable.
+        :type vector_variable: str
+        :returns: A list with the elements of the **LAYER** defined in the **VECTOR** variable.
+        :rtype: list
+        """
+        return list(self.__definitions[vector_variable][4][1].keys())
+
+    def get_vector_layer_element_definition(self, vector_variable, element):
+        """ Get the layer element definition for a **VECTOR** variable.
+
+        :param vector_variable: The registered **VECTOR** variable.
+        :type vector_variable: str
+        :param element: The element.
+        :type element: str
+        :returns: The element definition.
+        :rtype: list
+        """
+        return self.__definitions[vector_variable][4][1][element]
 
     def __str__(self):
         """ String representation of a :py:class:`~pycvoa.definition.ProblemDefinition` object

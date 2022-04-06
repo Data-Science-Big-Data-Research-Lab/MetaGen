@@ -21,10 +21,17 @@ class Individual:
     :type best: bool
     """
 
-    def __init__(self, best=True):
+    def __init__(self, best=True, definition=None):
         """ It is the default, and unique, constructor. It builds an empty individual with
         the best fitness value (:math:`best=True`, by default) or the worst fitness value (:math:`best=False`)
 
+        :param best: If True the individual will be built with the best fitness function;
+        otherwise the worst, defaults to True.
+        :type best: bool
+        :param definition: The problem definition that will be associated with the individual, defaults to None.
+        :type definition: :py:class:`~pycvoa.definition.ProblemDefinition`
+        :ivar __definition: Problem definition associated with the individual.
+        :vartype __definition: :py:class:`~pycvoa.definition.ProblemDefinition`
         :ivar __variables: Data structure where the variables of an individual are stored.
         :vartype __variables: dict
         :ivar discovering_iteration_time: Pandemic time when a solution is discovered.
@@ -32,12 +39,21 @@ class Individual:
         :ivar fitness: Fitness value.
         :vartype fitness: float
         """
+        self.__definition = definition
         self.__variables = {}
         self.discovering_iteration_time = 0
         if best:
             self.fitness = 0.0
         else:
             self.fitness = sys.float_info.max
+
+    def set_definition(self, definition):
+        """ It sets the problem definition associated with the individual.
+
+        :param definition: The problem definition that will be associated with the individual.
+        :type definition: :py:class:`~pycvoa.definition.ProblemDefinition`
+        """
+        self.__definition = definition
 
     def get_variable_value(self, variable_name):
         """ It returns a variable value of the individual.
