@@ -26,10 +26,10 @@ random_forest_classifier_definition.define_categorical_variable("max_features", 
 
 # Random Forest classifier fitness function
 def random_forest_classifier_fitness(individual):
-    max_depth = individual.get_variable_value("max_depth")
-    n_estimators = individual.get_variable_value("n_estimators")
-    criterion = individual.get_variable_value("criterion")
-    max_features = individual.get_variable_value("max_features")
+    max_depth = individual.get_basic_value("max_depth")
+    n_estimators = individual.get_basic_value("n_estimators")
+    criterion = individual.get_basic_value("criterion")
+    max_features = individual.get_basic_value("max_features")
 
     clf = RandomForestClassifier(max_depth=max_depth, n_estimators=n_estimators, criterion=criterion,
                                  max_features=max_features, random_state=0, n_jobs=-1)
@@ -49,10 +49,10 @@ random_forest_regressor_definition.define_categorical_variable("max_features", [
 
 # Random Forest regressor fitness function
 def random_forest_regressor_fitness(individual):
-    max_depth = individual.get_variable_value("max_depth")
-    n_estimators = individual.get_variable_value("n_estimators")
-    criterion = individual.get_variable_value("criterion")
-    max_features = individual.get_variable_value("max_features")
+    max_depth = individual.get_basic_value("max_depth")
+    n_estimators = individual.get_basic_value("n_estimators")
+    criterion = individual.get_basic_value("criterion")
+    max_features = individual.get_basic_value("max_features")
 
     clf = RandomForestRegressor(max_depth=max_depth, n_estimators=n_estimators, criterion=criterion,
                                 max_features=max_features, random_state=0, n_jobs=-1)
@@ -72,10 +72,10 @@ knn_classifier_definition.define_categorical_variable("algorithm", ['auto', 'bal
 
 # KNN classifier fitness function
 def knn_classifier_fitness(individual):
-    n_neighbors = individual.get_variable_value("n_neighbors")
-    weights = individual.get_variable_value("weights")
-    p = individual.get_variable_value("p")
-    algorithm = individual.get_variable_value("algorithm")
+    n_neighbors = individual.get_basic_value("n_neighbors")
+    weights = individual.get_basic_value("weights")
+    p = individual.get_basic_value("p")
+    algorithm = individual.get_basic_value("algorithm")
 
     clf = KNeighborsClassifier(n_neighbors=n_neighbors, weights=weights, p=p, algorithm=algorithm, n_jobs=-1)
     scores = cross_val_score(clf, X_regression, y_regression,
@@ -94,10 +94,10 @@ knn_regressor_definition.define_categorical_variable("algorithm", ['auto', 'ball
 
 # KNN regressor fitness function
 def knn_regressor_fitness(individual):
-    n_neighbors = individual.get_variable_value("n_neighbors")
-    weights = individual.get_variable_value("weights")
-    p = individual.get_variable_value("p")
-    algorithm = individual.get_variable_value("algorithm")
+    n_neighbors = individual.get_basic_value("n_neighbors")
+    weights = individual.get_basic_value("weights")
+    p = individual.get_basic_value("p")
+    algorithm = individual.get_basic_value("algorithm")
 
     clf = KNeighborsRegressor(n_neighbors=n_neighbors, weights=weights, p=p, algorithm=algorithm, n_jobs=-1)
     scores = cross_val_score(clf, X_regression, y_regression,
@@ -115,9 +115,9 @@ support_vector_classifier_definition.define_integer_variable("degree", 2, 5, 1)
 
 # SVM classifier fitness function
 def support_vector_classifier_fitness(individual):
-    c = individual.get_variable_value("C")
-    kernel = individual.get_variable_value("kernel")
-    degree = individual.get_variable_value("degree")
+    c = individual.get_basic_value("C")
+    kernel = individual.get_basic_value("kernel")
+    degree = individual.get_basic_value("degree")
 
     clf = SVC(C=c, kernel=kernel, degree=degree)
     scores = cross_val_score(clf, X_regression, y_regression,
@@ -135,9 +135,9 @@ support_vector_regressor_definition.define_integer_variable("degree", 2, 5, 1)
 
 # SVM regressor fitness function
 def support_vector_regressor_fitness(individual):
-    c = individual.get_variable_value("C")
-    kernel = individual.get_variable_value("kernel")
-    degree = individual.get_variable_value("degree")
+    c = individual.get_basic_value("C")
+    kernel = individual.get_basic_value("kernel")
+    degree = individual.get_basic_value("degree")
 
     clf = SVR(C=c, kernel=kernel, degree=degree)
     scores = cross_val_score(clf, X_regression, y_regression,
@@ -160,12 +160,12 @@ sgd_classifier_definition.define_categorical_variable("learning_rate",
 
 # SGD classifier fitness function
 def sgd_classifier_fitness(individual):
-    loss = individual.get_variable_value("loss")
-    penalty = individual.get_variable_value("penalty")
-    alpha = individual.get_variable_value("alpha")
-    max_iter = individual.get_variable_value("max_iter")
-    tol = individual.get_variable_value("tol")
-    learning_rate = individual.get_variable_value("learning_rate")
+    loss = individual.get_basic_value("loss")
+    penalty = individual.get_basic_value("penalty")
+    alpha = individual.get_basic_value("alpha")
+    max_iter = individual.get_basic_value("max_iter")
+    tol = individual.get_basic_value("tol")
+    learning_rate = individual.get_basic_value("learning_rate")
 
     clf = SGDClassifier(loss=loss, penalty=penalty, alpha=alpha, max_iter=max_iter, tol=tol,
                         learning_rate=learning_rate, n_jobs=-1)
@@ -189,12 +189,12 @@ sgd_regressor_definition.define_categorical_variable("learning_rate",
 
 # SGD regressor fitness function
 def sgd_regressor_fitness(individual):
-    loss = individual.get_variable_value("loss")
-    penalty = individual.get_variable_value("penalty")
-    alpha = individual.get_variable_value("alpha")
-    max_iter = individual.get_variable_value("max_iter")
-    tol = individual.get_variable_value("tol")
-    learning_rate = individual.get_variable_value("learning_rate")
+    loss = individual.get_basic_value("loss")
+    penalty = individual.get_basic_value("penalty")
+    alpha = individual.get_basic_value("alpha")
+    max_iter = individual.get_basic_value("max_iter")
+    tol = individual.get_basic_value("tol")
+    learning_rate = individual.get_basic_value("learning_rate")
 
     clf = SGDRegressor(loss=loss, penalty=penalty, alpha=alpha, max_iter=max_iter, tol=tol, learning_rate=learning_rate,
                        n_jobs=-1)
