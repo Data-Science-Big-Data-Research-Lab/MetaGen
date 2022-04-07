@@ -1,8 +1,8 @@
 import sys
 
 
-class Individual:
-    """ This class provides the abstraction of an individual for the :py:class:`~pycvoa.cvoa.CVOA` algorithm or any
+class Solution:
+    """ This class provides the abstraction of an solution for the :py:class:`~pycvoa.cvoa.CVOA` algorithm or any
     meta-heuristic that third-party provides. The default and unique, constructor builds an empty individual with
     the best fitness value (:math:`best=True`, by default) or the worst fitness value (:math:`best=False`).
 
@@ -10,23 +10,23 @@ class Individual:
 
     .. code-block:: python
 
-        >>> best_individual  = Individual()
-        >>> best_individual.fitness
+        >>> best_solution  = Solution(best=True)
+        >>> best_solution.fitness
         0.0
-        >>> worst_individual  = Individual(False)
-        >>> worst_individual.fitness
+        >>> worst_solution  = Solution()
+        >>> worst_solution.fitness
         1.7976931348623157e+308
 
     :param best: If true, build an individual with the best fitness value, defaults to True.
     :type best: bool
     """
 
-    def __init__(self, best=True, definition=None):
+    def __init__(self, best=False, definition=None):
         """ It is the default, and unique, constructor. It builds an empty individual with
         the best fitness value (:math:`best=True`, by default) or the worst fitness value (:math:`best=False`)
 
         :param best: If True the individual will be built with the best fitness function;
-        otherwise the worst, defaults to True.
+        otherwise the worst, defaults to False.
         :type best: bool
         :param definition: The problem definition that will be associated with the individual, defaults to None.
         :type definition: :py:class:`~pycvoa.definition.ProblemDefinition`
@@ -315,7 +315,7 @@ class Individual:
         """
         res = True
 
-        if not isinstance(other, Individual):
+        if not isinstance(other, Solution):
             res = False
         else:
             i = 0

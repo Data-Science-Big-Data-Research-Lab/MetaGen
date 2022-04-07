@@ -5,7 +5,7 @@ from sklearn.model_selection import cross_val_score
 from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
 from sklearn.svm import SVC, SVR
 
-from pycvoa.definition import ProblemDefinition
+from pycvoa.problem.domain import Domain
 
 # Synthetic datasets
 X_regression, y_regression = make_regression(n_samples=1000, n_features=4,
@@ -17,11 +17,11 @@ X_classification, y_classification = make_classification(n_samples=1000, n_featu
                                                          random_state=0, shuffle=False)
 
 # Random Forest classifier problem definition
-random_forest_classifier_definition = ProblemDefinition()
-random_forest_classifier_definition.register_integer_variable("max_depth", 2, 100, 1)
-random_forest_classifier_definition.register_integer_variable("n_estimators", 10, 500, 1)
-random_forest_classifier_definition.register_categorical_variable("criterion", ['gini', 'entropy'])
-random_forest_classifier_definition.register_categorical_variable("max_features", ['auto', 'sqrt', 'log2'])
+random_forest_classifier_definition = Domain()
+random_forest_classifier_definition.define_integer_variable("max_depth", 2, 100, 1)
+random_forest_classifier_definition.define_integer_variable("n_estimators", 10, 500, 1)
+random_forest_classifier_definition.define_categorical_variable("criterion", ['gini', 'entropy'])
+random_forest_classifier_definition.define_categorical_variable("max_features", ['auto', 'sqrt', 'log2'])
 
 
 # Random Forest classifier fitness function
@@ -40,11 +40,11 @@ def random_forest_classifier_fitness(individual):
 
 
 # Random Forest regressor problem definition
-random_forest_regressor_definition = ProblemDefinition()
-random_forest_regressor_definition.register_integer_variable("max_depth", 2, 100, 1)
-random_forest_regressor_definition.register_integer_variable("n_estimators", 10, 500, 1)
-random_forest_regressor_definition.register_categorical_variable("criterion", ['mse', 'mae'])
-random_forest_regressor_definition.register_categorical_variable("max_features", ['auto', 'sqrt', 'log2'])
+random_forest_regressor_definition = Domain()
+random_forest_regressor_definition.define_integer_variable("max_depth", 2, 100, 1)
+random_forest_regressor_definition.define_integer_variable("n_estimators", 10, 500, 1)
+random_forest_regressor_definition.define_categorical_variable("criterion", ['mse', 'mae'])
+random_forest_regressor_definition.define_categorical_variable("max_features", ['auto', 'sqrt', 'log2'])
 
 
 # Random Forest regressor fitness function
@@ -63,11 +63,11 @@ def random_forest_regressor_fitness(individual):
 
 
 # KNN classifier problem definition
-knn_classifier_definition = ProblemDefinition()
-knn_classifier_definition.register_integer_variable("n_neighbors", 2, 20, 1)
-knn_classifier_definition.register_categorical_variable("weights", ['uniform', 'distance'])
-knn_classifier_definition.register_integer_variable("p", 1, 10, 1)
-knn_classifier_definition.register_categorical_variable("algorithm", ['auto', 'ball_tree', 'kd_tree', 'brute'])
+knn_classifier_definition = Domain()
+knn_classifier_definition.define_integer_variable("n_neighbors", 2, 20, 1)
+knn_classifier_definition.define_categorical_variable("weights", ['uniform', 'distance'])
+knn_classifier_definition.define_integer_variable("p", 1, 10, 1)
+knn_classifier_definition.define_categorical_variable("algorithm", ['auto', 'ball_tree', 'kd_tree', 'brute'])
 
 
 # KNN classifier fitness function
@@ -85,11 +85,11 @@ def knn_classifier_fitness(individual):
 
 
 # KNN regressor problem definition
-knn_regressor_definition = ProblemDefinition()
-knn_regressor_definition.register_integer_variable("n_neighbors", 2, 20, 1)
-knn_regressor_definition.register_categorical_variable("weights", ['uniform', 'distance'])
-knn_regressor_definition.register_integer_variable("p", 1, 10, 1)
-knn_regressor_definition.register_categorical_variable("algorithm", ['auto', 'ball_tree', 'kd_tree', 'brute'])
+knn_regressor_definition = Domain()
+knn_regressor_definition.define_integer_variable("n_neighbors", 2, 20, 1)
+knn_regressor_definition.define_categorical_variable("weights", ['uniform', 'distance'])
+knn_regressor_definition.define_integer_variable("p", 1, 10, 1)
+knn_regressor_definition.define_categorical_variable("algorithm", ['auto', 'ball_tree', 'kd_tree', 'brute'])
 
 
 # KNN regressor fitness function
@@ -107,10 +107,10 @@ def knn_regressor_fitness(individual):
 
 
 # SVM classifier problem definition
-support_vector_classifier_definition = ProblemDefinition()
-support_vector_classifier_definition.register_real_variable("C", 0.5, 10, 0.5)
-support_vector_classifier_definition.register_categorical_variable("kernel", ['linear', 'poly', 'rbf', 'sigmoid'])
-support_vector_classifier_definition.register_integer_variable("degree", 2, 5, 1)
+support_vector_classifier_definition = Domain()
+support_vector_classifier_definition.define_real_variable("C", 0.5, 10, 0.5)
+support_vector_classifier_definition.define_categorical_variable("kernel", ['linear', 'poly', 'rbf', 'sigmoid'])
+support_vector_classifier_definition.define_integer_variable("degree", 2, 5, 1)
 
 
 # SVM classifier fitness function
@@ -127,10 +127,10 @@ def support_vector_classifier_fitness(individual):
 
 
 # SVM regressor problem definition
-support_vector_regressor_definition = ProblemDefinition()
-support_vector_regressor_definition.register_real_variable("C", 0.5, 10, 0.5)
-support_vector_regressor_definition.register_categorical_variable("kernel", ['linear', 'poly', 'rbf', 'sigmoid'])
-support_vector_regressor_definition.register_integer_variable("degree", 2, 5, 1)
+support_vector_regressor_definition = Domain()
+support_vector_regressor_definition.define_real_variable("C", 0.5, 10, 0.5)
+support_vector_regressor_definition.define_categorical_variable("kernel", ['linear', 'poly', 'rbf', 'sigmoid'])
+support_vector_regressor_definition.define_integer_variable("degree", 2, 5, 1)
 
 
 # SVM regressor fitness function
@@ -147,15 +147,15 @@ def support_vector_regressor_fitness(individual):
 
 
 # SGD classifier problem definition
-sgd_classifier_definition = ProblemDefinition()
-sgd_classifier_definition.register_categorical_variable("loss", ['hinge', 'log', 'modified_huber', 'squared_hinge',
+sgd_classifier_definition = Domain()
+sgd_classifier_definition.define_categorical_variable("loss", ['hinge', 'log', 'modified_huber', 'squared_hinge',
                                                                  'perceptron'])
-sgd_classifier_definition.register_categorical_variable("penalty", ['l2', 'l1', 'elasticnet'])
-sgd_classifier_definition.register_real_variable("alpha", .0001, .0001, .01)
-sgd_classifier_definition.register_integer_variable("max_iter", 50, 2000, 5)
-sgd_classifier_definition.register_real_variable("tol", 1e-3, .1, 1e-3)
-sgd_classifier_definition.register_categorical_variable("learning_rate",
-                                                        ['constant', 'optimal', 'invscaling', 'adaptive'])
+sgd_classifier_definition.define_categorical_variable("penalty", ['l2', 'l1', 'elasticnet'])
+sgd_classifier_definition.define_real_variable("alpha", .0001, .0001, .01)
+sgd_classifier_definition.define_integer_variable("max_iter", 50, 2000, 5)
+sgd_classifier_definition.define_real_variable("tol", 1e-3, .1, 1e-3)
+sgd_classifier_definition.define_categorical_variable("learning_rate",
+                                                      ['constant', 'optimal', 'invscaling', 'adaptive'])
 
 
 # SGD classifier fitness function
@@ -176,15 +176,15 @@ def sgd_classifier_fitness(individual):
 
 
 # SGD regressor problem definition
-sgd_regressor_definition = ProblemDefinition()
-sgd_regressor_definition.register_categorical_variable("loss", ['hinge', 'log', 'modified_huber', 'squared_hinge',
+sgd_regressor_definition = Domain()
+sgd_regressor_definition.define_categorical_variable("loss", ['hinge', 'log', 'modified_huber', 'squared_hinge',
                                                                 'perceptron'])
-sgd_regressor_definition.register_categorical_variable("penalty", ['l2', 'l1', 'elasticnet'])
-sgd_regressor_definition.register_real_variable("alpha", .0001, .0001, .01)
-sgd_regressor_definition.register_integer_variable("max_iter", 50, 2000, 5)
-sgd_regressor_definition.register_real_variable("tol", 1e-3, .1, 1e-3)
-sgd_regressor_definition.register_categorical_variable("learning_rate",
-                                                       ['constant', 'optimal', 'invscaling', 'adaptive'])
+sgd_regressor_definition.define_categorical_variable("penalty", ['l2', 'l1', 'elasticnet'])
+sgd_regressor_definition.define_real_variable("alpha", .0001, .0001, .01)
+sgd_regressor_definition.define_integer_variable("max_iter", 50, 2000, 5)
+sgd_regressor_definition.define_real_variable("tol", 1e-3, .1, 1e-3)
+sgd_regressor_definition.define_categorical_variable("learning_rate",
+                                                     ['constant', 'optimal', 'invscaling', 'adaptive'])
 
 
 # SGD regressor fitness function
