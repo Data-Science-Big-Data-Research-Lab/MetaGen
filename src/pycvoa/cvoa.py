@@ -351,15 +351,15 @@ class CVOA:
             # using the get_random_value_for_simple_variable auxiliary method.
             if definition[0] is INTEGER or definition[0] is REAL or definition[0] is CATEGORICAL:
                 # logging.debug(">INTEGER")
-                patient_zero.set_variable_value(variable, get_random_value_for_basic_variable(definition))
+                patient_zero.set_variable(variable, get_random_value_for_basic_variable(definition))
 
             # If the variable is LAYER, iterate over its elements and set them with a random value
             # using the get_random_value_for_simple_variable auxiliary method.
             elif definition[0] == LAYER:
                 # logging.debug(">LAYER")
                 for element_name, element_definition in definition[1].items():
-                    patient_zero.set_layer_element_value(variable, element_name,
-                                                         get_random_value_for_basic_variable(element_definition))
+                    patient_zero.set_element(variable, element_name,
+                                             get_random_value_for_basic_variable(element_definition))
 
             # If the variable is VECTOR:
             elif definition[0] == VECTOR:
@@ -381,7 +381,7 @@ class CVOA:
                             vector_component_type[0] is CATEGORICAL:
 
                         value = get_random_value_for_basic_variable(vector_component_type)
-                        patient_zero.add_vector_element(variable, value)
+                        patient_zero.add_component(variable, value)
                         # logging.debug(">VECTOR, variable: %s, value = %s", variable, value)
 
                     # If the vector type is LAYER,
@@ -391,7 +391,7 @@ class CVOA:
                         layer_values = {}
                         for element_name, element_definition in vector_component_type[1].items():
                             layer_values[element_name] = get_random_value_for_basic_variable(element_definition)
-                        patient_zero.add_vector_element(variable, layer_values)
+                        patient_zero.add_component(variable, layer_values)
 
         # logging("Individual = %s"+str(patient_zero))
         # Once the individual variables is built, the fitness function is computed.

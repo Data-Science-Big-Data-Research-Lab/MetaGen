@@ -2,9 +2,14 @@ import sys
 
 
 class Solution:
-    """ This class provides the abstraction of an solution for the :py:class:`~pycvoa.cvoa.CVOA` algorithm or any
-    meta-heuristic that third-party provides. The default and unique, constructor builds an empty individual with
-    the best fitness value (:math:`best=True`, by default) or the worst fitness value (:math:`best=False`).
+    """ This class provides the abstraction of a solution for a meta-heuristic that third-party provides.
+
+    The :py:class:`~pycvoa.cvoa.CVOA` algorithm uses this class to model the individuals in its emulated pandemic
+    process.
+
+    The default and unique, constructor builds an empty individual with the worst fitness value
+    (:math:`best=False`, by default) or the best fitness value (:math:`best=False`). Furthermore, a
+    :py:class:`~pycvoa.problem.domain.Domain` object can be passed to check the variable definitions internally.
 
     **Example:**
 
@@ -19,17 +24,20 @@ class Solution:
 
     :param best: If true, build an individual with the best fitness value, defaults to True.
     :type best: bool
+    :param domain: The domain of the solution, defaults to None.
+    :type domain: :py:class:`~pycvoa.problem.domain.Domain`
     """
 
-    def __init__(self, best=False, definition=None):
-        """ It is the default, and unique, constructor. It builds an empty individual with
-        the best fitness value (:math:`best=True`, by default) or the worst fitness value (:math:`best=False`)
+    def __init__(self, best=False, domain=None):
+        """ It is the default and unique, constructor builds an empty individual with the worst fitness value
+        (:math:`best=False`, by default) or the best fitness value (:math:`best=False`). Furthermore, a
+        :py:class:`~pycvoa.problem.domain.Domain` object can be passed to check the variable definitions internally.
 
         :param best: If True the individual will be built with the best fitness function;
         otherwise the worst, defaults to False.
         :type best: bool
-        :param definition: The problem definition that will be associated with the individual, defaults to None.
-        :type definition: :py:class:`~pycvoa.definition.ProblemDefinition`
+        :param domain: The domain of the solution, defaults to None.
+        :type domain: :py:class:`~pycvoa.problem.domain.Domain`
         :ivar __definition: Problem definition associated with the individual.
         :vartype __definition: :py:class:`~pycvoa.definition.ProblemDefinition`
         :ivar __variables: Data structure where the variables of an individual are stored.
@@ -39,7 +47,7 @@ class Solution:
         :ivar fitness: Fitness value.
         :vartype fitness: float
         """
-        self.__definition = definition
+        self.__domain = domain
         self.__variables = {}
         self.discovering_iteration_time = 0
         if best:
@@ -47,137 +55,149 @@ class Solution:
         else:
             self.fitness = sys.float_info.max
 
-    def set_definition(self, definition):
-        """ It sets the problem definition associated with the individual.
+    def set_definition(self, domain):
+        """ It sets the domain of the solution.
 
-        :param definition: The problem definition that will be associated with the individual.
-        :type definition: :py:class:`~pycvoa.definition.ProblemDefinition`
+        :param domain: The domain of the solution, defaults to None.
+        :type domain: :py:class:`~pycvoa.problem.domain.Domain`
         """
-        self.__definition = definition
+        self.__domain = domain
 
-    def get_variable_value(self, variable_name):
-        """ It returns a variable value of the individual.
+
+    def get_value(self, variable, index=None, element=None):
+        return 1
+
+    def get_basic_value(self, variable):
+        """ It returns a variable value of the solution.
 
         **Precondition:**
 
-        The queried variable must be **INTEGER**, **REAL** or **CATEGORICAL**. For **LAYER** and **VECTOR** variables,
-        there are specific getters (:py:meth:`~pycvoa.individual.Individual.get_layer_element_value`,
-        :py:meth:`~pycvoa.individual.Individual.get_vector_component_value` and
-        :py:meth:`~pycvoa.individual.Individual.get_vector_layer_component_value`)
+        The queried variable must be **INTEGER**, **REAL** or **CATEGORICAL**.
 
-        :param variable_name: The variable name.
-        :type variable_name: str
+        For **LAYER** and **VECTOR** variables, there are specific getters:
+
+        - :py:meth:`~pycvoa.individual.Individual.get_layer_element_value`,
+        - :py:meth:`~pycvoa.individual.Individual.get_vector_component_value` and
+        - :py:meth:`~pycvoa.individual.Individual.get_vector_layer_component_value`
+
+        :param variable: The variable name.
+        :type variable: str
         :returns: The variable value.
         :rtype: int, float, str
-        :raise NotDefinedVariableError: The variable is not defined in the individual.
+        :raise NotDefinedVariableError: The variable is not in the solution.
         """
-        if variable_name in self.__variables:
-            return self.__variables.get(variable_name)
+        if variable in self.__variables:
+            return self.__variables.get(variable)
         else:
-            raise NotDefinedVariableError("The variable " + variable_name + " is not defined")
+            raise NotInSolutionError("The variable " + variable + " is not in this solution")
 
-    def get_layer_element_value(self, layer_name, element_name):
+    def get_layer_value(self, variable, element):
         """ It returns an element value of a **LAYER** variable of the individual.
 
-        :param layer_name: The **LAYER** variable name.
-        :param element_name: The **LAYER** element name.
-        :type layer_name: str
-        :type element_name: str
+        :param variable: The **LAYER** variable name.
+        :param element: The **LAYER** element name.
+        :type variable: str
+        :type element: str
         :returns: The element value of the **LAYER** variable.
         :rtype: int, float, str
         :raise NotDefinedLayerElementError: The element of the layer is not defined in the individual.
         :raise NotLayerError: The layer variable is not defined as a **LAYER** type.
         """
-        if layer_name in self.__variables:
-            layer = self.__variables.get(layer_name)
-            if type(layer) is dict:
-                if element_name in layer.keys():
-                    return layer[element_name]
+        if variable in self.__variables:
+            variable = self.__variables.get(variable)
+            if type(variable) is dict:
+                if element in variable.keys():
+                    return variable[element]
                 else:
-                    raise NotDefinedLayerElementError("The element " + element_name + " of the layer " +
-                                                      layer_name + " is not defined")
+                    raise NotDefinedLayerElementError("The element " + element + " of the layer " +
+                                                      variable + " is not defined")
             else:
-                raise NotLayerError("The variable " + layer_name + " is not a layer")
+                raise NotLayerError("The variable " + variable + " is not a layer")
         else:
-            raise NotDefinedLayerElementError("The variable " + layer_name + " is not defined")
+            raise NotDefinedLayerElementError("The variable " + variable + " is not defined")
 
-    def get_vector_component_value(self, vector_name, index):
+    def get_vector_value(self, variable, index):
         """ It returns the **index**-nh value of a **VECTOR** variable of the individual.
 
-        :param vector_name: The **VECTOR** variable name.
+        :param variable: The **VECTOR** variable name.
         :param index: The index of the element to get.
-        :type vector_name: str
+        :type variable: str
         :type index: int
         :returns: The **index**-nh value of the size **VECTOR** variable.
         :rtype: float, int, str
         """
-        if vector_name in self.__variables:
-            vector = self.__variables.get(vector_name)
+        if variable in self.__variables:
+            vector = self.__variables.get(variable)
             if type(vector) is list:
                 if 0 <= index < len(vector):
                     return vector[index]
                 else:
                     raise NotDefinedVectorComponentError("The component " + str(index) + " of the vector "
-                                                         + vector_name + " is not defined")
+                                                         + variable + " is not defined")
             else:
-                raise NotVectorError("The variable " + vector_name + " is not a vector")
+                raise NotVectorError("The variable " + variable + " is not a vector")
         else:
-            raise NotDefinedVariableError("The variable " + vector_name + " is not defined")
+            raise NotInSolutionError("The variable " + variable + " is not defined")
 
-    def get_vector_layer_component_value(self, vector_name, index, layer_element):
+    def get_vector_layer_component_value(self, variable, index, element):
         """ It returns a **LAYER** element value of the **index**-nh component of a **VECTOR** variable
         of the individual.
 
-        :param vector_name: The **VECTOR** variable name.
+        :param variable: The **VECTOR** variable name.
         :param index: The index of the element to get.
-        :param layer_element: The **LAYER** element name.
-        :type vector_name: str
+        :param element: The **LAYER** element name.
+        :type variable: str
         :type index: int
-        :type layer_element: str
+        :type element: str
         :returns: The element value of the **LAYER** in the **index**-nh position of the **VECTOR** variable.
         :rtype: float, int, str
         """
-        if vector_name in self.__variables:
-            vector = self.__variables.get(vector_name)
+        if variable in self.__variables:
+            vector = self.__variables.get(variable)
             if type(vector) is list:
                 if 0 <= index < len(vector):
                     layer = vector[index]
                     if type(layer) is dict:
-                        if layer_element in vector[index].keys():
-                            return vector[index][layer_element]
+                        if element in vector[index].keys():
+                            return vector[index][element]
                         else:
-                            raise NotDefinedLayerElementError("The layer element " + layer_element +
-                                                              " is not defined for the vector " + vector_name)
+                            raise NotDefinedLayerElementError("The layer element " + element +
+                                                              " is not defined for the vector " + variable)
                     else:
                         raise NotLayerError(
-                            "The element " + str(index) + " of the vector " + vector_name + " is not a layer")
+                            "The element " + str(index) + " of the vector " + variable + " is not a layer")
                 else:
                     raise NotDefinedVectorComponentError("The component " + str(index) + " of the vector " +
-                                                         vector_name + " is not defined")
+                                                         variable + " is not defined")
             else:
-                raise NotVectorError("The variable " + vector_name + " is not a vector")
+                raise NotVectorError("The variable " + variable + " is not a vector")
         else:
-            raise NotDefinedVariableError("The variable " + vector_name + " is not defined")
+            raise NotInSolutionError("The variable " + variable + " is not defined")
 
-    def get_vector_size(self, vector_name):
+    def get_vector_size(self, variable):
         """ It returns the size of a **VECTOR** variable of the individual. It is useful to access the values
         of the **VECTOR** variable sequentially.
 
-        :param vector_name: The **VECTOR** variable name.
-        :type vector_name: str
+        :param variable: The **VECTOR** variable name.
+        :type variable: str
         :returns: The size of the **VECTOR** variable.
         :rtype: int
         """
-        if vector_name in self.__variables:
-            vector = self.__variables.get(vector_name)
+        if variable in self.__variables:
+            vector = self.__variables.get(variable)
             if type(vector) is list:
-                return len(self.__variables.get(vector_name))
+                return len(self.__variables.get(variable))
             else:
-                raise NotVectorError("The variable " + vector_name + " is not a vector")
+                raise NotVectorError("The variable " + variable + " is not a vector")
         else:
-            raise NotDefinedVariableError("The variable " + vector_name + " is not defined")
+            raise NotInSolutionError("The variable " + variable + " is not defined")
 
-    def set_variable_value(self, variable_name, value):
+
+    def set_value(self, variable, value, index=None, element=None):
+        return 1
+
+
+    def set_variable(self, variable, value):
         """ It sets the value of variable. If the variable does not exist, it will be created with the indicated value.
 
          **Precondition:**
@@ -187,30 +207,30 @@ class Solution:
         :py:meth:`~pycvoa.individual.Individual.set_vector_element_by_index` respectively and
         :py:meth:`~pycvoa.individual.Individual.set_vector_layer_element_by_index`)
 
-        :param variable_name: The name of the variable to set.
+        :param variable: The name of the variable to set.
         :param value: The new value of the variable.
-        :type variable_name: str
+        :type variable: str
         :type value: int, float, str
         """
-        self.__variables[variable_name] = value
+        self.__variables[variable] = value
 
-    def set_layer_element_value(self, layer_name, element_name, value):
+    def set_element(self, variable, element, value):
         """ It sets the element value of a **LAYER** variable. If the **LAYER** variable does not exist,
         it will be created with the indicated value.
 
-        :param layer_name: The name of the variable to set.
-        :param element_name: The new value of the variable.
+        :param variable: The name of the variable to set.
+        :param element: The new value of the variable.
         :param value: The new value of the variable.
-        :type layer_name: str
-        :type element_name: str
+        :type variable: str
+        :type element: str
         :type value: int, float, str
         """
-        if layer_name not in self.__variables:
-            self.__variables[layer_name] = {element_name: value}
+        if variable not in self.__variables:
+            self.__variables[variable] = {element: value}
         else:
-            self.__variables[layer_name][element_name] = value
+            self.__variables[variable][element] = value
 
-    def set_vector_element_by_index(self, vector_name, index, value):
+    def set_component(self, variable, index, value):
         """ It sets **index**-nh position of a **VECTOR** variable. If the **VECTOR** variable does not exist,
         it will be created with the indicated value in the 0 position.
 
@@ -220,80 +240,80 @@ class Solution:
         For **VECTOR** variables defined as **LAYER**, there is a specific setter
         (:py:meth:`~pycvoa.individual.Individual.set_vector_layer_element_by_index`)
 
-        :param vector_name: The name of the variable to set.
+        :param variable: The name of the variable to set.
         :param index: The position to set.
         :param value: The new value of the position.
-        :type vector_name: str
+        :type variable: str
         :type index: int
         :type value: int, float, str
         """
-        if vector_name not in self.__variables:
-            self.__variables[vector_name] = [value]
+        if variable not in self.__variables:
+            self.__variables[variable] = [value]
         else:
-            self.__variables[vector_name][index] = value
+            self.__variables[variable][index] = value
 
-    def set_vector_layer_element_by_index(self, vector_name, index, layer_element, value):
+    def set_component_element(self, variable, index, element, value):
         """ It sets an element of a **LAYER** in the **index**-nh position of a **VECTOR** variable.
 
-        :param vector_name: The name of the variable to set.
+        :param variable: The name of the variable to set.
         :param index: The position to set.
-        :param layer_element: The layer element name.
+        :param element: The layer element name.
         :param value: The new value of the layer element.
-        :type vector_name: str
+        :type variable: str
         :type index: int
-        :type layer_element: str
+        :type element: str
         :type value: int, float, str
         """
-        if vector_name in self.__variables:
-            self.__variables[vector_name][index][layer_element] = value
+        if variable in self.__variables:
+            self.__variables[variable][index][element] = value
 
-    def add_vector_element(self, vector_name, value):
+    def add_component(self, variable, value):
         """ It appends a value at last of a **VECTOR** variable. If the **VECTOR** variable does not exist,
         it will be created with the indicated value in the 0 position.
 
-        :param vector_name: The name of the variable to set.
+        :param variable: The name of the variable to set.
         :param value: The new value.
-        :type vector_name: str
+        :type variable: str
         :type value: int, float, str, list
         """
-        if vector_name not in self.__variables:
-            self.__variables[vector_name] = [value]
+        if variable not in self.__variables:
+            self.__variables[variable] = [value]
         else:
-            self.__variables[vector_name].append(value)
+            self.__variables[variable].append(value)
 
-    def add_vector_element_by_index(self, vector_name, index, value):
+    def insert_component(self, variable, index, value):
         """ It inserts a value in the **index**-nh position of a **VECTOR** variable. If the **VECTOR** variable
         does not exist, it will be created with the indicated value in the 0 position.
 
-        :param vector_name: The name of the variable to set.
+        :param variable: The name of the variable to set.
         :param index: The position where the new value will be inserted.
         :param value: The new value.
-        :type vector_name: str
+        :type variable: str
         :type index: int
         :type value: int, float, str, list
         """
-        if vector_name not in self.__variables:
-            self.__variables[vector_name] = [value]
+        if variable not in self.__variables:
+            self.__variables[variable] = [value]
         else:
-            self.__variables[vector_name].insert(index, value)
+            self.__variables[variable].insert(index, value)
 
-    def remove_vector_element(self, vector_name):
+    def remove_component(self, variable):
         """ It removes the last position of a **VECTOR** variable.
 
-        :param vector_name: The name of the **VECTOR** variable to modify.
-        :type vector_name: str
+        :param variable: The name of the **VECTOR** variable to modify.
+        :type variable: str
         """
-        self.__variables[vector_name].pop()
+        self.__variables[variable].pop()
 
-    def remove_vector_element_by_index(self, vector_name, index):
+    def delete_component(self, variable, index):
         """ It removes a value in the **index**-nh position of a **VECTOR** variable.
 
-        :param vector_name: The name of the **VECTOR** variable to modify.
+        :param variable: The name of the **VECTOR** variable to modify.
         :param index: The position to be removed.
-        :type vector_name: str
+        :type variable: str
         :type index: int
         """
-        del self.__variables[vector_name][index]
+        del self.__variables[variable][index]
 
     def __str__(self):
         """ String representation of a :py:class:`~pycvoa.individual.Individual` object
@@ -321,8 +341,8 @@ class Solution:
             i = 0
             keys = list(self.__variables.keys())
             while i < len(keys) & res:
-                vf = self.get_variable_value(keys[i])
-                vo = other.get_variable_value(keys[i])
+                vf = self.get_basic_value(keys[i])
+                vo = other.get_basic_value(keys[i])
                 if vf != vo:
                     res = False
                 i += 1
@@ -371,13 +391,13 @@ class Solution:
         return self.fitness >= other.fitness
 
 
-class IndividualError(Exception):
+class SolutionError(Exception):
     """ It is the top level exception for :py:class:`~pycvoa.individual.Individual` error management.
     """
     pass
 
 
-class NotDefinedVariableError(IndividualError):
+class NotInSolutionError(SolutionError):
     """ It is raised when a non defined variable is accessed.
 
     **Methods that can throw this exception:**
@@ -390,7 +410,7 @@ class NotDefinedVariableError(IndividualError):
         self.message = message
 
 
-class NotDefinedLayerElementError(IndividualError):
+class NotDefinedLayerElementError(SolutionError):
     """ It is raised when a non defined element of a **LAYER** variable is accessed.
 
     **Methods that can throw this exception:**
@@ -401,7 +421,7 @@ class NotDefinedLayerElementError(IndividualError):
         self.message = message
 
 
-class NotLayerError(IndividualError):
+class NotLayerError(SolutionError):
     """ It is raised when an element of a non defined **LAYER** variable is accessed.
 
     **Methods that can throw this exception:**
@@ -412,7 +432,7 @@ class NotLayerError(IndividualError):
         self.message = message
 
 
-class NotVectorError(IndividualError):
+class NotVectorError(SolutionError):
     """ It is raised when there is an access to a position of a variable that it does not has defined as a **VECTOR**.
 
     **Methods that can throw this exception:**
@@ -424,7 +444,7 @@ class NotVectorError(IndividualError):
         self.message = message
 
 
-class NotDefinedVectorComponentError(IndividualError):
+class NotDefinedVectorComponentError(SolutionError):
     """ It is raised when a not existing position of a **VECTOR** variable is accessed.
 
     **Methods that can throw this exception:**

@@ -9,7 +9,7 @@ categorical_example_definition.define_categorical_variable("c", ["level1", "leve
 
 # Dummy categorical fitness function
 def categorical_example_fitness(individual):
-    level = individual.get_variable_value("c")
+    level = individual.get_basic_value("c")
     if level == "level1":
         val = random.randint(0, 10)
     elif level == "level2":
@@ -30,7 +30,7 @@ vector_example_definition.define_vector_as_integer("v", 1, 20, 1)
 
 # Dummy vector fitness function
 def vector_example_fitness(individual):
-    v = individual.get_variable_value("v")
+    v = individual.get_basic_value("v")
     return sum(v)
 
 
@@ -59,18 +59,18 @@ all_types_definition.define_vector_layer_categorical("VL", "ElCompC", ["Cat1", "
 
 # Dummy all types fitness function
 def all_types_fitness(individual):
-    c = individual.get_variable_value("C")
-    r = individual.get_variable_value("R")
-    i = individual.get_variable_value("I")
-    lc = individual.get_layer_element_value("L", "LC")
-    lr = individual.get_layer_element_value("L", "LR")
-    li = individual.get_layer_element_value("L", "LI")
+    c = individual.get_basic_value("C")
+    r = individual.get_basic_value("R")
+    i = individual.get_basic_value("I")
+    lc = individual.get_layer_value("L", "LC")
+    lr = individual.get_layer_value("L", "LR")
+    li = individual.get_layer_value("L", "LI")
     vi_size = individual.get_vector_size("VI")
-    vi0 = individual.get_vector_component_value("VI", 0)
+    vi0 = individual.get_vector_value("VI", 0)
     vr_size = individual.get_vector_size("VR")
-    vr0 = individual.get_vector_component_value("VR", 0)
+    vr0 = individual.get_vector_value("VR", 0)
     vc_size = individual.get_vector_size("VC")
-    vc0 = individual.get_vector_component_value("VC", 0)
+    vc0 = individual.get_vector_value("VC", 0)
     vl_size = individual.get_vector_size("VL")
     vl0_vl1 = individual.get_vector_layer_component_value("VL", 0, "vl1")
     vl0_vl2 = individual.get_vector_layer_component_value("VL", 0, "vl2")
