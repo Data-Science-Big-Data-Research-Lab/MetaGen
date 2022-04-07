@@ -1,5 +1,4 @@
 import argparse
-import sys
 from dispatcher import example_dispacher
 
 parser = argparse.ArgumentParser(description="Test the PyCVOA package.",

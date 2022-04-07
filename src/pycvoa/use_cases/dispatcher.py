@@ -1,8 +1,7 @@
-from dummy import *
-from ml import *
+from pycvoa.use_cases.dummy import *
+from pycvoa.use_cases.ml import *
+from pycvoa.use_cases.simple import *
 from pycvoa.cvoa import CVOA, cvoa_launcher
-from simple import *
-
 
 def example_dispacher(example):
     definition_fitness = problem_dispatcher(example)
