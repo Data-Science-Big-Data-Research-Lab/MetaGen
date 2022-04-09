@@ -57,7 +57,7 @@ class Solution:
         else:
             self.fitness = sys.float_info.max
 
-    def set_definition(self, domain):
+    def set_domain(self, domain):
         """ It sets the domain of the solution.
 
         :param domain: The domain of the solution, defaults to None.
@@ -106,7 +106,7 @@ class Solution:
                                         "must be provided")
             else:
 
-                vector_definition = self.__domain.get_vector_component_definition(variable)
+                vector_definition = self.__domain.get_component_definition(variable)
 
                 if vector_definition in (INTEGER, REAL, CATEGORICAL):
                     r = self.get_vector_value(variable, index)
@@ -247,7 +247,59 @@ class Solution:
             raise NotInSolutionError("The variable " + variable + " is not defined")
 
     def set_value(self, variable, value, index=None, element=None):
-        return 1
+        """ It sets a value of a variable.
+
+             This member has three use cases:
+
+             - BASIC TYPE: Only the variable name must be provided.
+             - LAYER TYPE: The variable type and the element name must be provided.
+             - VECTOR TYPE: The variable name and the index of the component must be provided.
+                 - If the components are defined as a LAYER TYPE: The element must be also provided.
+
+        :param variable: The variable name.
+        :param value: The new value.
+        :param index: Index position of a **VECTOR** variable, defaults to None.
+        :param element: Element of a **LAYER** variable, defaults to None.
+        :type variable: str
+        :type index: int
+        :type element: str
+        :raise SolutionError:
+        """
+
+        var_type = self.__domain.get_variable_type(variable)
+
+        if var_type in (INTEGER, REAL, CATEGORICAL):
+            self.set_variable(variable, value)
+
+        elif var_type is LAYER:
+            if element is None:
+                raise SolutionError(
+                    "The " + variable + "variable is defined as LAYER, therefore an element name must be "
+                                        "provided")
+            else:
+                self.set_element(variable, element, value)
+
+        elif var_type is VECTOR:
+            if index is None:
+                raise SolutionError(
+                    "The " + variable + "variable is defined as VECTOR, therefore an index to access a component name "
+                                        "must be provided")
+            else:
+
+                vector_definition = self.__domain.get_component_definition(variable)
+
+                if vector_definition in (INTEGER, REAL, CATEGORICAL):
+                    self.set_component(variable,index,value)
+                elif vector_definition is LAYER:
+                    if element is None:
+                        raise SolutionError(
+                            "The components of the VECTOR variable " + variable + " are defined as LAYER, "
+                                                                                  "therefore an element name must be "
+                                                                                  "provided")
+                    else:
+                        self.set_component_element(variable, index, element, value)
+
+
 
     def set_variable(self, variable, value):
         """ It sets the value of variable. If the variable does not exist, it will be created with the indicated value.
@@ -264,6 +316,7 @@ class Solution:
         :type variable: str
         :type value: int, float, str
         """
+
         self.__variables[variable] = value
 
     def set_element(self, variable, element, value):

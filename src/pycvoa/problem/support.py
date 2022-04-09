@@ -34,8 +34,8 @@ def build_random_solution(domain, fitness_function=None):
         # If the variable is LAYER, iterate over its elements and set them with a random value
         # using the get_random_value_for_simple_variable auxiliary method.
         elif variable_type == LAYER:
-            for element in domain.get_layer_element_list(variable_type):
-                element_definition = domain.get_layer_element_definition(variable, element)
+            for element in domain.get_element_list(variable_type):
+                element_definition = domain.get_element_definition(variable, element)
                 new_solution.set_element(variable, element,
                                          get_random_value_for_basic_variable(element_definition))
 
@@ -45,8 +45,8 @@ def build_random_solution(domain, fitness_function=None):
             # Get a random size using the get_number_from_interval auxiliary method.
             vector_size = get_number_from_interval(variable_definition[1], variable_definition[2],
                                                    variable_definition[3])
-            vector_component_type = domain.get_vector_component_type(variable)
-            vector_component_definition = domain.get_vector_component_definition(variable)
+            vector_component_type = domain.get_component_type(variable)
+            vector_component_definition = domain.get_component_definition(variable)
 
             # For each element of the vector:
             for i in range(0, vector_size):
@@ -62,8 +62,8 @@ def build_random_solution(domain, fitness_function=None):
                 # build a random value for each element of the layer (using the
                 # get_random_value_for_simple_variable auxiliary method) and add it to the current element.
                 elif vector_component_type == LAYER:
-                    for element in domain.get_vector_layer_element_list(variable):
-                        element_definition = domain.get_vector_layer_element_definition(element)
+                    for element in domain.get_component_element_list(variable):
+                        element_definition = domain.get_component_element_definition(element)
                         new_solution.set_component_element(variable, i, element,
                                                            get_random_value_for_basic_variable(
                                                                            element_definition))

@@ -5,3 +5,4 @@ INTEGER: Final = "integer"
 CATEGORICAL: Final = "categorical"
 LAYER: Final = "layer"
 VECTOR: Final = "vector"
+BASIC:Final = [INTEGER, REAL, CATEGORICAL]
