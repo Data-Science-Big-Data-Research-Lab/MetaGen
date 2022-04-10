@@ -29,7 +29,7 @@ def build_random_solution(domain, fitness_function=None):
         # If the variable is INTEGER, REAL or CATEGORICAL, set it with a random value
         # using the get_random_value_for_simple_variable auxiliary method.
         if variable_type in (INTEGER, REAL, CATEGORICAL):
-            new_solution.set_variable(variable, get_random_value_for_basic_variable(variable_definition))
+            new_solution.set_basic(variable, get_random_value_for_basic_variable(variable_definition))
 
         # If the variable is LAYER, iterate over its elements and set them with a random value
         # using the get_random_value_for_simple_variable auxiliary method.
@@ -109,13 +109,13 @@ def alter_solution(solution, variable, definition):
             if element_definition[0] is INTEGER or element_definition[0] is REAL:
                 solution.set_element(variable, element_name,
                                      modify_number_from_interval_random_way(
-                                                     solution.get_layer_value(variable, element_name),
+                                                     solution.get_element_value(variable, element_name),
                                                      element_definition[1], element_definition[2],
                                                      element_definition[3]))
 
             # If the element is an CATEGORICAL set it another random label
             elif element_definition[0] == CATEGORICAL:
-                current_category = solution.get_layer_value(variable, element_name)
+                current_category = solution.get_element_value(variable, element_name)
                 new_category = get_random_element_from_list_excluding_one(current_category, element_definition[1])
                 solution.set_element(variable, element_name, new_category)
 
@@ -160,8 +160,8 @@ def alter_basic_variable(solution, variable, definition):
 
     # If the variable is INTEGER or REAL set the variable with modify_number_from_interval_random_way.
     if definition[0] is INTEGER or definition[0] is REAL:
-        solution.set_variable(variable,
-                              modify_number_from_interval_random_way(solution.get_basic_value(variable),
+        solution.set_basic(variable,
+                           modify_number_from_interval_random_way(solution.get_basic_value(variable),
                                                                            definition[1], definition[2],
 
                                                                            definition[3]))
@@ -170,7 +170,7 @@ def alter_basic_variable(solution, variable, definition):
     elif definition[0] == CATEGORICAL:
         current_category = solution.get_basic_value(variable)
         new_category = get_random_element_from_list_excluding_one(current_category, definition[1])
-        solution.set_variable(variable, new_category)
+        solution.set_basic(variable, new_category)
 
 
 def alter_vector_variable(solution, variable, definition):
@@ -199,14 +199,14 @@ def alter_vector_variable(solution, variable, definition):
         if vector_element_definition[0] is INTEGER or vector_element_definition[0] is REAL:
             solution.set_component(variable,
                                    i, modify_number_from_interval_random_way(
-                    solution.get_vector_value(variable, i),
+                    solution.get_basic_component_value(variable, i),
                     vector_element_definition[1], vector_element_definition[2],
                     vector_element_definition[3]))
 
         # If it is a vector of categorical modify the value with a new label randomly selected
         elif vector_element_definition[0] is CATEGORICAL:
             # logging.debug("CAT")
-            current_category = solution.get_vector_value(variable, i)
+            current_category = solution.get_basic_component_value(variable, i)
             new_category = get_random_element_from_list_excluding_one(current_category, vector_element_definition[1])
             solution.set_component(variable, i, new_category)
 
@@ -227,7 +227,7 @@ def alter_vector_variable(solution, variable, definition):
                 if layer_element_definition[0] is INTEGER or layer_element_definition[0] is REAL:
                     solution.set_component_element(variable, i, element_name,
                                                    modify_number_from_interval_random_way(
-                                                                   solution.get_vector_layer_component_value(
+                                                                   solution.get_layer_component_value(
                                                                        variable, i,
                                                                        element_name),
                                                                    layer_element_definition[1],
@@ -236,7 +236,7 @@ def alter_vector_variable(solution, variable, definition):
 
                 # If that element is a categorical one modify its value with a new label randomly selected
                 elif layer_element_definition[0] == CATEGORICAL:
-                    current_category = solution.get_vector_layer_component_value(variable, i, element_name)
+                    current_category = solution.get_layer_component_value(variable, i, element_name)
                     new_category = get_random_element_from_list_excluding_one(current_category,
                                                                               layer_element_definition[1])
                     solution.set_component_element(variable, i, element_name, new_category)

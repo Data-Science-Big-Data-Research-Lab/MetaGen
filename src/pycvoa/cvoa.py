@@ -351,7 +351,7 @@ class CVOA:
             # using the get_random_value_for_simple_variable auxiliary method.
             if definition[0] is INTEGER or definition[0] is REAL or definition[0] is CATEGORICAL:
                 # logging.debug(">INTEGER")
-                patient_zero.set_variable(variable, get_random_value_for_basic_variable(definition))
+                patient_zero.set_basic(variable, get_random_value_for_basic_variable(definition))
 
             # If the variable is LAYER, iterate over its elements and set them with a random value
             # using the get_random_value_for_simple_variable auxiliary method.
