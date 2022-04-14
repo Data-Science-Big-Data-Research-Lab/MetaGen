@@ -55,8 +55,8 @@ def build_random_solution(domain, fitness_function=None):
                 # add a random value (using the get_random_value_for_simple_variable auxiliary method)
                 # to the current element.
                 if vector_component_type in (INTEGER, REAL, CATEGORICAL):
-                    new_solution.add_component(variable,
-                                               get_random_value_for_basic_variable(vector_component_definition))
+                    new_solution.add_basic_component(variable,
+                                                     get_random_value_for_basic_variable(vector_component_definition))
 
                 # If the vector type is LAYER,
                 # build a random value for each element of the layer (using the
@@ -292,9 +292,9 @@ def resize_vector_variable(solution, variable, definition):
             # If the vector is defined as a BASIC type use get_random_value_for_simple_variable to yield the new value.
             if vector_element_definition[0] is INTEGER or vector_element_definition[0] is REAL or \
                     vector_element_definition[0] is CATEGORICAL:
-                solution.insert_component(variable,
-                                          selected_index,
-                                          get_random_value_for_basic_variable(
+                solution.insert_basic_component(variable,
+                                                selected_index,
+                                                get_random_value_for_basic_variable(
                                                          vector_element_definition))
 
             # If the vector is defined as a LAYER type, build the internal LAYER structure
@@ -303,7 +303,7 @@ def resize_vector_variable(solution, variable, definition):
                 layer_values = {}
                 for element_name, element_definition in vector_element_definition[1].items():
                     layer_values[element_name] = get_random_value_for_basic_variable(element_definition)
-                solution.insert_component(variable, selected_index, layer_values)
+                solution.insert_basic_component(variable, selected_index, layer_values)
 
     # If the new size is lower than the current one, remove its positions randomly:
     elif new_size < current_size:

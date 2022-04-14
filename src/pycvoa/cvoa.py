@@ -381,7 +381,7 @@ class CVOA:
                             vector_component_type[0] is CATEGORICAL:
 
                         value = get_random_value_for_basic_variable(vector_component_type)
-                        patient_zero.add_component(variable, value)
+                        patient_zero.add_basic_component(variable, value)
                         # logging.debug(">VECTOR, variable: %s, value = %s", variable, value)
 
                     # If the vector type is LAYER,
@@ -391,7 +391,7 @@ class CVOA:
                         layer_values = {}
                         for element_name, element_definition in vector_component_type[1].items():
                             layer_values[element_name] = get_random_value_for_basic_variable(element_definition)
-                        patient_zero.add_component(variable, layer_values)
+                        patient_zero.add_basic_component(variable, layer_values)
 
         # logging("Individual = %s"+str(patient_zero))
         # Once the individual variables is built, the fitness function is computed.

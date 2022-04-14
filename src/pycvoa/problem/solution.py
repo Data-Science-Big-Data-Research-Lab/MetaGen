@@ -1,6 +1,6 @@
 import sys
 
-from pycvoa.problem import CATEGORICAL, INTEGER, REAL, LAYER, VECTOR, BASIC
+from pycvoa.problem import LAYER, VECTOR, BASIC
 
 
 class Solution:
@@ -24,6 +24,7 @@ class Solution:
         >>> worst_solution  = Solution()
         >>> worst_solution.fitness
         1.7976931348623157e+308
+        >>> boosted_solution = Solution(domain=defined_domain)
 
     :param best: If true, build an individual with the best fitness value, defaults to True.
     :param domain: The domain of the solution, defaults to None.
@@ -68,54 +69,212 @@ class Solution:
         """
         self.__domain = domain
 
-    def domain_type(self, variable):
+    def __domain_type(self, variable):
+        """ If the domain is available, it returns the type of the input variable in the domain. Otherwise, returns None.
+
+        :param variable: The variable to check.
+        :returns: If the domain is available, the type of the variable, otherwise None.
+        :type variable: str
+        :rtype: INTEGER, REAL, CATEGORICAL, LAYER, VECTOR
+        :raise :py:class:`~pycvoa.problem.domain.NotDefinedVariable: The variable is not defined in the domain.
+        """
         r = None
         if self.__domain is not None:
             r = self.__domain.get_variable_type(variable)
         return r
 
-    def domain_is_defined_element (self,variable,element):
+    def __domain_is_defined_element(self, variable, element):
+        """ If the domain is available, it checks if the input element is defined into the input variable in the domain.
+        Otherwise, returns None.
+
+        :param variable: The variable to check.
+        :param element: The element to check.
+        :returns: If the domain is available, true if the input element is defined into the input variable
+        in the domain, otherwise None.
+        :type variable: str
+        :type element: str
+        :rtype: None, bool
+        :raise :py:class:`~pycvoa.problem.domain.NotDefinedVariable: The **LAYER** variable is not defined
+        in the domain.
+        :raise :py:class:`~pycvoa.problem.domain.WrongVariableType: The variable is not defined as **LAYER** type.
+        """
         r = None
         if self.__domain is not None:
             r = self.__domain.is_defined_element(variable, element)
         return r
 
-    def domain_component_definition(self,variable):
+    def __domain_component_definition(self, variable):
+        """ If the domain is available, it returns the component definition of the input **VECTOR** variable.
+        Otherwise, returns None.
+
+        :param variable: The variable to check.
+        :returns: If the domain is available, the component definition of the input **VECTOR** variable, otherwise None.
+        :type variable: str
+        :rtype: None, INTEGER, REAL, CATEGORICAL
+        :raise :py:class:`~pycvoa.problem.domain.NotDefinedVariable: The variable is not defined in the domain.
+        :raise :py:class:`~pycvoa.problem.domain.WrongVariableType: The variable is not defined as **VECTOR**.
+        """
         r = None
         if self.__domain is not None:
             r = self.__domain.get_component_definition(variable)
         return r
 
-    # ** AVAILABILITY CHECKERS ***
+    # ** AVAILABILITY AND TYPE CHECKERS ***
 
-    def is_avialable(self, variable):
+    def is_available(self, variable):
+        """ It checks if the input variable has a value in this solution.
+
+        :param variable: The variable to check.
+        :returns: True if the variable has a value, otherwise False.
+        :type variable: str
+        :rtype: bool
+        """
         r = False
         if variable in self.__variables.keys():
             r = True
         return r
 
-    def is_avialable_element(self, variable, element):
+    def check_variable_type(self, variable, variable_type, domain=None):
+        """ It checks if the input variable is equal to the input variable type, taking into account the internal
+        solution domain (by default) or a domain passed as parameter.
+
+        :param variable: The variable to check.
+        :param variable_type: The variable type to check.
+        :param domain: The domain used to check the type, defaults to None.
+        :returns: True if the variable is defined as the queried variable type, otherwise False
+        :type variable: str
+        :type variable_type: INTEGER, REAL, CATEGORICAL, LAYER, VECTOR
+        :type domain: :py:class:`~pycvoa.problem.domain.Domain
+        :rtype: bool
+        :raise :py:class:`~pycvoa.problem.solution.NotSpecifiedDomain: The domain is not set.
+        :raise :py:class:`~pycvoa.problem.solution.NotInSolutionError: The variable is not in this solution.
+        """
         r = False
-        if self.is_avialable(variable):
+        current_domain = domain
+        if current_domain is None:
+            current_domain = self.__domain
+        if current_domain is not None:
+            if self.is_available(variable):
+                if variable_type is BASIC:
+                    if current_domain.get_variable_type(variable) in BASIC:
+                        r = True
+                else:
+                    if current_domain.get_variable_type(variable) is variable_type:
+                        r = True
+            else:
+                raise NotInSolutionError("The " + variable + " variable is not in this solution")
+        else:
+            raise NotSpecifiedDomain("A domain must be specified, via parameter or set_domain method.")
+        return r
+
+    def check_component_type(self, variable, component_type, domain=None):
+        """ It checks if the components of the input variable (defined as **VECTOR**) is equal to the input component
+        type, taking into account the internal solution domain (by default) or a domain passed as parameter.
+
+        :param variable: The **VECTOR** variable to check.
+        :param component_type: The component type to check.
+        :param domain: The domain used to check the type, defaults to None.
+        :returns: True if the variable is defined as the queried variable type, otherwise False
+        :type variable: str
+        :type component_type: INTEGER, REAL, CATEGORICAL, LAYER, VECTOR
+        :type domain: :py:class:`~pycvoa.problem.domain.Domain
+        :rtype: bool
+        :raise :py:class:`~pycvoa.problem.solution.NotSpecifiedDomain: The domain is not set.
+        :raise :py:class:`~pycvoa.problem.solution.NotInSolutionError: The variable is not in this solution.
+        :raise :py:class:`~pycvoa.problem.solution.WrongType: The variable is not defined as **VECTOR**.
+        :raise :py:class:`~pycvoa.problem.domain.NotDefinedVariable: The variable is not defined in the domain.
+        """
+        r = False
+        current_domain = domain
+        if current_domain is None:
+            current_domain = self.__domain
+        if current_domain is not None:
+            if self.check_variable_type(variable, VECTOR, current_domain):
+                if component_type is BASIC:
+                    if current_domain.get_component_type(variable) in BASIC:
+                        r = True
+                else:
+                    if current_domain.get_component_type(variable) is component_type:
+                        r = True
+            else:
+                raise WrongType("The " + variable + " variable is not defined as VECTOR")
+        else:
+            raise NotSpecifiedDomain("A domain must be specified, via parameter or set_domain method.")
+        return r
+
+    def is_available_element(self, variable, element, domain=None):
+        """ It checks if the input element of the input **LAYER** variable has a value in this solution, taking into
+        account the internal solution domain (by default) or a domain passed as parameter.
+
+        :param variable: The **LAYER** variable to check.
+        :param element: The element to check.
+        :param domain: The domain used to check the type, defaults to None.
+        :returns: True if the element has a value, otherwise False.
+        :type variable: str
+        :type element: str
+        :type domain: :py:class:`~pycvoa.problem.domain.Domain
+        :rtype: bool
+        :raise :py:class:`~pycvoa.problem.solution.NotSpecifiedDomain: The domain is not set.
+        :raise :py:class:`~pycvoa.problem.solution.NotInSolutionError: The variable is not in this solution.
+        :raise :py:class:`~pycvoa.problem.solution.WrongType: The variable is not defined as **LAYER**.
+        """
+        r = False
+        if self.check_variable_type(variable, LAYER, domain) is True:
             if element in self.__variables.get(variable).keys():
                 r = True
         else:
-            raise NotInSolutionError("The " + variable + " variable is not in this solution")
+            raise WrongType("The variable " + variable + " is not defined as LAYER.")
         return r
 
-    def is_available_component(self, variable, index):
+    def is_available_component(self, variable, index, domain=None):
+        """ It checks if the *index*-nh component of the input **VECTOR** variable has a value in this solution,
+        taking into account the internal solution domain (by default) or a domain passed as parameter.
+
+        :param variable: The **VECTOR** variable to check.
+        :param index: The index of the component to check.
+        :param domain: The domain used to check the type, defaults to None.
+        :returns: True if the *index*-nh component has a value, otherwise False.
+        :type variable: str
+        :type index: int
+        :type domain: :py:class:`~pycvoa.problem.domain.Domain
+        :rtype: bool
+        :raise :py:class:`~pycvoa.problem.solution.NotSpecifiedDomain: The domain is not set.
+        :raise :py:class:`~pycvoa.problem.solution.NotInSolutionError: The variable is not in this solution.
+        :raise :py:class:`~pycvoa.problem.solution.WrongType: The variable is not defined as **VECTOR**.
+        """
         r = False
-        if self.check_variable_type(variable, VECTOR):
+        if self.check_variable_type(variable, VECTOR, domain):
             if 0 <= index < len(self.__variables.get(variable)):
                 r = True
         else:
             raise WrongType("The variable " + variable + " is not defined as VECTOR.")
         return r
 
-    def is_available_component_element(self, variable, index, element):
+    def is_available_component_element(self, variable, index, element, domain=None):
+        """ It checks if the input element of the *index*-nh component (defined as **LAYER**) of the input **VECTOR**
+        variable has a value in this solution, taking into account the internal solution domain (by default) or
+        a domain passed as parameter.
+
+        :param variable: The **VECTOR** variable to check.
+        :param index: The index of the component to check.
+        :param element: The element to check.
+        :param domain: The domain used to check the type, defaults to None.
+        :returns: True if the *index*-nh component has a value, otherwise False.
+        :type variable: str
+        :type index: int
+        :type element: str
+        :type domain: :py:class:`~pycvoa.problem.domain.Domain
+        :rtype: bool
+        :raise :py:class:`~pycvoa.problem.solution.NotSpecifiedDomain: The domain is not set.
+        :raise :py:class:`~pycvoa.problem.solution.NotInSolutionError: The variable is not in this solution.
+        :raise :py:class:`~pycvoa.problem.solution.WrongType: The variable is not defined as **VECTOR**.
+        :raise :py:class:`~pycvoa.problem.domain.NotDefinedVariable: The variable is not defined in the domain.
+        :raise :py:class:`~pycvoa.problem.solution.WrongComponentType: The component type is not defined as **LAYER**.
+        :raise :py:class:`~pycvoa.problem.solution.NotDefinedVectorComponentError: The component is not available.
+        """
         r = False
-        if self.is_available_component(variable, index):
-            if self.check_component_type(variable, LAYER):
+        if self.is_available_component(variable, index, domain):
+            if self.check_component_type(variable, LAYER, domain):
                 if element in self.__variables.get(variable)[index].keys():
                     r = True
             else:
@@ -125,40 +284,8 @@ class Solution:
                                                  + variable + " is not available")
         return r
 
-    # ** TYPE CHECKERS ***
-
-    def check_variable_type(self, variable, type):
-        r = False
-        if self.is_avialable(variable):
-            if type is BASIC:
-                if self.__domain.get_variable_type(variable) in BASIC:
-                    r = True
-            else:
-                if self.__domain.get_variable_type(variable) is type:
-                    r = True
-        else:
-            raise NotInSolutionError("The " + variable + " variable is not in this solution")
-        return r
-
-    def check_component_type(self, variable, type):
-        r = False
-        if self.is_avialable(variable):
-            if self.check_variable_type(variable, VECTOR):
-                if type is BASIC:
-                    if self.__domain.get_component_type(variable) in BASIC:
-                        r = True
-                else:
-                    if self.__domain.get_component_type(variable) is type:
-                        r = True
-            else:
-                raise WrongType("The " + variable + " variable is not defined as VECTOR")
-        else:
-            raise NotInSolutionError("The " + variable + " variable is not in this solution")
-        return r
-
     # ** GETTERS ***
-
-    def get_basic_value(self, variable):
+    def get_basic_value(self, variable, domain = None):
         """ It returns a variable value of a **BASIC** variable of the solution.
 
         **Precondition:**
@@ -172,11 +299,14 @@ class Solution:
         - :py:meth:`~pycvoa.problem.solution.Solution.get_component_element_value`
 
         :param variable: The variable.
+        :param domain: The domain used to check the type, defaults to None.
         :returns: The variable value.
         :type variable: str
+        :type domain: :py:class:`~pycvoa.problem.domain.Domain
         :rtype: int, float, str
-        :raise NotDefinedVariableError: The variable is not in the solution.
-        :raise WrongType: The variable is not defined as BASIC.
+        :raise :py:class:`~pycvoa.problem.solution.NotSpecifiedDomain: The domain is not set.
+        :raise :py:class:`~pycvoa.problem.solution.NotInSolutionError: The variable is not in this solution.
+        :raise :py:class:`~pycvoa.problem.solution.WrongType: The variable is not defined as BASIC.
         """
         r = None
         if self.check_variable_type(variable, BASIC):
@@ -185,22 +315,26 @@ class Solution:
             raise WrongType("The variable " + variable + " is not defined as BASIC.")
         return r
 
-    def get_element_value(self, variable, element):
+    def get_element_value(self, variable, element, domain = None):
         """ It returns an element value of a **LAYER** variable of the solution.
 
         :param variable: The **LAYER** variable.
         :param element: The element.
+        :param domain: The domain used to check the type, defaults to None.
         :returns: The element value of the **LAYER** variable.
         :type variable: str
         :type element: str
+        :type domain: :py:class:`~pycvoa.problem.domain.Domain
         :rtype: int, float, str
-        :raise NotInSolutionError: The variable is not in this solution.
-        :raise WrongType: The variable is not defined as **LAYER**.
-        :raise NotDefinedLayerElementError: The element is not defined in the **LAYER** variable.
+        :raise :py:class:`~pycvoa.problem.solution.NotSpecifiedDomain: The domain is not set.
+        :raise :py:class:`~pycvoa.problem.solution.NotInSolutionError: The variable is not in this solution.
+        :raise :py:class:`~pycvoa.problem.solution.WrongType: The variable is not defined as **LAYER**.
+        :raise :py:class:`~pycvoa.problem.solution.NotDefinedLayerElementError: The element is not defined in the
+        **LAYER** variable.
         """
         r = None
-        if self.check_variable_type(variable, LAYER):
-            if self.is_avialable_element(element):
+        if self.check_variable_type(variable,LAYER,domain):
+            if self.is_available_element(element):
                 r = variable[element]
             else:
                 raise NotDefinedLayerElementError(
@@ -209,23 +343,29 @@ class Solution:
             raise WrongType("The variable " + variable + " is not defined as LAYER.")
         return r
 
-    def get_basic_component_value(self, variable, index):
+    def get_basic_component_value(self, variable, index, domain = None):
         """ It returns the **index**-nh value of a **VECTOR** variable defined as **BASIC** of the solution.
 
         :param variable: The variable.
         :param index: The index of the element to get.
+        :param domain: The domain used to check the type, defaults to None.
+        :returns: The **index**-nh value of the size **VECTOR** variable.
         :type variable: str
         :type index: int
-        :returns: The **index**-nh value of the size **VECTOR** variable.
+        :type domain: :py:class:`~pycvoa.problem.domain.Domain
         :rtype: float, int, str
-        :raise NotInSolutionError: The variable is not in the solution.
-        :raise WrongType: The variable is not defined as **VECTOR**.
-        :raise WrongComponentType: The components of the **VECTOR** variable is not defined as **BASIC**.
-        :raise NotDefinedVectorComponentError: The **index**-nh component of the **VECTOR** variable is not available.
+        :raise :py:class:`~pycvoa.problem.solution.NotSpecifiedDomain: The domain is not set.
+        :raise :py:class:`~pycvoa.problem.solution.NotInSolutionError: The variable is not in this solution.
+        :raise :py:class:`~pycvoa.problem.solution.WrongType: The variable is not defined as **VECTOR**.
+        :raise :py:class:`~pycvoa.problem.domain.NotDefinedVariable: The variable is not defined in the domain.
+        :raise :py:class:`~pycvoa.problem.solution.WrongComponentType: The components of the **VECTOR** variable is not
+        defined as **BASIC**.
+        :raise :py:class:`~pycvoa.problem.solution.NotDefinedVectorComponentError: The **index**-nh component of the
+        **VECTOR** variable is not available.
         """
         r = None
-        if self.check_component_type(variable, BASIC):
-            if self.is_available_component(variable, index):
+        if self.check_component_type(variable, BASIC, domain):
+            if self.is_available_component(variable, index, domain):
                 r = self.__variables.get(variable)[index]
             else:
                 raise NotDefinedVectorComponentError("The component " + str(index) + " of the vector "
@@ -234,34 +374,37 @@ class Solution:
             raise WrongComponentType("The component type is not BASIC")
         return r
 
-    def get_layer_component_value(self, variable, index, element):
+    def get_layer_component_value(self, variable, index, element, domain = None):
         """ It returns a **LAYER** element value of the **index**-nh component of a **VECTOR** variable
         of the solution.
 
         :param variable: The variable.
         :param index: The index of the element to get.
         :param element: The element.
+        :param domain: The domain used to check the type, defaults to None.
         :returns: The element value of the **index**-nh position of the **VECTOR** variable.
         :type variable: str
         :type index: int
         :type element: str
+        :type domain: :py:class:`~pycvoa.problem.domain.Domain
         :rtype: float, int, str
-        :raise NotInSolutionError: The variable is not in the solution.
-        :raise WrongType: The variable is not defined as **VECTOR**.
-        :raise WrongComponentType: The components of the **VECTOR** variable are not defined as **LAYER**.
-        :raise NotDefinedVectorComponentError: The **index**-nh component of the **VECTOR** variable is not available.
-        :raise NotDefinedComponentElementError: The element of the **index**-nh component of the **VECTOR** variable
-        is not available.
+        :raise :py:class:`~pycvoa.problem.solution.NotSpecifiedDomain: The domain is not set.
+        :raise :py:class:`~pycvoa.problem.solution.NotInSolutionError: The variable is not in this solution.
+        :raise :py:class:`~pycvoa.problem.solution.WrongType: The variable is not defined as **VECTOR**.
+        :raise :py:class:`~pycvoa.problem.domain.NotDefinedVariable: The variable is not defined in the domain.
+        :raise :py:class:`~pycvoa.problem.solution.WrongComponentType: The component type is not defined as **LAYER**.
+        :raise :py:class:`~pycvoa.problem.solution.NotDefinedComponentElementError: The element of the **index**-nh
+        component of the **VECTOR** variable is not available.
         """
         r = None
-        if self.is_available_component_element(variable, index, element):
+        if self.is_available_component_element(variable, index, element, domain):
             r = self.__variables.get(variable)[index][element]
         else:
             raise NotDefinedComponentElementError("The element " + element + " in not in the " + index + " component "
-                                                                                "of the " + variable + " variable.")
+                                                                                                         "of the " + variable + " variable.")
         return r
 
-    def get_value(self, variable, index=None, element=None):
+    def get_value(self, variable, index=None, element=None, domain = None):
         """ It returns a value of a variable.
 
         This member has three use cases:
@@ -274,11 +417,17 @@ class Solution:
         :param variable: The variable.
         :param index: The index of a position of a **VECTOR** variable, defaults to None.
         :param element: The element of a **LAYER** variable, defaults to None.
+        :param domain: The domain used to check the type, defaults to None.
         :returns: The value.
         :type variable: str
         :type index: int
         :type element: str
+        :type domain: :py:class:`~pycvoa.problem.domain.Domain
         :rtype: int, float, str
+        :raise :py:class:`~pycvoa.problem.domain.NotDefinedVariable: The variable is not defined in the domain.
+        :raise :py:class:`~pycvoa.problem.solution.NotSpecifiedDomain: The domain is not set.
+
+
         :raise NotInSolutionError: The variable is not in this solution.
         :raise WrongParameters: The element of a **LAYER** variable is not provided. The index of a component of a
         **VECTOR** variable is not provided. The element of component of a **VECTOR** variable defined as **LAYER**
@@ -290,38 +439,45 @@ class Solution:
         is not available.
         """
 
-        var_type = self.__domain.get_variable_type(variable)
+        current_domain = domain
+        if current_domain is None:
+            current_domain = self.__domain
 
-        if var_type in BASIC:
-            r = self.get_basic_value(variable)
+        if current_domain is not None:
 
-        elif var_type is LAYER:
-            if element is None:
-                raise WrongParameters(
-                    "The " + variable + "variable is defined as LAYER, therefore an element name must be "
-                                        "provided")
-            else:
-                r = self.get_element_value(variable, element)
+            var_type = current_domain.get_variable_type(variable)
+            if var_type in BASIC:
+                r = self.get_basic_value(variable, current_domain)
 
-        elif var_type is VECTOR:
-            if index is None:
-                raise WrongParameters(
-                    "The " + variable + "variable is defined as VECTOR, therefore an index to access a component name "
-                                        "must be provided")
-            else:
+            elif var_type is LAYER:
+                if element is None:
+                    raise WrongParameters(
+                        "The " + variable + "variable is defined as LAYER, therefore an element name must be "
+                                            "provided")
+                else:
+                    r = self.get_element_value(variable, element, current_domain)
 
-                vector_definition = self.__domain.get_component_definition(variable)
+            elif var_type is VECTOR:
+                if index is None:
+                    raise WrongParameters(
+                        "The " + variable + "variable is defined as VECTOR, therefore an index to access a component name "
+                                            "must be provided")
+                else:
 
-                if vector_definition in BASIC:
-                    r = self.get_basic_component_value(variable, index)
-                elif vector_definition is LAYER:
-                    if element is None:
-                        raise WrongParameters(
-                            "The components of the VECTOR variable " + variable + " are defined as LAYER, "
-                                                                                  "therefore an element name must be "
-                                                                                  "provided")
-                    else:
-                        r = self.get_layer_component_value(variable, index, element)
+                    vector_definition =current_domain.get_component_definition(variable)
+
+                    if vector_definition in BASIC:
+                        r = self.get_basic_component_value(variable, index, current_domain)
+                    elif vector_definition is LAYER:
+                        if element is None:
+                            raise WrongParameters(
+                                "The components of the VECTOR variable " + variable + " are defined as LAYER, "
+                                                                                      "therefore an element name must be "
+                                                                                      "provided")
+                        else:
+                            r = self.get_layer_component_value(variable, index, element, current_domain)
+        else:
+            raise NotSpecifiedDomain("A domain must be specified, via parameter or set_domain method.")
 
         return r
 
@@ -337,10 +493,10 @@ class Solution:
         :raise WrongType: The variable is not defined as **VECTOR**.
         """
         r = None
-        if self.check_variable_type(variable,VECTOR):
+        if self.check_variable_type(variable, VECTOR):
             r = len(self.__variables.get(variable))
         else:
-            raise WrongType("The "+variable+" is not defined as VECTOR")
+            raise WrongType("The " + variable + " is not defined as VECTOR")
         return r
 
     # ** SETTERS ***
@@ -360,10 +516,13 @@ class Solution:
         :type variable: str
         :type value: int, float, str
         """
-        var_type = self.domain_type(variable)
+        var_type = self.__domain_type(variable)
         if var_type is not None:
             if var_type in BASIC:
-                self.__variables[variable] = value
+                if self.__domain.check_basic(variable, value):
+                    self.__variables[variable] = value
+                else:
+                    raise WrongValue("The value " + value + " is not valid for the " + variable + " variable.")
             else:
                 raise WrongType("The variable is not defined as BASIC")
         else:
@@ -380,13 +539,17 @@ class Solution:
         :type element: str
         :type value: int, float, str
         """
-        var_type = self.domain_type(variable)
+        var_type = self.__domain_type(variable)
         if var_type is not None:
             if var_type is LAYER:
-                if variable not in self.__variables:
-                    self.__variables[variable] = {element: value}
+                if self.__domain.check_element(variable, element, value):
+                    if variable not in self.__variables:
+                        self.__variables[variable] = {element: value}
+                    else:
+                        self.__variables[variable][element] = value
                 else:
-                    self.__variables[variable][element] = value
+                    raise WrongValue(
+                        "The value " + value + " is not valid for the " + element + " element in the " + variable + " variable.")
             else:
                 raise WrongType("The variable is not defined as LAYER")
         else:
@@ -413,17 +576,21 @@ class Solution:
         :type value: int, float, str
         :raise NotDefinedVectorComponentError: The **index**-nh component of the **VECTOR** variable is not available.
         """
-        var_type = self.domain_type(variable)
+        var_type = self.__domain_type(variable)
         if var_type is not None:
             if var_type is VECTOR:
                 if variable not in self.__variables:
                     self.__variables[variable] = [value]
                 else:
-                    if self.is_available_component(variable,index):
-                        self.__variables[variable][index] = value
+                    if self.is_available_component(variable, index):
+                        if self.__domain.check_basic_component(variable, value):
+                            self.__variables[variable][index] = value
+                        else:
+                            raise WrongValue(
+                                "The value " + value + " is not valid for the " + variable + " variable.")
                     else:
-                        raise NotDefinedVectorComponentError("The"+index+"-nh component of the **VECTOR** variable "
-                                                                         "is not available.")
+                        raise NotDefinedVectorComponentError("The" + index + "-nh component of the **VECTOR** variable "
+                                                                             "is not available.")
             else:
                 raise WrongType("The variable is not defined as VECTOR")
         else:
@@ -444,18 +611,22 @@ class Solution:
         :type element: str
         :type value: int, float, str
         """
-        is_el = self.domain_is_defined_element(variable,element)
+        is_el = self.__domain_is_defined_element(variable, element)
         if is_el is not None:
             if is_el is True:
                 if self.is_available_component(variable, index):
-                    self.__variables[variable][index][element] = value
+                    if self.__domain.check_element_component(variable, element, value):
+                        self.__variables[variable][index][element] = value
+                    else:
+                        raise WrongValue(
+                            "The value " + value + " is not valid for the " + element + " element in the " + variable + " variable.")
                 else:
                     raise NotDefinedVectorComponentError("The" + index + "-nh component of the **VECTOR** variable "
                                                                          "is not available.")
             else:
                 raise NotDefinedLayerElementError("The variable is not defined as VECTOR")
         else:
-           self.__variables[variable][index][element] = value
+            self.__variables[variable][index][element] = value
 
     def set_value(self, variable, value, index=None, element=None):
         """ It sets a value of a variable.
@@ -477,7 +648,7 @@ class Solution:
         :raise SolutionError:
         """
 
-        var_type = self.domain_type(variable)
+        var_type = self.__domain_type(variable)
 
         if var_type is not None:
 
@@ -499,7 +670,7 @@ class Solution:
                                             "must be provided")
                 else:
 
-                    vector_definition = self.domain_component_definition(variable)
+                    vector_definition = self.__domain_component_definition(variable)
 
                     if vector_definition in BASIC:
                         self.set_component(variable, index, value)
@@ -517,7 +688,7 @@ class Solution:
 
     # ** VECTOR TYPE MODIFIERS **
 
-    def add_component(self, variable, value):
+    def add_basic_component(self, variable, value):
         """ It appends a value at last of a **VECTOR** variable. If the **VECTOR** variable does not exist,
         it will be created with the indicated value in the 0 position.
 
@@ -526,13 +697,17 @@ class Solution:
         :type variable: str
         :type value: int, float, str, list
         """
-        var_type = self.domain_type(variable)
+        var_type = self.__domain_type(variable)
         if var_type is not None:
             if var_type is VECTOR:
-                if variable not in self.__variables:
-                    self.__variables[variable] = [value]
+                if self.__domain.check_basic_component(variable, value):
+                    if variable not in self.__variables:
+                        self.__variables[variable] = [value]
+                    else:
+                        self.__variables[variable].append(value)
                 else:
-                    self.__variables[variable].append(value)
+                    raise WrongValue(
+                        "The value " + value + " is not valid for the " + variable + " variable.")
             else:
                 raise WrongType("The variable is not defined as VECTOR")
         else:
@@ -541,7 +716,7 @@ class Solution:
             else:
                 self.__variables[variable].append(value)
 
-    def insert_component(self, variable, index, value):
+    def insert_basic_component(self, variable, index, value):
         """ It inserts a value in the **index**-nh position of a **VECTOR** variable. If the **VECTOR** variable
         does not exist, it will be created with the indicated value in the 0 position.
 
@@ -552,13 +727,17 @@ class Solution:
         :type index: int
         :type value: int, float, str, list
         """
-        var_type = self.domain_type(variable)
+        var_type = self.__domain_type(variable)
         if var_type is not None:
             if var_type is VECTOR:
-                if variable not in self.__variables:
-                    self.__variables[variable] = [value]
+                if self.__domain.check_basic_component(variable, value):
+                    if variable not in self.__variables:
+                        self.__variables[variable] = [value]
+                    else:
+                        self.__variables[variable].insert(index, value)
                 else:
-                    self.__variables[variable].insert(index, value)
+                    raise WrongValue(
+                        "The value " + value + " is not valid for the " + variable + " variable.")
             else:
                 raise WrongType("The variable is not defined as VECTOR")
         else:
@@ -573,7 +752,7 @@ class Solution:
         :param variable: The name of the **VECTOR** variable to modify.
         :type variable: str
         """
-        var_type = self.domain_type(variable)
+        var_type = self.__domain_type(variable)
         if var_type is not None:
             if var_type is VECTOR:
                 self.__variables[variable].pop()
@@ -590,7 +769,7 @@ class Solution:
         :type variable: str
         :type index: int
         """
-        var_type = self.domain_type(variable)
+        var_type = self.__domain_type(variable)
         if var_type is not None:
             if var_type is VECTOR:
                 if self.is_available_component(variable, index):
@@ -803,6 +982,30 @@ class WrongComponentType(SolutionError):
 
 
 class NotSetDomain(SolutionError):
+    """ It is raised when the parameters of a query function are wrong.
+
+        **Methods that can throw this exception:**
+
+        - :py:meth:`~pycvoa.problem.solution.Solution.get_value`
+    """
+
+    def __init__(self, message):
+        self.message = message
+
+
+class WrongValue(SolutionError):
+    """ It is raised when the parameters of a query function are wrong.
+
+        **Methods that can throw this exception:**
+
+        - :py:meth:`~pycvoa.problem.solution.Solution.get_value`
+    """
+
+    def __init__(self, message):
+        self.message = message
+
+
+class NotSpecifiedDomain(SolutionError):
     """ It is raised when the parameters of a query function are wrong.
 
         **Methods that can throw this exception:**
