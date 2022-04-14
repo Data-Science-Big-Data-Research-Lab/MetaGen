@@ -488,13 +488,14 @@ class Domain:
         :returns: True if the element is defined in the **LAYER** variable of the domain, otherwise False.
         :rtype: bool
         :raise NotDefinedVariable: The **LAYER** variable is not defined in this domain.
+        :raise WrongVariableType: The variable is not defined as **LAYER** type.
         """
-        if self.is_defined_variable(variable):
-            r = False
+        r = False
+        if self.get_variable_type(variable) is LAYER:
             if element in self.get_element_list():
                 r = True
         else:
-            raise NotDefinedVariable("The variable " + variable + " is not defined in this domain")
+            raise WrongVariableType("The variable " + variable + " is not defined as LAYER type")
         return r
 
     # **** GET VARIABLE DEFINITION METHODS ***
@@ -910,6 +911,7 @@ class NotDefinedElement(DomainError):
 
     - :py:meth:`~pycvoa.problem.domain.Domain.get_element_definition`
     """
+
     def __init__(self, message):
         self.message = message
 
@@ -961,6 +963,7 @@ class WrongComponentType(DomainError):
     - :py:meth:`~pycvoa.problem.domain.Domain.check_element_component`
     - :py:meth:`~pycvoa.problem.domain.Domain.check_value`
     """
+
     def __init__(self, message):
         self.message = message
 
@@ -980,6 +983,7 @@ class WrongDefinition(DomainError):
        - :py:meth:`~pycvoa.problem.domain.Domain.define_vector_integer_element`
        - :py:meth:`~pycvoa.problem.domain.Domain.define_vector_real_element`
     """
+
     def __init__(self, message):
         self.message = message
 
