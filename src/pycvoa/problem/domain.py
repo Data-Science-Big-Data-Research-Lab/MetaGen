@@ -88,13 +88,8 @@ class Domain:
         :type step: int
         :raise WrongDefinition: If min_value >= max_value or step >= (max_value - min_value) / 2.
         """
-        if min_value < max_value:
-            if step < (max_value - min_value) / 2:
-                self.__definitions[variable_name] = [INTEGER, min_value, max_value, step]
-            else:
-                raise DefinitionError("The step value must be less than (maximum value-minimum value)/2")
-        else:
-            raise DefinitionError("The minimum value must be less than the maximum value")
+        self.__var_name_in_use_range(variable_name, min_value, max_value, step)
+        self.__definitions[variable_name] = [INTEGER, min_value, max_value, step]
 
     def define_real(self, variable_name, min_value, max_value, step):
         """ It defines a **REAL** variable receiving the variable name, the minimum and maximum values that it will be
@@ -115,13 +110,8 @@ class Domain:
         :type step: float
         :raise WrongDefinition: If min_value >= max_value or step >= (max_value - min_value) / 2.
         """
-        if min_value < max_value:
-            if step < (max_value - min_value) / 2:
-                self.__definitions[variable_name] = [REAL, min_value, max_value, step]
-            else:
-                raise DefinitionError("The step value must be less than (maximum value-minimum value)/2")
-        else:
-            raise DefinitionError("The minimum value must be less than the maximum value")
+        self.__var_name_in_use_range(variable_name, min_value, max_value, step)
+        self.__definitions[variable_name] = [REAL, min_value, max_value, step]
 
     def define_categorical(self, variable_name, categories):
         """ It defines a **CATEGORICAL** variable receiving the variable name, and a list with the categories that it
@@ -132,6 +122,7 @@ class Domain:
         :type variable_name: str
         :type categories: list(int,float,str)
         """
+        self.__var_name_in_use(variable_name)
         self.__definitions[variable_name] = [CATEGORICAL, categories]
 
     def define_layer(self, variable_name):
@@ -145,6 +136,7 @@ class Domain:
         :param variable_name: The variable name.
         :type variable_name: str
         """
+        self.__var_name_in_use(variable_name)
         self.__definitions[variable_name] = [LAYER, {}]
 
     def define_vector(self, variable_name, min_size, max_size, step_size):
@@ -172,13 +164,8 @@ class Domain:
         :type step_size: int
         :raise WrongDefinition: If min_size >= max_size or step_size >= (min_size - max_size) / 2.
         """
-        if min_size < max_size:
-            if step_size < (min_size - max_size) / 2:
-                self.__definitions[variable_name] = [VECTOR, min_size, max_size, step_size, {}]
-            else:
-                raise DefinitionError("The step size must be less than (minimum size-maximum size)/2")
-        else:
-            raise DefinitionError("The minimum size must be less than the maximum size")
+        self.__var_name_in_use_range(variable_name, min_size, max_size, step_size)
+        self.__definitions[variable_name] = [VECTOR, min_size, max_size, step_size, {}]
 
     # **** DEFINE ELEMENT METHODS ****
 
@@ -206,16 +193,9 @@ class Domain:
         :raise WrongVariableType: The variable where the new element will be defined is not defined as **LAYER**.
         :raise WrongDefinition: If min_size >= max_size or step_size >= (min_size - max_size) / 2.
         """
-        if self.get_variable_type(variable) is LAYER:
-            if min_value < max_value:
-                if step < (max_value - min_value) / 2:
-                    self.__definitions[variable][1][element_name] = [INTEGER, min_value, max_value, step]
-                else:
-                    raise DefinitionError("The step value must be less than (maximum value-minimum value)/2")
-            else:
-                raise DefinitionError("The minimum value must be less than the maximum value")
-        else:
-            raise WrongItemType("The " + variable + " variable is not defined as LAYER")
+        self.__var_is_defined_type_el_in_use(variable, LAYER, element_name)
+        self.__range(min_value, max_value, step)
+        self.__definitions[variable][1][element_name] = [INTEGER, min_value, max_value, step]
 
     def define_real_element(self, variable, element_name, min_value, max_value, step):
         """ It defines a **REAL** element into a **LAYER** variable by receiving the minimum and
@@ -241,16 +221,9 @@ class Domain:
         :raise WrongVariableType: The variable where the new element will be defined is not defined as **LAYER**.
         :raise WrongDefinition: If min_size >= max_size or step_size >= (min_size - max_size) / 2.
         """
-        if self.get_variable_type(variable) is LAYER:
-            if min_value < max_value:
-                if step < (max_value - min_value) / 2:
-                    self.__definitions[variable][1][element_name] = [REAL, min_value, max_value, step]
-                else:
-                    raise DefinitionError("The step value must be less than (maximum value-minimum value)/2")
-            else:
-                raise DefinitionError("The minimum value must be less than the maximum value")
-        else:
-            raise WrongItemType("The " + variable + " variable is not defined as a LAYER")
+        self.__var_is_defined_type_el_in_use(variable, LAYER, element_name)
+        self.__range(min_value, max_value, step)
+        self.__definitions[variable][1][element_name] = [REAL, min_value, max_value, step]
 
     def define_categorical_element(self, variable, element_name, categories):
         """ It defines a **CATEGORICAL** element into a **LAYER** variable by receiving a list with
@@ -265,10 +238,8 @@ class Domain:
         :raise NotDefinedVariable: The **LAYER** variable is not the defined in the domain.
         :raise WrongVariableType: The variable where the new element will be defined is not defined as **LAYER**.
         """
-        if self.get_variable_type(variable) is LAYER:
-            self.__definitions[variable][1][element_name] = [CATEGORICAL, categories]
-        else:
-            raise WrongItemType("The " + variable + " variable is not defined as a LAYER")
+        self.__var_is_defined_type_el_in_use(variable, LAYER, element_name)
+        self.__definitions[variable][1][element_name] = [CATEGORICAL, categories]
 
     # **** DEFINE COMPONENT METHODS ****
 
@@ -293,16 +264,9 @@ class Domain:
         :raise WrongVariableType: The variable where its components will be defined is not defined as **VECTOR**.
         :raise WrongDefinition: If min_size >= max_size or step_size >= (min_size - max_size) / 2.
         """
-        if self.get_variable_type(variable) is VECTOR:
-            if min_value < max_value:
-                if step < (max_value - min_value) / 2:
-                    self.__definitions[variable][4] = [INTEGER, min_value, max_value, step]
-                else:
-                    raise DefinitionError("The step value must be less than (maximum value-minimum value)/2")
-            else:
-                raise DefinitionError("The minimum value must be less than the maximum value")
-        else:
-            raise WrongItemType("The " + variable + " variable is not defined as a VECTOR")
+        self.__var_is_defined_type(variable, VECTOR)
+        self.__range(min_value, max_value, step)
+        self.__definitions[variable][4] = [INTEGER, min_value, max_value, step]
 
     def define_components_real(self, variable, min_value, max_value, step):
         """ It defines the components of a **VECTOR** variable as **REAL** by receiving the minimum and
@@ -325,16 +289,9 @@ class Domain:
         :raise WrongVariableType: The variable where its components will be defined is not defined as **VECTOR**.
         :raise WrongDefinition: If min_size >= max_size or step_size >= (min_size - max_size) / 2.
         """
-        if self.get_variable_type(variable) is VECTOR:
-            if min_value < max_value:
-                if step < (max_value - min_value) / 2:
-                    self.__definitions[variable][4] = [REAL, min_value, max_value, step]
-                else:
-                    raise DefinitionError("The step value must be less than (maximum value-minimum value)/2")
-            else:
-                raise DefinitionError("The minimum value must be less than the maximum value")
-        else:
-            raise WrongItemType("The " + variable + " variable is not defined as a VECTOR")
+        self.__var_is_defined_type(variable, VECTOR)
+        self.__range(min_value, max_value, step)
+        self.__definitions[variable][4] = [REAL, min_value, max_value, step]
 
     def define_components_categorical(self, variable, categories):
         """ It defines the components of a **VECTOR** variable as **CATEGORICAL** by receiving a list with
@@ -347,10 +304,8 @@ class Domain:
         :raise NotDefinedVariable: The **VECTOR** variable is not the defined in the domain.
         :raise WrongVariableType: The variable where its components will be defined is not defined as **VECTOR**.
         """
-        if self.get_variable_type(variable) is VECTOR:
-            self.__definitions[variable][4] = [CATEGORICAL, categories]
-        else:
-            raise WrongItemType("The " + variable + " variable is not defined as a VECTOR")
+        self.__var_is_defined_type(variable, VECTOR)
+        self.__definitions[variable][4] = [CATEGORICAL, categories]
 
     def define_components_layer(self, variable):
         """ It defines the components of a **VECTOR** variable as **LAYER**. Afterwards, the elements of
@@ -365,10 +320,8 @@ class Domain:
         :raise NotDefinedVariable: The **VECTOR** variable is not the defined in the domain.
         :raise WrongVariableType: The variable where its components will be defined is not defined as **VECTOR**.
         """
-        if self.get_variable_type(variable) is VECTOR:
-            self.__definitions[variable][4] = [LAYER, {}]
-        else:
-            raise WrongItemType("The " + variable + " variable is not defined as a VECTOR")
+        self.__var_is_defined_type(variable, VECTOR)
+        self.__definitions[variable][4] = [LAYER, {}]
 
     # **** DEFINE COMPONENT ELEMENT METHODS ****
 
@@ -397,16 +350,9 @@ class Domain:
         :raise WrongComponentType: The component of the **VECTOR** variable is not defined as LAYER.
         :raise WrongDefinition: If min_size >= max_size or step_size >= (min_size - max_size) / 2.
         """
-        if self.get_component_type(variable) is LAYER:
-            if min_value < max_value:
-                if step < (max_value - min_value) / 2:
-                    self.__definitions[variable][4][1][element_name] = [INTEGER, min_value, max_value, step]
-                else:
-                    raise DefinitionError("The step value must be less than (maximum value-minimum value)/2")
-            else:
-                raise DefinitionError("The minimum value must be less than the maximum value")
-        else:
-            raise WrongItemType("The components of the VECTOR variable " + variable + " are not defined as LAYER")
+        self.__var_is_defined_type_comp_type_el_name_in_use(variable, VECTOR, LAYER, element_name)
+        self.__range(min_value, max_value, step)
+        self.__definitions[variable][4][1][element_name] = [INTEGER, min_value, max_value, step]
 
     def define_vector_real_element(self, variable, element_name, min_value, max_value, step):
         """ It defines a **REAL** element of a **VECTOR** variable where its components are defined as **LAYER**.
@@ -433,16 +379,9 @@ class Domain:
         :raise WrongComponentType: The component of the **VECTOR** variable is not defined as LAYER.
         :raise WrongDefinition: If min_size >= max_size or step_size >= (min_size - max_size) / 2.
         """
-        if self.get_component_type(variable) is LAYER:
-            if min_value < max_value:
-                if step < (max_value - min_value) / 2:
-                    self.__definitions[variable][4][1][element_name] = [REAL, min_value, max_value, step]
-                else:
-                    raise DefinitionError("The step value must be less than (maximum value-minimum value)/2")
-            else:
-                raise DefinitionError("The minimum value must be less than the maximum value")
-        else:
-            raise WrongItemType("The components of the VECTOR variable " + variable + " are not defined as LAYER")
+        self.__var_is_defined_type_comp_type_el_name_in_use(variable, VECTOR, LAYER, element_name)
+        self.__range(min_value, max_value, step)
+        self.__definitions[variable][4][1][element_name] = [REAL, min_value, max_value, step]
 
     def define_vector_categorical_element(self, variable, element_name, categories):
         """ It defines a **CATEGORICAL** element of a **VECTOR** variable where its components are defined as **LAYER**.
@@ -458,10 +397,8 @@ class Domain:
         :raise WrongVariableType: The variable where its components will be defined is not defined as **VECTOR**.
         :raise WrongComponentType: The component of the **VECTOR** variable is not defined as LAYER.
         """
-        if self.get_component_type(variable) is LAYER:
-            self.__definitions[variable][4][1][element_name] = [CATEGORICAL, categories]
-        else:
-            raise WrongItemType("The components of the VECTOR variable " + variable + " are not defined as LAYER")
+        self.__var_is_defined_type_comp_type_el_name_in_use(variable, VECTOR, LAYER, element_name)
+        self.__definitions[variable][4][1][element_name] = [CATEGORICAL, categories]
 
     # **** IS DEFINED METHODS ***
 
@@ -474,7 +411,7 @@ class Domain:
         :rtype: bool
         """
         r = False
-        if variable in self.get_variable_list():
+        if variable in self.__definitions.keys():
             r = True
         return r
 
@@ -490,12 +427,10 @@ class Domain:
         :raise NotDefinedVariable: The **LAYER** variable is not defined in this domain.
         :raise WrongVariableType: The variable is not defined as **LAYER** type.
         """
+        self.__var_is_defined_type(variable, LAYER)
         r = False
-        if self.get_variable_type(variable) is LAYER:
-            if element in self.get_element_list():
-                r = True
-        else:
-            raise WrongItemType("The variable " + variable + " is not defined as LAYER type")
+        if element in self.__definitions[variable][1].keys():
+            r = True
         return r
 
     # **** GET VARIABLE DEFINITION METHODS ***
@@ -535,12 +470,8 @@ class Domain:
         :rtype: list
         :raise NotDefinedVariable: The variable is not defined in this domain.
         """
-        r = None
-        if self.is_defined_variable(variable):
-            r = self.__definitions[variable]
-        else:
-            raise NotDefinedItem("The variable " + variable + " is not defined in this domain")
-        return r
+        self.__var_is_defined(variable)
+        return self.__definitions[variable]
 
     # **** GET TYPE METHODS **
     def get_variable_type(self, variable):
@@ -552,12 +483,8 @@ class Domain:
         :rtype: **INTEGER**, **REAL**, **CATEGORICAL**, **LAYER**, **VECTOR**
         :raise :py:class:`~pycvoa.problem.domain.NotDefinedVariable: The variable is not defined in this domain.
         """
-        r = None
-        if self.is_defined_variable(variable):
-            r = self.__definitions[variable][0]
-        else:
-            raise NotDefinedItem("The variable " + variable + " is not defined in this domain")
-        return r
+        self.__var_is_defined(variable)
+        return self.__definitions[variable][0]
 
     def get_element_type(self, variable, element):
         """ Get an element type of a **LAYER** variable.
@@ -571,12 +498,8 @@ class Domain:
         :raise NotDefinedVariable: The variable is not defined in this domain.
         :raise WrongVariableType: The variable is not defined as **LAYER**.
         """
-        r = None
-        if self.get_variable_type(variable) is LAYER:
-            r = self.__definitions[variable][1][element][0]
-        else:
-            raise WrongItemType("The variable " + variable + " is not defined as LAYER type")
-        return r
+        self.__var_is_defined_type(variable, LAYER)
+        return self.__definitions[variable][1][element][0]
 
     def get_component_type(self, variable):
         """ Get the type of the components of a **VECTOR** variable.
@@ -588,12 +511,8 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.NotDefinedVariable: The variable is not defined in this domain.
         :raise :py:class:`~pycvoa.problem.domain.WrongVariableType: The variable is not defined as **VECTOR**.
         """
-        r = None
-        if self.get_variable_type(variable) is VECTOR:
-            r = self.__definitions[variable][4][0]
-        else:
-            raise WrongItemType("The variable " + variable + " is not defined as VECTOR type")
-        return r
+        self.__var_is_defined_type(variable, VECTOR)
+        return self.__definitions[variable][4][0]
 
     # **** GET ELEMENT DEFINITION METHODS ***
 
@@ -610,16 +529,9 @@ class Domain:
         :raise WrongVariableType: The variable is not defined as **LAYER**.
         :raise NotDefinedElement: The element is not defined in the **LAYER** variable.
         """
-        r = None
-        if self.get_variable_type(variable) is LAYER:
-            if self.is_defined_element(variable, element):
-                r = self.__definitions[variable][1][element]
-            else:
-                raise NotDefinedItem(
-                    "The element " + element + " is not defined in the " + variable + " LAYER variable")
-        else:
-            raise WrongItemType("The variable " + variable + " is not defined as LAYER type")
-        return r
+        self.__var_is_defined_type(variable, LAYER)
+        self.__el_is_defined(variable, element)
+        return self.__definitions[variable][1][element]
 
     def get_element_list(self, variable):
         """ Get a list with the elements of a registered **LAYER** variable. It is useful to iterate throw
@@ -632,14 +544,8 @@ class Domain:
         :raise NotDefinedVariable: The variable is not defined in this domain.
         :raise WrongVariableType: The variable is not defined as **LAYER**.
         """
-        r = None
-
-        if self.get_variable_type(variable) is LAYER:
-            r = list(self.__definitions[variable][1].keys())
-        else:
-            raise WrongItemType("The variable " + variable + " is not defined as LAYER type")
-
-        return r
+        self.__var_is_defined_type(variable, LAYER)
+        return list(self.__definitions[variable][1].keys())
 
     # **** GET COMPONENT DEFINITION METHODS ***
 
@@ -653,12 +559,8 @@ class Domain:
         :raise NotDefinedVariable: The variable is not defined in this domain.
         :raise WrongVariableType: The variable is not defined as **VECTOR**.
         """
-        r = None
-        if self.get_variable_type(variable) is VECTOR:
-            r = self.__definitions[variable][4]
-        else:
-            raise WrongItemType("The variable " + variable + " is not defined as VECTOR type")
-        return r
+        self.__var_is_defined_type(variable, VECTOR)
+        return self.__definitions[variable][4]
 
     def get_component_element_list(self, variable):
         """ Get a list with the elements of a registered **VECTOR** variable registered as **LAYER**. It is useful to
@@ -673,12 +575,9 @@ class Domain:
         :raise WrongComponentType: The components of the VECTOR variable are not defined as LAYER.
         """
         r = None
-        if self.get_component_type(variable) is LAYER:
-            r = list(self.__definitions[variable][4][1].keys())
-        else:
-            raise WrongItemType(
-                "The components of the VECTOR variable " + variable + " are not defined as LAYER type")
-        return r
+        self.__var_is_defined_type(variable, VECTOR)
+        self.__comp_type(variable, LAYER)
+        return list(self.__definitions[variable][4][1].keys())
 
     def get_component_element_definition(self, variable, element):
         """ Get the layer element definition for a **VECTOR** variable.
@@ -693,13 +592,9 @@ class Domain:
         :raise WrongVariableType: The variable is not defined as **VECTOR**.
         :raise WrongComponentType: The components of the VECTOR variable are not defined as LAYER.
         """
-        r = None
-        if self.get_component_type(variable) is LAYER:
-            r = self.__definitions[variable][4][1][element]
-        else:
-            raise WrongItemType(
-                "The components of the VECTOR variable " + variable + " are not defined as LAYER type")
-        return r
+        self.__var_is_defined_type(variable, VECTOR)
+        self.__comp_type(variable, LAYER)
+        return self.__definitions[variable][4][1][element]
 
     # **** CHECK METHODS ***
 
@@ -715,17 +610,14 @@ class Domain:
         :raise NotDefinedVariable: The variable is not defined in this domain.
         :raise WrongVariableType: The variable is not defined as **BASIC** type.
         """
+        self.__var_is_defined_type(variable, BASIC)
         r = False
-        definition = self.get_variable_definition(variable)
-        if definition[0] in (INTEGER, REAL):
-            if definition[1] <= value <= definition[2]:
+        if self.__definitions[variable][0] in (INTEGER, REAL):
+            if self.__definitions[variable][1] <= value <= self.__definitions[variable][2]:
                 r = True
-        elif definition[0] is CATEGORICAL:
-            if value in definition[1]:
+        elif self.__definitions[variable][0] is CATEGORICAL:
+            if value in self.__definitions[variable][1]:
                 r = True
-        else:
-            raise WrongItemType(
-                "The variable " + variable + " is defined as " + definition[0] + ", not as BASIC type")
         return r
 
     def check_element(self, variable, element, value):
@@ -742,13 +634,14 @@ class Domain:
         :raise NotDefinedVariable: The variable is not defined in this domain.
         :raise WrongVariableType: The variable is not defined as **LAYER** type.
         """
+        self.__var_is_defined_type(variable, LAYER)
+        self.__el_is_defined(variable, element)
         r = False
-        element_definition = self.get_element_definition(variable, element)
-        if element_definition[0] in (INTEGER, REAL):
-            if element_definition[1] <= value <= element_definition[2]:
+        if self.__definitions[variable][1][element][0] in (INTEGER, REAL):
+            if self.__definitions[variable][1][element][1] <= value <= self.__definitions[variable][1][element][2]:
                 r = True
-        elif element_definition[0] is CATEGORICAL:
-            if value in element_definition[1]:
+        elif self.__definitions[variable][1][element][0] is CATEGORICAL:
+            if value in self.__definitions[variable][1][element][1]:
                 r = True
         return r
 
@@ -765,19 +658,15 @@ class Domain:
         :raise WrongVariableType: The variable is not defined as **VECTOR**.
         :raise WrongComponentType: The components of the **VECTOR** variable are not defined as a **BASIC** type.
         """
+        self.__var_is_defined_type(variable, VECTOR)
+        self.__comp_type(variable, BASIC)
         r = False
-        position_definition = self.get_component_definition(variable)
-        if position_definition[0] in BASIC:
-            if position_definition[0] in (INTEGER, REAL):
-                if position_definition[1] <= value <= position_definition[2]:
-                    r = True
-            elif position_definition[0] is CATEGORICAL:
-                if value in position_definition[1]:
-                    r = True
-            else:
-                raise WrongItemType(
-                    "The components of the " + variable + " VECTOR variable are defined as " + position_definition[
-                        0] + ", not as BASIC type")
+        if self.__definitions[variable][4][0] in (INTEGER, REAL):
+            if self.__definitions[variable][4][1] <= value <= self.__definitions[variable][4][2]:
+                r = True
+        elif self.__definitions[variable][4][0] is CATEGORICAL:
+            if value in self.__definitions[variable][4][1]:
+                r = True
         return r
 
     def check_element_component(self, variable, element, value):
@@ -796,12 +685,14 @@ class Domain:
         :raise WrongComponentType: The components of the VECTOR variable are not defined as LAYER.
         """
         r = False
-        element_definition = self.get_component_element_definition(variable, element)
-        if element_definition[0] in (INTEGER, REAL):
-            if element_definition[1] <= value <= element_definition[2]:
+        self.__var_is_defined_type(variable, VECTOR)
+        self.__comp_type(variable, LAYER)
+        if self.__definitions[variable][4][1][element][0] in (INTEGER, REAL):
+            if self.__definitions[variable][4][1][element][1] <= value <= self.__definitions[variable][4][1][element][
+                2]:
                 r = True
-        elif element_definition[0] is CATEGORICAL:
-            if value in element_definition[1]:
+        elif self.__definitions[variable][4][1][element][0] is CATEGORICAL:
+            if value in self.__definitions[variable][4][1][element][1]:
                 r = True
         return r
 
@@ -823,21 +714,20 @@ class Domain:
         :raise WrongComponentType: The components of the **VECTOR** variable are not defined as a **BASIC** or
         **LAYER** type.
         """
+        self.__var_is_defined(variable)
         r = False
-        variable_type = self.get_variable_type(variable)
-        if variable_type in BASIC:
+        if self.__definitions[variable][0] in BASIC:
             r = self.check_basic(variable, value)
-        elif variable_type is LAYER:
+        elif self.__definitions[variable][0] is LAYER:
             if element is None:
                 raise WrongParameters(
                     "The variable " + variable + " is LAYER, therefore, an element name must be provided")
             else:
                 r = self.check_element(variable, element, value)
-        elif variable_type is VECTOR:
-            comp_type = self.get_component_type(variable)
-            if comp_type in BASIC:
+        elif self.__definitions[variable][0] is VECTOR:
+            if self.__definitions[variable][4][0] in BASIC:
                 self.check_basic_component(variable, value)
-            elif comp_type is LAYER:
+            elif self.__definitions[variable][4][0] is LAYER:
                 if element is None:
                     raise WrongParameters(
                         "The components of " + variable + " VECTOR variable are defined as LAYER, therefore,"
@@ -845,6 +735,87 @@ class Domain:
                 else:
                     r = self.check_element_component(variable, element, value)
         return r
+
+    # **** EXCEPTION CONTROL METHODS ***
+
+    def __var_is_defined(self, variable):
+        if variable not in self.__definitions.keys():
+            raise NotDefinedItem("The variable " + variable + " is not defined in this domain")
+
+    def __var_type(self, variable, variable_type):
+        if variable_type is BASIC:
+            if self.__definitions[variable][0] not in variable_type:
+                raise WrongItemType("The variable " + variable + " is not defined as " + variable_type + " type")
+        else:
+            if self.__definitions[variable][0] is not variable_type:
+                raise WrongItemType("The variable " + variable + " is not defined as " + variable_type + " type")
+
+    def __var_name_in_use(self, variable_name):
+        if variable_name in self.__definitions.keys():
+            raise DefinitionError(
+                "The " + variable_name + " variable is already defined, please, select another variable "
+                                         "name.")
+
+    def __el_name_in_use(self, variable, element_name):
+        if element_name in self.__definitions[variable][1].keys():
+            raise DefinitionError(
+                "The " + element_name + " element is already defined in the LAYER variable" + variable + ", please, select "
+                                                                                                         "another element name.")
+
+    def __el_is_defined(self, variable, element):
+        if element not in self.__definitions[variable][1].keys():
+            raise NotDefinedItem(
+                "The element " + element + " of the " + variable + " LAYER variable is not defined in this domain")
+
+    def __comp_type(self, vector_variable, component_type):
+        if component_type is BASIC:
+            if self.__definitions[vector_variable][4][0] not in component_type:
+                raise WrongItemType(
+                    "The components of the vector variable " + vector_variable + " are not defined as " + component_type
+                    + " type")
+        else:
+            if self.__definitions[vector_variable][4][0] is not component_type:
+                raise WrongItemType(
+                    "The components of the vector variable " + vector_variable + " are not defined as " + component_type
+                    + " type")
+
+    def __comp_el_name_in_use(self, variable, element_name):
+        if element_name in self.__definitions[variable][4][1].keys():
+            raise DefinitionError(
+                "The " + element_name + " element is already defined in the LAYER coponents of the " + variable + " VECTOR variable, please, select "
+                                                                                                                  "another element name.")
+
+    def __range(self, min_value, max_value, step):
+        if min_value >= max_value:
+            raise DefinitionError(
+                "The minimum value/size of the variable/element (" + str(
+                    min_value) + ") must be less than the maximum value/size (" + str(
+                    max_value) + ").")
+        else:
+            average = (max_value - min_value) / 2
+            if step > average:
+                raise DefinitionError("The step value/size (" + str(
+                    step) + ") of the variable/element must be less or equal than (maximum "
+                            "value/size - minimum value/size) / 2 (" + str(average) + ").")
+
+    def __var_name_in_use_range(self, variable_name, min_value, max_value, step):
+        self.__var_name_in_use(variable_name)
+        self.__range(min_value, max_value, step)
+
+    def __var_is_defined_type(self, variable, variable_type):
+        self.__var_is_defined(variable)
+        self.__var_type(variable, variable_type)
+
+    def __var_is_defined_type_el_in_use(self, variable, variable_type, element_name):
+        self.__var_is_defined(variable)
+        self.__var_type(variable, variable_type)
+        self.__el_name_in_use(variable, element_name)
+
+    def __var_is_defined_type_comp_type_el_name_in_use(self, variable, variable_type, component_type, element_name):
+        self.__var_is_defined(variable)
+        self.__var_type(variable, variable_type)
+        self.__comp_type(variable, component_type)
+        self.__comp_el_name_in_use(variable, element_name)
 
     # **** TO STRING ***
 
