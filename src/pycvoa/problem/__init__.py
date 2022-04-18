@@ -1,8 +1,8 @@
 from typing import Final
 
-REAL: Final = "real"
-INTEGER: Final = "integer"
-CATEGORICAL: Final = "categorical"
-LAYER: Final = "layer"
-VECTOR: Final = "vector"
+REAL: Final = "REAL"
+INTEGER: Final = "INTEGER"
+CATEGORICAL: Final = "CATEGORICAL"
+LAYER: Final = "LAYER"
+VECTOR: Final = "VECTOR"
 BASIC:Final = [INTEGER, REAL, CATEGORICAL]
