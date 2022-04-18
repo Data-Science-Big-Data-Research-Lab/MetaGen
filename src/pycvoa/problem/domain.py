@@ -86,7 +86,8 @@ class Domain:
         :type min_value: int
         :type max_value: int
         :type step: int
-        :raise WrongDefinition: If min_value >= max_value or step >= (max_value - min_value) / 2.
+        :raise DefinitionError: If the variable name is already used, min_value >= max_value or
+        step >= (max_value - min_value) / 2.
         """
         self.__var_name_in_use_range(variable_name, min_value, max_value, step)
         self.__definitions[variable_name] = [INTEGER, min_value, max_value, step]
@@ -265,7 +266,7 @@ class Domain:
         :raise WrongDefinition: If min_size >= max_size or step_size >= (min_size - max_size) / 2.
         """
         self.__var_is_defined_type(variable, VECTOR)
-        self.__is_vector_type_already_defined(variable)
+        self.__comp_type_not_defined(variable)
         self.__range(min_value, max_value, step)
         self.__definitions[variable][4] = [INTEGER, min_value, max_value, step]
 
@@ -291,7 +292,7 @@ class Domain:
         :raise WrongDefinition: If min_size >= max_size or step_size >= (min_size - max_size) / 2.
         """
         self.__var_is_defined_type(variable, VECTOR)
-        self.__is_vector_type_already_defined(variable)
+        self.__comp_type_not_defined(variable)
         self.__range(min_value, max_value, step)
         self.__definitions[variable][4] = [REAL, min_value, max_value, step]
 
@@ -307,7 +308,7 @@ class Domain:
         :raise WrongVariableType: The variable where its components will be defined is not defined as **VECTOR**.
         """
         self.__var_is_defined_type(variable, VECTOR)
-        self.__is_vector_type_already_defined(variable)
+        self.__comp_type_not_defined(variable)
         self.__definitions[variable][4] = [CATEGORICAL, categories]
 
     def define_components_layer(self, variable):
@@ -324,7 +325,7 @@ class Domain:
         :raise WrongVariableType: The variable where its components will be defined is not defined as **VECTOR**.
         """
         self.__var_is_defined_type(variable, VECTOR)
-        self.__is_vector_type_already_defined(variable)
+        self.__comp_type_not_defined(variable)
         self.__definitions[variable][4] = [LAYER, {}]
 
     def define_vector_integer_element(self, variable, element_name, min_value, max_value, step):
@@ -469,7 +470,7 @@ class Domain:
         :raise WrongVariableType: The variable is not defined as **LAYER**.
         """
         self.__var_is_defined_type(variable, LAYER)
-        self.__el_is_defined(variable,element)
+        self.__el_is_defined(variable, element)
         return self.__definitions[variable][1][element][0]
 
     def get_component_type(self, variable):
@@ -571,6 +572,7 @@ class Domain:
         :raise WrongVariableType: The variable is not defined as **VECTOR**.
         """
         self.__var_is_defined_type(variable, VECTOR)
+        self.__comp_type_defined(variable)
         return self.__definitions[variable][4]
 
     def get_component_element_list(self, variable):
@@ -587,7 +589,7 @@ class Domain:
         """
         r = None
         self.__var_is_defined_type(variable, VECTOR)
-        self.__is_vector_type_already_defined(variable)
+        self.__comp_type_defined(variable)
         self.__comp_type(variable, LAYER)
         return list(self.__definitions[variable][4][1].keys())
 
@@ -605,7 +607,7 @@ class Domain:
         :raise WrongComponentType: The components of the VECTOR variable are not defined as LAYER.
         """
         self.__var_is_defined_type(variable, VECTOR)
-        self.__is_vector_type_already_defined(variable)
+        self.__comp_type_defined(variable)
         self.__comp_type(variable, LAYER)
         return self.__definitions[variable][4][1][element]
 
@@ -672,6 +674,7 @@ class Domain:
         :raise WrongComponentType: The components of the **VECTOR** variable are not defined as a **BASIC** type.
         """
         self.__var_is_defined_type(variable, VECTOR)
+        self.__comp_type_defined(variable)
         self.__comp_type(variable, BASIC)
         r = False
         if self.__definitions[variable][4][0] in (INTEGER, REAL):
@@ -699,6 +702,7 @@ class Domain:
         """
         r = False
         self.__var_is_defined_type(variable, VECTOR)
+        self.__comp_type_defined(variable)
         self.__comp_type(variable, LAYER)
         if self.__definitions[variable][4][1][element][0] in (INTEGER, REAL):
             if self.__definitions[variable][4][1][element][1] <= value <= self.__definitions[variable][4][1][element][
@@ -730,6 +734,9 @@ class Domain:
         self.__var_is_defined(variable)
         r = False
         if self.__definitions[variable][0] in BASIC:
+            if element is not None:
+                raise WrongParameters(
+                    "The " + variable + " type is BASIC, therefore, the element must not be provided.")
             r = self.check_basic(variable, value)
         elif self.__definitions[variable][0] is LAYER:
             if element is None:
@@ -738,8 +745,13 @@ class Domain:
             else:
                 r = self.check_element(variable, element, value)
         elif self.__definitions[variable][0] is VECTOR:
+            self.__comp_type_defined(variable)
             if self.__definitions[variable][4][0] in BASIC:
-                self.check_basic_component(variable, value)
+                if element is not None:
+                    raise WrongParameters(
+                        "The component type of the " + variable + "variable is BASIC, therefore, the element must not "
+                                                                  "be provided.")
+                r = self.check_basic_component(variable, value)
             elif self.__definitions[variable][4][0] is LAYER:
                 if element is None:
                     raise WrongParameters(
@@ -753,15 +765,15 @@ class Domain:
 
     def __var_is_defined(self, variable):
         if variable not in self.__definitions.keys():
-            raise NotDefinedItem("The variable " + variable + " is not defined in this domain")
+            raise NotDefinedItem("The variable " + variable + " is not defined in this domain.")
 
     def __var_type(self, variable, variable_type):
         if variable_type is BASIC:
             if self.__definitions[variable][0] not in variable_type:
-                raise WrongItemType("The variable " + variable + " is not defined as " + variable_type + " type")
+                raise WrongItemType("The variable " + variable + " is not defined as a BASIC type.")
         else:
             if self.__definitions[variable][0] is not variable_type:
-                raise WrongItemType("The variable " + variable + " is not defined as " + variable_type + " type")
+                raise WrongItemType("The variable " + variable + " is not defined as " + variable_type + " type.")
 
     def __var_name_in_use(self, variable_name):
         if variable_name in self.__definitions.keys():
@@ -773,7 +785,7 @@ class Domain:
         if element_name in self.__definitions[variable][1].keys():
             raise DefinitionError(
                 "The " + element_name + " element is already defined in the LAYER variable " + variable + ". Please, select "
-                                                                                                         "another element name.")
+                                                                                                          "another element name.")
 
     def __el_is_defined(self, variable, element):
         if element not in self.__definitions[variable][1].keys():
@@ -784,13 +796,12 @@ class Domain:
         if component_type is BASIC:
             if self.__definitions[vector_variable][4][0] not in component_type:
                 raise WrongItemType(
-                    "The components of the vector variable " + vector_variable + " are not defined as " + component_type
-                    + " type")
+                    "The components of the VECTOR variable " + vector_variable + " are not defined as BASIC type.")
         else:
             if self.__definitions[vector_variable][4][0] is not component_type:
                 raise WrongItemType(
-                    "The components of the vector variable " + vector_variable + " are not defined as " + component_type
-                    + " type")
+                    "The components of the VECTOR variable " + vector_variable + " are not defined as " + component_type
+                    + " type.")
 
     def __comp_el_name_in_use(self, variable, element_name):
         if element_name in self.__definitions[variable][4][1].keys():
@@ -798,10 +809,16 @@ class Domain:
                 "The " + element_name + " element is already defined in the LAYER coponents of the " + variable + " VECTOR variable, please, select "
                                                                                                                   "another element name.")
 
-    def __is_vector_type_already_defined(self, vector_variable):
+    def __comp_type_defined(self, vector_variable):
+        if len(self.__definitions[vector_variable][4]) == 0:
+            raise DefinitionError(
+                "The " + vector_variable + " components are not defined.")
+
+    def __comp_type_not_defined(self, vector_variable):
         if len(self.__definitions[vector_variable][4]) > 0:
             raise DefinitionError(
-                "The " + vector_variable + " components are already defined as "+self.__definitions[vector_variable][4][0]+".")
+                "The " + vector_variable + " components are already defined as " +
+                self.__definitions[vector_variable][4][0] + ".")
 
     def __range(self, min_value, max_value, step):
         if min_value >= max_value:
@@ -832,6 +849,7 @@ class Domain:
     def __var_is_defined_type_comp_type_el_name_in_use(self, variable, variable_type, component_type, element_name):
         self.__var_is_defined(variable)
         self.__var_type(variable, variable_type)
+        self.__comp_type_defined(variable)
         self.__comp_type(variable, component_type)
         self.__comp_el_name_in_use(variable, element_name)
 
