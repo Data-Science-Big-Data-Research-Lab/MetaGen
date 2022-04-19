@@ -374,6 +374,18 @@ print("The type of the E_C element of the LAYER variable L is " + E_C_L_type)
 # 3. The element is not defined in the LAYER variable
 # E_Y_I_type = domain_A.get_element_type("L","E_Y")
 
+# Get the component type of a VECTOR variable via get_component_type
+V_I_type = domain_A.get_component_type("V_I")
+print("The component type of the V_I VECTOR variable is " + V_I_type)
+
+# **** Possible errors
+# 1. The VECTOR variable is not defined
+# V_I_type = domain_A.get_component_type("Y")
+# 2. The VECTOR variable is not defined as a VECTOR variable
+# V_I_type = domain_A.get_component_type("I")
+# 3. The components of the VECTOR variable are not defined
+# V_I_type = domain_A.get_component_type("V_I_")
+
 # ============================ 8. Getting the variable definitions ====================================================
 
 # The internal definition structure is accessible via "get_definitions" method:
@@ -468,6 +480,8 @@ print("Element definition of the el-1 element of the V_I VECTOR variable: " + st
 # V_L_el_1 = domain_A.get_component_element_definition("V_I_","el-1")
 # 4. The components of the VECTOR variable are not defined as LAYER
 # V_L_el_1 = domain_A.get_component_element_definition("V_I", "el-1")
+# 5. The element is not defined in the LAYER components
+# V_L_el_1 = domain_A.get_component_element_definition("V_L", "el-5")
 
 # ============================ 11. Checking BASIC values ==============================================================
 
