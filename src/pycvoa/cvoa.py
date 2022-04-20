@@ -464,7 +464,7 @@ class CVOA:
                     self.__bestStrainIndividual = individual
 
             # Increment the discovering iteration time.
-            self.__bestStrainIndividual.discovering_iteration_time = self.__time + 1
+            self.__bestStrainIndividual.discovery_iteration = self.__time + 1
 
             # Update the global death set with the strain death set.
             CVOA.__lock.acquire()
