@@ -17,7 +17,7 @@ from pycvoa.problem.domain import Domain
 # ======================================== 2. Building a new domain ===================================================
 
 # To build a new domain, the default an unique constructor of the Domain class must be used
-domain_A = Domain()
+domain = Domain()
 
 # ======================================== 3. Defining BASIC variables ================================================
 
@@ -36,7 +36,7 @@ domain_A = Domain()
 
 # To define a INTEGER variable "I", in the interval [0, 100] and step 50 (that is, in a random selection, the available
 # values will be {0, 50, 100}):
-domain_A.define_integer("I", 0, 100, 50)
+domain.define_integer("I", 0, 100, 50)
 # print(str(domain_A))
 
 # **** Possible errors
@@ -59,7 +59,7 @@ domain_A.define_integer("I", 0, 100, 50)
 
 # To define a REAL variable "R", in the interval [0.0, 1.0] and step 0.1 (that is, in a random selection, the available
 # values will be {0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0}):
-domain_A.define_real("R", 0.0, 1.0, 0.1)
+domain.define_real("R", 0.0, 1.0, 0.1)
 # print(str(domain_A))
 
 # **** Possible errors
@@ -77,9 +77,9 @@ domain_A.define_real("R", 0.0, 1.0, 0.1)
 # To define a CATEGORICAL variable, two parameters must be provided to the "define_real" function:
 #       - A variable name.
 #       - A list with the categories; these values must have the same Python type, i.e., int, float or str.
-domain_A.define_categorical("C_A", ["C1", "C2", "C3", "C4"])
-domain_A.define_categorical("C_B", [1, 2, 3, 4])
-domain_A.define_categorical("C_C", [0.1, 0.2, 0.3, 0.4])
+domain.define_categorical("C_A", ["C1", "C2", "C3", "C4"])
+domain.define_categorical("C_B", [1, 2, 3, 4])
+domain.define_categorical("C_C", [0.1, 0.2, 0.3, 0.4])
 # print(str(domain_A))
 
 # **** Possible errors
@@ -94,7 +94,7 @@ domain_A.define_categorical("C_C", [0.1, 0.2, 0.3, 0.4])
 
 # To define a LAYER variable, only a parameter must be provided to the "define_layer" function:
 #       - A variable name.
-domain_A.define_layer("L")
+domain.define_layer("L")
 
 # **** Possible errors
 # 1. If the variable name is already used, raise a definition error
@@ -112,7 +112,7 @@ domain_A.define_layer("L")
 #       - The step: a number to divide the interval, in order to generate random values
 
 # To define an INTEGER element "E_I" for the "L" variable, in the interval [0, 100] and step 20:
-domain_A.define_integer_element("L", "E_I", 0, 100, 20)
+domain.define_integer_element("L", "E_I", 0, 100, 20)
 # print(str(domain_A))
 
 # **** Possible errors
@@ -134,7 +134,7 @@ domain_A.define_integer_element("L", "E_I", 0, 100, 20)
 #       - The step: a number to divide the interval, in order to generate random values
 
 # To define a REAL element "E_R" for the "L" variable, in the interval [1.5, 3.0] and step 0.01:
-domain_A.define_real_element("L", "E_R", 1.5, 3.0, 0.01)
+domain.define_real_element("L", "E_R", 1.5, 3.0, 0.01)
 # print(str(domain_A))
 
 # **** Possible errors
@@ -152,7 +152,7 @@ domain_A.define_real_element("L", "E_R", 1.5, 3.0, 0.01)
 # "define_categorical_element" function:
 #       - A variable name.
 #       - A list with the categories; these values must have the same Python type, i.e., int, float or str.
-domain_A.define_categorical_element("L", "E_C", ["Lb1", "Lb2", "Lb3"])
+domain.define_categorical_element("L", "E_C", ["Lb1", "Lb2", "Lb3"])
 # print(str(domain_A))
 
 # **** Possible errors
@@ -171,7 +171,7 @@ domain_A.define_categorical_element("L", "E_C", ["Lb1", "Lb2", "Lb3"])
 #       - The step: a number to divide the interval size.
 
 # To define a VECTOR variable "V_I", whose size is in the interval [2, 8] and step 2:
-domain_A.define_vector("V_I", 2, 8, 2)
+domain.define_vector("V_I", 2, 8, 2)
 # print(str(domain_A))
 
 # **** Possible errors
@@ -195,7 +195,7 @@ domain_A.define_vector("V_I", 2, 8, 2)
 #       - The step: a number to divide the interval, in order to generate random values
 
 # To define the components of the vector "V_I" as INTEGER, in the interval [1, 10] and step 1:
-domain_A.define_components_integer("V_I", 1, 10, 1)
+domain.define_components_integer("V_I", 1, 10, 1)
 # print(str(domain_A))
 
 # **** Possible errors
@@ -211,7 +211,7 @@ domain_A.define_components_integer("V_I", 1, 10, 1)
 
 # To illustrate the REAL definition of a VECTOR variable, first, define a VECTOR variable "V_R", whose size is in
 # the interval [1, 10] and step 1:
-domain_A.define_vector("V_R", 1, 10, 1)
+domain.define_vector("V_R", 1, 10, 1)
 
 # To set the components of the VECTOR variable "V_R" to REAL, four parameters must be provided to the
 # "define_components_real" function:
@@ -221,7 +221,7 @@ domain_A.define_vector("V_R", 1, 10, 1)
 #       - The step: a number to divide the interval, in order to generate random values
 
 # To define the components of the vector "V_R" as REAL, in the interval [0.0, 0.1] and step 0.0001:
-domain_A.define_components_real("V_R", 0.0, 0.1, 0.0001)
+domain.define_components_real("V_R", 0.0, 0.1, 0.0001)
 # print(str(domain_A))
 
 # **** Possible errors
@@ -237,13 +237,13 @@ domain_A.define_components_real("V_R", 0.0, 0.1, 0.0001)
 
 # To illustrate the CATEGORICAL definition of a VECTOR variable, first, define a VECTOR variable "V_C", whose size is in
 # the interval [10, 20] and step 1:
-domain_A.define_vector("V_C", 10, 20, 1)
+domain.define_vector("V_C", 10, 20, 1)
 
 # To set the components of the VECTOR variable "V_C" to CATEGORICAL, two parameters must be provided to the
 # "define_components_categorical" function:
 #       - A variable name.
 #       - A list with the categories; these values must have the same Python type, i.e., int, float or str.
-domain_A.define_components_categorical("V_C", ["V1", "V2", "V3"])
+domain.define_components_categorical("V_C", ["V1", "V2", "V3"])
 # print(str(domain_A))
 
 # **** Possible errors
@@ -255,10 +255,10 @@ domain_A.define_components_categorical("V_C", ["V1", "V2", "V3"])
 
 # To illustrate the LAYER definition of a VECTOR variable, first, define a VECTOR variable "V_L", whose size is in
 # the interval [10, 20] and step 1:
-domain_A.define_vector("V_L", 10, 20, 1)
+domain.define_vector("V_L", 10, 20, 1)
 
 # Next, define its components type as LAYER with the "define_components_layer" method:
-domain_A.define_components_layer("V_L")
+domain.define_components_layer("V_L")
 
 # **** Possible errors
 # 1. If the components of the vector variable have already been defined, raise a definition error
@@ -275,7 +275,7 @@ domain_A.define_components_layer("V_L")
 #       - The step: a number to divide the interval, in order to generate random values
 
 # To define an INTEGER element "el-1" for the "V_L" VECTOR variable, in the interval [10, 20] and step 1:
-domain_A.define_vector_integer_element("V_L", "el-1", 10, 20, 1)
+domain.define_vector_integer_element("V_L", "el-1", 10, 20, 1)
 # print(str(domain_A))
 
 # **** Possible errors
@@ -296,7 +296,7 @@ domain_A.define_vector_integer_element("V_L", "el-1", 10, 20, 1)
 #       - The step: a number to divide the interval, in order to generate random values
 
 # To define a REAL element "el-2" for the "V_L" VECTOR variable, in the interval [0.1, 0.5] and step 0.1:
-domain_A.define_vector_real_element("V_L", "el-2", 0.1, 0.5, 0.1)
+domain.define_vector_real_element("V_L", "el-2", 0.1, 0.5, 0.1)
 # print(str(domain_A))
 
 # **** Possible errors
@@ -312,7 +312,7 @@ domain_A.define_vector_real_element("V_L", "el-2", 0.1, 0.5, 0.1)
 # "define_vector_categorical_element" function:
 #       - A element name.
 #       - A list with the categories; these values must have the same Python type, i.e., int, float or str.
-domain_A.define_vector_categorical_element("V_L", "el-3", [1, 2, 3])
+domain.define_vector_categorical_element("V_L", "el-3", [1, 2, 3])
 # print(str(domain_A))
 
 # **** Possible errors
@@ -322,14 +322,14 @@ domain_A.define_vector_categorical_element("V_L", "el-3", [1, 2, 3])
 # ======================================== 6. Is a variable/element/component defined ? ================================
 
 # Is a variable defined in the domain ?
-is_V_I = domain_A.is_defined_variable("V_L")
-is_V_5 = domain_A.is_defined_variable("V_5")
+is_V_I = domain.is_defined_variable("V_L")
+is_V_5 = domain.is_defined_variable("V_5")
 print("Is the V_L variable defined in the domain_A ? " + str(is_V_I))
 print("Is the V_5 variable defined in the domain_A ? " + str(is_V_5))
 
 # Is an element of a LAYER variable defined in the domain ?
-is_L_E_I = domain_A.is_defined_element("L", "E_I")
-is_L_E_J = domain_A.is_defined_element("L", "E_J")
+is_L_E_I = domain.is_defined_element("L", "E_I")
+is_L_E_J = domain.is_defined_element("L", "E_J")
 print("Is the E_I element defined in the L LAYER variable in the domain_A ? " + str(is_L_E_I))
 print("Is the E_J element defined in the L LAYER variable in the domain_A ? " + str(is_L_E_J))
 
@@ -340,9 +340,9 @@ print("Is the E_J element defined in the L LAYER variable in the domain_A ? " + 
 # is_I_E_I = domain_A.is_defined_element("I","E_I")
 
 # Is the components of a VECTOR variable already defined in the domain ?
-is_V_I = domain_A.is_defined_components("V_I")
-domain_A.define_vector("V_I_", 1, 4, 1)
-is_V_I_ = domain_A.is_defined_components("V_I_")
+is_V_I = domain.is_defined_components("V_I")
+domain.define_vector("V_I_", 1, 4, 1)
+is_V_I_ = domain.is_defined_components("V_I_")
 print("Is the components of the V_I vector variable already defined ? " + str(is_V_I))
 print("Is the components of the V_I_ vector variable already defined ? " + str(is_V_I_))
 
@@ -355,7 +355,7 @@ print("Is the components of the V_I_ vector variable already defined ? " + str(i
 # =========================================== 7. Getting the variable types ============================================
 
 # Get a variable type via get_variable_type
-L_type = domain_A.get_variable_type("L")
+L_type = domain.get_variable_type("L")
 print("The type of the L variable is " + L_type)
 
 # **** Possible errors
@@ -363,7 +363,7 @@ print("The type of the L variable is " + L_type)
 # J_type = domain_A.get_variable_type("J")
 
 # Get a element type of a LAYER variable via get_element_type
-E_C_L_type = domain_A.get_element_type("L", "E_C")
+E_C_L_type = domain.get_element_type("L", "E_C")
 print("The type of the E_C element of the LAYER variable L is " + E_C_L_type)
 
 # **** Possible errors
@@ -375,7 +375,7 @@ print("The type of the E_C element of the LAYER variable L is " + E_C_L_type)
 # E_Y_I_type = domain_A.get_element_type("L","E_Y")
 
 # Get the component type of a VECTOR variable via get_component_type
-V_I_type = domain_A.get_component_type("V_I")
+V_I_type = domain.get_component_type("V_I")
 print("The component type of the V_I VECTOR variable is " + V_I_type)
 
 # **** Possible errors
@@ -389,22 +389,22 @@ print("The component type of the V_I VECTOR variable is " + V_I_type)
 # ============================ 8. Getting the variable definitions ====================================================
 
 # The internal definition structure is accessible via "get_definitions" method:
-internal_structure = domain_A.get_definitions()
+internal_structure = domain.get_definitions()
 print(str(internal_structure))
 
 # A list of (key, value) pairs can be retained via "get_definition_list"
 # It is useful to iterate over the elements of a definition in a for loop
-definition_list = domain_A.get_definition_list()
+definition_list = domain.get_definition_list()
 for variable, definition in definition_list:
     print("The variable " + variable + " has this definition: " + str(definition))
 
 # A list of defined variables can be retained via "get_variable_list"
-variable_list = domain_A.get_variable_list()
+variable_list = domain.get_variable_list()
 for variable in variable_list:
     print("The variable " + variable + " is defined in the domain")
 
 # To get the definition of a variable, use the "get_variable_definition" method
-I_definition = domain_A.get_variable_definition("I")
+I_definition = domain.get_variable_definition("I")
 print("I variable definition : " + str(I_definition))
 
 # **** Possible errors
@@ -414,7 +414,7 @@ print("I variable definition : " + str(I_definition))
 # ============================ 9. Getting the element definitions =====================================================
 
 # To get a list of the defined elements in a LAYER variable, use the "get_element_list" method
-element_list = domain_A.get_element_list("L")
+element_list = domain.get_element_list("L")
 for element in element_list:
     print("The element " + element + " is defined in the L LAYER variable in the domain")
 
@@ -425,7 +425,7 @@ for element in element_list:
 # element_list = domain_A.get_element_list("C_A")
 
 # To get the definition of an element of a LAYER variable, use the "get_element_list" method
-E_C_definition = domain_A.get_element_definition("L", "E_C")
+E_C_definition = domain.get_element_definition("L", "E_C")
 print("E_C element definition in the L LAYER variable: " + str(E_C_definition))
 
 # **** Possible errors
@@ -439,7 +439,7 @@ print("E_C element definition in the L LAYER variable: " + str(E_C_definition))
 # ============================ 10. Getting the component definitions ===================================================
 
 # To get the component definition of a VECTOR variable, use the "get_component_definition" method
-V_I_component_definition = domain_A.get_component_definition("V_I")
+V_I_component_definition = domain.get_component_definition("V_I")
 print("Component definition of the V_I VECTOR variable: " + str(V_I_component_definition))
 
 # **** Possible errors
@@ -452,7 +452,7 @@ print("Component definition of the V_I VECTOR variable: " + str(V_I_component_de
 
 # To get a list of the defined elements of the LAYER components of a VECTOR variable, use the
 # "get_component_element_list" method
-V_L_element_list = domain_A.get_component_element_list("V_L")
+V_L_element_list = domain.get_component_element_list("V_L")
 for element in V_L_element_list:
     print("The element " + element + " is defined in the LAYER component of the V_L VECTOR variable in the domain")
 
@@ -468,7 +468,7 @@ for element in V_L_element_list:
 
 # To get an element definition of LAYER components of a VECTOR variable, use the "get_component_element_definition"
 # method
-V_L_el_1 = domain_A.get_component_element_definition("V_L", "el-1")
+V_L_el_1 = domain.get_component_element_definition("V_L", "el-1")
 print("Element definition of the el-1 element of the V_I VECTOR variable: " + str(V_L_el_1))
 
 # **** Possible errors
@@ -488,20 +488,20 @@ print("Element definition of the el-1 element of the V_I VECTOR variable: " + st
 # To check if a value is compatible with a BASIC variable definition, use the "check_basic" method
 
 # Are 2 and -1 compatible with the definition of I ?
-I_comp_A = domain_A.check_basic("I", 2)
-I_comp_B = domain_A.check_basic("I", -1)
+I_comp_A = domain.check_basic("I", 2)
+I_comp_B = domain.check_basic("I", -1)
 print("Is 2 compatible with the definition of I in this domain ? " + str(I_comp_A))
 print("Is -1 compatible with the definition of I in this domain ? " + str(I_comp_B))
 
 # Are 0.001 and 1.2 compatible with the definition of R ?
-R_comp_A = domain_A.check_basic("R", 0.001)
-R_comp_B = domain_A.check_basic("R", 1.2)
+R_comp_A = domain.check_basic("R", 0.001)
+R_comp_B = domain.check_basic("R", 1.2)
 print("Is 0.001 compatible with the definition of R in this domain ? " + str(R_comp_A))
 print("Is 1.2 compatible with the definition of R in this domain ? " + str(R_comp_B))
 
 # Are C2 and C5 compatible with the definition of C_A ?
-C_A_comp_A = domain_A.check_basic("C_A", "C1")
-C_A_comp_B = domain_A.check_basic("C_A", "C5")
+C_A_comp_A = domain.check_basic("C_A", "C1")
+C_A_comp_B = domain.check_basic("C_A", "C5")
 print("Is C1 compatible with the definition of C_A in this domain ? " + str(C_A_comp_A))
 print("Is C5 compatible with the definition of C_A in this domain ? " + str(C_A_comp_B))
 
@@ -516,20 +516,20 @@ print("Is C5 compatible with the definition of C_A in this domain ? " + str(C_A_
 # To check if a value is compatible with an element of a LAYER variable definition, use the "check_element" method
 
 # Are 2 and -1 compatible with the E_I definition in the L LAYER variable ?
-L_E_I_comp_A = domain_A.check_element("L", "E_I", 2)
-L_E_I_comp_B = domain_A.check_element("L", "E_I", -1)
+L_E_I_comp_A = domain.check_element("L", "E_I", 2)
+L_E_I_comp_B = domain.check_element("L", "E_I", -1)
 print("Is 2 compatible with the definition of E_I in the LAYER L ? " + str(L_E_I_comp_A))
 print("Is -1 compatible with the definition of E_I in the LAYER L ? " + str(L_E_I_comp_B))
 
 # Are 1.8 and 4.5 compatible with the E_I definition in the L LAYER variable ?
-L_E_R_comp_A = domain_A.check_element("L", "E_R", 1.8)
-L_E_R_comp_B = domain_A.check_element("L", "E_R", 4.5)
+L_E_R_comp_A = domain.check_element("L", "E_R", 1.8)
+L_E_R_comp_B = domain.check_element("L", "E_R", 4.5)
 print("Is 1.8 compatible with the definition of E_R in the LAYER L ? " + str(L_E_R_comp_A))
 print("Is 4.5 compatible with the definition of E_R in the LAYER L ? " + str(L_E_R_comp_B))
 
 # Are Lb1 and C1 compatible with the E_C definition in the L LAYER variable ?
-L_E_C_comp_A = domain_A.check_element("L", "E_C", "Lb1")
-L_E_C_comp_B = domain_A.check_element("L", "E_C", "C1")
+L_E_C_comp_A = domain.check_element("L", "E_C", "Lb1")
+L_E_C_comp_B = domain.check_element("L", "E_C", "C1")
 print("Is Lb1 compatible with the definition of E_C in the LAYER L ? " + str(L_E_C_comp_A))
 print("Is C1 compatible with the definition of E_C in the LAYER L ? " + str(L_E_C_comp_B))
 
@@ -547,20 +547,20 @@ print("Is C1 compatible with the definition of E_C in the LAYER L ? " + str(L_E_
 # use "check_basic_component" method
 
 # Are 2 and -1 compatible with the components of the V_I VECTOR variable ?
-V_I_comp_A = domain_A.check_basic_component("V_I", 2)
-V_I_comp_B = domain_A.check_basic_component("V_I", -1)
+V_I_comp_A = domain.check_basic_component("V_I", 2)
+V_I_comp_B = domain.check_basic_component("V_I", -1)
 print("Is 2 compatible with the components of the V_I VECTOR variable ? " + str(V_I_comp_A))
 print("Is -1 compatible with the components of the V_I VECTOR variable ? " + str(V_I_comp_B))
 
 # Are 0.001 and 1.2 compatible with the components of the V_R VECTOR variable ?
-V_R_comp_A = domain_A.check_basic_component("V_R", 0.001)
-V_R_comp_B = domain_A.check_basic_component("V_R", 1.2)
+V_R_comp_A = domain.check_basic_component("V_R", 0.001)
+V_R_comp_B = domain.check_basic_component("V_R", 1.2)
 print("Is 0.001 compatible with the components of the V_R VECTOR variable ? " + str(V_R_comp_A))
 print("Is 1.2 compatible with the components of the V_R VECTOR variable ? " + str(V_R_comp_B))
 
 # Are C2 and C5 compatible with the components of the V_C VECTOR variable ?
-V_C_comp_A = domain_A.check_basic_component("V_C", "V2")
-V_C_comp_B = domain_A.check_basic_component("V_C", "C5")
+V_C_comp_A = domain.check_basic_component("V_C", "V2")
+V_C_comp_B = domain.check_basic_component("V_C", "C5")
 print("Is V2 compatible with the components of the V_C VECTOR variable ? " + str(V_C_comp_A))
 print("Is C5 compatible with the components of the V_C VECTOR variable ? " + str(V_C_comp_B))
 
@@ -578,24 +578,24 @@ print("Is C5 compatible with the components of the V_C VECTOR variable ? " + str
 # use "check_element_component" method
 
 # Are 15 and -1 compatible with the E_I definition in the V_L VECTOR variable ?
-V_L_el_1_comp_A = domain_A.check_element_component("V_L", "el-1", 15)
-V_L_el_1_comp_B = domain_A.check_element_component("V_L", "el-1", -1)
+V_L_el_1_comp_A = domain.check_element_component("V_L", "el-1", 15)
+V_L_el_1_comp_B = domain.check_element_component("V_L", "el-1", -1)
 print("Is 15 compatible with the definition of el-1 in the LAYER components of the V_L VECTOR variable ? " + str(
     V_L_el_1_comp_A))
 print("Is -1 compatible with the definition of el-1 in the LAYER components of the V_L VECTOR variable ? " + str(
     V_L_el_1_comp_B))
 
 # Are 0.25 and 4.5 compatible with the E_I definition in the V_L VECTOR variable ?
-V_L_el_2_comp_A = domain_A.check_element_component("V_L", "el-2", 0.25)
-V_L_el_2_comp_B = domain_A.check_element_component("V_L", "el-2", 4.5)
+V_L_el_2_comp_A = domain.check_element_component("V_L", "el-2", 0.25)
+V_L_el_2_comp_B = domain.check_element_component("V_L", "el-2", 4.5)
 print("Is 0.25 compatible with the definition of el-2 in the LAYER components of the V_L VECTOR variable ? " + str(
     V_L_el_2_comp_A))
 print("Is 4.5 compatible with the definition of el-2 in the LAYER components of the V_L VECTOR variable ? " + str(
     V_L_el_2_comp_B))
 
 # Are 1 and C1 compatible with the E_C definition in the V_L VECTOR variable ?
-V_L_el_3_comp_A = domain_A.check_element_component("V_L", "el-3", 1)
-V_L_el_3_comp_B = domain_A.check_element_component("V_L", "el-3", "C1")
+V_L_el_3_comp_A = domain.check_element_component("V_L", "el-3", 1)
+V_L_el_3_comp_B = domain.check_element_component("V_L", "el-3", "C1")
 print("Is 1 compatible with the definition of el-3 in the LAYER components of the V_L VECTOR variable ? " + str(
     V_L_el_3_comp_A))
 print("Is C1 compatible with the definition of el-3 in the LAYER components of the V_L VECTOR variable ? " + str(
@@ -616,78 +616,78 @@ print("Is C1 compatible with the definition of el-3 in the LAYER components of t
 # The Domain class provides a method called "check_value" to check a value of any variable type.
 
 # Are 2 and -1 compatible with the definition of I ?
-I_ack_A = domain_A.check_value("I", 2)
-I_ack_B = domain_A.check_value("I", -1)
+I_ack_A = domain.check_value("I", 2)
+I_ack_B = domain.check_value("I", -1)
 print("Is 2 compatible with the definition of I in this domain ? " + str(I_ack_A))
 print("Is -1 compatible with the definition of I in this domain ? " + str(I_ack_B))
 
 # Are 0.001 and 1.2 compatible with the definition of R ?
-R_ack_A = domain_A.check_value("R", 0.001)
-R_ack_B = domain_A.check_value("R", 1.2)
+R_ack_A = domain.check_value("R", 0.001)
+R_ack_B = domain.check_value("R", 1.2)
 print("Is 0.001 compatible with the definition of R in this domain ? " + str(R_ack_A))
 print("Is 1.2 compatible with the definition of R in this domain ? " + str(R_ack_B))
 
 # Are C2 and C5 compatible with the definition of C_A ?
-C_A_ack_A = domain_A.check_value("C_A", "C1")
-C_A_ack_B = domain_A.check_value("C_A", "C5")
+C_A_ack_A = domain.check_value("C_A", "C1")
+C_A_ack_B = domain.check_value("C_A", "C5")
 print("Is C1 compatible with the definition of C_A in this domain ? " + str(C_A_ack_A))
 print("Is C5 compatible with the definition of C_A in this domain ? " + str(C_A_ack_B))
 
 # Are 2 and -1 compatible with the E_I definition in the L LAYER variable ?
-L_E_I_ack_A = domain_A.check_value("L", 2, "E_I")
-L_E_I_ack_B = domain_A.check_value("L", -1, "E_I")
+L_E_I_ack_A = domain.check_value("L", 2, "E_I")
+L_E_I_ack_B = domain.check_value("L", -1, "E_I")
 print("Is 2 compatible with the definition of E_I in the LAYER L ? " + str(L_E_I_ack_A))
 print("Is -1 compatible with the definition of E_I in the LAYER L ? " + str(L_E_I_ack_B))
 
 # Are 1.8 and 4.5 compatible with the E_I definition in the L LAYER variable ?
-L_E_R_ack_A = domain_A.check_value("L", 1.8, "E_R")
-L_E_R_ack_B = domain_A.check_value("L", 4.5, "E_R")
+L_E_R_ack_A = domain.check_value("L", 1.8, "E_R")
+L_E_R_ack_B = domain.check_value("L", 4.5, "E_R")
 print("Is 1.8 compatible with the definition of E_R in the LAYER L ? " + str(L_E_R_ack_A))
 print("Is 4.5 compatible with the definition of E_R in the LAYER L ? " + str(L_E_R_ack_B))
 
 # Are Lb1 and C1 compatible with the E_C definition in the L LAYER variable ?
-L_E_C_ack_A = domain_A.check_value("L", "Lb1", "E_C")
-L_E_C_ack_B = domain_A.check_value("L", "C1", "E_C")
+L_E_C_ack_A = domain.check_value("L", "Lb1", "E_C")
+L_E_C_ack_B = domain.check_value("L", "C1", "E_C")
 print("Is Lb1 compatible with the definition of E_C in the LAYER L ? " + str(L_E_C_ack_A))
 print("Is C1 compatible with the definition of E_C in the LAYER L ? " + str(L_E_C_ack_B))
 
 # Are 2 and -1 compatible with the components of the V_I VECTOR variable ?
-V_I_ack_A = domain_A.check_value("V_I", 2)
-V_I_ack_B = domain_A.check_value("V_I", -1)
+V_I_ack_A = domain.check_value("V_I", 2)
+V_I_ack_B = domain.check_value("V_I", -1)
 print("Is 2 compatible with the components of the V_I VECTOR variable ? " + str(V_I_ack_A))
 print("Is -1 compatible with the components of the V_I VECTOR variable ? " + str(V_I_ack_B))
 
 # Are 0.001 and 1.2 compatible with the components of the V_R VECTOR variable ?
-V_R_ack_A = domain_A.check_value("V_R", 0.001)
-V_R_ack_B = domain_A.check_value("V_R", 1.2)
+V_R_ack_A = domain.check_value("V_R", 0.001)
+V_R_ack_B = domain.check_value("V_R", 1.2)
 print("Is 0.001 compatible with the components of the V_R VECTOR variable ? " + str(V_R_ack_A))
 print("Is 1.2 compatible with the components of the V_R VECTOR variable ? " + str(V_R_ack_B))
 
 # Are C2 and C5 compatible with the components of the V_C VECTOR variable ?
-V_C_ack_A = domain_A.check_value("V_C", "V2")
-V_C_ack_B = domain_A.check_value("V_C", "C5")
+V_C_ack_A = domain.check_value("V_C", "V2")
+V_C_ack_B = domain.check_value("V_C", "C5")
 print("Is V2 compatible with the components of the V_C VECTOR variable ? " + str(V_C_ack_A))
 print("Is C5 compatible with the components of the V_C VECTOR variable ? " + str(V_C_ack_B))
 
 # Are 15 and -1 compatible with the E_I definition in the V_L VECTOR variable ?
-V_L_el_1_ack_A = domain_A.check_value("V_L", 15, "el-1")
-V_L_el_1_ack_B = domain_A.check_value("V_L", -1, "el-1")
+V_L_el_1_ack_A = domain.check_value("V_L", 15, "el-1")
+V_L_el_1_ack_B = domain.check_value("V_L", -1, "el-1")
 print("Is 15 compatible with the definition of el-1 in the LAYER components of the V_L VECTOR variable ? " + str(
     V_L_el_1_ack_A))
 print("Is -1 compatible with the definition of el-1 in the LAYER components of the V_L VECTOR variable ? " + str(
     V_L_el_1_ack_B))
 
 # Are 0.25 and 4.5 compatible with the E_I definition in the V_L VECTOR variable ?
-V_L_el_2_ack_A = domain_A.check_value("V_L", 0.25, "el-2")
-V_L_el_2_ack_B = domain_A.check_value("V_L", 4.5, "el-2")
+V_L_el_2_ack_A = domain.check_value("V_L", 0.25, "el-2")
+V_L_el_2_ack_B = domain.check_value("V_L", 4.5, "el-2")
 print("Is 0.25 compatible with the definition of el-2 in the LAYER components of the V_L VECTOR variable ? " + str(
     V_L_el_2_ack_A))
 print("Is 4.5 compatible with the definition of el-2 in the LAYER components of the V_L VECTOR variable ? " + str(
     V_L_el_2_ack_B))
 
 # Are 1 and C1 compatible with the E_C definition in the V_L VECTOR variable ?
-V_L_el_3_ack_A = domain_A.check_value("V_L", 1, "el-3")
-V_L_el_3_ack_B = domain_A.check_value("V_L", "C1", "el-3")
+V_L_el_3_ack_A = domain.check_value("V_L", 1, "el-3")
+V_L_el_3_ack_B = domain.check_value("V_L", "C1", "el-3")
 print("Is 1 compatible with the definition of el-3 in the LAYER components of the V_L VECTOR variable ? " + str(
     V_L_el_3_ack_A))
 print("Is C1 compatible with the definition of el-3 in the LAYER components of the V_L VECTOR variable ? " + str(
