@@ -1,12 +1,12 @@
 from pycvoa.problem import BASIC
 
 
-def var_el_name_str_class(var_el):
+def ctrl_var_el_name_str_class(var_el):
     if type(var_el) != str:
         raise WrongParameters("The variable_name/element_name/variable/element parameter must be <str>")
 
 
-def __min_max_step_int_class(min_value_size, max_value_size, step_size):
+def ctrl_min_max_step_int_class(min_value_size, max_value_size, step_size):
     if type(min_value_size) != int:
         raise WrongParameters("The min_value/min_size parameter must be <int>")
     if type(max_value_size) != int:
@@ -15,7 +15,7 @@ def __min_max_step_int_class(min_value_size, max_value_size, step_size):
         raise WrongParameters("The step/step_size parameter must be <int>")
 
 
-def __min_max_step_float_class(min_value, max_value, step):
+def ctrl_min_max_step_float_class(min_value, max_value, step):
     if type(min_value) != float:
         raise WrongParameters("The min_value parameter must be <float>")
     if type(max_value) != float:
@@ -24,7 +24,7 @@ def __min_max_step_float_class(min_value, max_value, step):
         raise WrongParameters("The step parameter must be <float>")
 
 
-def __categories_class(categories):
+def ctrl_categories_class(categories):
     if type(categories) != list:
         raise WrongParameters("The categories parameter must be <list>")
     if len(categories) < 2:
@@ -39,20 +39,20 @@ def __categories_class(categories):
                 "All the elements of the categories parameter must have the same type (<int>, <float> or <str>)")
 
 
-def __value_class_int_float(value):
+def ctrl_value_class_int_float(value):
     if type(value) not in (int, float):
         raise WrongParameters(
             "The value parameter must be <int> or <float>")
 
 
-def __value_class_category(categories, value):
+def ctrl_value_class_category(categories, value):
     if type(value) != type(categories[0]):
         raise WrongParameters(
             "The value parameter be the same Python type than categories (" + type(categories[0]) + ")")
 
 
 # **** RANGE CONTROL ***
-def __range(self, min_value, max_value, step):
+def ctrl_range(min_value, max_value, step):
     """ It checks if min_value < max_value, if not, raise :py:class:`~pycvoa.problem.domain.DefinitionError`.
     If the first condition is fulfilled, it checks if step < (max_value-min_value) / 2, if not, raise
     py:class:`~pycvoa.problem.domain.DefinitionError`.
@@ -76,10 +76,9 @@ def __range(self, min_value, max_value, step):
                 step) + ") of the variable/element must be less or equal than (maximum "
                         "value/size - minimum value/size) / 2 (" + str(average) + ").")
 
-
 # **** VARIABLE CONTROL ***
 
-def __var_is_defined(variable,definitions):
+def ctrl_var_is_defined(variable, definitions):
     """ It checks if a variable is defined in the domain, if not, raise
     py:class:`~pycvoa.problem.domain.DefinitionError`.
 
@@ -90,7 +89,7 @@ def __var_is_defined(variable,definitions):
         raise NotDefinedItem("The variable " + variable + " is not defined in this domain.")
 
 
-def __var_type(variable, variable_type, definitions):
+def ctrl_var_type(variable, variable_type, definitions):
     """ It checks if a variable is defined as a variable type, if not, raise
     py:class:`~pycvoa.problem.domain.WrongItemType`.
 
@@ -107,7 +106,7 @@ def __var_type(variable, variable_type, definitions):
             raise WrongItemType("The variable " + variable + " is not defined as " + variable_type + " type.")
 
 
-def __var_name_in_use(variable_name, definitions):
+def ctrl_var_name_in_use(variable_name, definitions):
     """ It checks if a variable name is already used in the domain, if yes, raise
     py:class:`~pycvoa.problem.domain.DefinitionError`.
 
@@ -120,7 +119,7 @@ def __var_name_in_use(variable_name, definitions):
                                      "name.")
 
 
-def __var_name_in_use_range(self, variable_name, min_value, max_value, step):
+def ctrl_var_name_in_use_range(variable_name, min_value, max_value, step, definitions):
     """ It checks if a variable name is already used in the domain, if yes, raise
     py:class:`~pycvoa.problem.domain.DefinitionError`.
 
@@ -139,11 +138,11 @@ def __var_name_in_use_range(self, variable_name, min_value, max_value, step):
     :type max_value: int, float
     :type step: int, float
     """
-    self.__var_name_in_use(variable_name)
-    self.__range(min_value, max_value, step)
+    ctrl_var_name_in_use(variable_name, definitions)
+    ctrl_range(min_value, max_value, step)
 
 
-def __var_is_defined_type(self, variable, variable_type):
+def ctrl_var_is_defined_type(variable, variable_type, definitions):
     """ It checks if a variable is defined in the domain, if not, raise
     py:class:`~pycvoa.problem.domain.DefinitionError`.
 
@@ -155,13 +154,13 @@ def __var_is_defined_type(self, variable, variable_type):
     :type variable: str
     :type variable_type: **INTEGER**, **REAL**, **CATEGORICAL**, **BASIC**, **LAYER**, **VECTOR**
     """
-    self.__var_is_defined(variable)
-    self.__var_type(variable, variable_type)
+    ctrl_var_is_defined(variable,definitions)
+    ctrl_var_type(variable, variable_type,definitions)
 
 
 # **** ELEMENT CONTROL ***
 
-def __el_name_in_use(self, variable, element_name):
+def ctrl_el_name_in_use(variable, element_name, definitions):
     """ It checks if an element name is already used in a **LAYER** variable definition, if yes, raise
     py:class:`~pycvoa.problem.domain.DefinitionError`.
 
@@ -170,13 +169,13 @@ def __el_name_in_use(self, variable, element_name):
     :type variable: str
     :type element_name: str
     """
-    if element_name in self.__definitions[variable][1].keys():
+    if element_name in definitions[variable][1].keys():
         raise DefinitionError(
             "The " + element_name + " element is already defined in the LAYER variable " + variable + ". Please, select "
                                                                                                       "another element name.")
 
 
-def __el_is_defined(self, variable, element):
+def ctrl_el_is_defined(variable, element, definitions):
     """ It checks if an element is defined in a **LAYER** variable, if not, raise
     py:class:`~pycvoa.problem.domain.NotDefinedItem`.
 
@@ -185,12 +184,12 @@ def __el_is_defined(self, variable, element):
     :type variable: str
     :type element: str
     """
-    if element not in self.__definitions[variable][1].keys():
+    if element not in definitions[variable][1].keys():
         raise NotDefinedItem(
             "The element " + element + " of the " + variable + " LAYER variable is not defined in this domain.")
 
 
-def __var_is_defined_type_el_in_use(self, variable, variable_type, element_name):
+def ctrl_var_is_defined_type_el_in_use(variable, variable_type, element_name, definitions):
     """ It checks if a variable is defined in the domain, if not, raise
     py:class:`~pycvoa.problem.domain.DefinitionError`.
 
@@ -207,14 +206,14 @@ def __var_is_defined_type_el_in_use(self, variable, variable_type, element_name)
     :type variable_type: **INTEGER**, **REAL**, **CATEGORICAL**, **BASIC**, **LAYER**, **VECTOR**
     :type element_name: str
     """
-    self.__var_is_defined(variable)
-    self.__var_type(variable, variable_type)
-    self.__el_name_in_use(variable, element_name)
+    ctrl_var_is_defined(variable, definitions)
+    ctrl_var_type(variable, variable_type, definitions)
+    ctrl_el_name_in_use(variable, element_name, definitions)
 
 
 # **** COMPONENT CONTROL ***
 
-def __comp_type(self, vector_variable, component_type):
+def ctrl_comp_type(vector_variable, component_type, definitions):
     """ It checks if the components of a **VECTOR** variable are defined as a concrete type, if not, raise
     py:class:`~pycvoa.problem.domain.WrongItemType`.
 
@@ -224,17 +223,17 @@ def __comp_type(self, vector_variable, component_type):
     :type component_type: **INTEGER**, **REAL**, **CATEGORICAL**, **BASIC**, **LAYER**, **VECTOR**
     """
     if component_type is BASIC:
-        if self.__definitions[vector_variable][4][0] not in component_type:
+        if definitions[vector_variable][4][0] not in component_type:
             raise WrongItemType(
                 "The components of the VECTOR variable " + vector_variable + " are not defined as BASIC type.")
     else:
-        if self.__definitions[vector_variable][4][0] is not component_type:
+        if definitions[vector_variable][4][0] is not component_type:
             raise WrongItemType(
                 "The components of the VECTOR variable " + vector_variable + " are not defined as " + component_type
                 + " type.")
 
 
-def __comp_el_name_in_use(self, variable, element_name):
+def ctrl_comp_el_name_in_use(vector_variable, element_name, definitions):
     """ It checks if an element name is already used in the **LAYER** components of a **VECTOR** variable, if yes,
     raise py:class:`~pycvoa.problem.domain.DefinitionError`.
 
@@ -243,13 +242,13 @@ def __comp_el_name_in_use(self, variable, element_name):
     :type variable: str
     :type element_name: str
     """
-    if element_name in self.__definitions[variable][4][1].keys():
+    if element_name in definitions[vector_variable][4][1].keys():
         raise DefinitionError(
-            "The " + element_name + " element is already defined in the LAYER coponents of the " + variable + " VECTOR variable, please, select "
+            "The " + element_name + " element is already defined in the LAYER components of the " + vector_variable + " VECTOR variable, please, select "
                                                                                                               "another element name.")
 
 
-def __comp_el_is_defined(self, vector_variable, element):
+def ctrl_comp_el_is_defined(vector_variable, element, definitions):
     """ It checks if an element is defined in the **LAYER** components of a **VECTOR** variable, if not, raise
     py:class:`~pycvoa.problem.domain.NotDefinedItem`.
 
@@ -258,37 +257,37 @@ def __comp_el_is_defined(self, vector_variable, element):
     :type vector_variable: str
     :type element: str
     """
-    if element not in self.__definitions[vector_variable][4][1].keys():
+    if element not in definitions[vector_variable][4][1].keys():
         raise NotDefinedItem(
             "The element " + element + " is not defined in the LAYER components of the " + vector_variable + " VECTOR variable.")
 
 
-def __comp_type_defined(self, vector_variable):
+def ctrl_comp_type_defined(vector_variable, definitions):
     """ It checks if the type of a **VECTOR** variable is defined, if not, raise
     py:class:`~pycvoa.problem.domain.NotDefinedItem`.
 
     :param vector_variable: The variable.
     :type vector_variable: str
     """
-    if len(self.__definitions[vector_variable][4]) == 0:
+    if len(definitions[vector_variable][4]) == 0:
         raise NotDefinedItem(
             "The " + vector_variable + " components are not defined.")
 
 
-def __comp_type_not_defined(self, vector_variable):
+def ctrl_comp_type_not_defined(vector_variable, definitions):
     """ It checks if the type of a **VECTOR** variable is already defined, if yes, raise
     py:class:`~pycvoa.problem.domain.DefinitionError`.
 
-    :param variable: The variable.
-    :type variable: str
+    :param vector_variable: The variable.
+    :type vector_variable: str
     """
-    if len(self.__definitions[vector_variable][4]) > 0:
+    if len(definitions[vector_variable][4]) > 0:
         raise DefinitionError(
             "The " + vector_variable + " components are already defined as " +
-            self.__definitions[vector_variable][4][0] + ".")
+            definitions[vector_variable][4][0] + ".")
 
 
-def __comp_is_defined_type(self, vector_variable, component_type):
+def ctrl_comp_is_defined_type(vector_variable, component_type, definitions):
     """ It checks if the type of the **VECTOR** variable is defined, if not, raise
     py:class:`~pycvoa.problem.domain.NotDefinedItem`.
 
@@ -300,11 +299,11 @@ def __comp_is_defined_type(self, vector_variable, component_type):
     :type vector_variable: str
     :type component_type: **INTEGER**, **REAL**, **CATEGORICAL**, **BASIC**, **LAYER**, **VECTOR**
     """
-    self.__comp_type_defined(vector_variable)
-    self.__comp_type(vector_variable, component_type)
+    ctrl_comp_type_defined(vector_variable, definitions)
+    ctrl_comp_type(vector_variable, component_type, definitions)
 
 
-def __var_is_defined_type_comp_type_el_name_in_use(self, variable, variable_type, component_type, element_name):
+def ctrl_var_is_defined_type_comp_type_el_name_in_use(vector_variable, variable_type, component_type, element_name, definitions):
     """ It checks if a variable is defined in the domain, if not, raise
     py:class:`~pycvoa.problem.domain.DefinitionError`.
 
@@ -329,11 +328,11 @@ def __var_is_defined_type_comp_type_el_name_in_use(self, variable, variable_type
     :type component_type: **INTEGER**, **REAL**, **CATEGORICAL**, **BASIC**, **LAYER**, **VECTOR**
     :type element_name: str
     """
-    self.__var_is_defined(variable)
-    self.__var_type(variable, variable_type)
-    self.__comp_type_defined(variable)
-    self.__comp_type(variable, component_type)
-    self.__comp_el_name_in_use(variable, element_name)
+    ctrl_var_is_defined(vector_variable, definitions)
+    ctrl_var_type(vector_variable, variable_type, definitions)
+    ctrl_comp_type_defined(vector_variable, definitions)
+    ctrl_comp_type(vector_variable, component_type, definitions)
+    ctrl_comp_el_name_in_use(vector_variable, element_name, definitions)
 
 
 class DomainError(Exception):
