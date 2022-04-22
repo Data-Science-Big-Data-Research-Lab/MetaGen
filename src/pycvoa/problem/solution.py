@@ -1,6 +1,7 @@
 import sys
 
 from pycvoa.problem import LAYER, VECTOR, BASIC
+from pycvoa.problem.control import *
 
 
 class Solution:
@@ -69,61 +70,6 @@ class Solution:
         """
         self.__domain = domain
 
-    def __check_domain_type(self, variable, check_type, domain):
-        current_domain = self.__check_domain(domain)
-        self.__check_type(variable, check_type, current_domain)
-        return current_domain
-
-    def __check_domain(self, domain):
-        current_domain = domain
-        if current_domain is None:
-            current_domain = self.__domain
-        if current_domain is None:
-            raise DomainLevel("A domain must be specified, via parameter or set_domain method.")
-        return current_domain
-
-    @staticmethod
-    def __check_type(variable, check_type, domain):
-        var_type = domain.get_variable_type(variable)
-        if check_type is BASIC:
-            if var_type not in BASIC:
-                raise VariableLevel("The " + variable + " variable is not defined as BASIC")
-        else:
-            if var_type is not check_type:
-                raise VariableLevel("The " + variable + " variable is not defined as " + check_type)
-
-    @staticmethod
-    def __check_basic_value(variable, value, domain):
-        if not domain.check_basic(variable, value):
-            raise ValueLevel("The value " + value + " is not valid for the " + variable + " variable.")
-
-    @staticmethod
-    def __check_element_value(variable, element, value, domain):
-        if not domain.check_element(variable, element, value):
-            raise ValueLevel(
-                "The value " + value + " is not valid for the " + element + " element in the " + variable + " variable.")
-
-    @staticmethod
-    def __check_basic_component(variable, value, domain):
-        if not domain.check_basic_component(variable, value):
-            raise ValueLevel(
-                "The value " + value + " is not valid for the " + variable + " variable.")
-
-    @staticmethod
-    def __check_element_component(variable, element, value, domain):
-        if not domain.check_element_component(variable, element, value):
-            raise ValueLevel(
-                "The value " + value + " is not valid for the " + element + " element in the " + variable + " variable.")
-
-    def __check_variable_availability(self, variable):
-        if variable not in self.__variables.keys():
-            raise VariableLevel("The " + variable + " variable is not in this solution.")
-
-    def __check_component_availability(self, variable, index):
-        if 0 > index >= len(self.__variables.get(variable)):
-            raise ComponentLevel(
-                "The" + index + "-nh component of " + variable + " VECTOR variable is not available.")
-
     # ** SETTERS ***
     def set_basic(self, variable, value, domain=None):
         """ It sets the value of variable. If the variable does not exist, it will be created with the indicated value.
@@ -147,8 +93,8 @@ class Solution:
         :raise :py:class:`~pycvoa.problem.solution.WrongType: The variable is not defined as BASIC.
         :raise :py:class:`~pycvoa.problem.solution.WrongValue: The value is not valid.
         """
-        current_domain = self.__check_domain_type(variable, BASIC, domain)
-        self.__check_basic_value(variable, value, current_domain)
+        current_domain = sol_ctrl_check_domain_type(variable, BASIC, domain, self.__domain)
+        sol_ctrl_check_basic_value(variable, value, current_domain)
         self.__variables[variable] = value
 
     def set_element(self, variable, element, value, domain=None):
@@ -169,8 +115,8 @@ class Solution:
         :raise :py:class:`~pycvoa.problem.solution.WrongType: The variable is not defined as LAYER.
         :raise :py:class:`~pycvoa.problem.solution.WrongValue: The value is not valid.
         """
-        current_domain = self.__check_domain_type(variable, LAYER, domain)
-        self.__check_element_value(variable, element, value, current_domain)
+        current_domain = sol_ctrl_check_domain_type(variable, LAYER, domain, self.__domain)
+        sol_ctrl_check_element_value(variable, element, value, current_domain)
         if variable not in self.__variables.keys():
             self.__variables[variable] = {element: value}
         else:
@@ -203,12 +149,12 @@ class Solution:
         :raise NotDefinedVectorComponentError: The **index**-nh component of the **VECTOR** variable is not available.
         :raise :py:class:`~pycvoa.problem.solution.WrongValue: The value is not valid.
         """
-        current_domain = self.__check_domain_type(variable, VECTOR, domain)
-        self.__check_basic_component(variable, value, current_domain)
+        current_domain = sol_ctrl_check_domain_type(variable, VECTOR, domain, self.__domain)
+        sol_ctrl_check_basic_component(variable, value, current_domain)
         if variable not in self.__variables.keys():
             self.__variables[variable] = [value]
         else:
-            self.__check_component_availability(variable, index)
+            sol_ctrl_check_component_availability(variable, index, self.__variables)
             self.__variables[variable][index] = value
 
     def set_component_element(self, variable, index, element, value, domain=None):
@@ -232,12 +178,12 @@ class Solution:
         :raise :py:class:`~pycvoa.problem.solution.NotDefinedVectorComponentError: The **index**-nh component of the **VECTOR** variable is not available.
         :raise :py:class:`~pycvoa.problem.solution.WrongValue: The value is not valid.
         """
-        current_domain = self.__check_domain_type(variable, VECTOR, domain)
-        self.__check_element_component(variable, element, value, current_domain)
+        current_domain = sol_ctrl_check_domain_type(variable, VECTOR, domain, self.__domain)
+        sol_ctrl_check_element_component(variable, element, value, current_domain)
         if variable not in self.__variables.keys():
             self.__variables[variable] = [{element: value}]
         else:
-            self.__check_component_availability(variable, index)
+            sol_ctrl_check_component_availability(variable, index, self.__variables)
             self.__variables[variable][index][element] = value
 
     def set_value(self, variable, value, index=None, element=None, domain=None):
@@ -271,34 +217,25 @@ class Solution:
         :raise NotDefinedVectorComponentError: The **index**-nh component of the **VECTOR** variable is not available.
         :raise :py:class:`~pycvoa.problem.solution.WrongValue: The value is not valid.
         """
-        current_domain = self.__check_domain(domain)
+        current_domain = sol_ctrl_check_domain(domain,self.__domain)
         var_type = current_domain.get_variable_type(variable)
         if var_type in BASIC:
+            ctrl_index_is_none(variable, index)
+            ctrl_element_is_none(variable, element)
             self.set_basic(variable, value, current_domain)
         elif var_type is LAYER:
-            if element is None:
-                raise ParameterLevel(
-                    "The " + variable + "variable is defined as LAYER, therefore an element name must be "
-                                        "provided")
-            else:
-                self.set_element(variable, element, value, current_domain)
+            ctrl_index_is_none(variable, index)
+            ctrl_element_not_none(variable,element)
+            self.set_element(variable, element, value, current_domain)
         elif var_type is VECTOR:
-            if index is None:
-                raise ParameterLevel(
-                    "The " + variable + "variable is defined as VECTOR, therefore an index to access a component name "
-                                        "must be provided")
-            else:
-                vector_definition = current_domain.get_component_definition(variable)
-                if vector_definition in BASIC:
-                    self.set_component(variable, index, value, current_domain)
-                elif vector_definition is LAYER:
-                    if element is None:
-                        raise ParameterLevel(
-                            "The components of the VECTOR variable " + variable + " are defined as LAYER, "
-                                                                                  "therefore an element name must be "
-                                                                                  "provided")
-                else:
-                    self.set_component_element(variable, index, element, value, current_domain)
+            ctrl_index_not_none(variable, index)
+            vector_definition = current_domain.get_component_definition(variable)
+            if vector_definition in BASIC:
+                ctrl_element_is_none(variable, element)
+                self.set_component(variable, index, value, current_domain)
+            elif vector_definition is LAYER:
+                ctrl_element_not_none(variable, element)
+                self.set_component_element(variable, index, element, value, current_domain)
 
         # ** VECTOR TYPE MODIFIERS **
 
@@ -748,9 +685,7 @@ class Solution:
         **VECTOR** variable is not available.
         """
 
-        current_domain = domain
-        if current_domain is None:
-            current_domain = self.__domain
+        current_domain = sol_ctrl_check_domain(domain, self.__domain)
 
         if current_domain is not None:
 
@@ -759,13 +694,8 @@ class Solution:
                 r = self.get_basic_value(variable, current_domain)
 
             elif var_type is LAYER:
-                if element is None:
-                    raise ParameterLevel(
-                        "The " + variable + "variable is defined as LAYER, therefore an element name must be "
-                                            "provided")
-                else:
-                    r = self.get_element_value(variable, element, current_domain)
-
+                ctrl_element_not_none(variable,element)
+                r = self.get_element_value(variable, element, current_domain)
             elif var_type is VECTOR:
                 if index is None:
                     raise ParameterLevel(
@@ -891,138 +821,3 @@ class Solution:
         return self.fitness >= other.fitness
 
 
-class SolutionError(Exception):
-    """ It is the top level exception for :py:class:`~pycvoa.individual.Individual` error management.
-    """
-    pass
-
-
-class DomainLevel(SolutionError):
-    """ It is raised when the domain is not set in the solution.
-
-    **Methods that can directly throw this exception:**
-
-    - :py:meth:`~pycvoa.problem.solution.Solution.check_variable_type`
-    - :py:meth:`~pycvoa.problem.solution.Solution.check_component_type`
-    - :py:meth:`~pycvoa.problem.solution.Solution.get_value`
-    - :py:meth:`~pycvoa.problem.solution.Solution.set_basic`
-    - :py:meth:`~pycvoa.problem.solution.Solution.set_element`
-    - :py:meth:`~pycvoa.problem.solution.Solution.set_component`
-    - :py:meth:`~pycvoa.problem.solution.Solution.set_component_element`
-    - :py:meth:`~pycvoa.problem.solution.Solution.set_value`
-    - :py:meth:`~pycvoa.problem.solution.Solution.add_basic_component`
-    - :py:meth:`~pycvoa.problem.solution.Solution.insert_basic_component`
-
-    **Methods that can throw this exception through auxiliary functions:**
-
-    - :py:meth:`~pycvoa.problem.solution.Solution.is_available_element`
-    - :py:meth:`~pycvoa.problem.solution.Solution.is_available_component`
-    - :py:meth:`~pycvoa.problem.solution.Solution.is_available_component_element`
-    - :py:meth:`~pycvoa.problem.solution.Solution.get_basic_value`
-    - :py:meth:`~pycvoa.problem.solution.Solution.get_element_value`
-    - :py:meth:`~pycvoa.problem.solution.Solution.get_basic_component_value`
-    - :py:meth:`~pycvoa.problem.solution.Solution.get_layer_component_value`
-    - :py:meth:`~pycvoa.problem.solution.Solution.get_vector_size`
-    - :py:meth:`~pycvoa.problem.solution.Solution.remove_component`
-    - :py:meth:`~pycvoa.problem.solution.Solution.delete_component`
-    """
-
-    def __init__(self, message):
-        self.message = message
-
-
-class VariableLevel(SolutionError):
-    """ It is raised when a queried variable is not in the solution or the type of the variable is not proper for
-    the called method.
-
-    **Methods that can directly throw this exception:**
-
-    - :py:meth:`~pycvoa.problem.solution.Solution.check_variable_type`
-    - :py:meth:`~pycvoa.problem.solution.Solution.check_component_type`
-    - :py:meth:`~pycvoa.problem.solution.Solution.is_available_element`
-    - :py:meth:`~pycvoa.problem.solution.Solution.is_available_component`
-    - :py:meth:`~pycvoa.problem.solution.Solution.get_basic_value`
-    - :py:meth:`~pycvoa.problem.solution.Solution.get_vector_size`
-    - :py:meth:`~pycvoa.problem.solution.Solution.set_basic`
-    - :py:meth:`~pycvoa.problem.solution.Solution.set_element`
-    - :py:meth:`~pycvoa.problem.solution.Solution.remove_component`
-    - :py:meth:`~pycvoa.problem.solution.Solution.delete_component`
-
-    **Methods that can throw this exception through auxiliary functions:**
-
-    - :py:meth:`~pycvoa.problem.solution.Solution.is_available_component_element`
-    - :py:meth:`~pycvoa.problem.solution.Solution.get_element_value`
-    - :py:meth:`~pycvoa.problem.solution.Solution.get_basic_component_value`
-    - :py:meth:`~pycvoa.problem.solution.Solution.get_layer_component_value`
-    - :py:meth:`~pycvoa.problem.solution.Solution.get_value`
-    - :py:meth:`~pycvoa.problem.solution.Solution.set_component`
-    - :py:meth:`~pycvoa.problem.solution.Solution.set_component_element`
-    - :py:meth:`~pycvoa.problem.solution.Solution.set_value`
-    """
-
-    def __init__(self, message):
-        self.message = message
-
-
-class LayerLevel(SolutionError):
-    """ It is raised when a queried element of a **LAYER** variable is not defined in the solution.
-
-    **Methods that can directly throw this exception:**
-
-    - :py:meth:`~pycvoa.problem.solution.Solution.get_element_value`
-    - :py:meth:`~pycvoa.problem.solution.Solution.get_layer_component_value`
-    """
-
-    def __init__(self, message):
-        self.message = message
-
-
-class ComponentLevel(SolutionError):
-    """ It is raised when a queried component of a **VECTOR** variable is not available in the solution or the type of
-    the variable is not proper for the called method (**VECTOR**).
-
-    **Methods that can directly throw this exception:**
-
-    - :py:meth:`~pycvoa.problem.solution.Solution.is_available_component_element`
-    - :py:meth:`~pycvoa.problem.solution.Solution.get_basic_component_value`
-    - :py:meth:`~pycvoa.problem.solution.Solution.set_component`
-    - :py:meth:`~pycvoa.problem.solution.Solution.set_component_element`
-    - :py:meth:`~pycvoa.problem.solution.Solution.delete_component`
-    """
-
-    def __init__(self, message):
-        self.message = message
-
-
-class ParameterLevel(SolutionError):
-    """ It is raised when the parameters of a query function are wrong.
-
-        **Methods that can directly throw this exception:**
-
-        - :py:meth:`~pycvoa.problem.solution.Solution.get_value`
-        - :py:meth:`~pycvoa.problem.solution.Solution.set_value`
-    """
-
-    def __init__(self, message):
-        self.message = message
-
-
-class ValueLevel(SolutionError):
-    """ It is raised when a new set value is wrong for the variable definition.
-
-        **Methods that can throw this exception:**
-
-        - :py:meth:`~pycvoa.problem.solution.Solution.set_basic`
-        - :py:meth:`~pycvoa.problem.solution.Solution.set_element`
-        - :py:meth:`~pycvoa.problem.solution.Solution.set_component`
-        - :py:meth:`~pycvoa.problem.solution.Solution.set_component_element`
-        - :py:meth:`~pycvoa.problem.solution.Solution.add_basic_component`
-        - :py:meth:`~pycvoa.problem.solution.Solution.insert_basic_component`
-
-        **Methods that can throw this exception through auxiliary functions:**
-
-        - :py:meth:`~pycvoa.problem.solution.Solution.set_value`
-    """
-
-    def __init__(self, message):
-        self.message = message
