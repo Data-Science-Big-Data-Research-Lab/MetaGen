@@ -595,10 +595,10 @@ print("Is 4.5 compatible with the definition of el-2 in the LAYER components of 
 
 # Are 1 and C1 compatible with the E_C definition in the V_L VECTOR variable ?
 V_L_el_3_comp_A = domain.check_element_component("V_L", "el-3", 1)
-V_L_el_3_comp_B = domain.check_element_component("V_L", "el-3", "C1")
+V_L_el_3_comp_B = domain.check_element_component("V_L", "el-3", 8)
 print("Is 1 compatible with the definition of el-3 in the LAYER components of the V_L VECTOR variable ? " + str(
     V_L_el_3_comp_A))
-print("Is C1 compatible with the definition of el-3 in the LAYER components of the V_L VECTOR variable ? " + str(
+print("Is 8 compatible with the definition of el-3 in the LAYER components of the V_L VECTOR variable ? " + str(
     V_L_el_3_comp_B))
 
 # **** Possible errors
@@ -687,10 +687,10 @@ print("Is 4.5 compatible with the definition of el-2 in the LAYER components of 
 
 # Are 1 and C1 compatible with the E_C definition in the V_L VECTOR variable ?
 V_L_el_3_ack_A = domain.check_value("V_L", 1, "el-3")
-V_L_el_3_ack_B = domain.check_value("V_L", "C1", "el-3")
+V_L_el_3_ack_B = domain.check_value("V_L", 8, "el-3")
 print("Is 1 compatible with the definition of el-3 in the LAYER components of the V_L VECTOR variable ? " + str(
     V_L_el_3_ack_A))
-print("Is C1 compatible with the definition of el-3 in the LAYER components of the V_L VECTOR variable ? " + str(
+print("Is 8 compatible with the definition of el-3 in the LAYER components of the V_L VECTOR variable ? " + str(
     V_L_el_3_ack_B))
 
 # **** Possible errors
