@@ -92,7 +92,7 @@ class Domain:
         """
         dom_ctrl_var_el_name_str_class(variable_name)
         dom_ctrl_min_max_step_int_class(min_value, max_value, step)
-        ctrl_var_name_in_use_range(variable_name, min_value, max_value, step, self.__definitions)
+        dom_ctrl_var_name_in_use_range(variable_name, min_value, max_value, step, self.__definitions)
         self.__definitions[variable_name] = [INTEGER, min_value, max_value, step]
 
     def define_real(self, variable_name, min_value, max_value, step):
@@ -117,7 +117,7 @@ class Domain:
         """
         dom_ctrl_var_el_name_str_class(variable_name)
         dom_ctrl_min_max_step_float_class(min_value, max_value, step)
-        ctrl_var_name_in_use_range(variable_name, min_value, max_value, step, self.__definitions)
+        dom_ctrl_var_name_in_use_range(variable_name, min_value, max_value, step, self.__definitions)
         self.__definitions[variable_name] = [REAL, min_value, max_value, step]
 
     def define_categorical(self, variable_name, categories):
@@ -136,7 +136,7 @@ class Domain:
         """
         dom_ctrl_var_el_name_str_class(variable_name)
         dom_ctrl_categories_class(categories)
-        ctrl_var_name_in_use(variable_name, self.__definitions)
+        dom_ctrl_var_name_in_use(variable_name, self.__definitions)
         self.__definitions[variable_name] = [CATEGORICAL, categories]
 
     # **** DEFINE LAYER VARIABLE METHODS ****
@@ -158,7 +158,7 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.DefinitionError`: The variable name is already used.
         """
         dom_ctrl_var_el_name_str_class(variable_name)
-        ctrl_var_name_in_use(variable_name, self.__definitions)
+        dom_ctrl_var_name_in_use(variable_name, self.__definitions)
         self.__definitions[variable_name] = [LAYER, {}]
 
     def define_integer_element(self, variable, element_name, min_value, max_value, step):
@@ -189,8 +189,8 @@ class Domain:
         dom_ctrl_var_el_name_str_class(variable)
         dom_ctrl_var_el_name_str_class(element_name)
         dom_ctrl_min_max_step_int_class(min_value, max_value, step)
-        ctrl_var_is_defined_type_el_in_use(variable, LAYER, element_name, self.__definitions)
-        ctrl_range(min_value, max_value, step)
+        dom_ctrl_var_is_defined_type_el_in_use(variable, LAYER, element_name, self.__definitions)
+        dom_ctrl_range(min_value, max_value, step)
         self.__definitions[variable][1][element_name] = [INTEGER, min_value, max_value, step]
 
     def define_real_element(self, variable, element_name, min_value, max_value, step):
@@ -221,8 +221,8 @@ class Domain:
         dom_ctrl_var_el_name_str_class(variable)
         dom_ctrl_var_el_name_str_class(element_name)
         dom_ctrl_min_max_step_float_class(min_value, max_value, step)
-        ctrl_var_is_defined_type_el_in_use(variable, LAYER, element_name, self.__definitions)
-        ctrl_range(min_value, max_value, step)
+        dom_ctrl_var_is_defined_type_el_in_use(variable, LAYER, element_name, self.__definitions)
+        dom_ctrl_range(min_value, max_value, step)
         self.__definitions[variable][1][element_name] = [REAL, min_value, max_value, step]
 
     def define_categorical_element(self, variable, element_name, categories):
@@ -248,7 +248,7 @@ class Domain:
         dom_ctrl_var_el_name_str_class(variable)
         dom_ctrl_var_el_name_str_class(element_name)
         dom_ctrl_categories_class(categories)
-        ctrl_var_is_defined_type_el_in_use(variable, LAYER, element_name, self.__definitions)
+        dom_ctrl_var_is_defined_type_el_in_use(variable, LAYER, element_name, self.__definitions)
         self.__definitions[variable][1][element_name] = [CATEGORICAL, categories]
 
     # **** DEFINE VECTOR VARIABLE METHODS ****
@@ -282,7 +282,7 @@ class Domain:
         """
         dom_ctrl_var_el_name_str_class(variable_name)
         dom_ctrl_min_max_step_int_class(min_size, max_size, step_size)
-        ctrl_var_name_in_use_range(variable_name, min_size, max_size, step_size, self.__definitions)
+        dom_ctrl_var_name_in_use_range(variable_name, min_size, max_size, step_size, self.__definitions)
         self.__definitions[variable_name] = [VECTOR, min_size, max_size, step_size, {}]
 
     def define_components_integer(self, variable, min_value, max_value, step):
@@ -310,9 +310,9 @@ class Domain:
         """
         dom_ctrl_var_el_name_str_class(variable)
         dom_ctrl_min_max_step_int_class(min_value, max_value, step)
-        ctrl_var_is_defined_type(variable, VECTOR, self.__definitions)
-        ctrl_comp_type_not_defined(variable, self.__definitions)
-        ctrl_range(min_value, max_value, step)
+        dom_ctrl_var_is_defined_type(variable, VECTOR, self.__definitions)
+        dom_ctrl_comp_type_not_defined(variable, self.__definitions)
+        dom_ctrl_range(min_value, max_value, step)
         self.__definitions[variable][4] = [INTEGER, min_value, max_value, step]
 
     def define_components_real(self, variable, min_value, max_value, step):
@@ -340,9 +340,9 @@ class Domain:
         """
         dom_ctrl_var_el_name_str_class(variable)
         dom_ctrl_min_max_step_float_class(min_value, max_value, step)
-        ctrl_var_is_defined_type(variable, VECTOR, self.__definitions)
-        ctrl_comp_type_not_defined(variable, self.__definitions)
-        ctrl_range(min_value, max_value, step)
+        dom_ctrl_var_is_defined_type(variable, VECTOR, self.__definitions)
+        dom_ctrl_comp_type_not_defined(variable, self.__definitions)
+        dom_ctrl_range(min_value, max_value, step)
         self.__definitions[variable][4] = [REAL, min_value, max_value, step]
 
     def define_components_categorical(self, variable, categories):
@@ -364,8 +364,8 @@ class Domain:
         """
         dom_ctrl_var_el_name_str_class(variable)
         dom_ctrl_categories_class(categories)
-        ctrl_var_is_defined_type(variable, VECTOR, self.__definitions)
-        ctrl_comp_type_not_defined(variable, self.__definitions)
+        dom_ctrl_var_is_defined_type(variable, VECTOR, self.__definitions)
+        dom_ctrl_comp_type_not_defined(variable, self.__definitions)
         self.__definitions[variable][4] = [CATEGORICAL, categories]
 
     def define_components_layer(self, variable):
@@ -388,8 +388,8 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.DefinitionError`: The component type is already defined.
         """
         dom_ctrl_var_el_name_str_class(variable)
-        ctrl_var_is_defined_type(variable, VECTOR, self.__definitions)
-        ctrl_comp_type_not_defined(variable, self.__definitions)
+        dom_ctrl_var_is_defined_type(variable, VECTOR, self.__definitions)
+        dom_ctrl_comp_type_not_defined(variable, self.__definitions)
         self.__definitions[variable][4] = [LAYER, {}]
 
     def define_vector_integer_element(self, variable, element_name, min_value, max_value, step):
@@ -424,8 +424,8 @@ class Domain:
         dom_ctrl_var_el_name_str_class(variable)
         dom_ctrl_var_el_name_str_class(element_name)
         dom_ctrl_min_max_step_int_class(min_value, max_value, step)
-        ctrl_var_is_defined_type_comp_type_el_name_in_use(variable, VECTOR, LAYER, element_name, self.__definitions)
-        ctrl_range(min_value, max_value, step)
+        dom_ctrl_var_is_defined_type_comp_type_el_name_in_use(variable, VECTOR, LAYER, element_name, self.__definitions)
+        dom_ctrl_range(min_value, max_value, step)
         self.__definitions[variable][4][1][element_name] = [INTEGER, min_value, max_value, step]
 
     def define_vector_real_element(self, variable, element_name, min_value, max_value, step):
@@ -460,8 +460,8 @@ class Domain:
         dom_ctrl_var_el_name_str_class(variable)
         dom_ctrl_var_el_name_str_class(element_name)
         dom_ctrl_min_max_step_float_class(min_value, max_value, step)
-        ctrl_var_is_defined_type_comp_type_el_name_in_use(variable, VECTOR, LAYER, element_name, self.__definitions)
-        ctrl_range(min_value, max_value, step)
+        dom_ctrl_var_is_defined_type_comp_type_el_name_in_use(variable, VECTOR, LAYER, element_name, self.__definitions)
+        dom_ctrl_range(min_value, max_value, step)
         self.__definitions[variable][4][1][element_name] = [REAL, min_value, max_value, step]
 
     def define_vector_categorical_element(self, variable, element_name, categories):
@@ -489,7 +489,7 @@ class Domain:
         dom_ctrl_var_el_name_str_class(variable)
         dom_ctrl_var_el_name_str_class(element_name)
         dom_ctrl_categories_class(categories)
-        ctrl_var_is_defined_type_comp_type_el_name_in_use(variable, VECTOR, LAYER, element_name, self.__definitions)
+        dom_ctrl_var_is_defined_type_comp_type_el_name_in_use(variable, VECTOR, LAYER, element_name, self.__definitions)
         self.__definitions[variable][4][1][element_name] = [CATEGORICAL, categories]
 
     # **** IS DEFINED METHODS ***
@@ -526,7 +526,7 @@ class Domain:
         """
         dom_ctrl_var_el_name_str_class(variable)
         dom_ctrl_var_el_name_str_class(element)
-        ctrl_var_is_defined_type(variable, LAYER, self.__definitions)
+        dom_ctrl_var_is_defined_type(variable, LAYER, self.__definitions)
         r = False
         if element in self.__definitions[variable][1].keys():
             r = True
@@ -547,7 +547,7 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.WrongItemType`: The variable is not defined as **LAYER**.
         """
         dom_ctrl_var_el_name_str_class(variable)
-        ctrl_var_is_defined_type(variable, VECTOR, self.__definitions)
+        dom_ctrl_var_is_defined_type(variable, VECTOR, self.__definitions)
         r = False
         if len(self.__definitions[variable][4]) > 0:
             r = True
@@ -569,7 +569,7 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.NotDefinedItem`: The variable is not the defined in the domain.
         """
         dom_ctrl_var_el_name_str_class(variable)
-        ctrl_var_is_defined(variable, self.__definitions)
+        dom_ctrl_var_is_defined(variable, self.__definitions)
         return self.__definitions[variable][0]
 
     def get_element_type(self, variable, element):
@@ -592,8 +592,8 @@ class Domain:
         """
         dom_ctrl_var_el_name_str_class(variable)
         dom_ctrl_var_el_name_str_class(element)
-        ctrl_var_is_defined_type(variable, LAYER, self.__definitions)
-        ctrl_el_is_defined(variable, element, self.__definitions)
+        dom_ctrl_var_is_defined_type(variable, LAYER, self.__definitions)
+        dom_ctrl_el_is_defined(variable, element, self.__definitions)
         return self.__definitions[variable][1][element][0]
 
     def get_component_type(self, variable):
@@ -613,8 +613,8 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.WrongItemType`: The variable is not defined as **VECTOR**.
         """
         dom_ctrl_var_el_name_str_class(variable)
-        ctrl_var_is_defined_type(variable, VECTOR, self.__definitions)
-        ctrl_comp_type_defined(variable, self.__definitions)
+        dom_ctrl_var_is_defined_type(variable, VECTOR, self.__definitions)
+        dom_ctrl_comp_type_defined(variable, self.__definitions)
         return self.__definitions[variable][4][0]
 
     # **** GET VARIABLE DEFINITION METHODS ***
@@ -659,7 +659,7 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.NotDefinedItem`: The variable is not the defined in the domain.
         """
         dom_ctrl_var_el_name_str_class(variable)
-        ctrl_var_is_defined(variable, self.__definitions)
+        dom_ctrl_var_is_defined(variable, self.__definitions)
         return self.__definitions[variable]
 
     # **** GET ELEMENT DEFINITION METHODS ***
@@ -680,7 +680,7 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.WrongItemType`: The variable is not defined as **LAYER**.
         """
         dom_ctrl_var_el_name_str_class(variable)
-        ctrl_var_is_defined_type(variable, LAYER, self.__definitions)
+        dom_ctrl_var_is_defined_type(variable, LAYER, self.__definitions)
         return list(self.__definitions[variable][1].keys())
 
     def get_element_definition(self, variable, element):
@@ -703,8 +703,8 @@ class Domain:
         """
         dom_ctrl_var_el_name_str_class(variable)
         dom_ctrl_var_el_name_str_class(element)
-        ctrl_var_is_defined_type(variable, LAYER, self.__definitions)
-        ctrl_el_is_defined(variable, element, self.__definitions)
+        dom_ctrl_var_is_defined_type(variable, LAYER, self.__definitions)
+        dom_ctrl_el_is_defined(variable, element, self.__definitions)
         return self.__definitions[variable][1][element]
 
     # **** GET COMPONENT DEFINITION METHODS ***
@@ -726,8 +726,8 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.WrongItemType`: The variable is not defined as **VECTOR**.
         """
         dom_ctrl_var_el_name_str_class(variable)
-        ctrl_var_is_defined_type(variable, VECTOR, self.__definitions)
-        ctrl_comp_type_defined(variable, self.__definitions)
+        dom_ctrl_var_is_defined_type(variable, VECTOR, self.__definitions)
+        dom_ctrl_comp_type_defined(variable, self.__definitions)
         return self.__definitions[variable][4]
 
     def get_component_element_list(self, variable):
@@ -749,8 +749,8 @@ class Domain:
         The component type is not defined as **LAYER**.
         """
         dom_ctrl_var_el_name_str_class(variable)
-        ctrl_var_is_defined_type(variable, VECTOR, self.__definitions)
-        ctrl_comp_is_defined_type(variable, LAYER, self.__definitions)
+        dom_ctrl_var_is_defined_type(variable, VECTOR, self.__definitions)
+        dom_ctrl_comp_is_defined_type(variable, LAYER, self.__definitions)
         return list(self.__definitions[variable][4][1].keys())
 
     def get_component_element_definition(self, variable, element):
@@ -775,9 +775,9 @@ class Domain:
         """
         dom_ctrl_var_el_name_str_class(variable)
         dom_ctrl_var_el_name_str_class(element)
-        ctrl_var_is_defined_type(variable, VECTOR, self.__definitions)
-        ctrl_comp_is_defined_type(variable, LAYER, self.__definitions)
-        ctrl_comp_el_is_defined(variable, element, self.__definitions)
+        dom_ctrl_var_is_defined_type(variable, VECTOR, self.__definitions)
+        dom_ctrl_comp_is_defined_type(variable, LAYER, self.__definitions)
+        dom_ctrl_comp_el_is_defined(variable, element, self.__definitions)
         return self.__definitions[variable][4][1][element]
 
     # **** CHECK METHODS ***
@@ -799,10 +799,14 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.WrongItemType`: The variable is not defined as **BASIC**.
         """
         dom_ctrl_var_el_name_str_class(variable)
-        ctrl_var_is_defined_type(variable, BASIC, self.__definitions)
+        dom_ctrl_var_is_defined_type(variable, BASIC, self.__definitions)
         r = False
-        if self.__definitions[variable][0] in (INTEGER, REAL):
-            dom_ctrl_value_class_int_float(value)
+        if self.__definitions[variable][0] in INTEGER:
+            dom_ctrl_value_class_int(value)
+            if self.__definitions[variable][1] <= value <= self.__definitions[variable][2]:
+                r = True
+        elif self.__definitions[variable][0] in REAL:
+            dom_ctrl_value_class_float(value)
             if self.__definitions[variable][1] <= value <= self.__definitions[variable][2]:
                 r = True
         elif self.__definitions[variable][0] is CATEGORICAL:
@@ -833,11 +837,15 @@ class Domain:
         """
         dom_ctrl_var_el_name_str_class(variable)
         dom_ctrl_var_el_name_str_class(element)
-        ctrl_var_is_defined_type(variable, LAYER, self.__definitions)
-        ctrl_el_is_defined(variable, element, self.__definitions)
+        dom_ctrl_var_is_defined_type(variable, LAYER, self.__definitions)
+        dom_ctrl_el_is_defined(variable, element, self.__definitions)
         r = False
-        if self.__definitions[variable][1][element][0] in (INTEGER, REAL):
-            dom_ctrl_value_class_int_float(value)
+        if self.__definitions[variable][1][element][0] is INTEGER:
+            dom_ctrl_value_class_int(value)
+            if self.__definitions[variable][1][element][1] <= value <= self.__definitions[variable][1][element][2]:
+                r = True
+        elif self.__definitions[variable][1][element][0] is REAL:
+            dom_ctrl_value_class_float(value)
             if self.__definitions[variable][1][element][1] <= value <= self.__definitions[variable][1][element][2]:
                 r = True
         elif self.__definitions[variable][1][element][0] is CATEGORICAL:
@@ -845,6 +853,57 @@ class Domain:
             if value in self.__definitions[variable][1][element][1]:
                 r = True
         return r
+
+    def check_vector_size(self, variable, values):
+        """ It checks if the components of a **VECTOR** variable are already defined.
+
+        **Preconditions:**
+
+        - The variable is defined as **VECTOR** type.
+
+        :param variable: The **LAYER** variable.
+        :type variable: str
+        :returns: True if the components of the **VECTOR** variable are already defined, otherwise False.
+        :rtype: bool
+        :raise :py:class:`~pycvoa.problem.domain.NotDefinedItem`: The variable is not the defined in the domain.
+        :raise :py:class:`~pycvoa.problem.domain.WrongItemType`: The variable is not defined as **LAYER**.
+        """
+        dom_ctrl_var_el_name_str_class(variable)
+        dom_ctrl_var_is_defined_type(variable, VECTOR, self.__definitions)
+        r = False
+        if self.__definitions[variable][1] <= len(values) <= self.__definitions[variable][2]:
+            r = True
+        return r
+
+    def check_basic_values(self, variable, values):
+        dom_ctrl_var_el_name_str_class(variable)
+        dom_ctrl_vector_defined_type_comp_defined_type(variable, BASIC, self.__definitions)
+        dom_check_vector_values_size(variable, values, self.__definitions)
+        enc = True
+        i = 0
+        r = [-1,None]
+        component_type = self.__definitions[variable][4][0]
+        if component_type is INTEGER:
+            while enc and i < len(values):
+                if type(values[i]) != int:
+                    enc = False
+                    r = [i, int]
+                i += 1
+        elif component_type is REAL:
+            while enc and i < len(values):
+                if type(values[i]) != float:
+                    enc = False
+                    r = [i, float]
+                i += 1
+        elif component_type is CATEGORICAL:
+            categories = self.__definitions[variable][4][1]
+            while enc and i < len(values):
+                if type(values[i]) != type(categories[0]):
+                    enc = False
+                    r = [i, type(categories[0])]
+                i += 1
+        return r
+
 
     def check_basic_component(self, variable, value):
         """ It checks if a value of a component a **VECTOR** variable fulfills its definition in the domain.
@@ -866,8 +925,7 @@ class Domain:
         The component type is not **BASIC**.
         """
         dom_ctrl_var_el_name_str_class(variable)
-        ctrl_var_is_defined_type(variable, VECTOR, self.__definitions)
-        ctrl_comp_is_defined_type(variable, BASIC, self.__definitions)
+        dom_ctrl_vector_defined_type_comp_defined_type(variable, BASIC, self.__definitions)
         r = False
         if self.__definitions[variable][4][0] in (INTEGER, REAL):
             dom_ctrl_value_class_int_float(value)
@@ -877,6 +935,34 @@ class Domain:
             dom_ctrl_value_class_category(self.__definitions[variable][4][1], value)
             if value in self.__definitions[variable][4][1]:
                 r = True
+        return r
+
+    def check_layer_values(self, variable, values):
+        dom_ctrl_var_el_name_str_class(variable)
+        dom_ctrl_vector_defined_type_comp_defined_type(variable, LAYER, self.__definitions)
+        dom_check_vector_values_size(variable, values, self.__definitions)
+        r = True
+        i = 0
+        while r and i < len(values):
+            layer = values[i]
+            j = 0
+            while r and j < len(layer):
+                element = layer.keys(j)
+                value = layer[element]
+                if self.__definitions[variable][4][1][element][0] is INTEGER:
+                    dom_ctrl_value_class_int(value)
+                    if value < self.__definitions[variable][4][1][element][1] or value > self.__definitions[variable][4][1][element][2]:
+                        r = False
+                elif self.__definitions[variable][4][1][element][0] is REAL:
+                    dom_ctrl_value_class_float(value)
+                    if value < self.__definitions[variable][4][1][element][1] or value > self.__definitions[variable][4][1][element][2]:
+                        r = False
+                elif self.__definitions[variable][4][1][element][0] is CATEGORICAL:
+                    dom_ctrl_value_class_category(self.__definitions[variable][4][1][element][1], value)
+                    if value not in self.__definitions[variable][4][1][element][1]:
+                        r = False
+                j += 1
+            i += 1
         return r
 
     def check_element_component(self, variable, element, value):
@@ -903,9 +989,9 @@ class Domain:
         """
         dom_ctrl_var_el_name_str_class(variable)
         dom_ctrl_var_el_name_str_class(element)
-        ctrl_var_is_defined_type(variable, VECTOR, self.__definitions)
-        ctrl_comp_is_defined_type(variable, LAYER, self.__definitions)
-        ctrl_comp_el_is_defined(variable, element, self.__definitions)
+        dom_ctrl_var_is_defined_type(variable, VECTOR, self.__definitions)
+        dom_ctrl_comp_is_defined_type(variable, LAYER, self.__definitions)
+        dom_ctrl_comp_el_is_defined(variable, element, self.__definitions)
         r = False
         if self.__definitions[variable][4][1][element][0] in (INTEGER, REAL):
             dom_ctrl_value_class_int_float(value)
@@ -944,7 +1030,7 @@ class Domain:
         are checked.
         """
         dom_ctrl_var_el_name_str_class(variable)
-        ctrl_var_is_defined(variable, self.__definitions)
+        dom_ctrl_var_is_defined(variable, self.__definitions)
         r = False
         if self.__definitions[variable][0] in BASIC:
             ctrl_element_is_none(variable, element)
@@ -953,7 +1039,7 @@ class Domain:
             ctrl_element_not_none(variable, element)
             r = self.check_element(variable, element, value)
         elif self.__definitions[variable][0] is VECTOR:
-            ctrl_comp_type_defined(variable, self.__definitions)
+            dom_ctrl_comp_type_defined(variable, self.__definitions)
             if self.__definitions[variable][4][0] in BASIC:
                 ctrl_element_is_none(variable, element)
                 r = self.check_basic_component(variable, value)
