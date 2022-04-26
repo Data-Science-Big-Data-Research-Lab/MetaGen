@@ -788,6 +788,22 @@ class Domain:
         dom_ctrl_comp_el_is_defined(variable, element, self.__definitions)
         return self.__definitions[variable][4][1][element]
 
+    def get_remaining_components(self, vector_variable, current_vector_size):
+        dom_ctrl_var_el_name_str_class(vector_variable)
+        dom_ctrl_value_class_int(current_vector_size)
+        dom_ctrl_var_is_defined_type(vector_variable, VECTOR, self.__definitions)
+        r = 0
+        if current_vector_size < self.__definitions[vector_variable][1]:
+            r = current_vector_size - self.__definitions[vector_variable][1]
+        else:
+            r = self.__definitions[vector_variable][2] - current_vector_size
+        return r
+
+
+
+
+
+
     # **** CHECK METHODS ***
 
     def check_basic(self, basic_variable, value):
@@ -877,6 +893,7 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.WrongItemType`: The variable is not defined as **LAYER**.
         """
         dom_ctrl_var_el_name_str_class(vector_variable)
+        dom_ctrl_values_class_list(values)
         dom_ctrl_var_is_defined_type(vector_variable, VECTOR, self.__definitions)
         r = False
         if self.__definitions[vector_variable][1] <= len(values) <= self.__definitions[vector_variable][2]:
@@ -885,11 +902,12 @@ class Domain:
 
     def check_vector_basic_values(self, basic_vector_variable, values):
         dom_ctrl_var_el_name_str_class(basic_vector_variable)
+        dom_ctrl_values_class_list(values)
         dom_ctrl_vector_defined_type_comp_defined_type(basic_vector_variable, BASIC, self.__definitions)
         dom_check_vector_values_size(basic_vector_variable, values, self.__definitions)
         enc = True
         i = 0
-        r = [-1,None]
+        r = [-1, None]
         component_type = self.__definitions[basic_vector_variable][4][0]
         if component_type is INTEGER:
             while enc and i < len(values):
@@ -914,6 +932,8 @@ class Domain:
 
     def check_vector_layer_values(self, layer_vector_variable, values):
         dom_ctrl_var_el_name_str_class(layer_vector_variable)
+        dom_ctrl_values_class_list(values)
+        dom_ctrl_values_class_list_dict(values)
         dom_ctrl_vector_defined_type_comp_defined_type(layer_vector_variable, LAYER, self.__definitions)
         dom_check_vector_values_size(layer_vector_variable, values, self.__definitions)
         r = True
@@ -942,10 +962,29 @@ class Domain:
 
     def check_vector_layer_elements_values(self, layer_vector_variable, layer_values):
         dom_ctrl_var_el_name_str_class(layer_vector_variable)
-        dom_ctrl_vector_defined_type_comp_defined_type(layer_vector_variable, LAYER, self.__definitions)
         dom_ctrl_values_class_dict(layer_values)
-
-
+        dom_ctrl_vector_defined_type_comp_defined_type(layer_vector_variable, LAYER, self.__definitions)
+        r = True
+        i = 0
+        while r and i < len(layer_values):
+            element = layer_values.keys(i)
+            value = layer_values[element]
+            if self.__definitions[layer_vector_variable][4][1][element][0] is INTEGER:
+                dom_ctrl_value_class_int(value)
+                if value < self.__definitions[layer_vector_variable][4][1][element][1] or value > \
+                        self.__definitions[layer_vector_variable][4][1][element][2]:
+                    r = False
+            elif self.__definitions[layer_vector_variable][4][1][element][0] is REAL:
+                dom_ctrl_value_class_float(value)
+                if value < self.__definitions[layer_vector_variable][4][1][element][1] or value > \
+                        self.__definitions[layer_vector_variable][4][1][element][2]:
+                    r = False
+            elif self.__definitions[layer_vector_variable][4][1][element][0] is CATEGORICAL:
+                dom_ctrl_value_class_category(self.__definitions[layer_vector_variable][4][1][element][1], value)
+                if value not in self.__definitions[layer_vector_variable][4][1][element][1]:
+                    r = False
+            i += 1
+        return r
 
     def check_vector_basic_value(self, basic_vector_variable, value):
         """ It checks if a value of a component a **VECTOR** variable fulfills its definition in the domain.
