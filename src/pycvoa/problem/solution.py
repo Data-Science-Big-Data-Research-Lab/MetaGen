@@ -131,11 +131,6 @@ class Solution:
         sol_check_vector_basic_values_size_class(variable, values, current_domain)
         self.__variables[variable] = values
 
-    def set_layer_vector(self, variable, values, domain=None):
-        current_domain = sol_ctrl_check_domain_type(variable, VECTOR, domain, self.__domain)
-        sol_check_vector_layer_values_size_class(variable, values, current_domain)
-        self.__variables[variable] = values
-
     def add_basic_component(self, variable, value, domain=None):
         """ It appends a value at last of a **VECTOR** variable. If the **VECTOR** variable does not exist,
         it will be created with the indicated value in the 0 position.
@@ -181,6 +176,17 @@ class Solution:
             self.__variables[variable] = [{element: value}]
         else:
             self.__variables[variable].insert(index, {element: value})
+
+    def set_layer_vector(self, variable, values, domain=None):
+        current_domain = sol_ctrl_check_domain_type(variable, VECTOR, domain, self.__domain)
+        sol_check_vector_layer_values_size_class(variable, values, current_domain)
+        self.__variables[variable] = values
+
+    def add_layer_component(self, vector_variable, layer, domain=None):
+        current_domain = sol_ctrl_check_domain_type(vector_variable, VECTOR, domain, self.__domain)
+
+
+
 
     def add_component_element(self, variable, element, value, domain=None):
         """ It appends a value at last of a **VECTOR** variable. If the **VECTOR** variable does not exist,

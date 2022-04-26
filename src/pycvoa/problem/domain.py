@@ -617,6 +617,14 @@ class Domain:
         dom_ctrl_comp_type_defined(variable, self.__definitions)
         return self.__definitions[variable][4][0]
 
+    def get_component_element_type (self, variable, element):
+        dom_ctrl_var_el_name_str_class(variable)
+        dom_ctrl_var_is_defined_type(variable, VECTOR, self.__definitions)
+        dom_ctrl_comp_type_defined(variable, self.__definitions)
+        dom_ctrl_comp_is_defined_type(variable, LAYER, self.__definitions)
+        dom_ctrl_comp_el_is_defined(variable, element, self.__definitions)
+        return self.__definitions[variable][4][1][element][0]
+
     # **** GET VARIABLE DEFINITION METHODS ***
 
     def get_definitions(self):
@@ -782,40 +790,40 @@ class Domain:
 
     # **** CHECK METHODS ***
 
-    def check_basic(self, variable, value):
+    def check_basic(self, basic_variable, value):
         """ It checks if a value of a **BASIC** variable fulfills its definition in the domain.
 
         **Preconditions:**
 
         - The variable is defined as **BASIC** type.
 
-        :param variable: The defined **BASIC** variable.
+        :param basic_variable: The defined **BASIC** variable.
         :param value: The value to check.
-        :type variable: str
+        :type basic_variable: str
         :type value: int, float, str
         :returns: True if the value fulfills the variable definition, otherwise False.
         :rtype: bool
         :raise :py:class:`~pycvoa.problem.domain.NotDefinedItem`: The variable is not the defined in the domain.
         :raise :py:class:`~pycvoa.problem.domain.WrongItemType`: The variable is not defined as **BASIC**.
         """
-        dom_ctrl_var_el_name_str_class(variable)
-        dom_ctrl_var_is_defined_type(variable, BASIC, self.__definitions)
+        dom_ctrl_var_el_name_str_class(basic_variable)
+        dom_ctrl_var_is_defined_type(basic_variable, BASIC, self.__definitions)
         r = False
-        if self.__definitions[variable][0] in INTEGER:
+        if self.__definitions[basic_variable][0] in INTEGER:
             dom_ctrl_value_class_int(value)
-            if self.__definitions[variable][1] <= value <= self.__definitions[variable][2]:
+            if self.__definitions[basic_variable][1] <= value <= self.__definitions[basic_variable][2]:
                 r = True
-        elif self.__definitions[variable][0] in REAL:
+        elif self.__definitions[basic_variable][0] in REAL:
             dom_ctrl_value_class_float(value)
-            if self.__definitions[variable][1] <= value <= self.__definitions[variable][2]:
+            if self.__definitions[basic_variable][1] <= value <= self.__definitions[basic_variable][2]:
                 r = True
-        elif self.__definitions[variable][0] is CATEGORICAL:
-            dom_ctrl_value_class_category(self.__definitions[variable][1], value)
-            if value in self.__definitions[variable][1]:
+        elif self.__definitions[basic_variable][0] is CATEGORICAL:
+            dom_ctrl_value_class_category(self.__definitions[basic_variable][1], value)
+            if value in self.__definitions[basic_variable][1]:
                 r = True
         return r
 
-    def check_element(self, variable, element, value):
+    def check_element(self, layer_variable, element, value):
         """ It checks if a value for an element of a **LAYER** variable fulfills its definition in the domain.
 
         **Preconditions:**
@@ -823,10 +831,10 @@ class Domain:
         - The variable is defined as **LAYER** type.
         - The element is defined in the **LAYER** variable.
 
-        :param variable: The defined **LAYER** variable.
+        :param layer_variable: The defined **LAYER** variable.
         :param element: The defined element in the variable.
         :param value: The element value to check.
-        :type variable: str
+        :type layer_variable: str
         :type element: str
         :type value: int, float, str
         :returns: True if the value fulfills the element definition, otherwise False.
@@ -835,54 +843,54 @@ class Domain:
         The element is not defined.
         :raise :py:class:`~pycvoa.problem.domain.WrongItemType`: The variable is not defined as **BASIC**.
         """
-        dom_ctrl_var_el_name_str_class(variable)
+        dom_ctrl_var_el_name_str_class(layer_variable)
         dom_ctrl_var_el_name_str_class(element)
-        dom_ctrl_var_is_defined_type(variable, LAYER, self.__definitions)
-        dom_ctrl_el_is_defined(variable, element, self.__definitions)
+        dom_ctrl_var_is_defined_type(layer_variable, LAYER, self.__definitions)
+        dom_ctrl_el_is_defined(layer_variable, element, self.__definitions)
         r = False
-        if self.__definitions[variable][1][element][0] is INTEGER:
+        if self.__definitions[layer_variable][1][element][0] is INTEGER:
             dom_ctrl_value_class_int(value)
-            if self.__definitions[variable][1][element][1] <= value <= self.__definitions[variable][1][element][2]:
+            if self.__definitions[layer_variable][1][element][1] <= value <= self.__definitions[layer_variable][1][element][2]:
                 r = True
-        elif self.__definitions[variable][1][element][0] is REAL:
+        elif self.__definitions[layer_variable][1][element][0] is REAL:
             dom_ctrl_value_class_float(value)
-            if self.__definitions[variable][1][element][1] <= value <= self.__definitions[variable][1][element][2]:
+            if self.__definitions[layer_variable][1][element][1] <= value <= self.__definitions[layer_variable][1][element][2]:
                 r = True
-        elif self.__definitions[variable][1][element][0] is CATEGORICAL:
-            dom_ctrl_value_class_category(self.__definitions[variable][1][element][1], value)
-            if value in self.__definitions[variable][1][element][1]:
+        elif self.__definitions[layer_variable][1][element][0] is CATEGORICAL:
+            dom_ctrl_value_class_category(self.__definitions[layer_variable][1][element][1], value)
+            if value in self.__definitions[layer_variable][1][element][1]:
                 r = True
         return r
 
-    def check_vector_size(self, variable, values):
+    def check_vector_size(self, vector_variable, values):
         """ It checks if the components of a **VECTOR** variable are already defined.
 
         **Preconditions:**
 
         - The variable is defined as **VECTOR** type.
 
-        :param variable: The **LAYER** variable.
-        :type variable: str
+        :param vector_variable: The **LAYER** variable.
+        :type vector_variable: str
         :returns: True if the components of the **VECTOR** variable are already defined, otherwise False.
         :rtype: bool
         :raise :py:class:`~pycvoa.problem.domain.NotDefinedItem`: The variable is not the defined in the domain.
         :raise :py:class:`~pycvoa.problem.domain.WrongItemType`: The variable is not defined as **LAYER**.
         """
-        dom_ctrl_var_el_name_str_class(variable)
-        dom_ctrl_var_is_defined_type(variable, VECTOR, self.__definitions)
+        dom_ctrl_var_el_name_str_class(vector_variable)
+        dom_ctrl_var_is_defined_type(vector_variable, VECTOR, self.__definitions)
         r = False
-        if self.__definitions[variable][1] <= len(values) <= self.__definitions[variable][2]:
+        if self.__definitions[vector_variable][1] <= len(values) <= self.__definitions[vector_variable][2]:
             r = True
         return r
 
-    def check_basic_values(self, variable, values):
-        dom_ctrl_var_el_name_str_class(variable)
-        dom_ctrl_vector_defined_type_comp_defined_type(variable, BASIC, self.__definitions)
-        dom_check_vector_values_size(variable, values, self.__definitions)
+    def check_vector_basic_values(self, basic_vector_variable, values):
+        dom_ctrl_var_el_name_str_class(basic_vector_variable)
+        dom_ctrl_vector_defined_type_comp_defined_type(basic_vector_variable, BASIC, self.__definitions)
+        dom_check_vector_values_size(basic_vector_variable, values, self.__definitions)
         enc = True
         i = 0
         r = [-1,None]
-        component_type = self.__definitions[variable][4][0]
+        component_type = self.__definitions[basic_vector_variable][4][0]
         if component_type is INTEGER:
             while enc and i < len(values):
                 if type(values[i]) != int:
@@ -896,7 +904,7 @@ class Domain:
                     r = [i, float]
                 i += 1
         elif component_type is CATEGORICAL:
-            categories = self.__definitions[variable][4][1]
+            categories = self.__definitions[basic_vector_variable][4][1]
             while enc and i < len(values):
                 if type(values[i]) != type(categories[0]):
                     enc = False
@@ -904,43 +912,10 @@ class Domain:
                 i += 1
         return r
 
-
-    def check_basic_component(self, variable, value):
-        """ It checks if a value of a component a **VECTOR** variable fulfills its definition in the domain.
-
-        **Preconditions:**
-
-        - The variable is defined as **VECTOR** type.
-        - The components of the **VECTOR** variable are defined as **BASIC**.
-
-        :param variable: The defined **VECTOR** variable.
-        :param value: The element value to check.
-        :type variable: str
-        :type value: int, float, str
-        :returns: True if the value fulfills the component definition, otherwise False.
-        :rtype: bool
-        :raise :py:class:`~pycvoa.problem.domain.NotDefinedItem`: The variable is not the defined in the domain.
-        The component type is not defined.
-        :raise :py:class:`~pycvoa.problem.domain.WrongItemType`: The variable is not defined as **VECTOR**.
-        The component type is not **BASIC**.
-        """
-        dom_ctrl_var_el_name_str_class(variable)
-        dom_ctrl_vector_defined_type_comp_defined_type(variable, BASIC, self.__definitions)
-        r = False
-        if self.__definitions[variable][4][0] in (INTEGER, REAL):
-            dom_ctrl_value_class_int_float(value)
-            if self.__definitions[variable][4][1] <= value <= self.__definitions[variable][4][2]:
-                r = True
-        elif self.__definitions[variable][4][0] is CATEGORICAL:
-            dom_ctrl_value_class_category(self.__definitions[variable][4][1], value)
-            if value in self.__definitions[variable][4][1]:
-                r = True
-        return r
-
-    def check_layer_values(self, variable, values):
-        dom_ctrl_var_el_name_str_class(variable)
-        dom_ctrl_vector_defined_type_comp_defined_type(variable, LAYER, self.__definitions)
-        dom_check_vector_values_size(variable, values, self.__definitions)
+    def check_vector_layer_values(self, layer_vector_variable, values):
+        dom_ctrl_var_el_name_str_class(layer_vector_variable)
+        dom_ctrl_vector_defined_type_comp_defined_type(layer_vector_variable, LAYER, self.__definitions)
+        dom_check_vector_values_size(layer_vector_variable, values, self.__definitions)
         r = True
         i = 0
         while r and i < len(values):
@@ -949,23 +924,66 @@ class Domain:
             while r and j < len(layer):
                 element = layer.keys(j)
                 value = layer[element]
-                if self.__definitions[variable][4][1][element][0] is INTEGER:
+                if self.__definitions[layer_vector_variable][4][1][element][0] is INTEGER:
                     dom_ctrl_value_class_int(value)
-                    if value < self.__definitions[variable][4][1][element][1] or value > self.__definitions[variable][4][1][element][2]:
+                    if value < self.__definitions[layer_vector_variable][4][1][element][1] or value > self.__definitions[layer_vector_variable][4][1][element][2]:
                         r = False
-                elif self.__definitions[variable][4][1][element][0] is REAL:
+                elif self.__definitions[layer_vector_variable][4][1][element][0] is REAL:
                     dom_ctrl_value_class_float(value)
-                    if value < self.__definitions[variable][4][1][element][1] or value > self.__definitions[variable][4][1][element][2]:
+                    if value < self.__definitions[layer_vector_variable][4][1][element][1] or value > self.__definitions[layer_vector_variable][4][1][element][2]:
                         r = False
-                elif self.__definitions[variable][4][1][element][0] is CATEGORICAL:
-                    dom_ctrl_value_class_category(self.__definitions[variable][4][1][element][1], value)
-                    if value not in self.__definitions[variable][4][1][element][1]:
+                elif self.__definitions[layer_vector_variable][4][1][element][0] is CATEGORICAL:
+                    dom_ctrl_value_class_category(self.__definitions[layer_vector_variable][4][1][element][1], value)
+                    if value not in self.__definitions[layer_vector_variable][4][1][element][1]:
                         r = False
                 j += 1
             i += 1
         return r
 
-    def check_element_component(self, variable, element, value):
+    def check_vector_layer_elements_values(self, layer_vector_variable, layer_values):
+        dom_ctrl_var_el_name_str_class(layer_vector_variable)
+        dom_ctrl_vector_defined_type_comp_defined_type(layer_vector_variable, LAYER, self.__definitions)
+        dom_ctrl_values_class_dict(layer_values)
+
+
+
+    def check_vector_basic_value(self, basic_vector_variable, value):
+        """ It checks if a value of a component a **VECTOR** variable fulfills its definition in the domain.
+
+        **Preconditions:**
+
+        - The variable is defined as **VECTOR** type.
+        - The components of the **VECTOR** variable are defined as **BASIC**.
+
+        :param basic_vector_variable: The defined **VECTOR** variable.
+        :param value: The element value to check.
+        :type basic_vector_variable: str
+        :type value: int, float, str
+        :returns: True if the value fulfills the component definition, otherwise False.
+        :rtype: bool
+        :raise :py:class:`~pycvoa.problem.domain.NotDefinedItem`: The variable is not the defined in the domain.
+        The component type is not defined.
+        :raise :py:class:`~pycvoa.problem.domain.WrongItemType`: The variable is not defined as **VECTOR**.
+        The component type is not **BASIC**.
+        """
+        dom_ctrl_var_el_name_str_class(basic_vector_variable)
+        dom_ctrl_vector_defined_type_comp_defined_type(basic_vector_variable, BASIC, self.__definitions)
+        r = False
+        if self.__definitions[basic_vector_variable][4][0] is INTEGER:
+            dom_ctrl_value_class_int(value)
+            if self.__definitions[basic_vector_variable][4][1] <= value <= self.__definitions[basic_vector_variable][4][2]:
+                r = True
+        elif self.__definitions[basic_vector_variable][4][0] is REAL:
+            dom_ctrl_value_class_float(value)
+            if self.__definitions[basic_vector_variable][4][1] <= value <= self.__definitions[basic_vector_variable][4][2]:
+                r = True
+        elif self.__definitions[basic_vector_variable][4][0] is CATEGORICAL:
+            dom_ctrl_value_class_category(self.__definitions[basic_vector_variable][4][1], value)
+            if value in self.__definitions[basic_vector_variable][4][1]:
+                r = True
+        return r
+
+    def check_vector_layer_element_value(self, layer_vector_variable, element, value):
         """ It checks if a value for an element in a defined **VECTOR** variable fulfills its definition in the domain.
 
          **Preconditions:**
@@ -974,10 +992,10 @@ class Domain:
         - The components of the **VECTOR** variable are defined as **LAYER** type.
         - The element is defined in the **LAYER** components.
 
-        :param variable: The defined **VECTOR** variable.
+        :param layer_vector_variable: The defined **VECTOR** variable.
         :param element: The defined element in the **VECTOR** variable where its components are defined as **LAYER**.
         :param value: The element value to check.
-        :type variable: str
+        :type layer_vector_variable: str
         :type element: str
         :type value: int, float, str
         :returns: True if the value fulfills the element definition, otherwise False.
@@ -987,20 +1005,25 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.WrongItemType`: The variable is not defined as **VECTOR**.
         The component type is not defined as **LAYER**.
         """
-        dom_ctrl_var_el_name_str_class(variable)
+        dom_ctrl_var_el_name_str_class(layer_vector_variable)
         dom_ctrl_var_el_name_str_class(element)
-        dom_ctrl_var_is_defined_type(variable, VECTOR, self.__definitions)
-        dom_ctrl_comp_is_defined_type(variable, LAYER, self.__definitions)
-        dom_ctrl_comp_el_is_defined(variable, element, self.__definitions)
+        dom_ctrl_var_is_defined_type(layer_vector_variable, VECTOR, self.__definitions)
+        dom_ctrl_comp_is_defined_type(layer_vector_variable, LAYER, self.__definitions)
+        dom_ctrl_comp_el_is_defined(layer_vector_variable, element, self.__definitions)
         r = False
-        if self.__definitions[variable][4][1][element][0] in (INTEGER, REAL):
-            dom_ctrl_value_class_int_float(value)
-            if self.__definitions[variable][4][1][element][1] <= value \
-                    <= self.__definitions[variable][4][1][element][2]:
+        if self.__definitions[layer_vector_variable][4][1][element][0] is INTEGER:
+            dom_ctrl_value_class_int(value)
+            if self.__definitions[layer_vector_variable][4][1][element][1] <= value \
+                    <= self.__definitions[layer_vector_variable][4][1][element][2]:
                 r = True
-        elif self.__definitions[variable][4][1][element][0] is CATEGORICAL:
-            dom_ctrl_value_class_category(self.__definitions[variable][4][1][element][1], value)
-            if value in self.__definitions[variable][4][1][element][1]:
+        elif self.__definitions[layer_vector_variable][4][1][element][0] is REAL:
+            dom_ctrl_value_class_float(value)
+            if self.__definitions[layer_vector_variable][4][1][element][1] <= value \
+                    <= self.__definitions[layer_vector_variable][4][1][element][2]:
+                r = True
+        elif self.__definitions[layer_vector_variable][4][1][element][0] is CATEGORICAL:
+            dom_ctrl_value_class_category(self.__definitions[layer_vector_variable][4][1][element][1], value)
+            if value in self.__definitions[layer_vector_variable][4][1][element][1]:
                 r = True
         return r
 
@@ -1042,10 +1065,10 @@ class Domain:
             dom_ctrl_comp_type_defined(variable, self.__definitions)
             if self.__definitions[variable][4][0] in BASIC:
                 ctrl_element_is_none(variable, element)
-                r = self.check_basic_component(variable, value)
+                r = self.check_vector_basic_value(variable, value)
             elif self.__definitions[variable][4][0] is LAYER:
                 ctrl_element_not_none(variable, element)
-                r = self.check_element_component(variable, element, value)
+                r = self.check_vector_layer_element_value(variable, element, value)
         return r
 
     # **** TO STRING ***
