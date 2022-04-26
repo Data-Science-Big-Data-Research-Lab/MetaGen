@@ -138,6 +138,11 @@ def sol_ctrl_check_component_element_availability(vector_variable, element, inde
                                                                                       "of the " + vector_variable + " variable.")
 
 
+def sol_ctrl_can_insert_in_vector(vector_variable, vector_size, domain):
+    if domain.get_remaining_components(vector_variable,vector_size) == 0:
+        raise NotAvailableItem("The " + str(vector_variable) + " is complete.")
+
+
 # DOMAIN
 
 def dom_ctrl_var_el_name_str_class(var_el):
@@ -201,10 +206,23 @@ def dom_ctrl_value_class_category(categories, value):
         raise WrongParameters(
             "The value parameter be the same Python type than categories (" + str(type(categories[0])) + ")")
 
+
+def dom_ctrl_values_class_list(values):
+    if type(values) != list:
+        raise WrongParameters(
+            "The values parameter must be <list>.")
+
+def dom_ctrl_values_class_list_dict(values):
+    for e in values:
+        if type(e) != dict:
+            raise WrongParameters(
+                "The "+values.index(e)+"-nh value must be <dict>.")
+
 def dom_ctrl_values_class_dict(values):
     if type(values) != dict:
         raise WrongParameters(
             "The values parameter must be <dict>.")
+
 
 def dom_ctrl_vector_defined_type_comp_defined_type(variable, component_type, definitions):
     dom_ctrl_var_is_defined_type(variable, VECTOR, definitions)
@@ -247,20 +265,21 @@ def sol_check_vector_layer_values(vector_variable, values, domain):
             if element_definition[0] is INTEGER:
                 dom_ctrl_value_class_int(value)
                 if value < element_definition[1] or value > element_definition[2]:
-                    raise WrongParameters("The "+element+" element of the "+ str(values.index(layer)) + "-nh component "
-                                                                            "is not compatible with its definition.")
+                    raise WrongParameters(
+                        "The " + element + " element of the " + str(values.index(layer)) + "-nh component "
+                                                                                           "is not compatible with its definition.")
             elif element_definition[0] is REAL:
                 dom_ctrl_value_class_float(value)
                 if value < element_definition[1] or value > element_definition[2]:
                     raise WrongParameters(
                         "The " + element + " element of the " + str(values.index(layer)) + "-nh component "
-                                                                        "is not compatible with its definition.")
+                                                                                           "is not compatible with its definition.")
             elif element_definition[0] is CATEGORICAL:
                 dom_ctrl_value_class_category(element_definition[1], value)
                 if value not in element_definition[1]:
                     raise WrongParameters(
                         "The " + element + " element of the " + str(values.index(layer)) + "-nh component "
-                                                                             "is not compatible with its definition.")
+                                                                                           "is not compatible with its definition.")
 
 
 # **** RANGE CONTROL ***
@@ -288,6 +307,10 @@ def dom_ctrl_range(min_value, max_value, step):
                 step) + ") of the variable/element must be less or equal than (maximum "
                         "value/size - minimum value/size) / 2 (" + str(average) + ").")
 
+def dom_ctrl_number_in_range(number, min_value, max_value):
+    if number < min_value or number > max_value:
+        raise WrongItemValue(
+            "The parameter " + str(number) + " must be in ["+str(min_value)+" , "+str(max_value)+"]")
 
 # **** VARIABLE CONTROL ***
 
@@ -547,8 +570,6 @@ def dom_ctrl_var_is_defined_type_comp_type_el_name_in_use(vector_variable, varia
     dom_ctrl_comp_type_defined(vector_variable, definitions)
     dom_ctrl_comp_type(vector_variable, component_type, definitions)
     dom_ctrl_comp_el_name_in_use(vector_variable, element_name, definitions)
-
-
 
 
 class WrongParameters(Exception):
