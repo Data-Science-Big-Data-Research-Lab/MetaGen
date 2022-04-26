@@ -547,20 +547,20 @@ print("Is C1 compatible with the definition of E_C in the LAYER L ? " + str(L_E_
 # use "check_basic_component" method
 
 # Are 2 and -1 compatible with the components of the V_I VECTOR variable ?
-V_I_comp_A = domain.check_basic_component("V_I", 2)
-V_I_comp_B = domain.check_basic_component("V_I", -1)
+V_I_comp_A = domain.check_vector_basic_value("V_I", 2)
+V_I_comp_B = domain.check_vector_basic_value("V_I", -1)
 print("Is 2 compatible with the components of the V_I VECTOR variable ? " + str(V_I_comp_A))
 print("Is -1 compatible with the components of the V_I VECTOR variable ? " + str(V_I_comp_B))
 
 # Are 0.001 and 1.2 compatible with the components of the V_R VECTOR variable ?
-V_R_comp_A = domain.check_basic_component("V_R", 0.001)
-V_R_comp_B = domain.check_basic_component("V_R", 1.2)
+V_R_comp_A = domain.check_vector_basic_value("V_R", 0.001)
+V_R_comp_B = domain.check_vector_basic_value("V_R", 1.2)
 print("Is 0.001 compatible with the components of the V_R VECTOR variable ? " + str(V_R_comp_A))
 print("Is 1.2 compatible with the components of the V_R VECTOR variable ? " + str(V_R_comp_B))
 
 # Are C2 and C5 compatible with the components of the V_C VECTOR variable ?
-V_C_comp_A = domain.check_basic_component("V_C", "V2")
-V_C_comp_B = domain.check_basic_component("V_C", "C5")
+V_C_comp_A = domain.check_vector_basic_value("V_C", "V2")
+V_C_comp_B = domain.check_vector_basic_value("V_C", "C5")
 print("Is V2 compatible with the components of the V_C VECTOR variable ? " + str(V_C_comp_A))
 print("Is C5 compatible with the components of the V_C VECTOR variable ? " + str(V_C_comp_B))
 
@@ -578,24 +578,24 @@ print("Is C5 compatible with the components of the V_C VECTOR variable ? " + str
 # use "check_element_component" method
 
 # Are 15 and -1 compatible with the E_I definition in the V_L VECTOR variable ?
-V_L_el_1_comp_A = domain.check_element_component("V_L", "el-1", 15)
-V_L_el_1_comp_B = domain.check_element_component("V_L", "el-1", -1)
+V_L_el_1_comp_A = domain.check_vector_layer_element_value("V_L", "el-1", 15)
+V_L_el_1_comp_B = domain.check_vector_layer_element_value("V_L", "el-1", -1)
 print("Is 15 compatible with the definition of el-1 in the LAYER components of the V_L VECTOR variable ? " + str(
     V_L_el_1_comp_A))
 print("Is -1 compatible with the definition of el-1 in the LAYER components of the V_L VECTOR variable ? " + str(
     V_L_el_1_comp_B))
 
 # Are 0.25 and 4.5 compatible with the E_I definition in the V_L VECTOR variable ?
-V_L_el_2_comp_A = domain.check_element_component("V_L", "el-2", 0.25)
-V_L_el_2_comp_B = domain.check_element_component("V_L", "el-2", 4.5)
+V_L_el_2_comp_A = domain.check_vector_layer_element_value("V_L", "el-2", 0.25)
+V_L_el_2_comp_B = domain.check_vector_layer_element_value("V_L", "el-2", 4.5)
 print("Is 0.25 compatible with the definition of el-2 in the LAYER components of the V_L VECTOR variable ? " + str(
     V_L_el_2_comp_A))
 print("Is 4.5 compatible with the definition of el-2 in the LAYER components of the V_L VECTOR variable ? " + str(
     V_L_el_2_comp_B))
 
 # Are 1 and C1 compatible with the E_C definition in the V_L VECTOR variable ?
-V_L_el_3_comp_A = domain.check_element_component("V_L", "el-3", 1)
-V_L_el_3_comp_B = domain.check_element_component("V_L", "el-3", 8)
+V_L_el_3_comp_A = domain.check_vector_layer_element_value("V_L", "el-3", 1)
+V_L_el_3_comp_B = domain.check_vector_layer_element_value("V_L", "el-3", 8)
 print("Is 1 compatible with the definition of el-3 in the LAYER components of the V_L VECTOR variable ? " + str(
     V_L_el_3_comp_A))
 print("Is 8 compatible with the definition of el-3 in the LAYER components of the V_L VECTOR variable ? " + str(
