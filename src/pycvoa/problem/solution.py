@@ -1,7 +1,7 @@
 import sys
 
 from pycvoa.problem import LAYER, VECTOR
-from pycvoa.problem.control import *
+from pycvoa.problem.ctrl.control import *
 
 
 class Solution:
@@ -131,7 +131,7 @@ class Solution:
         sol_check_vector_basic_values_size_class(variable, values, current_domain)
         self.__variables[variable] = values
 
-    # Implementar el control del tamaño del vector al añadir elementos
+    # Implementar el ctrl del tamaño del vector al añadir elementos
     # Si faltan: menos el Nº de elementos que faltan por añadir
     # Si sobrepasa el límite: no se añade y se devuelve ...
     # Resto de casos: los elementos que quedan por añadir
@@ -159,7 +159,7 @@ class Solution:
             self.__variables[variable].append(value)
         return current_domain.get_remaining_components(variable, len(self.__variables[variable]))
 
-        # Implementar el control del tamaño del vector al añadir elementos
+        # Implementar el ctrl del tamaño del vector al añadir elementos
 
     def insert_basic_component(self, variable, index, value, domain=None):
         """ It inserts a value in the **index**-nh position of a **VECTOR** variable. If the **VECTOR** variable
@@ -186,7 +186,7 @@ class Solution:
             self.__variables[variable].insert(index, value)
         return current_domain.get_remaining_components(variable, len(self.__variables[variable]))
 
-    # Implementar el control del tamaño del vector al añadir elementos
+    # Implementar el ctrl del tamaño del vector al añadir elementos
     def insert_component_element(self, variable, element, index, value, domain=None):
         """ It inserts a value in the **index**-nh position of a **VECTOR** variable. If the **VECTOR** variable
         does not exist, it will be created with the indicated value in the 0 position.
@@ -218,7 +218,7 @@ class Solution:
         sol_check_vector_layer_values_size_class(variable, values, current_domain)
         self.__variables[variable] = values
 
-    # Implementar el control del tamaño del vector al añadir elementos
+    # Implementar el ctrl del tamaño del vector al añadir elementos
     def add_layer_component(self, vector_variable, layer_values, domain=None):
         current_domain = sol_ctrl_check_domain_type(vector_variable, VECTOR, domain, self.__domain)
         return current_domain.get_remaining_components(vector_variable, len(self.__variables[vector_variable]))
@@ -228,7 +228,7 @@ class Solution:
         current_domain = sol_ctrl_check_domain_type(vector_variable, VECTOR, domain, self.__domain)
         return current_domain.get_remaining_components(vector_variable, len(self.__variables[vector_variable]))
 
-    # Implementar el control del tamaño del vector al añadir elementos
+    # Implementar el ctrl del tamaño del vector al añadir elementos
     def add_component_element(self, variable, element, value, domain=None):
         """ It appends a value at last of a **VECTOR** variable. If the **VECTOR** variable does not exist,
         it will be created with the indicated value in the 0 position.
