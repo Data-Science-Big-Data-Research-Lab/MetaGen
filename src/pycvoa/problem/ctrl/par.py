@@ -50,25 +50,30 @@ def are_dict(values):
             raise TypeError("The " + values.index(e) + "-nh value must be <dict>.")
 
 
+def is_list_of_dict(values):
+    is_list(values)
+    are_dict(values)
+
+
 def same_python_type(categories, value):
     categories_type = type(categories[0])
     if type(value) != categories_type:
         raise TypeError(
-            "The value parameter be the same Python type than categories (" + str(categories_type) + ")")
+            "The value parameter be the same Python type than categories (" + str(categories_type) + ").")
 
 
-def are_all_int_float_str(categories):
+def list_all_int_float_str(categories):
     if len(categories) < 2:
-        raise TypeError("The categories parameter must have al least two elements")
+        raise TypeError("The categories parameter must have al least two elements.")
     for el in categories:
         if type(el) not in (int, float, str):
             raise TypeError(
                 "The " + str(categories.index(
-                    el)) + "-nh element of the categories parameter must be <int>, <float> or <str>")
+                    el)) + "-nh element of the categories parameter must be <int>, <float> or <str>.")
         categories_type = type(categories[0])
         if type(el) != categories_type:
             raise TypeError(
-                "All the elements of the categories parameter must have the same type (<int>, <float> or <str>)")
+                "All the elements of the categories parameter must have the same type (<int>, <float> or <str>).")
 
 
 def is_domain_class(domain):
@@ -94,14 +99,16 @@ def element_not_none(variable, element_index):
 def index_is_none(variable, index):
     if index is not None:
         raise ValueError(
-            "The " + variable + "variable is not defined as VECTOR, therefore, an index must not be provided")
+            "The " + variable + "variable is not defined as VECTOR, therefore, an index must not be provided.")
 
 
 def index_not_none(variable, index):
     if index is None:
         raise ValueError(
             "The " + variable + "variable is defined as VECTOR, therefore an index to access a component name "
-                                "must be provided")
+                                "must be provided.")
 
 
-
+def are_index_element_none(layer_vector_variable, index, element):
+    index_is_none(layer_vector_variable, index)
+    element_is_none(layer_vector_variable, element)

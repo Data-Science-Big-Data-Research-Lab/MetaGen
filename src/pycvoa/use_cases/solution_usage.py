@@ -26,21 +26,21 @@ domain_A.define_categorical_element("L", "LC", ["Lb1", "Lb2", "Lb3"])
 # Defining a VECTOR variable, VI
 domain_A.define_vector("VI", 2, 8, 2)
 # Defining the components of VI as INTEGER
-domain_A.define_components_integer("VI", 1, 10, 1)
+domain_A.define_components_as_integer("VI", 1, 10, 1)
 # Defining a VECTOR variable, VR
 domain_A.define_vector("VR", 1, 10, 1)
 # Defining the components of VR as REAL
-domain_A.define_components_real("VR", 0.0, 0.1, 0.0001)
+domain_A.define_components_as_real("VR", 0.0, 0.1, 0.0001)
 # Defining a VECTOR variable, VC
 domain_A.define_vector("VC", 10, 20, 1)
 # Defining the components of VC as CATEGORICAL
-domain_A.define_components_categorical("VC", ["V1", "V2", "V3"])
+domain_A.define_components_as_categorical("VC", ["V1", "V2", "V3"])
 # Defining a VECTOR variable, VL
 domain_A.define_vector("VL", 10, 20, 1)
 # Defining the components of VL as LAYER
-domain_A.define_components_layer("VL")
+domain_A.define_components_as_layer("VL")
 # Defining a INTEGER element, el-1, in the VL components (defined as LAYER)
-domain_A.define_vector_integer_element("VL", "el-1", 10, 20, 1)
+domain_A.define_layer_vector_integer_element("VL", "el-1", 10, 20, 1)
 # Defining a REAL element, el-2, in the VL components (defined as LAYER)
 domain_A.define_vector_real_element("VL", "el-2", 0.1, 0.5, 0.1)
 # Defining a CATEGORICAL element, el-3, in the VL components (defined as LAYER)
