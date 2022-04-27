@@ -195,7 +195,7 @@ domain.define_vector("V_I", 2, 8, 2)
 #       - The step: a number to divide the interval, in order to generate random values
 
 # To define the components of the vector "V_I" as INTEGER, in the interval [1, 10] and step 1:
-domain.define_components_integer("V_I", 1, 10, 1)
+domain.define_components_as_integer("V_I", 1, 10, 1)
 # print(str(domain_A))
 
 # **** Possible errors
@@ -221,7 +221,7 @@ domain.define_vector("V_R", 1, 10, 1)
 #       - The step: a number to divide the interval, in order to generate random values
 
 # To define the components of the vector "V_R" as REAL, in the interval [0.0, 0.1] and step 0.0001:
-domain.define_components_real("V_R", 0.0, 0.1, 0.0001)
+domain.define_components_as_real("V_R", 0.0, 0.1, 0.0001)
 # print(str(domain_A))
 
 # **** Possible errors
@@ -243,7 +243,7 @@ domain.define_vector("V_C", 10, 20, 1)
 # "define_components_categorical" function:
 #       - A variable name.
 #       - A list with the categories; these values must have the same Python type, i.e., int, float or str.
-domain.define_components_categorical("V_C", ["V1", "V2", "V3"])
+domain.define_components_as_categorical("V_C", ["V1", "V2", "V3"])
 # print(str(domain_A))
 
 # **** Possible errors
@@ -258,7 +258,7 @@ domain.define_components_categorical("V_C", ["V1", "V2", "V3"])
 domain.define_vector("V_L", 10, 20, 1)
 
 # Next, define its components type as LAYER with the "define_components_layer" method:
-domain.define_components_layer("V_L")
+domain.define_components_as_layer("V_L")
 
 # **** Possible errors
 # 1. If the components of the vector variable have already been defined, raise a definition error
@@ -275,7 +275,7 @@ domain.define_components_layer("V_L")
 #       - The step: a number to divide the interval, in order to generate random values
 
 # To define an INTEGER element "el-1" for the "V_L" VECTOR variable, in the interval [10, 20] and step 1:
-domain.define_vector_integer_element("V_L", "el-1", 10, 20, 1)
+domain.define_layer_vector_integer_element("V_L", "el-1", 10, 20, 1)
 # print(str(domain_A))
 
 # **** Possible errors
@@ -363,7 +363,7 @@ print("The type of the L variable is " + L_type)
 # J_type = domain_A.get_variable_type("J")
 
 # Get a element type of a LAYER variable via get_element_type
-E_C_L_type = domain.get_element_type("L", "E_C")
+E_C_L_type = domain.get_layer_element_type("L", "E_C")
 print("The type of the E_C element of the LAYER variable L is " + E_C_L_type)
 
 # **** Possible errors
@@ -375,7 +375,7 @@ print("The type of the E_C element of the LAYER variable L is " + E_C_L_type)
 # E_Y_I_type = domain_A.get_element_type("L","E_Y")
 
 # Get the component type of a VECTOR variable via get_component_type
-V_I_type = domain.get_component_type("V_I")
+V_I_type = domain.get_vector_components_type("V_I")
 print("The component type of the V_I VECTOR variable is " + V_I_type)
 
 # **** Possible errors
@@ -439,7 +439,7 @@ print("E_C element definition in the L LAYER variable: " + str(E_C_definition))
 # ============================ 10. Getting the component definitions ===================================================
 
 # To get the component definition of a VECTOR variable, use the "get_component_definition" method
-V_I_component_definition = domain.get_component_definition("V_I")
+V_I_component_definition = domain.get_vector_component_definition("V_I")
 print("Component definition of the V_I VECTOR variable: " + str(V_I_component_definition))
 
 # **** Possible errors
