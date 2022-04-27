@@ -1,5 +1,6 @@
+import pycvoa.problem.ctrl as ctrl
 from pycvoa.problem import INTEGER, REAL, CATEGORICAL, LAYER, VECTOR
-from pycvoa.problem.control import *
+
 from pycvoa.problem.support import definition_to_string
 
 
@@ -90,8 +91,8 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.DefinitionError`: The variable name is already used,
          min_value >= max_value or step >= (max_value - min_value) / 2.
         """
-        dom_ctrl_var_el_name_str_class(variable_name)
-        dom_ctrl_min_max_step_int_class(min_value, max_value, step)
+        ctrl.par.is_string(variable_name)
+        ctrl.par.are_int(min_value, max_value, step)
         dom_ctrl_var_name_in_use_range(variable_name, min_value, max_value, step, self.__definitions)
         self.__definitions[variable_name] = [INTEGER, min_value, max_value, step]
 
@@ -115,8 +116,8 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.DefinitionError`: The variable name is already used,
          min_value >= max_value or step >= (max_value - min_value) / 2.
         """
-        dom_ctrl_var_el_name_str_class(variable_name)
-        dom_ctrl_min_max_step_float_class(min_value, max_value, step)
+        pycvoa.problem.ctrl.par.is_string(variable_name)
+        pycvoa.problem.ctrl.par.are_float(min_value, max_value, step)
         dom_ctrl_var_name_in_use_range(variable_name, min_value, max_value, step, self.__definitions)
         self.__definitions[variable_name] = [REAL, min_value, max_value, step]
 
@@ -134,7 +135,7 @@ class Domain:
         :type categories: list of int, float or str
         :raise :py:class:`~pycvoa.problem.domain.DefinitionError`: The variable name is already used.
         """
-        dom_ctrl_var_el_name_str_class(variable_name)
+        pycvoa.problem.ctrl.par.is_string(variable_name)
         dom_ctrl_categories_class(categories)
         dom_ctrl_var_name_in_use(variable_name, self.__definitions)
         self.__definitions[variable_name] = [CATEGORICAL, categories]

@@ -221,7 +221,7 @@ class CVOA:
         # The best strain-specific death individual will initially be the worst solution.
         self.__bestDeadIndividualStrain = Solution()
 
-        # Logical condition to control the epidemic (main iteration).
+        # Logical condition to ctrl the epidemic (main iteration).
         # If True, the iteration continues.
         # When there are no infected individuals, the epidemic finishes.
         epidemic = True
