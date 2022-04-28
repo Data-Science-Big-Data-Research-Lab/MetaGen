@@ -1,4 +1,4 @@
-__all__ = ["par", "val", "dom","sol","proc","DefinitionError", "ItemTypeError", "SolutionError"]
+__all__ = ["par", "var", "val", "dom", "sol", "proc", "DefinitionError", "ItemTypeError", "SolutionError"]
 
 class DefinitionError(Exception):
     """ It is raised when the type of the variable is wrong.

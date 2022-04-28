@@ -197,8 +197,8 @@ def alter_vector_variable(solution, variable, definition):
 
         # If it is a vector of integer or real modify the value with modify_number_from_interval_random_way
         if vector_element_definition[0] is INTEGER or vector_element_definition[0] is REAL:
-            solution.set_component(variable,
-                                   i, modify_number_from_interval_random_way(
+            solution.set_basic_component(variable,
+                                         i, modify_number_from_interval_random_way(
                     solution.get_basic_component_value(variable, i),
                     vector_element_definition[1], vector_element_definition[2],
                     vector_element_definition[3]))
@@ -208,7 +208,7 @@ def alter_vector_variable(solution, variable, definition):
             # logging.debug("CAT")
             current_category = solution.get_basic_component_value(variable, i)
             new_category = get_random_element_from_list_excluding_one(current_category, vector_element_definition[1])
-            solution.set_component(variable, i, new_category)
+            solution.set_basic_component(variable, i, new_category)
 
         # If it is a vector of layer
         elif vector_element_definition[0] == LAYER:
