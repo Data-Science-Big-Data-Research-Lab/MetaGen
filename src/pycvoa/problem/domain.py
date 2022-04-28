@@ -959,9 +959,10 @@ class Domain:
         i = 0
         while r and i < len(values):
             layer = values[i]
+            key_list = list(layer.keys())
             j = 0
-            while r and j < len(layer):
-                element = layer.keys(j)
+            while r and j < len(key_list):
+                element = key_list[i]
                 value = layer[element]
                 if self.__definitions[layer_vector_variable][4][1][element][0] is INTEGER:
                     ctrl.par.is_int(value)

@@ -63,7 +63,7 @@ class Solution:
             self.fitness = sys.float_info.max
 
     # ** DOMAIN AVAILABILITY INTERFACE ***
-    def set_domain(self, domain:Domain):
+    def set_domain(self, domain: Domain):
         """ It sets the domain of the solution.
 
         :param domain: The domain of the solution.
@@ -72,8 +72,8 @@ class Solution:
         ctrl.par.is_domain_class(domain)
         self.__domain = domain
 
-    # ** BASIC SETTER ***
-    def set_basic(self, basic_variable:str, value, domain=None):
+    # ** BASIC TYPE METHODS ***
+    def set_basic(self, basic_variable: str, value, domain=None):
         """ It sets the value of variable. If the variable does not exist, it will be created with the indicated value.
 
          **Precondition:**
@@ -95,12 +95,11 @@ class Solution:
         :raise :py:class:`~pycvoa.problem.solution.WrongType: The variable is not defined as BASIC.
         :raise :py:class:`~pycvoa.problem.solution.WrongValue: The value is not valid.
         """
-        current_domain = ctrl.par.valid_domain_check_variable_type(basic_variable, BASIC, domain, self.__domain)
-        ctrl.val.check_basic_value(basic_variable, value, current_domain)
+        ctrl.proc.domain_basic_value(basic_variable, value, domain, self.__domain)
         self.__variables[basic_variable] = value
 
-    # ** LAYER SETTER ***
-    def set_element(self, layer_variable:str, element:str, value, domain=None):
+    # ** LAYER TYPE METHODS ***
+    def set_element(self, layer_variable: str, element: str, value, domain=None):
         """ It sets the element value of a **LAYER** variable. If the **LAYER** variable does not exist,
         it will be created with the indicated value.
 
@@ -118,24 +117,22 @@ class Solution:
         :raise :py:class:`~pycvoa.problem.solution.WrongType: The variable is not defined as LAYER.
         :raise :py:class:`~pycvoa.problem.solution.WrongValue: The value is not valid.
         """
-        current_domain = ctrl.par.valid_domain_check_variable_type(layer_variable, LAYER, domain, self.__domain)
-        ctrl.val.check_layer_element_value(layer_variable, element, value, current_domain)
+        ctrl.proc.domain_layer_element_value(layer_variable, element, value, domain, self.__domain)
         if layer_variable not in self.__variables.keys():
             self.__variables[layer_variable] = {element: value}
         else:
             self.__variables[layer_variable][element] = value
 
-    # ** BASIC VECTOR ADDERS ***
-    def set_basic_vector(self, vector_variable:str, values:list, domain=None):
-        current_domain = ctrl.par.valid_domain_check_variable_type(vector_variable, VECTOR, domain, self.__domain)
-        ctrl.val.check_vector_values_size(vector_variable, values, current_domain)
+    # ** BASIC VECTOR METHODS ***
+    def set_basic_vector(self, vector_variable: str, values: list, domain=None):
+        ctrl.proc.domain_basic_vector_list(vector_variable,values, domain, self.__domain)
         self.__variables[vector_variable] = values
 
     # Implementar el ctrl del tamaño del vector al añadir elementos
     # Si faltan: menos el Nº de elementos que faltan por añadir
     # Si sobrepasa el límite: no se añade y se devuelve ...
     # Resto de casos: los elementos que quedan por añadir
-    def add_basic_component(self, basic_vector_variable:str, value, domain=None) -> int:
+    def add_basic_component(self, basic_vector_variable: str, value, domain=None) -> int:
         """ It appends a value at last of a **VECTOR** variable. If the **VECTOR** variable does not exist,
         it will be created with the indicated value in the 0 position.
 
@@ -150,18 +147,25 @@ class Solution:
         :raise :py:class:`~pycvoa.problem.domain.WrongVariableType: The variable is not defined as **VECTOR**.
         :raise :py:class:`~pycvoa.problem.domain.WrongComponentType: The components of the **VECTOR** variable are not defined as a **BASIC** type.
         """
-        current_domain = ctrl.par.valid_domain_check_variable_type(basic_vector_variable, VECTOR, domain, self.__domain)
-        ctrl.val.check_vector_basic_component(basic_vector_variable, value, current_domain)
-        ctrl.sol.vector_insertion_available(basic_vector_variable, len(self.__variables[basic_vector_variable]), current_domain)
+        current_domain = ctrl.proc.domain_basic_vector_value(basic_vector_variable, value, domain, self.__domain)
+        ctrl.sol.vector_insertion_available(basic_vector_variable, len(self.__variables[basic_vector_variable]),
+                                            current_domain)
+        r = None
         if basic_vector_variable not in self.__variables.keys():
             self.__variables[basic_vector_variable] = [value]
+            r = current_domain.get_remaining_available_components(basic_vector_variable,
+                                                                  len(self.__variables[basic_vector_variable]))
         else:
+            r = current_domain.get_remaining_available_components(basic_vector_variable,
+                                                                 len(self.__variables[basic_vector_variable]))
+            ctrl.sol.vector_adding_available(basic_vector_variable,r)
             self.__variables[basic_vector_variable].append(value)
-        return current_domain.get_remaining_available_components(basic_vector_variable, len(self.__variables[basic_vector_variable]))
+            r -= 1
+        return r
 
         # Implementar el ctrl del tamaño del vector al añadir elementos
 
-    def insert_basic_component(self, basic_vector_variable:str, index:int, value, domain=None)-> int:
+    def insert_basic_component(self, basic_vector_variable: str, index: int, value, domain=None) -> int:
         """ It inserts a value in the **index**-nh position of a **VECTOR** variable. If the **VECTOR** variable
         does not exist, it will be created with the indicated value in the 0 position.
 
@@ -178,87 +182,23 @@ class Solution:
         :raise :py:class:`~pycvoa.problem.domain.WrongVariableType: The variable is not defined as **VECTOR**.
         :raise :py:class:`~pycvoa.problem.domain.WrongComponentType: The components of the **VECTOR** variable are not defined as a **BASIC** type.
         """
-        current_domain = ctrl.par.valid_domain_check_variable_type(basic_vector_variable, VECTOR, domain, self.__domain)
-        ctrl.val.check_vector_basic_component(basic_vector_variable, value, current_domain)
+        current_domain = ctrl.proc.domain_basic_vector_value(basic_vector_variable, value, domain, self.__domain)
         ctrl.sol.vector_insertion_available(basic_vector_variable, len(self.__variables[basic_vector_variable]),
                                             current_domain)
+        r = None
         if basic_vector_variable not in self.__variables:
             self.__variables[basic_vector_variable] = [value]
+            r = current_domain.get_remaining_available_components(basic_vector_variable,
+                                                                  len(self.__variables[basic_vector_variable]))
         else:
+            r = current_domain.get_remaining_available_components(basic_vector_variable,
+                                                                  len(self.__variables[basic_vector_variable]))
+            ctrl.sol.vector_adding_available(basic_vector_variable, r)
             self.__variables[basic_vector_variable].insert(index, value)
-        return current_domain.get_remaining_available_components(basic_vector_variable, len(self.__variables[basic_vector_variable]))
+            r -= 1
+        return r
 
-    # ** LAYER VECTOR ADDERS ***
-    def set_layer_vector(self, variable:str, values:list, domain=None):
-        current_domain = sol_ctrl_check_domain_type(variable, VECTOR, domain, self.__domain)
-        sol_check_vector_layer_values_size_class(variable, values, current_domain)
-        self.__variables[variable] = values
-
-    # Implementar el ctrl del tamaño del vector al añadir elementos
-    def add_layer_component(self, vector_variable, layer_values, domain=None):
-        current_domain = sol_ctrl_check_domain_type(vector_variable, VECTOR, domain, self.__domain)
-        return current_domain.get_remaining_available_components(vector_variable, len(self.__variables[vector_variable]))
-
-    def insert_layer_component(self, vector_variable, index, layer_values, domain=None):
-        current_domain = sol_ctrl_check_domain_type(vector_variable, VECTOR, domain, self.__domain)
-        return current_domain.get_remaining_available_components(vector_variable, len(self.__variables[vector_variable]))
-
-    # Implementar el ctrl del tamaño del vector al añadir elementos
-    def add_component_element(self, variable, element, value, domain=None):
-        """ It appends a value at last of a **VECTOR** variable. If the **VECTOR** variable does not exist,
-        it will be created with the indicated value in the 0 position.
-
-        :param variable: The name of the variable to set.
-        :param value: The new value.
-        :param domain: The domain used to check the type, defaults to None.
-        :type variable: str
-        :type value: int, float, str, list
-        :type domain: :py:class:`~pycvoa.problem.domain.Domain
-        :raise :py:class:`~pycvoa.problem.solution.NotSpecifiedDomain: The domain is not set.
-        :raise :py:class:`~pycvoa.problem.domain.NotDefinedVariable: The variable is not defined in this domain.
-        :raise :py:class:`~pycvoa.problem.domain.WrongVariableType: The variable is not defined as **VECTOR**.
-        :raise :py:class:`~pycvoa.problem.domain.WrongComponentType: The components of the **VECTOR** variable are not defined as a **BASIC** type.
-        """
-        current_domain = sol_ctrl_check_domain_type(variable, VECTOR, domain, self.__domain)
-        sol_ctrl_check_element_component(variable, element, value, current_domain)
-        if variable not in self.__variables.keys():
-            self.__variables[variable] = [{element: value}]
-        else:
-            if element in self.__variables[variable][-1].keys():
-                self.__variables[variable].append({element: value})
-            else:
-                self.__variables[variable][-1][element] = value
-        return current_domain.get_remaining_available_components(variable, len(self.__variables[variable]))
-
-    # Implementar el ctrl del tamaño del vector al añadir elementos
-    def insert_component_element(self, variable, element, index, value, domain=None):
-        """ It inserts a value in the **index**-nh position of a **VECTOR** variable. If the **VECTOR** variable
-        does not exist, it will be created with the indicated value in the 0 position.
-
-        :param variable: The name of the variable to set.
-        :param index: The index.
-        :param value: The new value.
-        :param domain: The domain used to check the type, defaults to None.
-        :type variable: str
-        :type index: int
-        :type value: int, float, str, list
-        :type domain: :py:class:`~pycvoa.problem.domain.Domain
-        :raise :py:class:`~pycvoa.problem.solution.NotSpecifiedDomain: The domain is not set.
-        :raise :py:class:`~pycvoa.problem.domain.NotDefinedVariable: The variable is not defined in this domain.
-        :raise :py:class:`~pycvoa.problem.domain.WrongVariableType: The variable is not defined as **VECTOR**.
-        :raise :py:class:`~pycvoa.problem.domain.WrongComponentType: The components of the **VECTOR** variable are not defined as a **BASIC** type.
-        """
-        current_domain = sol_ctrl_check_domain_type(variable, VECTOR, domain, self.__domain)
-        sol_ctrl_check_element_component(variable, element, value, current_domain)
-        if variable not in self.__variables:
-            self.__variables[variable] = [{element: value}]
-        else:
-            self.__variables[variable].insert(index, {element: value})
-        return current_domain.get_remaining_available_components(variable, len(self.__variables[variable]))
-
-    # ** VECTOR SETTERS ***
-
-    def set_component(self, variable, index, value, domain=None):
+    def set_basic_component(self, basic_vector_variable: str, index: int, value, domain=None):
         """ It sets **index**-nh position of a **VECTOR** variable. If the **VECTOR** variable does not exist,
         it will be created with the indicated value in the 0 position.
 
@@ -268,11 +208,11 @@ class Solution:
         For **VECTOR** variables defined as **LAYER**, there is a specific setter
         (:py:meth:`~pycvoa.individual.Individual.set_vector_layer_element_by_index`)
 
-        :param variable: The name of the variable to set.
+        :param basic_vector_variable: The name of the variable to set.
         :param index: The position to set.
         :param value: The new value of the position.
         :param domain: The domain used to check the type, defaults to None.
-        :type variable: str
+        :type basic_vector_variable: str
         :type index: int
         :type value: int, float, str
         :type domain: :py:class:`~pycvoa.problem.domain.Domain
@@ -285,15 +225,117 @@ class Solution:
         :raise NotDefinedVectorComponentError: The **index**-nh component of the **VECTOR** variable is not available.
         :raise :py:class:`~pycvoa.problem.solution.WrongValue: The value is not valid.
         """
-        current_domain = sol_ctrl_check_domain_type(variable, VECTOR, domain, self.__domain)
-        sol_ctrl_check_basic_component(variable, value, current_domain)
-        if variable not in self.__variables.keys():
-            self.__variables[variable] = [value]
+        ctrl.proc.domain_basic_vector_value(basic_vector_variable, value, domain, self.__domain)
+        if basic_vector_variable not in self.__variables.keys():
+            self.__variables[basic_vector_variable] = [value]
         else:
-            sol_ctrl_check_component_availability(variable, index, self.__variables)
-            self.__variables[variable][index] = value
+            ctrl.sol.is_assigned_component(basic_vector_variable, index, self.__variables)
+            self.__variables[basic_vector_variable][index] = value
 
-    def set_component_element(self, variable, index, element, value, domain=None):
+    # ** BASIC VECTOR METHODS ***
+    def set_layer_vector(self, layer_vector_variable: str, values: list, domain=None):
+        ctrl.proc.domain_layer_vector_list(layer_vector_variable,values, domain, self.__domain)
+        self.__variables[layer_vector_variable] = values
+
+    # Implementar el ctrl del tamaño del vector al añadir elementos
+    def add_layer_component(self, layer_vector_variable: str, layer_values: dict, domain=None) -> int:
+        current_domain = ctrl.proc.domain_layer_vector_component(layer_vector_variable, layer_values,
+                                                                 domain, self.__domain)
+        r = None
+        if layer_vector_variable not in self.__variables.keys():
+            self.__variables[layer_vector_variable] = [layer_values]
+            r = current_domain.get_remaining_available_components(layer_vector_variable,
+                                                                  len(self.__variables[layer_vector_variable]))
+        else:
+            r = current_domain.get_remaining_available_components(layer_vector_variable,
+                                                                  len(self.__variables[layer_vector_variable]))
+            ctrl.sol.vector_adding_available(layer_vector_variable, r)
+            self.__variables[layer_vector_variable].append(layer_values)
+            r -= 1
+        return r
+
+    def insert_layer_component(self, layer_vector_variable: str, index: int, layer_values: dict, domain=None) -> int:
+        current_domain = ctrl.proc.domain_layer_vector_component(layer_vector_variable, layer_values,
+                                                                 domain, self.__domain)
+        r = None
+        if layer_vector_variable not in self.__variables.keys():
+            self.__variables[layer_vector_variable] = [layer_values]
+            r = current_domain.get_remaining_available_components(layer_vector_variable,
+                                                                  len(self.__variables[layer_vector_variable]))
+        else:
+            r = current_domain.get_remaining_available_components(layer_vector_variable,
+                                                                  len(self.__variables[layer_vector_variable]))
+            ctrl.sol.vector_adding_available(layer_vector_variable, r)
+            self.__variables[layer_vector_variable].insert(index,layer_values)
+            r -= 1
+        return r
+
+    # Implementar el ctrl del tamaño del vector al añadir elementos
+    def add_component_element(self, layer_vector_variable: str, element: str, value, domain=None) -> int:
+        """ It appends a value at last of a **VECTOR** variable. If the **VECTOR** variable does not exist,
+        it will be created with the indicated value in the 0 position.
+
+        :param layer_vector_variable: The name of the variable to set.
+        :param value: The new value.
+        :param domain: The domain used to check the type, defaults to None.
+        :type layer_vector_variable: str
+        :type value: int, float, str, list
+        :type domain: :py:class:`~pycvoa.problem.domain.Domain
+        :raise :py:class:`~pycvoa.problem.solution.NotSpecifiedDomain: The domain is not set.
+        :raise :py:class:`~pycvoa.problem.domain.NotDefinedVariable: The variable is not defined in this domain.
+        :raise :py:class:`~pycvoa.problem.domain.WrongVariableType: The variable is not defined as **VECTOR**.
+        :raise :py:class:`~pycvoa.problem.domain.WrongComponentType: The components of the **VECTOR** variable are not defined as a **BASIC** type.
+        """
+        current_domain = ctrl.proc.domain_layer_vector_element(layer_vector_variable, element, value, domain, self.__domain)
+        r = None
+        if layer_vector_variable not in self.__variables.keys():
+            self.__variables[layer_vector_variable] = [{element: value}]
+            r = current_domain.get_remaining_available_components(layer_vector_variable,
+                                                                  len(self.__variables[layer_vector_variable]))
+        else:
+            r = current_domain.get_remaining_available_components(layer_vector_variable,
+                                                                  len(self.__variables[layer_vector_variable]))
+            ctrl.sol.vector_adding_available(layer_vector_variable, r)
+            if element in self.__variables[layer_vector_variable][-1].keys():
+                self.__variables[layer_vector_variable].append({element: value})
+            else:
+                self.__variables[layer_vector_variable][-1][element] = value
+            r -= 1
+        return r
+
+    # Implementar el ctrl del tamaño del vector al añadir elementos
+    def insert_component_element(self, layer_vector_variable: str, index: int, element: str, value, domain=None) -> int:
+        """ It inserts a value in the **index**-nh position of a **VECTOR** variable. If the **VECTOR** variable
+        does not exist, it will be created with the indicated value in the 0 position.
+
+        :param variable: The name of the variable to set.
+        :param index: The index.
+        :param value: The new value.
+        :param domain: The domain used to check the type, defaults to None.
+        :type variable: str
+        :type index: int
+        :type value: int, float, str, list
+        :type domain: :py:class:`~pycvoa.problem.domain.Domain
+        :raise :py:class:`~pycvoa.problem.solution.NotSpecifiedDomain: The domain is not set.
+        :raise :py:class:`~pycvoa.problem.domain.NotDefinedVariable: The variable is not defined in this domain.
+        :raise :py:class:`~pycvoa.problem.domain.WrongVariableType: The variable is not defined as **VECTOR**.
+        :raise :py:class:`~pycvoa.problem.domain.WrongComponentType: The components of the **VECTOR** variable are not defined as a **BASIC** type.
+        """
+        current_domain = ctrl.proc.domain_layer_vector_element(layer_vector_variable, element, value, domain, self.__domain)
+        r = None
+        if layer_vector_variable not in self.__variables:
+            self.__variables[layer_vector_variable] = [{element: value}]
+            r = current_domain.get_remaining_available_components(layer_vector_variable,
+                                                                  len(self.__variables[layer_vector_variable]))
+        else:
+            r = current_domain.get_remaining_available_components(layer_vector_variable,
+                                                                  len(self.__variables[layer_vector_variable]))
+            ctrl.sol.vector_adding_available(layer_vector_variable, r)
+            self.__variables[layer_vector_variable].insert(index, {element: value})
+            r -= 1
+        return r
+
+    def set_component_element(self, layer_vector_variable: str, index: int, element: str, value, domain=None):
         """ It sets an element of a **LAYER** in the **index**-nh position of a **VECTOR** variable.
 
         :param variable: The name of the variable to set.
@@ -316,15 +358,16 @@ class Solution:
         **VECTOR** variable is not available.
         :raise :py:class:`~pycvoa.problem.solution.WrongValue: The value is not valid.
         """
-        current_domain = sol_ctrl_check_domain_type(variable, VECTOR, domain, self.__domain)
-        sol_ctrl_check_element_component(variable, element, value, current_domain)
-        if variable not in self.__variables.keys():
-            self.__variables[variable] = [{element: value}]
+        ctrl.proc.domain_layer_vector_element(layer_vector_variable, element, value, domain, self.__domain)
+        if layer_vector_variable not in self.__variables.keys():
+            self.__variables[layer_vector_variable] = [{element: value}]
         else:
-            sol_ctrl_check_component_availability(variable, index, self.__variables)
-            self.__variables[variable][index][element] = value
+            ctrl.sol.is_assigned_component(layer_vector_variable, index, self.__variables)
+            self.__variables[layer_vector_variable][index][element] = value
 
-    def remove_component(self, variable, domain=None):
+    # ** VECTOR REMOVES ***
+
+    def remove_component(self, vector_variable:str, domain=None):
         """ It removes the last position of a **VECTOR** variable.
 
         :param variable: The name of the **VECTOR** variable to modify.
@@ -335,10 +378,11 @@ class Solution:
         :raise :py:class:`~pycvoa.problem.solution.NotInSolutionError: The variable is not in this solution.
         :raise :py:class:`~pycvoa.problem.solution.WrongType: The variable is not defined as VECTOR.
         """
-        sol_ctrl_check_var_avail_dom_type(variable, self.__variables, VECTOR, domain, self.__domain)
-        self.__variables[variable].pop()
+        current_domain = ctrl.proc.domain_vector_type(vector_variable, domain, self.__domain)
+        ctrl.sol.assigned_vector_removal_available(vector_variable, self.__variables, current_domain)
+        self.__variables[vector_variable].pop()
 
-    def delete_component(self, variable, index, domain=None):
+    def delete_component(self, vector_variable:str, index:int, domain=None):
         """ It removes a value in the **index**-nh position of a **VECTOR** variable.
 
         :param variable: The name of the **VECTOR** variable to modify.
@@ -350,11 +394,11 @@ class Solution:
         :raise :py:class:`~pycvoa.problem.solution.WrongType: The variable is not defined as **VECTOR**.
         :raise :py:class:`~pycvoa.problem.solution.NotDefinedVectorComponentError: The **index**-nh component of the **VECTOR** variable is not available.
         """
-        sol_ctrl_check_var_avail_dom_type(variable, self.__variables, VECTOR, domain, self.__domain)
-        sol_ctrl_check_component_availability(variable, index, self.__variables)
-        del self.__variables[variable][index]
+        current_domain = ctrl.proc.domain_vector_type(vector_variable, domain, self.__domain)
+        ctrl.sol.assigned_vector_removal_available(vector_variable, self.__variables, current_domain)
+        del self.__variables[vector_variable][index]
 
-    def set_value(self, variable, value, index=None, element=None, domain=None):
+    def set_value(self, variable:str, value, index=None, element=None, domain=None):
         """ It sets a value of a variable.
 
              This member has three use cases:
@@ -385,29 +429,29 @@ class Solution:
         :raise NotDefinedVectorComponentError: The **index**-nh component of the **VECTOR** variable is not available.
         :raise :py:class:`~pycvoa.problem.solution.WrongValue: The value is not valid.
         """
-        current_domain = sol_ctrl_check_domain(domain, self.__domain)
+        current_domain = ctrl.var.valid_domain(domain, self.__domain)
         var_type = current_domain.get_variable_type(variable)
         if var_type in BASIC:
-            ctrl_index_is_none(variable, index)
-            ctrl_element_is_none(variable, element)
+            ctrl.par.index_is_none(variable, index)
+            ctrl.par.element_is_none(variable, element)
             self.set_basic(variable, value, current_domain)
         elif var_type is LAYER:
-            ctrl_index_is_none(variable, index)
-            ctrl_element_not_none(variable, element)
+            ctrl.par.index_is_none(variable, index)
+            ctrl.par.element_not_none(variable, element)
             self.set_element(variable, element, value, current_domain)
         elif var_type is VECTOR:
-            ctrl_index_not_none(variable, index)
+            ctrl.par.index_not_none(variable, index)
             vector_definition = current_domain.get_vector_component_definition(variable)
             if vector_definition in BASIC:
-                ctrl_element_is_none(variable, element)
-                self.set_component(variable, index, value, current_domain)
+                ctrl.par.element_is_none(variable, element)
+                self.set_basic_component(variable, index, value, current_domain)
             elif vector_definition is LAYER:
-                ctrl_element_not_none(variable, element)
+                ctrl.par.element_not_none(variable, element)
                 self.set_component_element(variable, index, element, value, current_domain)
 
     # ** IS METHODS ***
 
-    def is_available(self, variable):
+    def is_available(self, variable:str) -> bool:
         """ It checks if the input variable has a value in this solution.
 
         :param variable: The variable to check.
@@ -420,44 +464,43 @@ class Solution:
             r = True
         return r
 
-    def check_variable_type(self, variable, variable_type, domain=None):
+    def check_variable_type(self, variable:str, check_type:str, domain=None) -> bool:
         """ It checks if the input variable is equal to the input variable type, taking into account the internal
         solution domain (by default) or a domain passed as parameter.
 
         :param variable: The variable to check.
-        :param variable_type: The variable type to check.
+        :param check_type: The variable type to check.
         :param domain: The domain used to check the type, defaults to None.
         :returns: True if the variable is defined as the queried variable type, otherwise False
         :type variable: str
-        :type variable_type: INTEGER, REAL, CATEGORICAL, LAYER, VECTOR
+        :type check_type: INTEGER, REAL, CATEGORICAL, LAYER, VECTOR
         :type domain: :py:class:`~pycvoa.problem.domain.Domain
         :rtype: bool
         :raise :py:class:`~pycvoa.problem.solution.DomainLevel: The domain is not set.
         :raise :py:class:`~pycvoa.problem.solution.NotInSolutionError: The variable is not in this solution.
         :raise :py:class:`~pycvoa.problem.domain.NotDefinedVariable: The variable is not defined in this domain.
         """
-        sol_ctrl_check_variable_availability(variable, self.__variables)
-        current_domain = sol_ctrl_check_domain(domain, self.__domain)
-        current_type = current_domain.get_variable_type(variable)
+        valid_domain = ctrl.proc.domain_defined_assigned(variable,self.__variables,domain,self.__domain)
+        variable_type = valid_domain.get_variable_type(variable)
         r = False
-        if variable_type is BASIC:
-            if current_type in BASIC:
+        if check_type is BASIC:
+            if variable_type in BASIC:
                 r = True
         else:
-            if current_type is variable_type:
+            if variable_type is check_type:
                 r = True
         return r
 
-    def check_component_type(self, variable, component_type, domain=None):
+    def check_component_type(self, vector_variable:str, check_component_type:str, domain=None) -> bool:
         """ It checks if the components of the input variable (defined as **VECTOR**) is equal to the input component
         type, taking into account the internal solution domain (by default) or a domain passed as parameter.
 
-        :param variable: The **VECTOR** variable to check.
-        :param component_type: The component type to check.
+        :param vector_variable: The **VECTOR** variable to check.
+        :param check_component_type: The component type to check.
         :param domain: The domain used to check the type, defaults to None.
         :returns: True if the variable is defined as the queried variable type, otherwise False
-        :type variable: str
-        :type component_type: INTEGER, REAL, CATEGORICAL, LAYER, VECTOR
+        :type vector_variable: str
+        :type check_component_type: INTEGER, REAL, CATEGORICAL, LAYER, VECTOR
         :type domain: :py:class:`~pycvoa.problem.domain.Domain
         :rtype: bool
         :raise :py:class:`~pycvoa.problem.solution.DomainLevel: The domain is not set.
@@ -465,26 +508,26 @@ class Solution:
         :raise :py:class:`~pycvoa.problem.domain.NotDefinedVariable: The variable is not defined in this domain.
         :raise :py:class:`~pycvoa.problem.domain.WrongVariableType: The variable is not defined as **VECTOR**.
         """
-        current_domain = sol_ctrl_check_var_avail_dom_type(variable, self.__variables, VECTOR, domain, self.__domain)
-        current_component_type = current_domain.get_vector_components_type(variable)
+        valid_domain = ctrl.proc.domain_defined_as_vector_assigned(vector_variable,self.__variables,domain,self.__domain)
+        component_type = valid_domain.get_vector_components_type(vector_variable)
         r = False
-        if component_type is BASIC:
-            if current_component_type in BASIC:
+        if check_component_type is BASIC:
+            if component_type in BASIC:
                 r = True
         else:
-            if current_component_type is component_type:
+            if component_type is check_component_type:
                 r = True
         return r
 
-    def is_available_element(self, variable, element, domain=None):
+    def is_available_element(self, layer_variable:str, element:str, domain=None) -> bool:
         """ It checks if the input element of the input **LAYER** variable has a value in this solution, taking into
         account the internal solution domain (by default) or a domain passed as parameter.
 
-        :param variable: The **LAYER** variable to check.
+        :param layer_variable: The **LAYER** variable to check.
         :param element: The element to check.
         :param domain: The domain used to check the type, defaults to None.
         :returns: True if the element has a value, otherwise False.
-        :type variable: str
+        :type layer_variable: str
         :type element: str
         :type domain: :py:class:`~pycvoa.problem.domain.Domain
         :rtype: bool
@@ -492,21 +535,21 @@ class Solution:
         :raise :py:class:`~pycvoa.problem.solution.NotInSolutionError: The variable is not in this solution.
         :raise :py:class:`~pycvoa.problem.solution.WrongType: The variable is not defined as **LAYER**.
         """
-        sol_ctrl_check_var_avail_dom_type(variable, self.__variables, LAYER, domain, self.__domain)
+        ctrl.proc.domain_defined_as_layer_assigned(layer_variable,self.__variables,domain,self.__domain)
         r = False
-        if element in self.__variables.get(variable).keys():
+        if element in self.__variables.get(layer_variable).keys():
             r = True
         return r
 
-    def is_available_component(self, variable, index, domain=None):
+    def is_available_component(self, vector_variable:str, index:int, domain=None)-> bool:
         """ It checks if the *index*-nh component of the input **VECTOR** variable has a value in this solution,
         taking into account the internal solution domain (by default) or a domain passed as parameter.
 
-        :param variable: The **VECTOR** variable to check.
+        :param vector_variable: The **VECTOR** variable to check.
         :param index: The index of the component to check.
         :param domain: The domain used to check the type, defaults to None.
         :returns: True if the *index*-nh component has a value, otherwise False.
-        :type variable: str
+        :type vector_variable: str
         :type index: int
         :type domain: :py:class:`~pycvoa.problem.domain.Domain
         :rtype: bool
@@ -514,23 +557,23 @@ class Solution:
         :raise :py:class:`~pycvoa.problem.solution.NotInSolutionError: The variable is not in this solution.
         :raise :py:class:`~pycvoa.problem.solution.WrongType: The variable is not defined as **VECTOR**.
         """
-        sol_ctrl_check_var_avail_dom_type(variable, self.__variables, LAYER, domain, self.__domain)
+        ctrl.proc.domain_defined_as_vector_assigned(vector_variable,self.__variables,domain,self.__domain)
         r = False
-        if 0 <= index < len(self.__variables.get(variable)):
+        if 0 <= index < len(self.__variables.get(vector_variable)):
             r = True
         return r
 
-    def is_available_component_element(self, variable, index, element, domain=None):
+    def is_available_component_element(self, layer_vector_variable, index, element, domain=None):
         """ It checks if the input element of the *index*-nh component (defined as **LAYER**) of the input **VECTOR**
         variable has a value in this solution, taking into account the internal solution domain (by default) or
         a domain passed as parameter.
 
-        :param variable: The **VECTOR** variable to check.
+        :param layer_vector_variable: The **VECTOR** variable to check.
         :param index: The index of the component to check.
         :param element: The element to check.
         :param domain: The domain used to check the type, defaults to None.
         :returns: True if the *index*-nh component has a value, otherwise False.
-        :type variable: str
+        :type layer_vector_variable: str
         :type index: int
         :type element: str
         :type domain: :py:class:`~pycvoa.problem.domain.Domain
@@ -542,11 +585,10 @@ class Solution:
         :raise :py:class:`~pycvoa.problem.solution.WrongComponentType: The component type is not defined as **LAYER**.
         :raise :py:class:`~pycvoa.problem.solution.NotDefinedVectorComponentError: The component is not available.
         """
-        current_domain = sol_ctrl_check_var_avail_dom_type(variable, self.__variables, VECTOR, domain, self.__domain)
-        sol_ctrl_check_component_type(variable, LAYER, current_domain)
-        sol_ctrl_check_component_availability(variable, index, self.__variables)
+        ctrl.proc.domain_defined_as_layer_vector_assigned(layer_vector_variable, self.__variables, domain, self.__domain)
+        ctrl.sol.is_assigned_component(layer_vector_variable, index, self.__variables)
         r = False
-        if element in self.__variables.get(variable)[index].keys():
+        if element in self.__variables.get(layer_vector_variable)[index].keys():
             r = True
         return r
 
