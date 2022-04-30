@@ -1,4 +1,5 @@
-import pycvoa.problem.domain
+from pycvoa.problem.domain import Domain
+from pycvoa.problem.types import *
 
 
 def is_string(variable_element_name):
@@ -44,15 +45,11 @@ def are_float(min_value, max_value, step):
         raise TypeError("The step parameter must be <float>.")
 
 
-def are_dict(values):
+def is_list_of_dict(values):
+    is_list(values)
     for e in values:
         if type(e) != dict:
             raise TypeError("The " + values.index(e) + "-nh value must be <dict>.")
-
-
-def is_list_of_dict(values):
-    is_list(values)
-    are_dict(values)
 
 
 def same_python_type(categories, value):
@@ -78,7 +75,7 @@ def list_all_int_float_str(categories):
 
 def is_domain_class(domain):
     if domain is not None:
-        if type(domain) is not pycvoa.problem.domain.Domain:
+        if type(domain) is not Domain:
             raise TypeError("The " + domain + " parameter is not instantiate from <Domain> class.")
 
 
@@ -109,6 +106,26 @@ def index_not_none(variable, index):
                                 "must be provided.")
 
 
-def are_index_element_none(layer_vector_variable, index, element):
-    index_is_none(layer_vector_variable, index)
-    element_is_none(layer_vector_variable, element)
+def check_range(min_value, max_value, step):
+    """ It checks if min_value < max_value, if not, raise :py:class:`~pycvoa.problem.domain.DefinitionError`.
+    If the first condition is fulfilled, it checks if step < (max_value-min_value) / 2, if not, raise
+    py:class:`~pycvoa.problem.domain.DefinitionError`.
+
+    :param min_value: The minimum value.
+    :param max_value: The maximum value.
+    :param step: The step.
+    :type min_value: int, float
+    :type max_value: int, float
+    :type step: int, float
+    """
+    if min_value >= max_value:
+        raise ValueError(
+            "The minimum value/size of the variable/element (" + str(
+                min_value) + ") must be less than the maximum value/size (" + str(
+                max_value) + ").")
+    else:
+        average = (max_value - min_value) / 2
+        if step > average:
+            raise ValueError("The step value/size (" + str(
+                step) + ") of the variable/element must be less or equal than (maximum "
+                        "value/size - minimum value/size) / 2 (" + str(average) + ").")

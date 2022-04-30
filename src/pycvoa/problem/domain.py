@@ -1,4 +1,5 @@
-import pycvoa.problem.ctrl as ctrl
+from pycvoa.problem.ctrl import parameter as ctrl_par
+from pycvoa.problem.ctrl import definition as ctrl_def
 from pycvoa.problem.types import *
 from pycvoa.problem.support import definition_to_string
 
@@ -90,10 +91,10 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.DefinitionError`: The variable name is already used,
          min_value >= max_value or step >= (max_value - min_value) / 2.
         """
-        ctrl.par.is_string(variable_name)
-        ctrl.par.are_int(min_value, max_value, step)
-        ctrl.val.check_range(min_value, max_value, step)
-        ctrl.dom.not_defined_variable(variable_name, self.__definitions)
+        ctrl_par.is_string(variable_name)
+        ctrl_par.are_int(min_value, max_value, step)
+        ctrl_par.check_range(min_value, max_value, step)
+        ctrl_def.not_defined_variable(variable_name, self.__definitions)
         self.__definitions[variable_name] = [INTEGER, min_value, max_value, step]
 
     def define_real(self, variable_name: str, min_value: float, max_value: float, step: float):
@@ -116,10 +117,10 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.DefinitionError`: The variable name is already used,
          min_value >= max_value or step >= (max_value - min_value) / 2.
         """
-        ctrl.par.is_string(variable_name)
-        ctrl.par.are_float(min_value, max_value, step)
-        ctrl.val.check_range(min_value, max_value, step)
-        ctrl.dom.not_defined_variable(variable_name, self.__definitions)
+        ctrl_par.is_string(variable_name)
+        ctrl_par.are_float(min_value, max_value, step)
+        ctrl_par.check_range(min_value, max_value, step)
+        ctrl_def.not_defined_variable(variable_name, self.__definitions)
         self.__definitions[variable_name] = [REAL, min_value, max_value, step]
 
     def define_categorical(self, variable_name: str, categories: list):
@@ -136,10 +137,10 @@ class Domain:
         :type categories: list of int, float or str
         :raise :py:class:`~pycvoa.problem.domain.DefinitionError`: The variable name is already used.
         """
-        ctrl.par.is_string(variable_name)
-        ctrl.par.is_list(categories)
-        ctrl.par.list_all_int_float_str(categories)
-        ctrl.dom.not_defined_variable(variable_name, self.__definitions)
+        ctrl_par.is_string(variable_name)
+        ctrl_par.is_list(categories)
+        ctrl_par.list_all_int_float_str(categories)
+        ctrl_def.not_defined_variable(variable_name, self.__definitions)
         self.__definitions[variable_name] = [CATEGORICAL, categories]
 
     # **** DEFINE LAYER VARIABLE METHODS ****
@@ -160,8 +161,8 @@ class Domain:
         :type variable_name: str
         :raise :py:class:`~pycvoa.problem.domain.DefinitionError`: The variable name is already used.
         """
-        ctrl.par.is_string(variable_name)
-        ctrl.dom.not_defined_variable(variable_name, self.__definitions)
+        ctrl_par.is_string(variable_name)
+        ctrl_def.not_defined_variable(variable_name, self.__definitions)
         self.__definitions[variable_name] = [LAYER, {}]
 
     def define_integer_element(self, layer_variable: str, element_name: str, min_value: int, max_value: int, step: int):
@@ -174,12 +175,12 @@ class Domain:
         - The element is not already defined.
         - min_value < max_value and step < (max_value-min_value) / 2.
 
-        :param variable: The **LAYER** variable where the new element will be defined.
+        :param layer_variable: The **LAYER** variable where the new element will be defined.
         :param element_name: The element name.
         :param min_value: The minimum value.
         :param max_value: The maximum value.
         :param step: The step.
-        :type variable: str
+        :type layer_variable: str
         :type element_name: str
         :type min_value: int
         :type max_value: int
@@ -189,12 +190,12 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.DefinitionError`: The element name is already used,
          min_size >= max_size or step_size >= (min_size - max_size) / 2.
         """
-        ctrl.par.is_string(layer_variable)
-        ctrl.par.is_string(element_name)
-        ctrl.par.are_int(min_value, max_value, step)
-        ctrl.val.check_range(min_value, max_value, step)
-        ctrl.dom.is_defined_variable_as_type(layer_variable, LAYER, self.__definitions)
-        ctrl.dom.not_defined_element(layer_variable, element_name, self.__definitions)
+        ctrl_par.is_string(layer_variable)
+        ctrl_par.is_string(element_name)
+        ctrl_par.are_int(min_value, max_value, step)
+        ctrl_par.check_range(min_value, max_value, step)
+        ctrl_def.is_defined_variable_as_type(layer_variable, LAYER, self.__definitions)
+        ctrl_def.not_defined_element(layer_variable, element_name, self.__definitions)
         self.__definitions[layer_variable][1][element_name] = [INTEGER, min_value, max_value, step]
 
     def define_real_element(self, layer_variable: str, element_name: str, min_value: float, max_value: float,
@@ -208,12 +209,12 @@ class Domain:
         - The element is not already defined.
         - min_value < max_value and step < (max_value-min_value) / 2.
 
-        :param variable: The **LAYER** variable where the new element will be defined.
+        :param layer_variable: The **LAYER** variable where the new element will be defined.
         :param element_name: The element name.
         :param min_value: The minimum value.
         :param max_value: The maximum value.
         :param step: The step.
-        :type variable: str
+        :type layer_variable: str
         :type element_name: str
         :type min_value: float
         :type max_value: float
@@ -223,12 +224,12 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.DefinitionError`: The element name is already used,
          min_size >= max_size or step_size >= (min_size - max_size) / 2.
         """
-        ctrl.par.is_string(layer_variable)
-        ctrl.par.is_string(element_name)
-        ctrl.par.are_float(min_value, max_value, step)
-        ctrl.val.check_range(min_value, max_value, step)
-        ctrl.dom.is_defined_variable_as_type(layer_variable, LAYER, self.__definitions)
-        ctrl.dom.not_defined_element(layer_variable, element_name, self.__definitions)
+        ctrl_par.is_string(layer_variable)
+        ctrl_par.is_string(element_name)
+        ctrl_par.are_float(min_value, max_value, step)
+        ctrl_par.check_range(min_value, max_value, step)
+        ctrl_def.is_defined_variable_as_type(layer_variable, LAYER, self.__definitions)
+        ctrl_def.not_defined_element(layer_variable, element_name, self.__definitions)
         self.__definitions[layer_variable][1][element_name] = [REAL, min_value, max_value, step]
 
     def define_categorical_element(self, layer_variable: str, element_name: str, categories: list):
@@ -240,10 +241,10 @@ class Domain:
         - The variable is defined as **LAYER** type.
         - The element is not already defined.
 
-        :param variable: The **LAYER** variable where the new element will be inserted.
+        :param layer_variable: The **LAYER** variable where the new element will be inserted.
         :param element_name: The element name.
         :param categories: The list with the categories.
-        :type variable: str
+        :type layer_variable: str
         :type element_name: str
         :type categories: list of int, float or str
         :raise :py:class:`~pycvoa.problem.domain.NotDefinedItem`: The variable is not the defined in the domain.
@@ -251,12 +252,12 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.DefinitionError`: The element name is already used,
          min_size >= max_size or step_size >= (min_size - max_size) / 2.
         """
-        ctrl.par.is_string(layer_variable)
-        ctrl.par.is_string(element_name)
-        ctrl.par.is_list(categories)
-        ctrl.par.list_all_int_float_str(categories)
-        ctrl.dom.is_defined_variable_as_type(layer_variable, LAYER, self.__definitions)
-        ctrl.dom.not_defined_element(layer_variable, element_name, self.__definitions)
+        ctrl_par.is_string(layer_variable)
+        ctrl_par.is_string(element_name)
+        ctrl_par.is_list(categories)
+        ctrl_par.list_all_int_float_str(categories)
+        ctrl_def.is_defined_variable_as_type(layer_variable, LAYER, self.__definitions)
+        ctrl_def.not_defined_element(layer_variable, element_name, self.__definitions)
         self.__definitions[layer_variable][1][element_name] = [CATEGORICAL, categories]
 
     # **** DEFINE VECTOR VARIABLE METHODS ****
@@ -288,10 +289,10 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.DefinitionError`: The variable name is already used,
          min_value >= max_value or step >= (max_value - min_value) / 2.
         """
-        ctrl.par.is_string(variable_name)
-        ctrl.par.are_int(min_size, max_size, step_size)
-        ctrl.val.check_range(min_size, max_size, step_size)
-        ctrl.dom.not_defined_variable(variable_name, self.__definitions)
+        ctrl_par.is_string(variable_name)
+        ctrl_par.are_int(min_size, max_size, step_size)
+        ctrl_par.check_range(min_size, max_size, step_size)
+        ctrl_def.not_defined_variable(variable_name, self.__definitions)
         self.__definitions[variable_name] = [VECTOR, min_size, max_size, step_size, {}]
 
     def define_components_as_integer(self, vector_variable: str, min_value: int, max_value: int, step: int):
@@ -317,11 +318,11 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.DefinitionError`: The component type is already defined,
          min_size >= max_size or step_size >= (min_size - max_size) / 2.
         """
-        ctrl.par.is_string(vector_variable)
-        ctrl.par.are_int(min_value, max_value, step)
-        ctrl.val.check_range(min_value, max_value, step)
-        ctrl.dom.is_defined_variable_as_type(vector_variable, VECTOR, self.__definitions)
-        ctrl.dom.not_defined_components(vector_variable, self.__definitions)
+        ctrl_par.is_string(vector_variable)
+        ctrl_par.are_int(min_value, max_value, step)
+        ctrl_par.check_range(min_value, max_value, step)
+        ctrl_def.is_defined_variable_as_type(vector_variable, VECTOR, self.__definitions)
+        ctrl_def.not_defined_components(vector_variable, self.__definitions)
         self.__definitions[vector_variable][4] = [INTEGER, min_value, max_value, step]
 
     def define_components_as_real(self, vector_variable: str, min_value: float, max_value: float, step: float):
@@ -334,11 +335,11 @@ class Domain:
         - The component type of the **VECTOR** variable is not already defined.
         - min_value < max_value and step < (max_value-min_value) / 2.
 
-        :param variable: The **VECTOR** variable where its components will be defined.
+        :param vector_variable: The **VECTOR** variable where its components will be defined.
         :param min_value: The minimum value.
         :param max_value: The maximum value.
         :param step: The step.
-        :type variable: str
+        :type vector_variable: str
         :type min_value: float
         :type max_value: float
         :type step: float
@@ -347,11 +348,11 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.DefinitionError`: The component type is already defined,
          min_size >= max_size or step_size >= (min_size - max_size) / 2.
         """
-        ctrl.par.is_string(vector_variable)
-        ctrl.par.are_float(min_value, max_value, step)
-        ctrl.val.check_range(min_value, max_value, step)
-        ctrl.dom.is_defined_variable_as_type(vector_variable, VECTOR, self.__definitions)
-        ctrl.dom.not_defined_components(vector_variable, self.__definitions)
+        ctrl_par.is_string(vector_variable)
+        ctrl_par.are_float(min_value, max_value, step)
+        ctrl_par.check_range(min_value, max_value, step)
+        ctrl_def.is_defined_variable_as_type(vector_variable, VECTOR, self.__definitions)
+        ctrl_def.not_defined_components(vector_variable, self.__definitions)
         self.__definitions[vector_variable][4] = [REAL, min_value, max_value, step]
 
     def define_components_as_categorical(self, vector_variable: str, categories: list):
@@ -363,19 +364,19 @@ class Domain:
         - The variable is defined as **VECTOR** type.
         - The component type of the **VECTOR** variable is not already defined.
 
-        :param variable: The **VECTOR** variable where its components will be defined.
+        :param vector_variable: The **VECTOR** variable where its components will be defined.
         :param categories: List of label.
-        :type variable: str
+        :type vector_variable: str
         :type categories: list
         :raise :py:class:`~pycvoa.problem.domain.NotDefinedItem`: The variable is not the defined in the domain.
         :raise :py:class:`~pycvoa.problem.domain.WrongItemType`: The variable is not defined as **VECTOR**.
         :raise :py:class:`~pycvoa.problem.domain.DefinitionError`: The component type is already defined.
         """
-        ctrl.par.is_string(vector_variable)
-        ctrl.par.is_list(categories)
-        ctrl.par.list_all_int_float_str(categories)
-        ctrl.dom.is_defined_variable_as_type(vector_variable, VECTOR, self.__definitions)
-        ctrl.dom.not_defined_components(vector_variable, self.__definitions)
+        ctrl_par.is_string(vector_variable)
+        ctrl_par.is_list(categories)
+        ctrl_par.list_all_int_float_str(categories)
+        ctrl_def.is_defined_variable_as_type(vector_variable, VECTOR, self.__definitions)
+        ctrl_def.not_defined_components(vector_variable, self.__definitions)
         self.__definitions[vector_variable][4] = [CATEGORICAL, categories]
 
     def define_components_as_layer(self, vector_variable: str):
@@ -391,15 +392,15 @@ class Domain:
         - The variable is defined as **VECTOR** type.
         - The component type of the **VECTOR** variable is not already defined.
 
-        :param variable: The **VECTOR** variable where its components will be defined.
-        :type variable: str
+        :param vector_variable: The **VECTOR** variable where its components will be defined.
+        :type vector_variable: str
         :raise :py:class:`~pycvoa.problem.domain.NotDefinedItem`: The variable is not the defined in the domain.
         :raise :py:class:`~pycvoa.problem.domain.WrongItemType`: The variable is not defined as **VECTOR**.
         :raise :py:class:`~pycvoa.problem.domain.DefinitionError`: The component type is already defined.
         """
-        ctrl.par.is_string(vector_variable)
-        ctrl.dom.is_defined_variable_as_type(vector_variable, VECTOR, self.__definitions)
-        ctrl.dom.not_defined_components(vector_variable, self.__definitions)
+        ctrl_par.is_string(vector_variable)
+        ctrl_def.is_defined_variable_as_type(vector_variable, VECTOR, self.__definitions)
+        ctrl_def.not_defined_components(vector_variable, self.__definitions)
         self.__definitions[vector_variable][4] = [LAYER, {}]
 
     def define_layer_vector_integer_element(self, layer_vector_variable: str, element_name: str, min_value: int,
@@ -415,12 +416,12 @@ class Domain:
         - The element is not already defined.
         - min_value < max_value and step < (max_value-min_value) / 2.
 
-        :param variable: The **VECTOR** variable where its components will be defined.
+        :param layer_vector_variable: The **VECTOR** variable where its components will be defined.
         :param element_name: The element name.
         :param min_value: The minimum value.
         :param max_value: The maximum value.
         :param step: The step.
-        :type variable: str
+        :type layer_vector_variable: str
         :type element_name: str
         :type min_value: int
         :type max_value: int
@@ -432,13 +433,13 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.DefinitionError`: The element name is already used,
          min_size >= max_size or step_size >= (min_size - max_size) / 2.
         """
-        ctrl.par.is_string(layer_vector_variable)
-        ctrl.par.is_string(element_name)
-        ctrl.par.are_int(min_value, max_value, step)
-        ctrl.val.check_range(min_value, max_value, step)
-        ctrl.dom.is_defined_variable_as_type(layer_vector_variable, VECTOR, self.__definitions)
-        ctrl.dom.check_component_type(layer_vector_variable, LAYER, self.__definitions)
-        ctrl.dom.not_defined_component_element(layer_vector_variable, element_name, self.__definitions)
+        ctrl_par.is_string(layer_vector_variable)
+        ctrl_par.is_string(element_name)
+        ctrl_par.are_int(min_value, max_value, step)
+        ctrl_par.check_range(min_value, max_value, step)
+        ctrl_def.is_defined_variable_as_type(layer_vector_variable, VECTOR, self.__definitions)
+        ctrl_def.check_component_type(layer_vector_variable, LAYER, self.__definitions)
+        ctrl_def.not_defined_component_element(layer_vector_variable, element_name, self.__definitions)
         self.__definitions[layer_vector_variable][4][1][element_name] = [INTEGER, min_value, max_value, step]
 
     def define_vector_real_element(self, layer_vector_variable: str, element_name: str, min_value: float,
@@ -454,12 +455,12 @@ class Domain:
         - The element is not already defined.
         - min_value < max_value and step < (max_value-min_value) / 2.
 
-        :param variable: The **VECTOR** variable where its components will be defined.
+        :param layer_vector_variable: The **VECTOR** variable where its components will be defined.
         :param element_name: The element name.
         :param min_value: The minimum value.
         :param max_value: The maximum value.
         :param step: The step.
-        :type variable: str
+        :type layer_vector_variable: str
         :type element_name: str
         :type min_value: float
         :type max_value: float
@@ -471,13 +472,13 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.DefinitionError`: The element name is already used,
          min_size >= max_size or step_size >= (min_size - max_size) / 2.
         """
-        ctrl.par.is_string(layer_vector_variable)
-        ctrl.par.is_string(element_name)
-        ctrl.par.are_float(min_value, max_value, step)
-        ctrl.val.check_range(min_value, max_value, step)
-        ctrl.dom.is_defined_variable_as_type(layer_vector_variable, VECTOR, self.__definitions)
-        ctrl.dom.check_component_type(layer_vector_variable, LAYER, self.__definitions)
-        ctrl.dom.not_defined_component_element(layer_vector_variable, element_name, self.__definitions)
+        ctrl_par.is_string(layer_vector_variable)
+        ctrl_par.is_string(element_name)
+        ctrl_par.are_float(min_value, max_value, step)
+        ctrl_par.check_range(min_value, max_value, step)
+        ctrl_def.is_defined_variable_as_type(layer_vector_variable, VECTOR, self.__definitions)
+        ctrl_def.check_component_type(layer_vector_variable, LAYER, self.__definitions)
+        ctrl_def.not_defined_component_element(layer_vector_variable, element_name, self.__definitions)
         self.__definitions[layer_vector_variable][4][1][element_name] = [REAL, min_value, max_value, step]
 
     def define_vector_categorical_element(self, layer_vector_variable: str, element_name: str, categories: list):
@@ -490,10 +491,10 @@ class Domain:
         - The component type of the **VECTOR** is defined as **LAYER**.
         - The element is not already defined.
 
-        :param variable: The Vector variable name previously defined.
+        :param layer_vector_variable: The Vector variable name previously defined.
         :param element_name: The element name.
         :param categories: List of categories.
-        :type variable: str
+        :type layer_vector_variable: str
         :type element_name: str
         :type categories: list(int, float, str)
         :raise :py:class:`~pycvoa.problem.domain.NotDefinedItem`: The variable is not the defined in the domain,
@@ -502,13 +503,13 @@ class Domain:
         the component type is not defined as **LAYER**.
         :raise :py:class:`~pycvoa.problem.domain.DefinitionError`: The element name is already used.
         """
-        ctrl.par.is_string(layer_vector_variable)
-        ctrl.par.is_string(element_name)
-        ctrl.par.is_list(categories)
-        ctrl.par.list_all_int_float_str(categories)
-        ctrl.dom.is_defined_variable_as_type(layer_vector_variable, VECTOR, self.__definitions)
-        ctrl.dom.check_component_type(layer_vector_variable, LAYER, self.__definitions)
-        ctrl.dom.not_defined_component_element(layer_vector_variable, element_name, self.__definitions)
+        ctrl_par.is_string(layer_vector_variable)
+        ctrl_par.is_string(element_name)
+        ctrl_par.is_list(categories)
+        ctrl_par.list_all_int_float_str(categories)
+        ctrl_def.is_defined_variable_as_type(layer_vector_variable, VECTOR, self.__definitions)
+        ctrl_def.check_component_type(layer_vector_variable, LAYER, self.__definitions)
+        ctrl_def.not_defined_component_element(layer_vector_variable, element_name, self.__definitions)
         self.__definitions[layer_vector_variable][4][1][element_name] = [CATEGORICAL, categories]
 
     # **** IS DEFINED METHODS ***
@@ -521,7 +522,7 @@ class Domain:
         :returns: True if the variable is defined in the domain, otherwise False.
         :rtype: bool
         """
-        ctrl.par.is_string(variable)
+        ctrl_par.is_string(variable)
         r = False
         if variable in self.__definitions.keys():
             r = True
@@ -543,9 +544,9 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.NotDefinedItem`: The variable is not the defined in the domain.
         :raise :py:class:`~pycvoa.problem.domain.WrongItemType`: The variable is not defined as **LAYER**.
         """
-        ctrl.par.is_string(layer_variable)
-        ctrl.par.is_string(element)
-        ctrl.dom.is_defined_variable_as_type(layer_variable, LAYER, self.__definitions)
+        ctrl_par.is_string(layer_variable)
+        ctrl_par.is_string(element)
+        ctrl_def.is_defined_variable_as_type(layer_variable, LAYER, self.__definitions)
         r = False
         if element in self.__definitions[layer_variable][1].keys():
             r = True
@@ -558,15 +559,15 @@ class Domain:
 
         - The variable is defined as **VECTOR** type.
 
-        :param variable: The **LAYER** variable.
-        :type variable: str
+        :param vector_variable: The **LAYER** variable.
+        :type vector_variable: str
         :returns: True if the components of the **VECTOR** variable are already defined, otherwise False.
         :rtype: bool
         :raise :py:class:`~pycvoa.problem.domain.NotDefinedItem`: The variable is not the defined in the domain.
         :raise :py:class:`~pycvoa.problem.domain.WrongItemType`: The variable is not defined as **LAYER**.
         """
-        ctrl.par.is_string(vector_variable)
-        ctrl.dom.is_defined_variable_as_type(vector_variable, VECTOR, self.__definitions)
+        ctrl_par.is_string(vector_variable)
+        ctrl_def.is_defined_variable_as_type(vector_variable, VECTOR, self.__definitions)
         r = False
         if len(self.__definitions[vector_variable][4]) > 0:
             r = True
@@ -587,8 +588,8 @@ class Domain:
         :rtype: **INTEGER**, **REAL**, **CATEGORICAL**, **LAYER** or **VECTOR**
         :raise :py:class:`~pycvoa.problem.domain.NotDefinedItem`: The variable is not the defined in the domain.
         """
-        ctrl.par.is_string(variable)
-        ctrl.dom.is_defined_variable(variable, self.__definitions)
+        ctrl_par.is_string(variable)
+        ctrl_def.is_defined_variable(variable, self.__definitions)
         return self.__definitions[variable][0]
 
     def get_layer_element_type(self, layer_variable: str, element: str) -> str:
@@ -599,9 +600,9 @@ class Domain:
         - The variable is defined as **LAYER** type.
         - The element is defined in the **LAYER** variable.
 
-        :param variable: The **LAYER** variable.
+        :param layer_variable: The **LAYER** variable.
         :param element: The element.
-        :type variable: str
+        :type layer_variable: str
         :type element: str
         :returns: The variable type.
         :rtype: **INTEGER**, **REAL**, **CATEGORICAL**
@@ -609,10 +610,10 @@ class Domain:
         element is not defined in the **LAYER** variable.
         :raise :py:class:`~pycvoa.problem.domain.WrongItemType`: The variable is not defined as **LAYER**.
         """
-        ctrl.par.is_string(layer_variable)
-        ctrl.par.is_string(element)
-        ctrl.dom.is_defined_variable_as_type(layer_variable, LAYER, self.__definitions)
-        ctrl.dom.is_defined_element(layer_variable, element, self.__definitions)
+        ctrl_par.is_string(layer_variable)
+        ctrl_par.is_string(element)
+        ctrl_def.is_defined_variable_as_type(layer_variable, LAYER, self.__definitions)
+        ctrl_def.is_defined_element(layer_variable, element, self.__definitions)
         return self.__definitions[layer_variable][1][element][0]
 
     def get_vector_components_type(self, vector_variable: str) -> str:
@@ -623,26 +624,26 @@ class Domain:
         - The variable is defined as **VECTOR** type.
         - The components of the **VECTOR** variable are defined.
 
-        :param variable: The defined **VECTOR** variable.
-        :type variable: str
+        :param vector_variable: The defined **VECTOR** variable.
+        :type vector_variable: str
         :returns: The **VECTOR** variable component type.
         :rtype: **INTEGER**, **REAL**, **CATEGORICAL**, **LAYER**
         :raise :py:class:`~pycvoa.problem.domain.NotDefinedItem`: The variable is not the defined in the domain,
         the component type is not defined.
         :raise :py:class:`~pycvoa.problem.domain.WrongItemType`: The variable is not defined as **VECTOR**.
         """
-        ctrl.par.is_string(vector_variable)
-        ctrl.dom.is_defined_variable_as_type(vector_variable, VECTOR, self.__definitions)
-        ctrl.dom.is_defined_components(vector_variable, self.__definitions)
+        ctrl_par.is_string(vector_variable)
+        ctrl_def.is_defined_variable_as_type(vector_variable, VECTOR, self.__definitions)
+        ctrl_def.is_defined_components(vector_variable, self.__definitions)
         return self.__definitions[vector_variable][4][0]
 
     def get_layer_vector_component_element_type(self, layer_vector_variable: str, element: str) -> str:
-        ctrl.par.is_string(layer_vector_variable)
-        ctrl.par.is_string(element)
-        ctrl.dom.is_defined_variable_as_type(layer_vector_variable, VECTOR, self.__definitions)
-        ctrl.dom.is_defined_components(layer_vector_variable, self.__definitions)
-        ctrl.dom.check_component_type(layer_vector_variable, LAYER, self.__definitions)
-        ctrl.dom.is_defined_component_element(layer_vector_variable, element, self.__definitions)
+        ctrl_par.is_string(layer_vector_variable)
+        ctrl_par.is_string(element)
+        ctrl_def.is_defined_variable_as_type(layer_vector_variable, VECTOR, self.__definitions)
+        ctrl_def.is_defined_components(layer_vector_variable, self.__definitions)
+        ctrl_def.check_component_type(layer_vector_variable, LAYER, self.__definitions)
+        ctrl_def.is_defined_component_element(layer_vector_variable, element, self.__definitions)
         return self.__definitions[layer_vector_variable][4][1][element][0]
 
     # **** GET VARIABLE DEFINITION METHODS ***
@@ -686,8 +687,8 @@ class Domain:
         :rtype: list
         :raise :py:class:`~pycvoa.problem.domain.NotDefinedItem`: The variable is not the defined in the domain.
         """
-        ctrl.par.is_string(variable)
-        ctrl.dom.is_defined_variable(variable, self.__definitions)
+        ctrl_par.is_string(variable)
+        ctrl_def.is_defined_variable(variable, self.__definitions)
         return self.__definitions[variable]
 
     # **** GET ELEMENT DEFINITION METHODS ***
@@ -707,8 +708,8 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.NotDefinedItem`: The variable is not the defined in the domain.
         :raise :py:class:`~pycvoa.problem.domain.WrongItemType`: The variable is not defined as **LAYER**.
         """
-        ctrl.par.is_string(layer_variable)
-        ctrl.dom.is_defined_variable_as_type(layer_variable, LAYER, self.__definitions)
+        ctrl_par.is_string(layer_variable)
+        ctrl_def.is_defined_variable_as_type(layer_variable, LAYER, self.__definitions)
         return list(self.__definitions[layer_variable][1].keys())
 
     def get_element_definition(self, layer_variable: str, element: str) -> list:
@@ -719,9 +720,9 @@ class Domain:
         - The variable is defined as **LAYER** type.
         - The element is defined in the **LAYER** variable.
 
-        :param variable: The defined **LAYER** variable.
+        :param layer_variable: The defined **LAYER** variable.
         :param element: The element.
-        :type variable: str
+        :type layer_variable: str
         :type element: str
         :returns: The element definition.
         :rtype: list
@@ -729,10 +730,10 @@ class Domain:
         The element is not defined.
         :raise :py:class:`~pycvoa.problem.domain.WrongItemType`: The variable is not defined as **LAYER**.
         """
-        ctrl.par.is_string(layer_variable)
-        ctrl.par.is_string(element)
-        ctrl.dom.is_defined_variable_as_type(layer_variable, LAYER, self.__definitions)
-        ctrl.dom.is_defined_element(layer_variable, element, self.__definitions)
+        ctrl_par.is_string(layer_variable)
+        ctrl_par.is_string(element)
+        ctrl_def.is_defined_variable_as_type(layer_variable, LAYER, self.__definitions)
+        ctrl_def.is_defined_element(layer_variable, element, self.__definitions)
         return self.__definitions[layer_variable][1][element]
 
     # **** GET COMPONENT DEFINITION METHODS ***
@@ -753,16 +754,15 @@ class Domain:
         the component type is not defined.
         :raise :py:class:`~pycvoa.problem.domain.WrongItemType`: The variable is not defined as **VECTOR**.
         """
-        ctrl.par.is_string(vector_variable)
-        ctrl.dom.is_defined_variable_as_type(vector_variable, VECTOR, self.__definitions)
-        ctrl.dom.is_defined_components(vector_variable, self.__definitions)
+        ctrl_par.is_string(vector_variable)
+        ctrl_def.is_defined_variable_as_type(vector_variable, VECTOR, self.__definitions)
+        ctrl_def.is_defined_components(vector_variable, self.__definitions)
         return self.__definitions[vector_variable][4]
 
-    def get_remaining_available_components(self, vector_variable: str, current_vector_size: str) -> int:
-        ctrl.par.is_string(vector_variable)
-        ctrl.par.is_int(current_vector_size)
-        ctrl.dom.is_defined_variable_as_type(vector_variable, VECTOR, self.__definitions)
-        r = 0
+    def get_remaining_available_components(self, vector_variable: str, current_vector_size: int) -> int:
+        ctrl_par.is_string(vector_variable)
+        ctrl_par.is_int(current_vector_size)
+        ctrl_def.is_defined_variable_as_type(vector_variable, VECTOR, self.__definitions)
         if current_vector_size < self.__definitions[vector_variable][1]:
             r = current_vector_size - self.__definitions[vector_variable][1]
         else:
@@ -778,8 +778,8 @@ class Domain:
         - The variable is defined as **VECTOR** type.
         - The components of the **VECTOR** variable are defined as **LAYER** type.
 
-        :param variable: The registered **VECTOR** variable.
-        :type variable: str
+        :param layer_vector_variable: The registered **VECTOR** variable.
+        :type layer_vector_variable: str
         :returns: A list with the elements of the **LAYER** defined in the **VECTOR** variable.
         :rtype: list
         :raise :py:class:`~pycvoa.problem.domain.NotDefinedItem`: The variable is not the defined in the domain,
@@ -787,10 +787,10 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.WrongItemType`: The variable is not defined as **VECTOR**.
         The component type is not defined as **LAYER**.
         """
-        ctrl.par.is_string(layer_vector_variable)
-        ctrl.dom.is_defined_variable_as_type(layer_vector_variable, VECTOR, self.__definitions)
-        ctrl.dom.is_defined_components(layer_vector_variable, self.__definitions)
-        ctrl.dom.check_component_type(layer_vector_variable, LAYER, self.__definitions)
+        ctrl_par.is_string(layer_vector_variable)
+        ctrl_def.is_defined_variable_as_type(layer_vector_variable, VECTOR, self.__definitions)
+        ctrl_def.is_defined_components(layer_vector_variable, self.__definitions)
+        ctrl_def.check_component_type(layer_vector_variable, LAYER, self.__definitions)
         return list(self.__definitions[layer_vector_variable][4][1].keys())
 
     def get_component_element_definition(self, layer_vector_variable: str, element: str) -> list:
@@ -802,9 +802,9 @@ class Domain:
         - The components of the **VECTOR** variable are defined as **LAYER** type.
         - The element is defined in the **LAYER** components.
 
-        :param variable: The registered **VECTOR** variable.
+        :param layer_vector_variable: The registered **VECTOR** variable.
         :param element: The element.
-        :type variable: str
+        :type layer_vector_variable: str
         :type element: str
         :returns: The element definition.
         :rtype: list
@@ -813,12 +813,12 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.WrongItemType`: The variable is not defined as **VECTOR**.
         The component type is not defined as **LAYER**.
         """
-        ctrl.par.is_string(layer_vector_variable)
-        ctrl.par.is_string(element)
-        ctrl.dom.is_defined_variable_as_type(layer_vector_variable, VECTOR, self.__definitions)
-        ctrl.dom.is_defined_components(layer_vector_variable, self.__definitions)
-        ctrl.dom.check_component_type(layer_vector_variable, LAYER, self.__definitions)
-        ctrl.dom.is_defined_component_element(layer_vector_variable, element, self.__definitions)
+        ctrl_par.is_string(layer_vector_variable)
+        ctrl_par.is_string(element)
+        ctrl_def.is_defined_variable_as_type(layer_vector_variable, VECTOR, self.__definitions)
+        ctrl_def.is_defined_components(layer_vector_variable, self.__definitions)
+        ctrl_def.check_component_type(layer_vector_variable, LAYER, self.__definitions)
+        ctrl_def.is_defined_component_element(layer_vector_variable, element, self.__definitions)
         return self.__definitions[layer_vector_variable][4][1][element]
 
     # **** CHECK METHODS ***
@@ -839,19 +839,19 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.NotDefinedItem`: The variable is not the defined in the domain.
         :raise :py:class:`~pycvoa.problem.domain.WrongItemType`: The variable is not defined as **BASIC**.
         """
-        ctrl.par.is_string(basic_variable)
-        ctrl.dom.is_defined_variable_as_type(basic_variable, BASIC, self.__definitions)
+        ctrl_par.is_string(basic_variable)
+        ctrl_def.is_defined_variable_as_type(basic_variable, BASIC, self.__definitions)
         r = False
         if self.__definitions[basic_variable][0] in INTEGER:
-            ctrl.par.is_int(value)
+            ctrl_par.is_int(value)
             if self.__definitions[basic_variable][1] <= value <= self.__definitions[basic_variable][2]:
                 r = True
         elif self.__definitions[basic_variable][0] in REAL:
-            ctrl.par.is_float(value)
+            ctrl_par.is_float(value)
             if self.__definitions[basic_variable][1] <= value <= self.__definitions[basic_variable][2]:
                 r = True
         elif self.__definitions[basic_variable][0] is CATEGORICAL:
-            ctrl.par.same_python_type(self.__definitions[basic_variable][1], value)
+            ctrl_par.same_python_type(self.__definitions[basic_variable][1], value)
             if value in self.__definitions[basic_variable][1]:
                 r = True
         return r
@@ -876,23 +876,23 @@ class Domain:
         The element is not defined.
         :raise :py:class:`~pycvoa.problem.domain.WrongItemType`: The variable is not defined as **BASIC**.
         """
-        ctrl.par.is_string(layer_variable)
-        ctrl.par.is_string(element)
-        ctrl.dom.is_defined_variable_as_type(layer_variable, LAYER, self.__definitions)
-        ctrl.dom.is_defined_element(layer_variable, element, self.__definitions)
+        ctrl_par.is_string(layer_variable)
+        ctrl_par.is_string(element)
+        ctrl_def.is_defined_variable_as_type(layer_variable, LAYER, self.__definitions)
+        ctrl_def.is_defined_element(layer_variable, element, self.__definitions)
         r = False
         if self.__definitions[layer_variable][1][element][0] is INTEGER:
-            ctrl.par.is_int(value)
+            ctrl_par.is_int(value)
             if self.__definitions[layer_variable][1][element][1] <= value <= \
                     self.__definitions[layer_variable][1][element][2]:
                 r = True
         elif self.__definitions[layer_variable][1][element][0] is REAL:
-            ctrl.par.is_float(value)
+            ctrl_par.is_float(value)
             if self.__definitions[layer_variable][1][element][1] <= value <= \
                     self.__definitions[layer_variable][1][element][2]:
                 r = True
         elif self.__definitions[layer_variable][1][element][0] is CATEGORICAL:
-            ctrl.par.same_python_type(self.__definitions[layer_variable][1][element][1], value)
+            ctrl_par.same_python_type(self.__definitions[layer_variable][1][element][1], value)
             if value in self.__definitions[layer_variable][1][element][1]:
                 r = True
         return r
@@ -905,25 +905,26 @@ class Domain:
         - The variable is defined as **VECTOR** type.
 
         :param vector_variable: The **LAYER** variable.
+        :param values: The values.
         :type vector_variable: str
         :returns: True if the components of the **VECTOR** variable are already defined, otherwise False.
         :rtype: bool
         :raise :py:class:`~pycvoa.problem.domain.NotDefinedItem`: The variable is not the defined in the domain.
         :raise :py:class:`~pycvoa.problem.domain.WrongItemType`: The variable is not defined as **LAYER**.
         """
-        ctrl.par.is_string(vector_variable)
-        ctrl.par.is_list(values)
-        ctrl.dom.is_defined_variable_as_type(vector_variable, VECTOR, self.__definitions)
+        ctrl_par.is_string(vector_variable)
+        ctrl_par.is_list(values)
+        ctrl_def.is_defined_variable_as_type(vector_variable, VECTOR, self.__definitions)
         r = False
         if self.__definitions[vector_variable][1] <= len(values) <= self.__definitions[vector_variable][2]:
             r = True
         return r
 
     def check_vector_basic_values(self, basic_vector_variable: str, values: list) -> list:
-        ctrl.par.is_string(basic_vector_variable)
-        ctrl.par.is_list(values)
-        ctrl.dom.are_defined_variable_component_check_component_type(basic_vector_variable, BASIC, self.__definitions)
-        ctrl.dom.check_vector_values_size(basic_vector_variable, values, self.__definitions)
+        ctrl_par.is_string(basic_vector_variable)
+        ctrl_par.is_list(values)
+        ctrl_def.are_defined_variable_component_check_component_type(basic_vector_variable, BASIC, self.__definitions)
+        ctrl_def.check_vector_values_size(basic_vector_variable, values, self.__definitions)
         enc = True
         i = 0
         r = [-1, None]
@@ -951,10 +952,10 @@ class Domain:
         return r
 
     def check_vector_layer_values(self, layer_vector_variable: str, values: list) -> bool:
-        ctrl.par.is_string(layer_vector_variable)
-        ctrl.par.is_list_of_dict(values)
-        ctrl.dom.are_defined_variable_component_check_component_type(layer_vector_variable, LAYER, self.__definitions)
-        ctrl.dom.check_vector_values_size(layer_vector_variable, values, self.__definitions)
+        ctrl_par.is_string(layer_vector_variable)
+        ctrl_par.is_list_of_dict(values)
+        ctrl_def.are_defined_variable_component_check_component_type(layer_vector_variable, LAYER, self.__definitions)
+        ctrl_def.check_vector_values_size(layer_vector_variable, values, self.__definitions)
         r = True
         i = 0
         while r and i < len(values):
@@ -965,17 +966,17 @@ class Domain:
                 element = key_list[i]
                 value = layer[element]
                 if self.__definitions[layer_vector_variable][4][1][element][0] is INTEGER:
-                    ctrl.par.is_int(value)
+                    ctrl_par.is_int(value)
                     if value < self.__definitions[layer_vector_variable][4][1][element][1] or value > \
                             self.__definitions[layer_vector_variable][4][1][element][2]:
                         r = False
                 elif self.__definitions[layer_vector_variable][4][1][element][0] is REAL:
-                    ctrl.par.is_float(value)
+                    ctrl_par.is_float(value)
                     if value < self.__definitions[layer_vector_variable][4][1][element][1] or value > \
                             self.__definitions[layer_vector_variable][4][1][element][2]:
                         r = False
                 elif self.__definitions[layer_vector_variable][4][1][element][0] is CATEGORICAL:
-                    ctrl.par.same_python_type(self.__definitions[layer_vector_variable][4][1][element][1], value)
+                    ctrl_par.same_python_type(self.__definitions[layer_vector_variable][4][1][element][1], value)
                     if value not in self.__definitions[layer_vector_variable][4][1][element][1]:
                         r = False
                 j += 1
@@ -983,9 +984,9 @@ class Domain:
         return r
 
     def check_vector_layer_elements_values(self, layer_vector_variable: str, layer_values: dict) -> bool:
-        ctrl.par.is_string(layer_vector_variable)
-        ctrl.par.is_dict(layer_values)
-        ctrl.dom.are_defined_variable_component_check_component_type(layer_vector_variable, LAYER, self.__definitions)
+        ctrl_par.is_string(layer_vector_variable)
+        ctrl_par.is_dict(layer_values)
+        ctrl_def.are_defined_variable_component_check_component_type(layer_vector_variable, LAYER, self.__definitions)
         r = True
         i = 0
         key_list = list(layer_values.keys())
@@ -993,17 +994,17 @@ class Domain:
             element = key_list[i]
             value = layer_values[element]
             if self.__definitions[layer_vector_variable][4][1][element][0] is INTEGER:
-                ctrl.par.is_int(value)
+                ctrl_par.is_int(value)
                 if value < self.__definitions[layer_vector_variable][4][1][element][1] or value > \
                         self.__definitions[layer_vector_variable][4][1][element][2]:
                     r = False
             elif self.__definitions[layer_vector_variable][4][1][element][0] is REAL:
-                ctrl.par.is_float(value)
+                ctrl_par.is_float(value)
                 if value < self.__definitions[layer_vector_variable][4][1][element][1] or value > \
                         self.__definitions[layer_vector_variable][4][1][element][2]:
                     r = False
             elif self.__definitions[layer_vector_variable][4][1][element][0] is CATEGORICAL:
-                ctrl.par.same_python_type(self.__definitions[layer_vector_variable][4][1][element][1], value)
+                ctrl_par.same_python_type(self.__definitions[layer_vector_variable][4][1][element][1], value)
                 if value not in self.__definitions[layer_vector_variable][4][1][element][1]:
                     r = False
             i += 1
@@ -1028,21 +1029,21 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.WrongItemType`: The variable is not defined as **VECTOR**.
         The component type is not **BASIC**.
         """
-        ctrl.par.is_string(basic_vector_variable)
-        ctrl.dom.are_defined_variable_component_check_component_type(basic_vector_variable, BASIC, self.__definitions)
+        ctrl_par.is_string(basic_vector_variable)
+        ctrl_def.are_defined_variable_component_check_component_type(basic_vector_variable, BASIC, self.__definitions)
         r = False
         if self.__definitions[basic_vector_variable][4][0] is INTEGER:
-            ctrl.par.is_int(value)
-            if self.__definitions[basic_vector_variable][4][1] <= value <= self.__definitions[basic_vector_variable][4][
-                2]:
+            ctrl_par.is_int(value)
+            if self.__definitions[basic_vector_variable][4][1] <= value \
+                    <= self.__definitions[basic_vector_variable][4][2]:
                 r = True
         elif self.__definitions[basic_vector_variable][4][0] is REAL:
-            ctrl.par.is_float(value)
-            if self.__definitions[basic_vector_variable][4][1] <= value <= self.__definitions[basic_vector_variable][4][
-                2]:
+            ctrl_par.is_float(value)
+            if self.__definitions[basic_vector_variable][4][1] <= value \
+                    <= self.__definitions[basic_vector_variable][4][2]:
                 r = True
         elif self.__definitions[basic_vector_variable][4][0] is CATEGORICAL:
-            ctrl.par.same_python_type(self.__definitions[basic_vector_variable][4][1], value)
+            ctrl_par.same_python_type(self.__definitions[basic_vector_variable][4][1], value)
             if value in self.__definitions[basic_vector_variable][4][1]:
                 r = True
         return r
@@ -1069,28 +1070,28 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.WrongItemType`: The variable is not defined as **VECTOR**.
         The component type is not defined as **LAYER**.
         """
-        ctrl.par.is_string(layer_vector_variable)
-        ctrl.par.is_string(element)
-        ctrl.dom.are_defined_variable_component_check_component_type(layer_vector_variable, LAYER, self.__definitions)
-        ctrl.dom.is_defined_component_element(layer_vector_variable, element, self.__definitions)
+        ctrl_par.is_string(layer_vector_variable)
+        ctrl_par.is_string(element)
+        ctrl_def.are_defined_variable_component_check_component_type(layer_vector_variable, LAYER, self.__definitions)
+        ctrl_def.is_defined_component_element(layer_vector_variable, element, self.__definitions)
         r = False
         if self.__definitions[layer_vector_variable][4][1][element][0] is INTEGER:
-            ctrl.par.is_int(value)
+            ctrl_par.is_int(value)
             if self.__definitions[layer_vector_variable][4][1][element][1] <= value \
                     <= self.__definitions[layer_vector_variable][4][1][element][2]:
                 r = True
         elif self.__definitions[layer_vector_variable][4][1][element][0] is REAL:
-            ctrl.par.is_float(value)
+            ctrl_par.is_float(value)
             if self.__definitions[layer_vector_variable][4][1][element][1] <= value \
                     <= self.__definitions[layer_vector_variable][4][1][element][2]:
                 r = True
         elif self.__definitions[layer_vector_variable][4][1][element][0] is CATEGORICAL:
-            ctrl.par.same_python_type(self.__definitions[layer_vector_variable][4][1][element][1], value)
+            ctrl_par.same_python_type(self.__definitions[layer_vector_variable][4][1][element][1], value)
             if value in self.__definitions[layer_vector_variable][4][1][element][1]:
                 r = True
         return r
 
-    def check_value(self, variable:str, value, element=None) -> bool:
+    def check_value(self, variable: str, value, element=None) -> bool:
         """ It checks if a value of a defined variable fulfills its definition in the domain.
 
         **Preconditions:**
@@ -1115,22 +1116,22 @@ class Domain:
         An element name is not provided when a **VECTOR** variable, whose components are defined as ***LAYER**,
         are checked.
         """
-        ctrl.par.is_string(variable)
-        ctrl.dom.is_defined_variable(variable, self.__definitions)
+        ctrl_par.is_string(variable)
+        ctrl_def.is_defined_variable(variable, self.__definitions)
         r = False
         if self.__definitions[variable][0] in BASIC:
-            ctrl.par.element_is_none(variable, element)
+            ctrl_par.element_is_none(variable, element)
             r = self.check_basic(variable, value)
         elif self.__definitions[variable][0] is LAYER:
-            ctrl.par.element_not_none(variable, element)
+            ctrl_par.element_not_none(variable, element)
             r = self.check_element(variable, element, value)
         elif self.__definitions[variable][0] is VECTOR:
-            ctrl.dom.is_defined_components(variable, self.__definitions)
+            ctrl_def.is_defined_components(variable, self.__definitions)
             if self.__definitions[variable][4][0] in BASIC:
-                ctrl.par.element_is_none(variable, element)
+                ctrl_par.element_is_none(variable, element)
                 r = self.check_vector_basic_value(variable, value)
             elif self.__definitions[variable][4][0] is LAYER:
-                ctrl.par.element_not_none(variable, element)
+                ctrl_par.element_not_none(variable, element)
                 r = self.check_vector_layer_element_value(variable, element, value)
         return r
 
