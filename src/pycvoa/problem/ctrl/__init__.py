@@ -1,4 +1,6 @@
-__all__ = ["par", "var", "val", "dom", "sol", "proc", "DefinitionError", "ItemTypeError", "SolutionError"]
+__all__ = ["parameter", "definition", "domain", "proc", "solution", "DefinitionError", "ItemTypeError",
+           "SolutionError"]
+
 
 class DefinitionError(Exception):
     """ It is raised when the type of the variable is wrong.
@@ -33,6 +35,7 @@ class DefinitionError(Exception):
     def __init__(self, message):
         self.message = message
 
+
 class SolutionError(Exception):
     """ It is raised when the type of the variable is wrong.
 
@@ -65,6 +68,7 @@ class SolutionError(Exception):
 
     def __init__(self, message):
         self.message = message
+
 
 class ItemTypeError(Exception):
     """ It is raised when the type of the variable is wrong.
