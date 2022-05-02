@@ -29,6 +29,21 @@ def is_defined_element(layer_variable, element, definitions: dict):
             "The element " + element + " of the " + layer_variable + " LAYER variable is not defined in this domain.")
 
 
+def is_defined_element_item_definition(item_definition, element):
+    """ It checks if an element is defined in a **LAYER** variable, if not, raise
+    py:class:`~pycvoa.problem.domain.NotDefinedItem`.
+
+    :param layer_variable: The variable.
+    :param element: The element.
+    :param definitions: The definitions.
+    :type layer_variable: str
+    :type element: str
+    """
+    if element not in item_definition.keys():
+        raise DefinitionError(
+            "The element " + element + " is not defined in the LAYER variable.")
+
+
 def is_defined_component_element(layer_vector_variable, element, definitions: dict):
     """ It checks if an element is defined in the **LAYER** components of a **VECTOR** variable, if not, raise
     py:class:`~pycvoa.problem.domain.NotDefinedItem`.
@@ -147,16 +162,35 @@ def is_defined_variable_as_type(variable, variable_type, definitions: dict):
         :type variable_type: **INTEGER**, **REAL**, **CATEGORICAL**, **BASIC**, **LAYER**, **VECTOR**
         """
     is_defined_variable(variable, definitions)
-    if variable_type is BASIC:
-        if definitions[variable][0] not in variable_type:
+    check_variable_type(variable, variable_type, definitions)
+
+
+def check_variable_type(variable, check_type: str, definitions: dict):
+    if check_type is BASIC:
+        if definitions[variable][0] not in check_type:
             raise DefinitionError("The variable " + variable + " is not defined as a BASIC type.")
     else:
-        if definitions[variable][0] is not variable_type:
-            raise DefinitionError("The variable " + variable + " is not defined as " + variable_type + " type.")
+        if definitions[variable][0] is not check_type:
+            raise DefinitionError("The variable " + variable + " is not defined as " + check_type + " type.")
 
 
 def are_defined_variable_component_check_component_type(vector_variable, component_type, definitions: dict):
     is_defined_variable_as_type(vector_variable, VECTOR, definitions)
+    if len(definitions[vector_variable][4]) == 0:
+        raise DefinitionError(
+            "The " + vector_variable + " components are not defined.")
+    check_component_type(vector_variable, component_type, definitions)
+
+
+def is_defined_components_as_type(vector_variable, component_type, definitions: dict):
+    if len(definitions[vector_variable][4]) == 0:
+        raise DefinitionError(
+            "The " + vector_variable + " components are not defined.")
+    check_component_type(vector_variable, component_type, definitions)
+
+
+def check_vector_component_type(vector_variable, component_type, definitions: dict):
+    check_variable_type(vector_variable, VECTOR, definitions)
     if len(definitions[vector_variable][4]) == 0:
         raise DefinitionError(
             "The " + vector_variable + " components are not defined.")
