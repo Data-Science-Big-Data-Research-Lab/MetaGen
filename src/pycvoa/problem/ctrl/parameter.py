@@ -1,5 +1,4 @@
-from pycvoa.problem.domain import Domain
-from pycvoa.problem.types import *
+import pycvoa
 
 
 def is_string(variable_element_name):
@@ -21,10 +20,26 @@ def is_dict(values):
     if type(values) != dict:
         raise TypeError("The values parameter must be <dict>.")
 
+def not_dict(values):
+    if type(values) == dict:
+        raise TypeError("The values parameter must not be <dict>.")
 
 def is_list(values):
     if type(values) != list:
         raise TypeError("The values parameter must be <list>.")
+
+
+def not_list(values):
+    if type(values) == list:
+        raise TypeError("The values parameter must not be <list>.")
+
+
+
+def is_list_of_dict(values):
+    is_list(values)
+    for e in values:
+        if type(e) != dict:
+            raise TypeError("The " + values.index(e) + "-nh value must be <dict>.")
 
 
 def are_int(min_value_size, max_value_size, step_size):
@@ -43,13 +58,6 @@ def are_float(min_value, max_value, step):
         raise TypeError("The max_value parameter must be <float>.")
     if type(step) != float:
         raise TypeError("The step parameter must be <float>.")
-
-
-def is_list_of_dict(values):
-    is_list(values)
-    for e in values:
-        if type(e) != dict:
-            raise TypeError("The " + values.index(e) + "-nh value must be <dict>.")
 
 
 def same_python_type(categories, value):
@@ -75,7 +83,7 @@ def list_all_int_float_str(categories):
 
 def is_domain_class(domain):
     if domain is not None:
-        if type(domain) is not Domain:
+        if type(domain) is not pycvoa.problem.domain.Domain:
             raise TypeError("The " + domain + " parameter is not instantiate from <Domain> class.")
 
 

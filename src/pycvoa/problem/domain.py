@@ -1,7 +1,6 @@
 from pycvoa.problem.ctrl import parameter as ctrl_par
 from pycvoa.problem.ctrl import definition as ctrl_def
 from pycvoa.problem.types import *
-from pycvoa.problem.support import definition_to_string
 
 
 class Domain:
@@ -841,20 +840,12 @@ class Domain:
         """
         ctrl_par.is_string(basic_variable)
         ctrl_def.is_defined_variable_as_type(basic_variable, BASIC, self.__definitions)
-        r = False
-        if self.__definitions[basic_variable][0] in INTEGER:
-            ctrl_par.is_int(value)
-            if self.__definitions[basic_variable][1] <= value <= self.__definitions[basic_variable][2]:
-                r = True
-        elif self.__definitions[basic_variable][0] in REAL:
-            ctrl_par.is_float(value)
-            if self.__definitions[basic_variable][1] <= value <= self.__definitions[basic_variable][2]:
-                r = True
-        elif self.__definitions[basic_variable][0] is CATEGORICAL:
-            ctrl_par.same_python_type(self.__definitions[basic_variable][1], value)
-            if value in self.__definitions[basic_variable][1]:
-                r = True
-        return r
+        return self.__check_basic_value_item(self.__definitions[basic_variable], value)
+
+    def check_layer(self, layer_variable: str, layer_values: dict) -> bool:
+        ctrl_par.is_string(layer_variable)
+        ctrl_def.is_defined_variable_as_type(layer_variable, LAYER, self.__definitions)
+        return self.__check_layer_element_values(self.__definitions[layer_variable][1], layer_values)
 
     def check_element(self, layer_variable: str, element: str, value) -> bool:
         """ It checks if a value for an element of a **LAYER** variable fulfills its definition in the domain.
@@ -880,136 +871,9 @@ class Domain:
         ctrl_par.is_string(element)
         ctrl_def.is_defined_variable_as_type(layer_variable, LAYER, self.__definitions)
         ctrl_def.is_defined_element(layer_variable, element, self.__definitions)
-        r = False
-        if self.__definitions[layer_variable][1][element][0] is INTEGER:
-            ctrl_par.is_int(value)
-            if self.__definitions[layer_variable][1][element][1] <= value <= \
-                    self.__definitions[layer_variable][1][element][2]:
-                r = True
-        elif self.__definitions[layer_variable][1][element][0] is REAL:
-            ctrl_par.is_float(value)
-            if self.__definitions[layer_variable][1][element][1] <= value <= \
-                    self.__definitions[layer_variable][1][element][2]:
-                r = True
-        elif self.__definitions[layer_variable][1][element][0] is CATEGORICAL:
-            ctrl_par.same_python_type(self.__definitions[layer_variable][1][element][1], value)
-            if value in self.__definitions[layer_variable][1][element][1]:
-                r = True
-        return r
+        return self.__check_basic_value_item(self.__definitions[layer_variable][1][element], value)
 
-    def check_vector_size(self, vector_variable: str, values: list) -> bool:
-        """ It checks if the components of a **VECTOR** variable are already defined.
-
-        **Preconditions:**
-
-        - The variable is defined as **VECTOR** type.
-
-        :param vector_variable: The **LAYER** variable.
-        :param values: The values.
-        :type vector_variable: str
-        :returns: True if the components of the **VECTOR** variable are already defined, otherwise False.
-        :rtype: bool
-        :raise :py:class:`~pycvoa.problem.domain.NotDefinedItem`: The variable is not the defined in the domain.
-        :raise :py:class:`~pycvoa.problem.domain.WrongItemType`: The variable is not defined as **LAYER**.
-        """
-        ctrl_par.is_string(vector_variable)
-        ctrl_par.is_list(values)
-        ctrl_def.is_defined_variable_as_type(vector_variable, VECTOR, self.__definitions)
-        r = False
-        if self.__definitions[vector_variable][1] <= len(values) <= self.__definitions[vector_variable][2]:
-            r = True
-        return r
-
-    def check_vector_basic_values(self, basic_vector_variable: str, values: list) -> list:
-        ctrl_par.is_string(basic_vector_variable)
-        ctrl_par.is_list(values)
-        ctrl_def.are_defined_variable_component_check_component_type(basic_vector_variable, BASIC, self.__definitions)
-        ctrl_def.check_vector_values_size(basic_vector_variable, values, self.__definitions)
-        enc = True
-        i = 0
-        r = [-1, None]
-        component_type = self.__definitions[basic_vector_variable][4][0]
-        if component_type is INTEGER:
-            while enc and i < len(values):
-                if type(values[i]) != int:
-                    enc = False
-                    r = [i, int]
-                i += 1
-        elif component_type is REAL:
-            while enc and i < len(values):
-                if type(values[i]) != float:
-                    enc = False
-                    r = [i, float]
-                i += 1
-        elif component_type is CATEGORICAL:
-            categories = self.__definitions[basic_vector_variable][4][1]
-            while enc and i < len(values):
-                categories_type = type(categories[0])
-                if type(values[i]) != categories_type:
-                    enc = False
-                    r = [i, type(categories[0])]
-                i += 1
-        return r
-
-    def check_vector_layer_values(self, layer_vector_variable: str, values: list) -> bool:
-        ctrl_par.is_string(layer_vector_variable)
-        ctrl_par.is_list_of_dict(values)
-        ctrl_def.are_defined_variable_component_check_component_type(layer_vector_variable, LAYER, self.__definitions)
-        ctrl_def.check_vector_values_size(layer_vector_variable, values, self.__definitions)
-        r = True
-        i = 0
-        while r and i < len(values):
-            layer = values[i]
-            key_list = list(layer.keys())
-            j = 0
-            while r and j < len(key_list):
-                element = key_list[i]
-                value = layer[element]
-                if self.__definitions[layer_vector_variable][4][1][element][0] is INTEGER:
-                    ctrl_par.is_int(value)
-                    if value < self.__definitions[layer_vector_variable][4][1][element][1] or value > \
-                            self.__definitions[layer_vector_variable][4][1][element][2]:
-                        r = False
-                elif self.__definitions[layer_vector_variable][4][1][element][0] is REAL:
-                    ctrl_par.is_float(value)
-                    if value < self.__definitions[layer_vector_variable][4][1][element][1] or value > \
-                            self.__definitions[layer_vector_variable][4][1][element][2]:
-                        r = False
-                elif self.__definitions[layer_vector_variable][4][1][element][0] is CATEGORICAL:
-                    ctrl_par.same_python_type(self.__definitions[layer_vector_variable][4][1][element][1], value)
-                    if value not in self.__definitions[layer_vector_variable][4][1][element][1]:
-                        r = False
-                j += 1
-            i += 1
-        return r
-
-    def check_vector_layer_elements_values(self, layer_vector_variable: str, layer_values: dict) -> bool:
-        ctrl_par.is_string(layer_vector_variable)
-        ctrl_par.is_dict(layer_values)
-        ctrl_def.are_defined_variable_component_check_component_type(layer_vector_variable, LAYER, self.__definitions)
-        r = True
-        i = 0
-        key_list = list(layer_values.keys())
-        while r and i < len(key_list):
-            element = key_list[i]
-            value = layer_values[element]
-            if self.__definitions[layer_vector_variable][4][1][element][0] is INTEGER:
-                ctrl_par.is_int(value)
-                if value < self.__definitions[layer_vector_variable][4][1][element][1] or value > \
-                        self.__definitions[layer_vector_variable][4][1][element][2]:
-                    r = False
-            elif self.__definitions[layer_vector_variable][4][1][element][0] is REAL:
-                ctrl_par.is_float(value)
-                if value < self.__definitions[layer_vector_variable][4][1][element][1] or value > \
-                        self.__definitions[layer_vector_variable][4][1][element][2]:
-                    r = False
-            elif self.__definitions[layer_vector_variable][4][1][element][0] is CATEGORICAL:
-                ctrl_par.same_python_type(self.__definitions[layer_vector_variable][4][1][element][1], value)
-                if value not in self.__definitions[layer_vector_variable][4][1][element][1]:
-                    r = False
-            i += 1
-        return r
-
+    # **** CHECK VECTOR METHODS ***
     def check_vector_basic_value(self, basic_vector_variable: str, value) -> bool:
         """ It checks if a value of a component a **VECTOR** variable fulfills its definition in the domain.
 
@@ -1031,22 +895,7 @@ class Domain:
         """
         ctrl_par.is_string(basic_vector_variable)
         ctrl_def.are_defined_variable_component_check_component_type(basic_vector_variable, BASIC, self.__definitions)
-        r = False
-        if self.__definitions[basic_vector_variable][4][0] is INTEGER:
-            ctrl_par.is_int(value)
-            if self.__definitions[basic_vector_variable][4][1] <= value \
-                    <= self.__definitions[basic_vector_variable][4][2]:
-                r = True
-        elif self.__definitions[basic_vector_variable][4][0] is REAL:
-            ctrl_par.is_float(value)
-            if self.__definitions[basic_vector_variable][4][1] <= value \
-                    <= self.__definitions[basic_vector_variable][4][2]:
-                r = True
-        elif self.__definitions[basic_vector_variable][4][0] is CATEGORICAL:
-            ctrl_par.same_python_type(self.__definitions[basic_vector_variable][4][1], value)
-            if value in self.__definitions[basic_vector_variable][4][1]:
-                r = True
-        return r
+        return self.__check_basic_value_item(self.__definitions[basic_vector_variable][4], value)
 
     def check_vector_layer_element_value(self, layer_vector_variable: str, element: str, value) -> bool:
         """ It checks if a value for an element in a defined **VECTOR** variable fulfills its definition in the domain.
@@ -1074,24 +923,55 @@ class Domain:
         ctrl_par.is_string(element)
         ctrl_def.are_defined_variable_component_check_component_type(layer_vector_variable, LAYER, self.__definitions)
         ctrl_def.is_defined_component_element(layer_vector_variable, element, self.__definitions)
+        return self.__check_basic_value_item(self.__definitions[layer_vector_variable][4][1][element],
+                                                              value)
+
+    def check_vector_layer_elements_values(self, layer_vector_variable: str, layer_values: dict) -> bool:
+        ctrl_par.is_string(layer_vector_variable)
+        ctrl_par.is_dict(layer_values)
+        ctrl_def.are_defined_variable_component_check_component_type(layer_vector_variable, LAYER, self.__definitions)
+        return self.__check_layer_element_values(self.__definitions[layer_vector_variable][4][1],
+                                                                  layer_values)
+
+    def check_vector_size(self, vector_variable: str, values: list) -> bool:
+        """ It checks if the components of a **VECTOR** variable are already defined.
+
+        **Preconditions:**
+
+        - The variable is defined as **VECTOR** type.
+
+        :param vector_variable: The **LAYER** variable.
+        :param values: The values.
+        :type vector_variable: str
+        :returns: True if the components of the **VECTOR** variable are already defined, otherwise False.
+        :rtype: bool
+        :raise :py:class:`~pycvoa.problem.domain.NotDefinedItem`: The variable is not the defined in the domain.
+        :raise :py:class:`~pycvoa.problem.domain.WrongItemType`: The variable is not defined as **LAYER**.
+        """
+        ctrl_par.is_string(vector_variable)
+        ctrl_par.is_list(values)
+        ctrl_def.is_defined_variable_as_type(vector_variable, VECTOR, self.__definitions)
         r = False
-        if self.__definitions[layer_vector_variable][4][1][element][0] is INTEGER:
-            ctrl_par.is_int(value)
-            if self.__definitions[layer_vector_variable][4][1][element][1] <= value \
-                    <= self.__definitions[layer_vector_variable][4][1][element][2]:
-                r = True
-        elif self.__definitions[layer_vector_variable][4][1][element][0] is REAL:
-            ctrl_par.is_float(value)
-            if self.__definitions[layer_vector_variable][4][1][element][1] <= value \
-                    <= self.__definitions[layer_vector_variable][4][1][element][2]:
-                r = True
-        elif self.__definitions[layer_vector_variable][4][1][element][0] is CATEGORICAL:
-            ctrl_par.same_python_type(self.__definitions[layer_vector_variable][4][1][element][1], value)
-            if value in self.__definitions[layer_vector_variable][4][1][element][1]:
-                r = True
+        if self.__definitions[vector_variable][1] <= len(values) <= self.__definitions[vector_variable][2]:
+            r = True
         return r
 
-    def check_value(self, variable: str, value, element=None) -> bool:
+    def check_vector_basic_values(self, basic_vector_variable: str, values: list) -> bool:
+        ctrl_par.is_string(basic_vector_variable)
+        ctrl_par.is_list(values)
+        ctrl_def.are_defined_variable_component_check_component_type(basic_vector_variable, BASIC, self.__definitions)
+        ctrl_def.check_vector_values_size(basic_vector_variable, values, self.__definitions)
+        return self.__check_vector_basic_values(self.__definitions[basic_vector_variable][4], values)
+
+    def check_vector_layer_values(self, layer_vector_variable: str, values: list) -> bool:
+        ctrl_par.is_string(layer_vector_variable)
+        ctrl_par.is_list_of_dict(values)
+        ctrl_def.are_defined_variable_component_check_component_type(layer_vector_variable, LAYER, self.__definitions)
+        ctrl_def.check_vector_values_size(layer_vector_variable, values, self.__definitions)
+        return self.__check_vector_layer_element_values(
+            self.__definitions[layer_vector_variable][4][1], values)
+
+    def check_value(self, variable: str, values, element=None) -> bool:
         """ It checks if a value of a defined variable fulfills its definition in the domain.
 
         **Preconditions:**
@@ -1101,10 +981,10 @@ class Domain:
         - In case of checking components, the component of the **VECTOR** variable are defined.
 
         :param variable: The defined variable.
-        :param value: The value to check.
+        :param values: The value to check.
         :param element: The defined element, defaults to None.
         :type variable: str
-        :type value: int, float, str
+        :type values: int, float, str
         :type element: str
         :returns: True if the value fulfills the variable definition, otherwise False.
         :rtype: bool
@@ -1120,19 +1000,46 @@ class Domain:
         ctrl_def.is_defined_variable(variable, self.__definitions)
         r = False
         if self.__definitions[variable][0] in BASIC:
+            ctrl_par.not_list(values)
+            ctrl_par.not_dict(values)
             ctrl_par.element_is_none(variable, element)
-            r = self.check_basic(variable, value)
+            r = self.__check_basic_value_item(self.__definitions[variable], values)
         elif self.__definitions[variable][0] is LAYER:
-            ctrl_par.element_not_none(variable, element)
-            r = self.check_element(variable, element, value)
+            ctrl_par.not_list(values)
+            if type(values) != dict:
+                ctrl_par.element_not_none(variable, element)
+                ctrl_par.is_string(element)
+                ctrl_def.is_defined_element(variable, element, self.__definitions)
+                r = self.__check_basic_value_item(self.__definitions[variable][1][element], values)
+            else:
+                ctrl_par.element_is_none(variable, element)
+                self.__check_layer_element_values(self.__definitions[variable][1], values)
         elif self.__definitions[variable][0] is VECTOR:
             ctrl_def.is_defined_components(variable, self.__definitions)
-            if self.__definitions[variable][4][0] in BASIC:
+            ctrl_par.not_dict(values)
+            if type(values) == list:
                 ctrl_par.element_is_none(variable, element)
-                r = self.check_vector_basic_value(variable, value)
-            elif self.__definitions[variable][4][0] is LAYER:
-                ctrl_par.element_not_none(variable, element)
-                r = self.check_vector_layer_element_value(variable, element, value)
+                cmp_tpy = type(values[0])
+                ctrl_def.check_vector_values_size(variable, values, self.__definitions)
+                if cmp_tpy != dict:
+                    ctrl_def.is_defined_components_as_type(variable, BASIC, self.__definitions)
+                    self.__check_vector_basic_values(self.__definitions[variable][4], values)
+                else:
+                    ctrl_def.is_defined_components_as_type(variable, LAYER, self.__definitions)
+                    self.__check_vector_layer_element_values(self.__definitions[variable][4][1],
+                                                                              values)
+            else:
+                if self.__definitions[variable][4][0] in BASIC:
+                    ctrl_par.element_is_none(variable, element)
+                    ctrl_def.is_defined_components_as_type(variable, BASIC, self.__definitions)
+                    r = self.__check_basic_value_item(self.__definitions[variable][4], values)
+                elif self.__definitions[variable][4][0] is LAYER:
+                    ctrl_par.element_not_none(variable, element)
+                    ctrl_par.is_string(element)
+                    ctrl_def.is_defined_components_as_type(variable, LAYER, self.__definitions)
+                    ctrl_def.is_defined_component_element(variable, element, self.__definitions)
+                    r = self.__check_basic_value_item(self.__definitions[variable][4][1][element],
+                                                                       values)
         return r
 
     def __str__(self):
@@ -1140,10 +1047,152 @@ class Domain:
         """
         res = ""
         count = 1
-        for k, v in self.__definitions.items():
-            res += definition_to_string(k, v)
+        for variable, definition in self.__definitions.items():
+            if definition[0] is VECTOR:
+                res += self.__vector_definition_to_string(variable, definition)
+            elif definition[0] is LAYER:
+                res += self.__layer_definition_to_string(variable, definition)
+            else:
+                res += self.__basic_definition_to_string(variable, definition)
             if count != len(self.__definitions.items()):
                 res += "\n"
             count += 1
 
         return res
+
+    @staticmethod
+    def __check_basic_value_item(item_definition, values):
+        r = False
+        if item_definition[0] in INTEGER:
+            ctrl_par.is_int(values)
+            if item_definition[1] <= values <= item_definition[2]:
+                r = True
+        elif item_definition[0] in REAL:
+            ctrl_par.is_float(values)
+            if item_definition[1] <= values <= item_definition[2]:
+                r = True
+        elif item_definition[0] is CATEGORICAL:
+            ctrl_par.same_python_type(item_definition[1], values)
+            if values in item_definition[1]:
+                r = True
+        return r
+
+    @staticmethod
+    def __check_layer_element_values(self, layer_definition, values):
+        ctrl_par.is_dict(values)
+        r = True
+        i = 0
+        key_list = list(values.keys())
+        while r and i < len(key_list):
+            element = key_list[i]
+            values = values[element]
+            ctrl_def.is_defined_element_item_definition(layer_definition, element)
+            if not self.__check_basic_value_item(layer_definition[element], values):
+                r = False
+            else:
+                i += 1
+        return r
+
+    @staticmethod
+    def __check_vector_basic_values(self, vector_basic_definition, values):
+        ctrl_par.is_list(values)
+        r = True
+        i = 0
+        while r and i < len(values):
+            if not self.__check_basic_value_item(vector_basic_definition, values[i]):
+                r = False
+            else:
+                i += 1
+        return r
+
+    @staticmethod
+    def __check_vector_layer_element_values(self, vector_layer_definition, values):
+        ctrl_par.is_list_of_dict(values)
+        r = True
+        i = 0
+        while r and i < len(values):
+            layer = values[i]
+            if not self.__check_layer_element_values(vector_layer_definition, layer):
+                r = False
+            else:
+                i += 1
+        return r
+
+    @staticmethod
+    def __basic_definition_to_string(variable, definition):
+        """ Get a string representation of the definition of a **REAL**, **INTEGER** or **CATEGORICAL** variable.
+
+            :param variable: Variable name.
+            :param definition: Definition of the variable.
+            :type variable: str
+            :type definition: list
+            :returns: A string representation of the input REAL, INTEGER or CATEGORICAL variable.
+            :rtype: str
+            """
+        res = "[" + definition[0] + "] " + variable + " "
+        if definition[0] is not CATEGORICAL:
+            res += "{Minimum = " + str(definition[1]) + ", Maximum = " + str(definition[2]) + ", Step = " + str(
+                definition[3]) + "}"
+        else:
+            res += "{Values = " + str(definition[1]) + "}"
+        return res
+
+    @staticmethod
+    def __layer_definition_to_string(self, variable_name, definition):
+        """ Get a string representation of the definition of a **LAYER** variable.
+
+            :param variable_name: Variable name.
+            :param definition: Definition of the variable.
+            :type variable_name: str
+            :type definition: list
+            :returns: A string representation of the input LAYER variable.
+            :rtype: str
+            """
+        res = "[" + definition[0] + "] " + variable_name + " "
+        res += "\n"
+        cnt = 1
+        for k, v in definition[1].items():
+            res += "\t" + self.__basic_definition_to_string(k, v)
+            if cnt != len(definition[1].items()):
+                res += "\n"
+            cnt += 1
+        return res
+
+    @staticmethod
+    def __vector_definition_to_string(self, variable_name, definition):
+        """ Get a string representation of the definition of a **VECTOR** variable.
+
+        :param variable_name: Variable name.
+        :param definition: Definition of the variable.
+        :type variable_name: str
+        :type definition: list
+        :returns: A string representation of the input VECTOR variable.
+        :rtype: str
+        """
+        res = "[" + definition[0] + "] " + variable_name + " {Minimum size = " + str(definition[1]) + \
+              ", Maximum size = " + str(definition[2]) + ", Step size = " \
+              + str(definition[3]) + "}"
+
+        component_definition = definition[4]
+
+        res += "  Component definition: [" + str(component_definition[0]) + "] "
+
+        if component_definition[0] is INTEGER or component_definition[0] is REAL:
+            res += "{Minimum = " + str(component_definition[1]) + ", Maximum = " + str(component_definition[2]) \
+                   + ", Step = " + str(
+                component_definition[3]) + "}"
+        elif component_definition[0] is CATEGORICAL:
+            res += "{Values = " + str(component_definition[1]) + "}"
+        elif component_definition[0] is LAYER:
+            layer_definition = component_definition[1]
+            res += "\n"
+            cnt = 1
+            for k, v in layer_definition.items():
+                res += "\t" + self.___basic_definition_to_string(k, v)
+                if cnt != len(layer_definition.items()):
+                    res += "\n"
+                cnt += 1
+        return res
+
+
+
