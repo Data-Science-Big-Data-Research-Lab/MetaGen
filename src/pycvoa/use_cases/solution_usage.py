@@ -42,9 +42,9 @@ domain_A.define_components_as_layer("VL")
 # Defining a INTEGER element, el-1, in the VL components (defined as LAYER)
 domain_A.define_layer_vector_integer_element("VL", "el-1", 10, 20, 1)
 # Defining a REAL element, el-2, in the VL components (defined as LAYER)
-domain_A.define_vector_real_element("VL", "el-2", 0.1, 0.5, 0.1)
+domain_A.define_layer_vector_real_element("VL", "el-2", 0.1, 0.5, 0.1)
 # Defining a CATEGORICAL element, el-3, in the VL components (defined as LAYER)
-domain_A.define_vector_categorical_element("VL", "el-3", [1, 2, 3])
+domain_A.define_layer_vector_categorical_element("VL", "el-3", [1, 2, 3])
 
 # print("\nCurrent domain definitions:\n" + str(domain_A) + "\n")
 

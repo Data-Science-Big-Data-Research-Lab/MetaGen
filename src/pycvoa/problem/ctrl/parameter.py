@@ -11,18 +11,32 @@ def is_int(value):
         raise TypeError("The value parameter must be <int>.")
 
 
+def is_optional_int(value):
+    if value is not None:
+        if type(value) != int:
+            raise TypeError("The size/step_size parameter must be <int>.")
+
+
 def is_float(value):
     if type(value) != float:
         raise TypeError("The value parameter must be <float>.")
+
+
+def is_optional_float(value):
+    if value is not None:
+        if type(value) != float:
+            raise TypeError("The size/step_size parameter must be <int>.")
 
 
 def is_dict(values):
     if type(values) != dict:
         raise TypeError("The values parameter must be <dict>.")
 
+
 def not_dict(values):
     if type(values) == dict:
         raise TypeError("The values parameter must not be <dict>.")
+
 
 def is_list(values):
     if type(values) != list:
@@ -34,7 +48,6 @@ def not_list(values):
         raise TypeError("The values parameter must not be <list>.")
 
 
-
 def is_list_of_dict(values):
     is_list(values)
     for e in values:
@@ -42,22 +55,18 @@ def is_list_of_dict(values):
             raise TypeError("The " + values.index(e) + "-nh value must be <dict>.")
 
 
-def are_int(min_value_size, max_value_size, step_size):
+def are_int(min_value_size, max_value_size):
     if type(min_value_size) != int:
         raise TypeError("The min_value/min_size parameter must be <int>.")
     if type(max_value_size) != int:
         raise TypeError("The max_value/max_size parameter must be <int>.")
-    if type(step_size) != int:
-        raise TypeError("The step/step_size parameter must be <int>.")
 
 
-def are_float(min_value, max_value, step):
+def are_float(min_value, max_value):
     if type(min_value) != float:
         raise TypeError("The min_value parameter must be <float>.")
     if type(max_value) != float:
         raise TypeError("The max_value parameter must be <float>.")
-    if type(step) != float:
-        raise TypeError("The step parameter must be <float>.")
 
 
 def same_python_type(categories, value):
@@ -67,9 +76,9 @@ def same_python_type(categories, value):
             "The value parameter be the same Python type than categories (" + str(categories_type) + ").")
 
 
-def list_all_int_float_str(categories):
+def categories_length_type_values(categories: list):
     if len(categories) < 2:
-        raise TypeError("The categories parameter must have al least two elements.")
+        raise ValueError("The categories parameter must have al least two elements.")
     for el in categories:
         if type(el) not in (int, float, str):
             raise TypeError(
@@ -79,6 +88,16 @@ def list_all_int_float_str(categories):
         if type(el) != categories_type:
             raise TypeError(
                 "All the elements of the categories parameter must have the same type (<int>, <float> or <str>).")
+    i = 0
+    while i < len(categories) - 1:
+        j = i + 1
+        while j < len(categories):
+            if categories[i] == categories[j]:
+                raise ValueError(
+                    "The categories list can not contain repeated values.")
+            else:
+                j += 1
+        i += 1
 
 
 def is_domain_class(domain):
@@ -114,7 +133,7 @@ def index_not_none(variable, index):
                                 "must be provided.")
 
 
-def check_range(min_value, max_value, step):
+def check_range(min_value, max_value):
     """ It checks if min_value < max_value, if not, raise :py:class:`~pycvoa.problem.domain.DefinitionError`.
     If the first condition is fulfilled, it checks if step < (max_value-min_value) / 2, if not, raise
     py:class:`~pycvoa.problem.domain.DefinitionError`.
@@ -131,9 +150,17 @@ def check_range(min_value, max_value, step):
             "The minimum value/size of the variable/element (" + str(
                 min_value) + ") must be less than the maximum value/size (" + str(
                 max_value) + ").")
-    else:
-        average = (max_value - min_value) / 2
+
+
+def check_step(min_value, max_value, step):
+    average = (max_value - min_value) / 2
+    if step is not None:
         if step > average:
             raise ValueError("The step value/size (" + str(
                 step) + ") of the variable/element must be less or equal than (maximum "
                         "value/size - minimum value/size) / 2 (" + str(average) + ").")
+        else:
+            r = step
+    else:
+        r = average
+    return r

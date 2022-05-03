@@ -52,8 +52,8 @@ all_types_definition.define_components_as_categorical("VC", ["A", "B", "C"])
 all_types_definition.define_vector("VL", 2, 8, 2)
 all_types_definition.define_components_as_layer("VL")
 all_types_definition.define_layer_vector_integer_element("VL", "ElCompI", 1, 4, 1)
-all_types_definition.define_vector_real_element("VL", "ElCompR", 0.001, 0.1, 0.0001)
-all_types_definition.define_vector_categorical_element("VL", "ElCompC", ["Cat1", "Cat2", "Cat3",
+all_types_definition.define_layer_vector_real_element("VL", "ElCompR", 0.001, 0.1, 0.0001)
+all_types_definition.define_layer_vector_categorical_element("VL", "ElCompC", ["Cat1", "Cat2", "Cat3",
                                                                                     "Cat4", "Cat5"])
 
 
