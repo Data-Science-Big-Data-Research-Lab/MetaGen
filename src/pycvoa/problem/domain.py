@@ -70,7 +70,7 @@ class Domain:
 
     # **** DEFINE BASIC VARIABLE METHODS ****
 
-    def define_integer(self, variable_name: str, min_value: int, max_value: int, step: int):
+    def define_integer(self, variable_name: str, min_value: int, max_value: int, step: int = None):
         """ It defines an **INTEGER** variable receiving the variable name, the minimum and maximum values that it will
         be able to have, and the step size to traverse the interval.
 
@@ -91,12 +91,14 @@ class Domain:
          min_value >= max_value or step >= (max_value - min_value) / 2.
         """
         ctrl_par.is_string(variable_name)
-        ctrl_par.are_int(min_value, max_value, step)
-        ctrl_par.check_range(min_value, max_value, step)
+        ctrl_par.are_int(min_value, max_value)
+        ctrl_par.check_range(min_value, max_value)
+        ctrl_par.is_optional_int(step)
+        valid_step = ctrl_par.check_step(min_value, max_value, step)
         ctrl_def.not_defined_variable(variable_name, self.__definitions)
-        self.__definitions[variable_name] = [INTEGER, min_value, max_value, step]
+        self.__definitions[variable_name] = [INTEGER, min_value, max_value, valid_step]
 
-    def define_real(self, variable_name: str, min_value: float, max_value: float, step: float):
+    def define_real(self, variable_name: str, min_value: float, max_value: float, step: float = None):
         """ It defines a **REAL** variable receiving the variable name, the minimum and maximum values that it will be
         able to have, and the step size to traverse the interval.
 
@@ -117,10 +119,12 @@ class Domain:
          min_value >= max_value or step >= (max_value - min_value) / 2.
         """
         ctrl_par.is_string(variable_name)
-        ctrl_par.are_float(min_value, max_value, step)
-        ctrl_par.check_range(min_value, max_value, step)
+        ctrl_par.are_float(min_value, max_value)
+        ctrl_par.check_range(min_value, max_value)
+        ctrl_par.is_optional_float(step)
+        valid_step = ctrl_par.check_step(min_value, max_value, step)
         ctrl_def.not_defined_variable(variable_name, self.__definitions)
-        self.__definitions[variable_name] = [REAL, min_value, max_value, step]
+        self.__definitions[variable_name] = [REAL, min_value, max_value, valid_step]
 
     def define_categorical(self, variable_name: str, categories: list):
         """ It defines a **CATEGORICAL** variable receiving the variable name, and a list with the categories that it
@@ -138,7 +142,7 @@ class Domain:
         """
         ctrl_par.is_string(variable_name)
         ctrl_par.is_list(categories)
-        ctrl_par.list_all_int_float_str(categories)
+        ctrl_par.categories_length_type_values(categories)
         ctrl_def.not_defined_variable(variable_name, self.__definitions)
         self.__definitions[variable_name] = [CATEGORICAL, categories]
 
@@ -164,7 +168,8 @@ class Domain:
         ctrl_def.not_defined_variable(variable_name, self.__definitions)
         self.__definitions[variable_name] = [LAYER, {}]
 
-    def define_integer_element(self, layer_variable: str, element_name: str, min_value: int, max_value: int, step: int):
+    def define_integer_element(self, layer_variable: str, element_name: str, min_value: int, max_value: int,
+                               step: int = None):
         """ It defines an **INTEGER** element into a **LAYER** variable by receiving the minimum and
         maximum values that it will be able to have, and the step size to traverse the interval.
 
@@ -191,14 +196,16 @@ class Domain:
         """
         ctrl_par.is_string(layer_variable)
         ctrl_par.is_string(element_name)
-        ctrl_par.are_int(min_value, max_value, step)
-        ctrl_par.check_range(min_value, max_value, step)
+        ctrl_par.are_int(min_value, max_value)
+        ctrl_par.check_range(min_value, max_value)
+        ctrl_par.is_optional_int(step)
+        valid_step = ctrl_par.check_step(min_value, max_value, step)
         ctrl_def.is_defined_variable_as_type(layer_variable, LAYER, self.__definitions)
         ctrl_def.not_defined_element(layer_variable, element_name, self.__definitions)
-        self.__definitions[layer_variable][1][element_name] = [INTEGER, min_value, max_value, step]
+        self.__definitions[layer_variable][1][element_name] = [INTEGER, min_value, max_value, valid_step]
 
     def define_real_element(self, layer_variable: str, element_name: str, min_value: float, max_value: float,
-                            step: float):
+                            step: float = None):
         """ It defines a **REAL** element into a **LAYER** variable by receiving the minimum and
         maximum values that it will be able to have, and the step size to traverse the interval.
 
@@ -225,11 +232,13 @@ class Domain:
         """
         ctrl_par.is_string(layer_variable)
         ctrl_par.is_string(element_name)
-        ctrl_par.are_float(min_value, max_value, step)
-        ctrl_par.check_range(min_value, max_value, step)
+        ctrl_par.are_float(min_value, max_value)
+        ctrl_par.check_range(min_value, max_value)
+        ctrl_par.is_optional_float(step)
+        valid_step = ctrl_par.check_step(min_value, max_value, step)
         ctrl_def.is_defined_variable_as_type(layer_variable, LAYER, self.__definitions)
         ctrl_def.not_defined_element(layer_variable, element_name, self.__definitions)
-        self.__definitions[layer_variable][1][element_name] = [REAL, min_value, max_value, step]
+        self.__definitions[layer_variable][1][element_name] = [REAL, min_value, max_value, valid_step]
 
     def define_categorical_element(self, layer_variable: str, element_name: str, categories: list):
         """ It defines a **CATEGORICAL** element into a **LAYER** variable by receiving a list with
@@ -254,14 +263,14 @@ class Domain:
         ctrl_par.is_string(layer_variable)
         ctrl_par.is_string(element_name)
         ctrl_par.is_list(categories)
-        ctrl_par.list_all_int_float_str(categories)
+        ctrl_par.categories_length_type_values(categories)
         ctrl_def.is_defined_variable_as_type(layer_variable, LAYER, self.__definitions)
         ctrl_def.not_defined_element(layer_variable, element_name, self.__definitions)
         self.__definitions[layer_variable][1][element_name] = [CATEGORICAL, categories]
 
     # **** DEFINE VECTOR VARIABLE METHODS ****
 
-    def define_vector(self, variable_name: str, min_size: int, max_size: int, step_size: int):
+    def define_vector(self, variable_name: str, min_size: int, max_size: int, step_size: int = None):
         """ It defines a **VECTOR** variable receiving the variable name, the minimum and maximum size that it will be
         able to have, and the step size to select the size from the :math:`[min\_size, max\_size]`. Afterwards,
         the type of the components of the **VECTOR** variable must be set using the following methods:
@@ -289,12 +298,14 @@ class Domain:
          min_value >= max_value or step >= (max_value - min_value) / 2.
         """
         ctrl_par.is_string(variable_name)
-        ctrl_par.are_int(min_size, max_size, step_size)
-        ctrl_par.check_range(min_size, max_size, step_size)
+        ctrl_par.are_int(min_size, max_size)
+        ctrl_par.check_range(min_size, max_size)
+        ctrl_par.is_optional_int(step_size)
+        valid_step_size = ctrl_par.check_step(min_size, max_size, step_size)
         ctrl_def.not_defined_variable(variable_name, self.__definitions)
-        self.__definitions[variable_name] = [VECTOR, min_size, max_size, step_size, {}]
+        self.__definitions[variable_name] = [VECTOR, min_size, max_size, valid_step_size, {}]
 
-    def define_components_as_integer(self, vector_variable: str, min_value: int, max_value: int, step: int):
+    def define_components_as_integer(self, vector_variable: str, min_value: int, max_value: int, step: int = None):
         """ It defines the components of a **VECTOR** variable as **INTEGER** by receiving the minimum and
         maximum values that it will be able to have, and the step size to traverse the interval.
 
@@ -318,13 +329,15 @@ class Domain:
          min_size >= max_size or step_size >= (min_size - max_size) / 2.
         """
         ctrl_par.is_string(vector_variable)
-        ctrl_par.are_int(min_value, max_value, step)
-        ctrl_par.check_range(min_value, max_value, step)
+        ctrl_par.are_int(min_value, max_value)
+        ctrl_par.check_range(min_value, max_value)
+        ctrl_par.is_optional_int(step)
+        valid_step = ctrl_par.check_step(min_value, max_value, step)
         ctrl_def.is_defined_variable_as_type(vector_variable, VECTOR, self.__definitions)
         ctrl_def.not_defined_components(vector_variable, self.__definitions)
-        self.__definitions[vector_variable][4] = [INTEGER, min_value, max_value, step]
+        self.__definitions[vector_variable][4] = [INTEGER, min_value, max_value, valid_step]
 
-    def define_components_as_real(self, vector_variable: str, min_value: float, max_value: float, step: float):
+    def define_components_as_real(self, vector_variable: str, min_value: float, max_value: float, step: float = None):
         """ It defines the components of a **VECTOR** variable as **REAL** by receiving the minimum and
         maximum values that it will be able to have, and the step size to traverse the interval.
 
@@ -348,11 +361,13 @@ class Domain:
          min_size >= max_size or step_size >= (min_size - max_size) / 2.
         """
         ctrl_par.is_string(vector_variable)
-        ctrl_par.are_float(min_value, max_value, step)
-        ctrl_par.check_range(min_value, max_value, step)
+        ctrl_par.are_float(min_value, max_value)
+        ctrl_par.check_range(min_value, max_value)
+        ctrl_par.is_optional_float(step)
+        valid_step = ctrl_par.check_step(min_value, max_value, step)
         ctrl_def.is_defined_variable_as_type(vector_variable, VECTOR, self.__definitions)
         ctrl_def.not_defined_components(vector_variable, self.__definitions)
-        self.__definitions[vector_variable][4] = [REAL, min_value, max_value, step]
+        self.__definitions[vector_variable][4] = [REAL, min_value, max_value, valid_step]
 
     def define_components_as_categorical(self, vector_variable: str, categories: list):
         """ It defines the components of a **VECTOR** variable as **CATEGORICAL** by receiving a list with
@@ -373,7 +388,7 @@ class Domain:
         """
         ctrl_par.is_string(vector_variable)
         ctrl_par.is_list(categories)
-        ctrl_par.list_all_int_float_str(categories)
+        ctrl_par.categories_length_type_values(categories)
         ctrl_def.is_defined_variable_as_type(vector_variable, VECTOR, self.__definitions)
         ctrl_def.not_defined_components(vector_variable, self.__definitions)
         self.__definitions[vector_variable][4] = [CATEGORICAL, categories]
@@ -403,7 +418,7 @@ class Domain:
         self.__definitions[vector_variable][4] = [LAYER, {}]
 
     def define_layer_vector_integer_element(self, layer_vector_variable: str, element_name: str, min_value: int,
-                                            max_value: int, step: int):
+                                            max_value: int, step: int = None):
         """ It defines an **INTEGER** element of a **VECTOR** variable where its components are defined as **LAYER**.
         The element is defined by receiving the minimum and maximum values that it will be able to have, and the step
         size to traverse the interval.
@@ -434,15 +449,17 @@ class Domain:
         """
         ctrl_par.is_string(layer_vector_variable)
         ctrl_par.is_string(element_name)
-        ctrl_par.are_int(min_value, max_value, step)
-        ctrl_par.check_range(min_value, max_value, step)
+        ctrl_par.are_int(min_value, max_value)
+        ctrl_par.check_range(min_value, max_value)
+        ctrl_par.is_optional_int(step)
+        valid_step = ctrl_par.check_step(min_value, max_value, step)
         ctrl_def.is_defined_variable_as_type(layer_vector_variable, VECTOR, self.__definitions)
         ctrl_def.check_component_type(layer_vector_variable, LAYER, self.__definitions)
         ctrl_def.not_defined_component_element(layer_vector_variable, element_name, self.__definitions)
-        self.__definitions[layer_vector_variable][4][1][element_name] = [INTEGER, min_value, max_value, step]
+        self.__definitions[layer_vector_variable][4][1][element_name] = [INTEGER, min_value, max_value, valid_step]
 
-    def define_vector_real_element(self, layer_vector_variable: str, element_name: str, min_value: float,
-                                   max_value: float, step: float):
+    def define_layer_vector_real_element(self, layer_vector_variable: str, element_name: str, min_value: float,
+                                         max_value: float, step: float = None):
         """ It defines a **REAL** element of a **VECTOR** variable where its components are defined as **LAYER**.
         The element is defined by receiving the minimum and maximum values that it will be able to have, and the step
         size to traverse the interval.
@@ -473,14 +490,16 @@ class Domain:
         """
         ctrl_par.is_string(layer_vector_variable)
         ctrl_par.is_string(element_name)
-        ctrl_par.are_float(min_value, max_value, step)
-        ctrl_par.check_range(min_value, max_value, step)
+        ctrl_par.are_float(min_value, max_value)
+        ctrl_par.check_range(min_value, max_value)
+        ctrl_par.is_optional_float(step)
+        valid_step = ctrl_par.check_step(min_value, max_value, step)
         ctrl_def.is_defined_variable_as_type(layer_vector_variable, VECTOR, self.__definitions)
         ctrl_def.check_component_type(layer_vector_variable, LAYER, self.__definitions)
         ctrl_def.not_defined_component_element(layer_vector_variable, element_name, self.__definitions)
-        self.__definitions[layer_vector_variable][4][1][element_name] = [REAL, min_value, max_value, step]
+        self.__definitions[layer_vector_variable][4][1][element_name] = [REAL, min_value, max_value, valid_step]
 
-    def define_vector_categorical_element(self, layer_vector_variable: str, element_name: str, categories: list):
+    def define_layer_vector_categorical_element(self, layer_vector_variable: str, element_name: str, categories: list):
         """ It defines a **CATEGORICAL** element of a **VECTOR** variable where its components are defined as **LAYER**.
         The element is defined by receiving a list with the categories that it will be able to have.
 
@@ -505,7 +524,7 @@ class Domain:
         ctrl_par.is_string(layer_vector_variable)
         ctrl_par.is_string(element_name)
         ctrl_par.is_list(categories)
-        ctrl_par.list_all_int_float_str(categories)
+        ctrl_par.categories_length_type_values(categories)
         ctrl_def.is_defined_variable_as_type(layer_vector_variable, VECTOR, self.__definitions)
         ctrl_def.check_component_type(layer_vector_variable, LAYER, self.__definitions)
         ctrl_def.not_defined_component_element(layer_vector_variable, element_name, self.__definitions)
@@ -551,7 +570,7 @@ class Domain:
             r = True
         return r
 
-    def is_defined_components(self, vector_variable: str) -> bool:
+    def are_defined_components(self, vector_variable: str) -> bool:
         """ It checks if the components of a **VECTOR** variable are already defined.
 
         **Preconditions:**
@@ -633,7 +652,7 @@ class Domain:
         """
         ctrl_par.is_string(vector_variable)
         ctrl_def.is_defined_variable_as_type(vector_variable, VECTOR, self.__definitions)
-        ctrl_def.is_defined_components(vector_variable, self.__definitions)
+        ctrl_def.are_defined_components(vector_variable, self.__definitions)
         return self.__definitions[vector_variable][4][0]
 
     def get_layer_vector_component_element_type(self, layer_vector_variable: str, element: str) -> str:
@@ -755,18 +774,8 @@ class Domain:
         """
         ctrl_par.is_string(vector_variable)
         ctrl_def.is_defined_variable_as_type(vector_variable, VECTOR, self.__definitions)
-        ctrl_def.is_defined_components(vector_variable, self.__definitions)
+        ctrl_def.are_defined_components(vector_variable, self.__definitions)
         return self.__definitions[vector_variable][4]
-
-    def get_remaining_available_components(self, vector_variable: str, current_vector_size: int) -> int:
-        ctrl_par.is_string(vector_variable)
-        ctrl_par.is_int(current_vector_size)
-        ctrl_def.is_defined_variable_as_type(vector_variable, VECTOR, self.__definitions)
-        if current_vector_size < self.__definitions[vector_variable][1]:
-            r = current_vector_size - self.__definitions[vector_variable][1]
-        else:
-            r = self.__definitions[vector_variable][2] - current_vector_size
-        return r
 
     def get_component_element_list(self, layer_vector_variable: str) -> list:
         """ Get a list with the elements of a registered **VECTOR** variable registered as **LAYER**. It is useful to
@@ -788,7 +797,7 @@ class Domain:
         """
         ctrl_par.is_string(layer_vector_variable)
         ctrl_def.is_defined_variable_as_type(layer_vector_variable, VECTOR, self.__definitions)
-        ctrl_def.is_defined_components(layer_vector_variable, self.__definitions)
+        ctrl_def.are_defined_components(layer_vector_variable, self.__definitions)
         ctrl_def.check_component_type(layer_vector_variable, LAYER, self.__definitions)
         return list(self.__definitions[layer_vector_variable][4][1].keys())
 
@@ -815,10 +824,24 @@ class Domain:
         ctrl_par.is_string(layer_vector_variable)
         ctrl_par.is_string(element)
         ctrl_def.is_defined_variable_as_type(layer_vector_variable, VECTOR, self.__definitions)
-        ctrl_def.is_defined_components(layer_vector_variable, self.__definitions)
+        ctrl_def.are_defined_components(layer_vector_variable, self.__definitions)
         ctrl_def.check_component_type(layer_vector_variable, LAYER, self.__definitions)
         ctrl_def.is_defined_component_element(layer_vector_variable, element, self.__definitions)
         return self.__definitions[layer_vector_variable][4][1][element]
+
+    # **** GET AVAILABLE COMPONENTS ***
+
+    def get_remaining_available_components(self, vector_variable: str, current_vector_size: int) -> int:
+        ctrl_par.is_string(vector_variable)
+        ctrl_par.is_int(current_vector_size)
+        ctrl_def.is_defined_variable_as_type(vector_variable, VECTOR, self.__definitions)
+        if current_vector_size < self.__definitions[vector_variable][1]:
+            r = current_vector_size - self.__definitions[vector_variable][1]
+        elif self.__definitions[vector_variable][1] <= current_vector_size < self.__definitions[vector_variable][2]:
+            r = self.__definitions[vector_variable][2] - current_vector_size
+        else:
+            r = 0
+        return r
 
     # **** CHECK METHODS ***
 
@@ -840,12 +863,12 @@ class Domain:
         """
         ctrl_par.is_string(basic_variable)
         ctrl_def.is_defined_variable_as_type(basic_variable, BASIC, self.__definitions)
-        return self.__check_basic_value_item(self.__definitions[basic_variable], value)
+        return Domain.__check_basic_value_item(self.__definitions[basic_variable], value)
 
     def check_layer(self, layer_variable: str, layer_values: dict) -> bool:
         ctrl_par.is_string(layer_variable)
         ctrl_def.is_defined_variable_as_type(layer_variable, LAYER, self.__definitions)
-        return self.__check_layer_element_values(self.__definitions[layer_variable][1], layer_values)
+        return Domain.__check_layer_element_values(self.__definitions[layer_variable][1], layer_values)
 
     def check_element(self, layer_variable: str, element: str, value) -> bool:
         """ It checks if a value for an element of a **LAYER** variable fulfills its definition in the domain.
@@ -871,7 +894,7 @@ class Domain:
         ctrl_par.is_string(element)
         ctrl_def.is_defined_variable_as_type(layer_variable, LAYER, self.__definitions)
         ctrl_def.is_defined_element(layer_variable, element, self.__definitions)
-        return self.__check_basic_value_item(self.__definitions[layer_variable][1][element], value)
+        return Domain.__check_basic_value_item(self.__definitions[layer_variable][1][element], value)
 
     # **** CHECK VECTOR METHODS ***
     def check_vector_basic_value(self, basic_vector_variable: str, value) -> bool:
@@ -895,7 +918,7 @@ class Domain:
         """
         ctrl_par.is_string(basic_vector_variable)
         ctrl_def.are_defined_variable_component_check_component_type(basic_vector_variable, BASIC, self.__definitions)
-        return self.__check_basic_value_item(self.__definitions[basic_vector_variable][4], value)
+        return Domain.__check_basic_value_item(self.__definitions[basic_vector_variable][4], value)
 
     def check_vector_layer_element_value(self, layer_vector_variable: str, element: str, value) -> bool:
         """ It checks if a value for an element in a defined **VECTOR** variable fulfills its definition in the domain.
@@ -923,15 +946,13 @@ class Domain:
         ctrl_par.is_string(element)
         ctrl_def.are_defined_variable_component_check_component_type(layer_vector_variable, LAYER, self.__definitions)
         ctrl_def.is_defined_component_element(layer_vector_variable, element, self.__definitions)
-        return self.__check_basic_value_item(self.__definitions[layer_vector_variable][4][1][element],
-                                                              value)
+        return Domain.__check_basic_value_item(self.__definitions[layer_vector_variable][4][1][element], value)
 
     def check_vector_layer_elements_values(self, layer_vector_variable: str, layer_values: dict) -> bool:
         ctrl_par.is_string(layer_vector_variable)
         ctrl_par.is_dict(layer_values)
         ctrl_def.are_defined_variable_component_check_component_type(layer_vector_variable, LAYER, self.__definitions)
-        return self.__check_layer_element_values(self.__definitions[layer_vector_variable][4][1],
-                                                                  layer_values)
+        return Domain.__check_layer_element_values(self.__definitions[layer_vector_variable][4][1], layer_values)
 
     def check_vector_size(self, vector_variable: str, values: list) -> bool:
         """ It checks if the components of a **VECTOR** variable are already defined.
@@ -961,15 +982,14 @@ class Domain:
         ctrl_par.is_list(values)
         ctrl_def.are_defined_variable_component_check_component_type(basic_vector_variable, BASIC, self.__definitions)
         ctrl_def.check_vector_values_size(basic_vector_variable, values, self.__definitions)
-        return self.__check_vector_basic_values(self.__definitions[basic_vector_variable][4], values)
+        return Domain.__check_vector_basic_values(self.__definitions[basic_vector_variable][4], values)
 
     def check_vector_layer_values(self, layer_vector_variable: str, values: list) -> bool:
         ctrl_par.is_string(layer_vector_variable)
         ctrl_par.is_list_of_dict(values)
         ctrl_def.are_defined_variable_component_check_component_type(layer_vector_variable, LAYER, self.__definitions)
         ctrl_def.check_vector_values_size(layer_vector_variable, values, self.__definitions)
-        return self.__check_vector_layer_element_values(
-            self.__definitions[layer_vector_variable][4][1], values)
+        return Domain.__check_vector_layer_element_values(self.__definitions[layer_vector_variable][4][1], values)
 
     def check_value(self, variable: str, values, element=None) -> bool:
         """ It checks if a value of a defined variable fulfills its definition in the domain.
@@ -1003,17 +1023,17 @@ class Domain:
             ctrl_par.not_list(values)
             ctrl_par.not_dict(values)
             ctrl_par.element_is_none(variable, element)
-            r = self.__check_basic_value_item(self.__definitions[variable], values)
+            r = Domain.__check_basic_value_item(self.__definitions[variable], values)
         elif self.__definitions[variable][0] is LAYER:
             ctrl_par.not_list(values)
             if type(values) != dict:
                 ctrl_par.element_not_none(variable, element)
                 ctrl_par.is_string(element)
                 ctrl_def.is_defined_element(variable, element, self.__definitions)
-                r = self.__check_basic_value_item(self.__definitions[variable][1][element], values)
+                r = Domain.__check_basic_value_item(self.__definitions[variable][1][element], values)
             else:
                 ctrl_par.element_is_none(variable, element)
-                self.__check_layer_element_values(self.__definitions[variable][1], values)
+                Domain.__check_layer_element_values(self.__definitions[variable][1], values)
         elif self.__definitions[variable][0] is VECTOR:
             ctrl_def.is_defined_components(variable, self.__definitions)
             ctrl_par.not_dict(values)
@@ -1023,23 +1043,21 @@ class Domain:
                 ctrl_def.check_vector_values_size(variable, values, self.__definitions)
                 if cmp_tpy != dict:
                     ctrl_def.is_defined_components_as_type(variable, BASIC, self.__definitions)
-                    self.__check_vector_basic_values(self.__definitions[variable][4], values)
+                    Domain.__check_vector_basic_values(self.__definitions[variable][4], values)
                 else:
                     ctrl_def.is_defined_components_as_type(variable, LAYER, self.__definitions)
-                    self.__check_vector_layer_element_values(self.__definitions[variable][4][1],
-                                                                              values)
+                    Domain.__check_vector_layer_element_values(self.__definitions[variable][4][1], values)
             else:
                 if self.__definitions[variable][4][0] in BASIC:
                     ctrl_par.element_is_none(variable, element)
                     ctrl_def.is_defined_components_as_type(variable, BASIC, self.__definitions)
-                    r = self.__check_basic_value_item(self.__definitions[variable][4], values)
+                    r = Domain.__check_basic_value_item(self.__definitions[variable][4], values)
                 elif self.__definitions[variable][4][0] is LAYER:
                     ctrl_par.element_not_none(variable, element)
                     ctrl_par.is_string(element)
                     ctrl_def.is_defined_components_as_type(variable, LAYER, self.__definitions)
                     ctrl_def.is_defined_component_element(variable, element, self.__definitions)
-                    r = self.__check_basic_value_item(self.__definitions[variable][4][1][element],
-                                                                       values)
+                    r = Domain.__check_basic_value_item(self.__definitions[variable][4][1][element], values)
         return r
 
     def __str__(self):
@@ -1049,74 +1067,16 @@ class Domain:
         count = 1
         for variable, definition in self.__definitions.items():
             if definition[0] is VECTOR:
-                res += self.__vector_definition_to_string(variable, definition)
+                res += Domain.__vector_definition_to_string(variable, definition)
             elif definition[0] is LAYER:
-                res += self.__layer_definition_to_string(variable, definition)
+                res += Domain.__layer_definition_to_string(variable, definition)
             else:
-                res += self.__basic_definition_to_string(variable, definition)
+                res += Domain.__basic_definition_to_string(variable, definition)
             if count != len(self.__definitions.items()):
                 res += "\n"
             count += 1
 
         return res
-
-    @staticmethod
-    def __check_basic_value_item(item_definition, values):
-        r = False
-        if item_definition[0] in INTEGER:
-            ctrl_par.is_int(values)
-            if item_definition[1] <= values <= item_definition[2]:
-                r = True
-        elif item_definition[0] in REAL:
-            ctrl_par.is_float(values)
-            if item_definition[1] <= values <= item_definition[2]:
-                r = True
-        elif item_definition[0] is CATEGORICAL:
-            ctrl_par.same_python_type(item_definition[1], values)
-            if values in item_definition[1]:
-                r = True
-        return r
-
-    @staticmethod
-    def __check_layer_element_values(self, layer_definition, values):
-        ctrl_par.is_dict(values)
-        r = True
-        i = 0
-        key_list = list(values.keys())
-        while r and i < len(key_list):
-            element = key_list[i]
-            values = values[element]
-            ctrl_def.is_defined_element_item_definition(layer_definition, element)
-            if not self.__check_basic_value_item(layer_definition[element], values):
-                r = False
-            else:
-                i += 1
-        return r
-
-    @staticmethod
-    def __check_vector_basic_values(self, vector_basic_definition, values):
-        ctrl_par.is_list(values)
-        r = True
-        i = 0
-        while r and i < len(values):
-            if not self.__check_basic_value_item(vector_basic_definition, values[i]):
-                r = False
-            else:
-                i += 1
-        return r
-
-    @staticmethod
-    def __check_vector_layer_element_values(self, vector_layer_definition, values):
-        ctrl_par.is_list_of_dict(values)
-        r = True
-        i = 0
-        while r and i < len(values):
-            layer = values[i]
-            if not self.__check_layer_element_values(vector_layer_definition, layer):
-                r = False
-            else:
-                i += 1
-        return r
 
     @staticmethod
     def __basic_definition_to_string(variable, definition):
@@ -1138,7 +1098,7 @@ class Domain:
         return res
 
     @staticmethod
-    def __layer_definition_to_string(self, variable_name, definition):
+    def __layer_definition_to_string(variable_name, definition):
         """ Get a string representation of the definition of a **LAYER** variable.
 
             :param variable_name: Variable name.
@@ -1151,15 +1111,15 @@ class Domain:
         res = "[" + definition[0] + "] " + variable_name + " "
         res += "\n"
         cnt = 1
-        for k, v in definition[1].items():
-            res += "\t" + self.__basic_definition_to_string(k, v)
+        for element, element_definition in definition[1].items():
+            res += "\t" + Domain.__basic_definition_to_string(element, element_definition)
             if cnt != len(definition[1].items()):
                 res += "\n"
             cnt += 1
         return res
 
     @staticmethod
-    def __vector_definition_to_string(self, variable_name, definition):
+    def __vector_definition_to_string(variable_name, definition):
         """ Get a string representation of the definition of a **VECTOR** variable.
 
         :param variable_name: Variable name.
@@ -1175,24 +1135,80 @@ class Domain:
 
         component_definition = definition[4]
 
-        res += "  Component definition: [" + str(component_definition[0]) + "] "
+        if len(component_definition) != 0:
+            res += "  Component definition: [" + str(component_definition[0]) + "] "
 
-        if component_definition[0] is INTEGER or component_definition[0] is REAL:
-            res += "{Minimum = " + str(component_definition[1]) + ", Maximum = " + str(component_definition[2]) \
-                   + ", Step = " + str(
-                component_definition[3]) + "}"
-        elif component_definition[0] is CATEGORICAL:
-            res += "{Values = " + str(component_definition[1]) + "}"
-        elif component_definition[0] is LAYER:
-            layer_definition = component_definition[1]
-            res += "\n"
-            cnt = 1
-            for k, v in layer_definition.items():
-                res += "\t" + self.___basic_definition_to_string(k, v)
-                if cnt != len(layer_definition.items()):
-                    res += "\n"
-                cnt += 1
+            if component_definition[0] is INTEGER or component_definition[0] is REAL:
+                res += "{Minimum = " + str(component_definition[1]) + ", Maximum = " + str(component_definition[2]) \
+                       + ", Step = " + str(
+                    component_definition[3]) + "}"
+            elif component_definition[0] is CATEGORICAL:
+                res += "{Values = " + str(component_definition[1]) + "}"
+            elif component_definition[0] is LAYER:
+                layer_definition = component_definition[1]
+                res += "\n"
+                cnt = 1
+                for k, v in layer_definition.items():
+                    res += "\t" + Domain.__basic_definition_to_string(k, v)
+                    if cnt != len(layer_definition.items()):
+                        res += "\n"
+                    cnt += 1
         return res
 
+    @staticmethod
+    def __check_basic_value_item(item_definition, values):
+        r = False
+        if item_definition[0] in INTEGER:
+            ctrl_par.is_int(values)
+            if item_definition[1] <= values <= item_definition[2]:
+                r = True
+        elif item_definition[0] in REAL:
+            ctrl_par.is_float(values)
+            if item_definition[1] <= values <= item_definition[2]:
+                r = True
+        elif item_definition[0] is CATEGORICAL:
+            ctrl_par.same_python_type(item_definition[1], values)
+            if values in item_definition[1]:
+                r = True
+        return r
 
+    @staticmethod
+    def __check_layer_element_values(layer_definition, values):
+        ctrl_par.is_dict(values)
+        r = True
+        i = 0
+        key_list = list(values.keys())
+        while r and i < len(key_list):
+            element = key_list[i]
+            values = values[element]
+            ctrl_def.is_defined_element_item_definition(layer_definition, element)
+            if not Domain.__check_basic_value_item(layer_definition[element], values):
+                r = False
+            else:
+                i += 1
+        return r
 
+    @staticmethod
+    def __check_vector_basic_values(vector_basic_definition, values):
+        ctrl_par.is_list(values)
+        r = True
+        i = 0
+        while r and i < len(values):
+            if not Domain.__check_basic_value_item(vector_basic_definition, values[i]):
+                r = False
+            else:
+                i += 1
+        return r
+
+    @staticmethod
+    def __check_vector_layer_element_values(vector_layer_definition, values):
+        ctrl_par.is_list_of_dict(values)
+        r = True
+        i = 0
+        while r and i < len(values):
+            layer = values[i]
+            if not Domain.__check_layer_element_values(vector_layer_definition, layer):
+                r = False
+            else:
+                i += 1
+        return r

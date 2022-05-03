@@ -44,6 +44,19 @@ def is_defined_element_item_definition(item_definition, element):
             "The element " + element + " is not defined in the LAYER variable.")
 
 
+def are_defined_components(vector_variable, definitions: dict):
+    """ It checks if the type of a **VECTOR** variable is already defined, if yes, raise
+    py:class:`~pycvoa.problem.domain.DefinitionError`.
+
+    :param vector_variable: The variable.
+    :param definitions: The definitions.
+    :type vector_variable: str
+    """
+    if len(definitions[vector_variable][4]) <= 0:
+        raise DefinitionError(
+            "The components of " + vector_variable + " are not defined.")
+
+
 def is_defined_component_element(layer_vector_variable, element, definitions: dict):
     """ It checks if an element is defined in the **LAYER** components of a **VECTOR** variable, if not, raise
     py:class:`~pycvoa.problem.domain.NotDefinedItem`.
