@@ -1,5 +1,9 @@
+import math
+
 import pycvoa
 
+
+# =========================================== SINGLE TYPES ============================================================#
 
 def is_string(variable_element_name):
     if type(variable_element_name) != str:
@@ -28,6 +32,8 @@ def is_optional_float(value):
             raise TypeError("The size/step_size parameter must be <int>.")
 
 
+# =========================================== DICT TYPES ==============================================================#
+
 def is_dict(values):
     if type(values) != dict:
         raise TypeError("The values parameter must be <dict>.")
@@ -37,6 +43,8 @@ def not_dict(values):
     if type(values) == dict:
         raise TypeError("The values parameter must not be <dict>.")
 
+
+# =========================================== LIST TYPES ==============================================================#
 
 def is_list(values):
     if type(values) != list:
@@ -48,6 +56,8 @@ def not_list(values):
         raise TypeError("The values parameter must not be <list>.")
 
 
+# =========================================== LIST OF DICT ============================================================#
+
 def is_list_of_dict(values):
     is_list(values)
     for e in values:
@@ -55,11 +65,18 @@ def is_list_of_dict(values):
             raise TypeError("The " + values.index(e) + "-nh value must be <dict>.")
 
 
+# =========================================== MULTIPLE TYPES===========================================================#
+
 def are_int(min_value_size, max_value_size):
     if type(min_value_size) != int:
         raise TypeError("The min_value/min_size parameter must be <int>.")
     if type(max_value_size) != int:
         raise TypeError("The max_value/max_size parameter must be <int>.")
+
+
+def are_string(param1, param2):
+    is_string(param1)
+    is_string(param2)
 
 
 def are_float(min_value, max_value):
@@ -76,35 +93,15 @@ def same_python_type(categories, value):
             "The value parameter be the same Python type than categories (" + str(categories_type) + ").")
 
 
-def categories_length_type_values(categories: list):
-    if len(categories) < 2:
-        raise ValueError("The categories parameter must have al least two elements.")
-    for el in categories:
-        if type(el) not in (int, float, str):
-            raise TypeError(
-                "The " + str(categories.index(
-                    el)) + "-nh element of the categories parameter must be <int>, <float> or <str>.")
-        categories_type = type(categories[0])
-        if type(el) != categories_type:
-            raise TypeError(
-                "All the elements of the categories parameter must have the same type (<int>, <float> or <str>).")
-    i = 0
-    while i < len(categories) - 1:
-        j = i + 1
-        while j < len(categories):
-            if categories[i] == categories[j]:
-                raise ValueError(
-                    "The categories list can not contain repeated values.")
-            else:
-                j += 1
-        i += 1
-
+# =========================================== DOMAIN TYPES ============================================================#
 
 def is_domain_class(domain):
     if domain is not None:
         if type(domain) is not pycvoa.problem.domain.Domain:
             raise TypeError("The " + domain + " parameter is not instantiate from <Domain> class.")
 
+
+# =========================================== NONE TYPES ==============================================================#
 
 def element_is_none(variable, element):
     if element is not None:
@@ -133,6 +130,8 @@ def index_not_none(variable, index):
                                 "must be provided.")
 
 
+# =========================================== VALUE CHECKERS ==========================================================#
+
 def check_range(min_value, max_value):
     """ It checks if min_value < max_value, if not, raise :py:class:`~pycvoa.problem.domain.DefinitionError`.
     If the first condition is fulfilled, it checks if step < (max_value-min_value) / 2, if not, raise
@@ -152,7 +151,21 @@ def check_range(min_value, max_value):
                 max_value) + ").")
 
 
-def check_step(min_value, max_value, step):
+def check_int_step(min_value, max_value, step):
+    average = math.floor((max_value - min_value) / 2)
+    if step is not None:
+        if step > average:
+            raise ValueError("The step value/size (" + str(
+                step) + ") of the variable/element must be less or equal than (maximum "
+                        "value/size - minimum value/size) / 2 (" + str(average) + ").")
+        else:
+            r = step
+    else:
+        r = average
+    return r
+
+
+def check_float_step(min_value, max_value, step):
     average = (max_value - min_value) / 2
     if step is not None:
         if step > average:
@@ -164,3 +177,75 @@ def check_step(min_value, max_value, step):
     else:
         r = average
     return r
+
+
+def categories_length_type_values(categories: list):
+    if len(categories) < 2:
+        raise ValueError("The categories parameter must have al least two elements.")
+    for el in categories:
+        if type(el) not in (int, float, str):
+            raise TypeError(
+                "The " + str(categories.index(
+                    el)) + "-nh element of the categories parameter must be <int>, <float> or <str>.")
+        categories_type = type(categories[0])
+        if type(el) != categories_type:
+            raise TypeError(
+                "All the elements of the categories parameter must have the same type (<int>, <float> or <str>).")
+    i = 0
+    while i < len(categories) - 1:
+        j = i + 1
+        while j < len(categories):
+            if categories[i] == categories[j]:
+                raise ValueError(
+                    "The categories list can not contain repeated values.")
+            else:
+                j += 1
+        i += 1
+
+
+# =========================================== GLOBAL PROCEDURES =======================================================#
+
+def check_integer_range_step(min_value, max_value, step):
+    are_int(min_value, max_value)
+    check_range(min_value, max_value)
+    is_optional_int(step)
+    return check_int_step(min_value, max_value, step)
+
+
+def check_real_range_step(min_value, max_value, step):
+    are_float(min_value, max_value)
+    check_range(min_value, max_value)
+    is_optional_float(step)
+    return check_float_step(min_value, max_value, step)
+
+
+def check_integer_definition(variable_name, min_value, max_value, step):
+    is_string(variable_name)
+    return check_integer_range_step(min_value, max_value, step)
+
+
+def check_real_definition(variable_name, min_value, max_value, step):
+    is_string(variable_name)
+    return check_real_range_step(min_value, max_value, step)
+
+
+def check_categorical_definition(variable_name, categories):
+    is_string(variable_name)
+    is_list(categories)
+    categories_length_type_values(categories)
+
+
+def check_integer_element_definition(layer_variable, element, min_value, max_value, step):
+    are_string(layer_variable, element)
+    return check_integer_range_step(min_value, max_value, step)
+
+
+def check_real_element_definition(layer_variable, element, min_value, max_value, step):
+    are_string(layer_variable, element)
+    return check_real_range_step(min_value, max_value, step)
+
+
+def check_categorical_element_definition(variable_name, element, categories):
+    are_string(variable_name, element)
+    is_list(categories)
+    categories_length_type_values(categories)
