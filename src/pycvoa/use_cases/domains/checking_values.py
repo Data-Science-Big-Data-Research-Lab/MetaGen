@@ -1,13 +1,26 @@
+from pycvoa.use_cases.domains.support_variables import example_domain as domain
 
-# ============================ 11. Checking BASIC values ==============================================================
+print("The example domain:\n")
+print(str(domain) + "\n\n")
 
-# To check if a value is compatible with a BASIC variable definition, use the "check_basic" method
+# ============================ 1. Checking BASIC values ==============================================================
 
 # Are 2 and -1 compatible with the definition of I ?
-# I_comp_A = domain.check_basic("I", 2)
-# I_comp_B = domain.check_basic("I", -1)
-# print("Is 2 compatible with the definition of I in this domain ? " + str(I_comp_A))
-# print("Is -1 compatible with the definition of I in this domain ? " + str(I_comp_B))
+I_comp_A = domain.check_basic("I", 2)
+I_comp_B = domain.check_basic("I", -1)
+print("Is 2 compatible with the definition of I in this domain ? " + str(I_comp_A))
+print("Is -1 compatible with the definition of I in this domain ? " + str(I_comp_B))
+
+# ************ Possible errors
+# 1. Argument type errors:
+# 1.1. The variable must be str. The value must be int
+# I_comp_A = domain.check_basic(1, 2)
+# I_comp_A = domain.check_basic("I", 2.1)
+# 2. Definition errors:
+# 2.1. The  variable is not defined.
+# I_comp_A = domain.check_basic("J", 2)
+
+
 
 # Are 0.001 and 1.2 compatible with the definition of R ?
 # R_comp_A = domain.check_basic("R", 0.001)
