@@ -164,10 +164,11 @@ def not_defined_components(vector_variable: str, definitions: dict):
 
 
 def check_vector_values_size(vector_variable, values, definitions: dict):
-    if definitions[vector_variable][1] <= len(values) <= definitions[vector_variable][2]:
+    if len(values) < definitions[vector_variable][1] or len(values) > definitions[vector_variable][2]:
         raise DefinitionError(
             "The size of the values (" + str(len(values)) + ") is not compatible with the " + str(
-                vector_variable) + " definition.")
+                vector_variable) + " definition [" + str(definitions[vector_variable][1])
+            + "," + str(definitions[vector_variable][2]) + "].")
 
 
 def check_component_type(vector_variable: str, check_type: str, definitions: dict):
@@ -231,8 +232,8 @@ def is_defined_component_element(layer_vector_variable: str, element: str, defin
     """
     if element not in definitions[layer_vector_variable][4][1].keys():
         raise DefinitionError(
-            "The element " + element + " is not defined in the LAYER components of the " + layer_vector_variable
-            + " VECTOR variable.")
+            "The element " + str(element) + " is not defined in the LAYER components of the "
+            + str(layer_vector_variable) + " VECTOR variable.")
 
 
 def not_defined_component_element(layer_vector_variable: str, element: str, definitions: dict):
@@ -296,7 +297,7 @@ def is_defined_layer_vector_and_component_element_as_type(layer_vector_variable:
 
 
 # ==================================================================================================================== #
-# ================================================= OTHERS ??????===================================================== #
+# ================================================= OTHERS =========================================================== #
 # ==================================================================================================================== #
 
 def is_defined_element_item_definition(item_definition, element):
@@ -312,3 +313,9 @@ def is_defined_element_item_definition(item_definition, element):
     if element not in item_definition.keys():
         raise DefinitionError(
             "The element " + element + " is not defined in the LAYER variable.")
+
+
+def is_a_complete_layer(layer_definition, layer:dict):
+    if len(layer) < len(layer_definition):
+        raise DefinitionError(
+            "The layer " + str(layer) + " is not complete.")
