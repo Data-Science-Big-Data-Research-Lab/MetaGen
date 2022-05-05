@@ -11,7 +11,7 @@ def domain_layer_vector_list(layer_vector_variable, value_list: list, external_d
 
 
 def __list_size(vector_variable, values, domain: Domain):
-    if not domain.check_vector_size(vector_variable, values):
+    if not domain.check_vector_values_size(vector_variable, values):
         raise ValueError("The size of " + str(values) + " is not compatible with the " + vector_variable
                          + " definition.")
 
