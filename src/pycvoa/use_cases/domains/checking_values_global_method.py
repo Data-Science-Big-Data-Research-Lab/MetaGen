@@ -42,20 +42,6 @@ print("Are these values compatible with the definition of C in this domain ? ")
 print(str(basic_e) + " => " + str(C_comp_E) + " , " + str(basic_f) + " => " + str(C_comp_F) + " , "
       + str(basic_a) + " => " + str(C_comp_A) + " , " + str(basic_c) + " => " + str(C_comp_C) + "\n")
 
-# ************ Possible errors
-# 1. Argument type errors:
-# 1.1. The variable must be str.
-# I_comp_A = domain.check_value(1, 2)
-# 1.2. The value must not be list or dict.
-# I_comp_A = domain.check_value("I", [1, 2])
-# I_comp_A = domain.check_value("I", {"e1": 2, "e2": 3})
-# 2. Definition errors:
-# 2.1. The variable is not defined.
-# I_comp_A = domain.check_value("J", 2)
-# 2.2. The variable is a LAYER.
-# I_comp_A = domain.check_value("L", basic_a)
-
-
 # ==================================================================================================================== #
 # ============================== 2. Checking element values of a LAYER VARIABLE ====================================== #
 # ==================================================================================================================== #
@@ -94,19 +80,6 @@ L_E_C_comp_C = domain.check_value("L", element_c, "E_C")
 print("Are these values compatible with the definition of E_C of L in this domain ? ")
 print(str(element_e) + " => " + str(L_E_C_comp_E) + " , " + str(element_f) + " => " + str(L_E_C_comp_F) + " , "
       + str(element_a) + " => " + str(L_E_C_comp_A) + " , " + str(element_c) + " => " + str(L_E_C_comp_C) + "\n")
-
-# ************ Possible errors
-# 1. Argument type errors:
-# 1.1. The variable must be str.
-# L_E_I_comp_A = domain.check_value(1, element_a, "E_I")
-# 1.2. The value must not be list or dict.
-# L_E_I_comp_A = domain.check_value("L", [1, 2], "E_I")
-L_E_I_comp_A = domain.check_value("L", {"e1": 2, "e2": 3}, "E_I")
-# 2. Definition errors:
-# 2.1. The variable is not defined.
-# I_comp_A = domain.check_value("J", 2)
-# 2.2. The variable is a LAYER.
-# I_comp_A = domain.check_value("L", basic_a)
 
 # ==================================================================================================================== #
 # ============================= 3. Checking complete LAYER values ==================================================== #
@@ -287,3 +260,65 @@ print(str(vector_layer_values_a) + " => " + str(V_L_vector_layer_a) + "\n"
       + str(vector_layer_values_b) + " => " + str(V_L_vector_layer_b) + "\n"
       + str(vector_layer_values_c) + " => " + str(V_L_vector_layer_c) + "\n"
       + str(vector_layer_values_d) + " => " + str(V_L_vector_layer_d) + "\n")
+
+# ==================================================================================================================== #
+# ============================================= 9. Possible errors =================================================== #
+# ==================================================================================================================== #
+
+# If the checked variable is not str:
+# [Argument type] The variable must be str.
+# V_L_layer_a = domain.check_value(1, vector_layer_a)
+# [Definition] The variable is not defined.
+# V_L_layer_a = domain.check_value("J", vector_layer_a)
+
+# If the checked variable type is BASIC:
+# ###### [Argument type] The value must not be list or dict.
+# I_comp_A = domain.check_value("I", [1, 2])
+# I_comp_A = domain.check_value("I", {"e1": 2, "e2": 3})
+# ###### [Argument value] The element must not be provided.
+# I_comp_A = domain.check_value("I", 2, "el-1")
+
+# If the checked variable type is LAYER:
+# ###### [Argument type] The value must not be list.
+# L_E_I_comp_A = domain.check_value("L", [1, 2], "E_I")
+# L_E_I_comp_A = domain.check_value("L", [1, 2])
+# ###### If the value parameter is dict.
+# ******************** [Argument value] The element must not be provided.
+# L_layer_a = domain.check_value("L", layer_a, "el-1")
+# ########### If the value parameter is not dict.
+# ******************** [Argument value] The element must be provided.
+# L_E_I_comp_A = domain.check_value("L", 1)
+# ******************** [Argument type] The variable element be str.
+# L_E_I_comp_A = domain.check_value("L", 1, 1)
+
+# If the checked variable type is VECTOR:
+# ########### [Definition] The components are not defined.
+# V_I_val_a = domain.check_value("V_N", values_a)
+# ******************** If the value parameter is list.
+# ============================== [Argument value] The element must not be provided.
+# V_I_val_a = domain.check_value("V_I", values_a, "el-1")
+# ============================== [Definition] The size of the values is note compatible with the variable definition.
+# V_I_val_a = domain.check_value("V_I", [1])
+# ============================== If the type of the list values is dict.
+# ---------------------------------------- [Definition] The components of the variable are not LAYER.
+# V_L_vector_layer_a = domain.check_value("V_I", vector_layer_values_a)
+# ============================== If the type of the list values is not dict.
+# ---------------------------------------- [Definition] The components of the variable are not BASIC.
+# V_I_val_a = domain.check_value("V_L", [1, 2])
+# ******************** If the value parameter is not list.
+# ============================== If the components of the variable are BASIC.
+# ---------------------------------------- [Argument value] The element must not be provided.
+# V_I_val_a = domain.check_value("V_I", 2, "el-1")
+# ---------------------------------------- [Argument type] The value must not be dict.
+# V_I_val_a = domain.check_value("V_I", {"e1": 2, "e2": 3})
+# ============================== If the components of the variable are LAYER.
+# ---------------------------------------- If the value parameter is dict.
+# ++++++++++++++++++++++++++++++++++++++++++++++++++ [Argument value] The element must not be provided.
+# V_L_layer_a = domain.check_value("V_L", vector_layer_a, "el-1")
+# ---------------------------------------- If the value parameter is not dict.
+# ++++++++++++++++++++++++++++++++++++++++++++++++++ [Argument value] The element must be provided.
+# V_L_el_1_comp_A = domain.check_value("V_L", component_element_a)
+# ++++++++++++++++++++++++++++++++++++++++++++++++++ [Argument type] The variable element be str.
+# V_L_el_1_comp_A = domain.check_value("V_L", component_element_a, 1)
+# ++++++++++++++++++++++++++++++++++++++++++++++++++ [Definition] The element must be defined.
+# V_L_el_1_comp_A = domain.check_value("V_L", component_element_a, "el-4")

@@ -55,7 +55,7 @@ class Solution:
         :vartype discovering_iteration_time: int
         :vartype fitness: float
         """
-        ctrl_par.is_domain_class(domain)
+        ctrl_par.is_domain_class("domain", domain)
         self.__domain = domain
         self.__variables = {}
         self.discovery_iteration = 0
@@ -71,7 +71,7 @@ class Solution:
         :param domain: The domain of the solution.
         :type domain: :py:class:`~pycvoa.problem.domain.Domain`
         """
-        ctrl_par.is_domain_class(domain)
+        ctrl_par.is_domain_class("domain", domain)
         self.__domain = domain
 
     # ** BASIC TYPE METHODS ***
@@ -440,20 +440,20 @@ class Solution:
         var_type = current_domain.get_variable_type(variable)
         if var_type in BASIC:
             ctrl_par.index_is_none(variable, index)
-            ctrl_par.element_is_none(variable, element)
+            ctrl_par.element_is_none(variable, element, "a")
             self.set_basic(variable, value, current_domain)
         elif var_type is LAYER:
             ctrl_par.index_is_none(variable, index)
-            ctrl_par.element_not_none(variable, element)
+            ctrl_par.element_not_none(variable, element, "a")
             self.set_element(variable, element, value, current_domain)
         elif var_type is VECTOR:
             ctrl_par.index_not_none(variable, index)
             vector_definition = current_domain.get_vector_component_definition(variable)
             if vector_definition in BASIC:
-                ctrl_par.element_is_none(variable, element)
+                ctrl_par.element_is_none(variable, element, "a")
                 self.set_basic_component(variable, index, value, current_domain)
             elif vector_definition is LAYER:
-                ctrl_par.element_not_none(variable, element)
+                ctrl_par.element_not_none(variable, element, "a")
                 self.set_component_element(variable, index, element, value, current_domain)
 
     # ** IS METHODS ***
@@ -670,7 +670,7 @@ class Solution:
         :raise :py:class:`~pycvoa.problem.solution.NotDefinedVectorComponentError: The **index**-nh component of the
         **VECTOR** variable is not available.
         """
-        ctrl_par.is_int(index)
+        ctrl_par.is_int("index", index)
         ctrl_dom.basic_vector_variable(basic_vector_variable, domain, self.__domain)
         ctrl_sol.is_assigned_component(basic_vector_variable, index, self.__variables)
         return self.__variables.get(basic_vector_variable)[index]
@@ -697,8 +697,8 @@ class Solution:
         :raise :py:class:`~pycvoa.problem.solution.NotDefinedComponentElementError: The element of the **index**-nh
         component of the **VECTOR** variable is not available.
         """
-        ctrl_par.is_int(index)
-        ctrl_par.is_string(element)
+        ctrl_par.is_int("index", index)
+        ctrl_par.is_string("element", element)
         ctrl_dom.layer_vector(layer_vector_variable, domain, self.__domain)
         ctrl_sol.is_assigned_component_element(layer_vector_variable, index, element, self.__variables)
         return self.__variables.get(layer_vector_variable)[index][element]
@@ -745,20 +745,20 @@ class Solution:
         r = None
         if var_type in BASIC:
             ctrl_par.index_is_none(variable, index)
-            ctrl_par.element_is_none(variable, element)
+            ctrl_par.element_is_none(variable, element, "a")
             r = self.get_basic_value(variable, current_domain)
         elif var_type is LAYER:
             ctrl_par.index_is_none(variable, index)
-            ctrl_par.element_not_none(variable, element)
+            ctrl_par.element_not_none(variable, element, "a")
             r = self.get_element_value(variable, element, current_domain)
         elif var_type is VECTOR:
             ctrl_par.index_not_none(variable, index)
             vector_definition = current_domain.get_vector_component_definition(variable)
             if vector_definition in BASIC:
-                ctrl_par.element_is_none(variable, element)
+                ctrl_par.element_is_none(variable, element, "a")
                 r = self.get_basic_component_value(variable, index, current_domain)
             elif vector_definition is LAYER:
-                ctrl_par.element_not_none(variable, element)
+                ctrl_par.element_not_none(variable, element, "a")
                 r = self.get_layer_component_value(variable, index, element, current_domain)
         return r
 
