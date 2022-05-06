@@ -1,4 +1,4 @@
-from pycvoa.problem.ctrl import DefinitionError
+from pycvoa.problem.ctrl import DefinitionError, DomainError
 from pycvoa.problem.domain import Domain
 from pycvoa.problem.types import *
 import pycvoa.problem.ctrl.parameter as ctrl_param
@@ -21,36 +21,36 @@ def __layer_vector_list(layer_vector_variable, values, domain: Domain):
         for element, value in layer:
             element_definition = domain.get_component_element_definition(layer_vector_variable, element)
             if element_definition[0] is INTEGER:
-                ctrl_param.is_int(value)
+                ctrl_param.is_int("value", value)
                 if value < element_definition[1] or value > element_definition[2]:
                     raise ValueError(
-                        "The " + element + " element of the " + str(values.index(layer)) + "-nh component "
-                                                                                           "is not compatible with its definition.")
+                        "The " + element + " element of the " + str(values.index(layer))
+                        + "-nh component is not compatible with its definition.")
             elif element_definition[0] is REAL:
-                ctrl_param.is_float(value)
+                ctrl_param.is_float("value", value)
                 if value < element_definition[1] or value > element_definition[2]:
                     raise ValueError(
-                        "The " + element + " element of the " + str(values.index(layer)) + "-nh component "
-                                                                                           "is not compatible with its definition.")
+                        "The " + element + " element of the " + str(values.index(layer))
+                        + "-nh component is not compatible with its definition.")
             elif element_definition[0] is CATEGORICAL:
-                ctrl_param.same_python_type(element_definition[1], value)
+                ctrl_param.same_class("value", element_definition[1], value)
                 if value not in element_definition[1]:
                     raise ValueError(
-                        "The " + element + " element of the " + str(values.index(layer)) + "-nh component "
-                                                                                           "is not compatible with its definition.")
+                        "The " + element + " element of the " + str(values.index(layer))
+                        + "-nh component is not compatible with its definition.")
 
 
 def domain_basic_value(check_basic_variable, value, external_domain: Domain, internal_domain: Domain):
     valid_domain = get_valid_domain(external_domain, internal_domain)
     if not valid_domain.check_basic(check_basic_variable, value):
-        raise ValueError("The value " + str(value) + " is not compatible with the "
-                         + check_basic_variable + " variable definition.")
+        raise DomainError("The value " + str(value) + " is not compatible with the "
+                          + check_basic_variable + " variable definition.")
 
 
 def domain_layer_element_value(layer_variable, element, value, external_domain: Domain, internal_domain: Domain):
     valid_domain = get_valid_domain(external_domain, internal_domain)
     if not valid_domain.check_element(layer_variable, element, value):
-        raise ValueError(
+        raise DomainError(
             "The value " + str(
                 value) + " is not valid for the " + element + " element in the " + layer_variable + " variable.")
 
@@ -59,8 +59,8 @@ def domain_basic_vector_list(check_basic_vector_variable, value_list: list, exte
                              internal_domain: Domain):
     valid_domain = get_valid_domain(external_domain, internal_domain)
     res = valid_domain.check_vector_basic_values(check_basic_vector_variable, value_list)
-    if res[0] != -1:
-        raise ValueError("The " + res[0] + "-nh value must be " + res[1] + ".")
+    if not res:
+        raise DomainError("The values are not compatible with the "+check_basic_vector_variable+" variable definition")
 
 
 def domain_basic_vector_value(check_basic_vector_variable, value, external_domain: Domain, internal_domain: Domain):
@@ -82,21 +82,21 @@ def domain_layer_vector_element(layer_vector_variable, element, value, external_
 
 def domain_layer_vector_component(layer_vector_variable, layer_values, external_domain: Domain,
                                   internal_domain: Domain):
-    ctrl_param.is_dict(layer_values)
+    ctrl_param.is_dict("layer_values", layer_values)
     valid_domain = get_valid_domain(external_domain, internal_domain)
     __check_component_type(layer_vector_variable, LAYER, valid_domain)
     for element, value in layer_values:
         element_definition = valid_domain.get_component_element_definition(layer_vector_variable, element)
         if element_definition[0] is INTEGER:
-            ctrl_param.is_int(value)
+            ctrl_param.is_int("value", value)
             if value < element_definition[1] or value > element_definition[2]:
                 raise ValueError("The " + element + " element is not compatible with its definition.")
         elif element_definition[0] is REAL:
-            ctrl_param.is_float(value)
+            ctrl_param.is_float("value", value)
             if value < element_definition[1] or value > element_definition[2]:
                 raise ValueError("The " + element + " element is not compatible with its definition.")
         elif element_definition[0] is CATEGORICAL:
-            ctrl_param.same_python_type(element_definition[1], value)
+            ctrl_param.same_class("value", element_definition[1], value)
             if value not in element_definition[1]:
                 raise ValueError("The " + element + " element is not compatible with its definition.")
 
@@ -106,7 +106,7 @@ def domain_layer_vector_component(layer_vector_variable, layer_values, external_
 
 
 def get_valid_domain(external_domain: Domain, internal_domain: Domain) -> Domain:
-    ctrl_param.is_domain_class(external_domain)
+    ctrl_param.is_domain_class("external_domain", external_domain)
     current_domain = external_domain
     if current_domain is None:
         current_domain = internal_domain
