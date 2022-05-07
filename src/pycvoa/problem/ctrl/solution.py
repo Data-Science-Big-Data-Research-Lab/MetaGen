@@ -28,7 +28,11 @@ def is_assigned_component_element(layer_vector_variable, index, element, solutio
                             layer_vector_variable + " variable in this solution.")
 
 
-def vector_insertion_available(vector_variable, vector_size, domain: Domain):
+def vector_insertion_available(vector_variable, domain: Domain, solution_structure: dict):
+    if vector_variable in solution_structure.keys():
+        vector_size = len(solution_structure[vector_variable])
+    else:
+        vector_size = 0
     if domain.get_remaining_available_components(vector_variable, vector_size) == 0:
         raise SolutionError("The " + str(vector_variable) + " is complete.")
 
