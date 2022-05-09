@@ -63,6 +63,7 @@ def is_basic(parameter_name: str, value):
     if type(value) not in (int, float, str):
         raise TypeError("The " + parameter_name + " parameter must be <int>, <float> or <str>.")
 
+
 # =========================================== DICT/LIST TYPES =========================================================#
 
 def is_dict(parameter_name: str, values):
@@ -158,6 +159,18 @@ def index_not_none(variable, index):
         raise ValueError(
             "The " + variable + "variable is defined as VECTOR, therefore an index to access a component name "
                                 "must be provided.")
+
+
+def assigned_elements_is_none(variable, assigned_elements):
+    if assigned_elements is None:
+        raise ValueError(
+            "The " + variable + "must not be provided, since the VECTOR components are not defined as LAYER.")
+
+
+def assigned_elements_not_none(variable, assigned_elements):
+    if assigned_elements is None:
+        raise ValueError(
+            "The " + variable + "must be provided, since the VECTOR components are defined as LAYER.")
 
 
 # =========================================== VALUE CHECKERS ==========================================================#

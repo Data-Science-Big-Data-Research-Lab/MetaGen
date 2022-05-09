@@ -136,7 +136,7 @@ class Domain:
         """
         ctrl_par.check_categorical_definition(variable_name, categories)
         ctrl_def.not_defined_variable(variable_name, self.__definitions)
-        self.__definitions[variable_name] = [CATEGORICAL, categories]
+        self.__definitions[variable_name] = [CATEGORICAL, copy.deepcopy(categories)]
 
     # **** DEFINE LAYER VARIABLE METHODS ****
 
@@ -242,7 +242,7 @@ class Domain:
         """
         ctrl_par.check_categorical_element_definition(layer_variable, element_name, categories)
         ctrl_def.is_defined_layer_without_element(layer_variable, element_name, self.__definitions)
-        self.__definitions[layer_variable][1][element_name] = [CATEGORICAL, categories]
+        self.__definitions[layer_variable][1][element_name] = [CATEGORICAL, copy.deepcopy(categories)]
 
     # **** DEFINE BASIC VECTOR VARIABLE METHODS ****
 
@@ -350,7 +350,7 @@ class Domain:
         """
         ctrl_par.check_categorical_definition(vector_variable, categories)
         ctrl_def.is_defined_vector_without_components(vector_variable, self.__definitions)
-        self.__definitions[vector_variable][4] = [CATEGORICAL, categories]
+        self.__definitions[vector_variable][4] = [CATEGORICAL, copy.deepcopy(categories)]
 
     # **** DEFINE LAYER VECTOR VARIABLE METHODS ****
 
@@ -471,7 +471,7 @@ class Domain:
         """
         ctrl_par.check_categorical_element_definition(layer_vector_variable, element_name, categories)
         ctrl_def.is_defined_layer_vector_without_element(layer_vector_variable, element_name, self.__definitions)
-        self.__definitions[layer_vector_variable][4][1][element_name] = [CATEGORICAL, categories]
+        self.__definitions[layer_vector_variable][4][1][element_name] = [CATEGORICAL, copy.deepcopy(categories)]
 
     # **** IS DEFINED METHODS ***
 
@@ -819,17 +819,20 @@ class Domain:
 
     # **** GET AVAILABLE COMPONENTS ***
 
-    def get_remaining_available_components(self, vector_variable: str, current_vector_size: int) -> int:
-        ctrl_par.is_string("vector_variable", vector_variable)
+    def get_remaining_available_basic_components(self, basic_vector_variable: str, current_vector_size: int) -> int:
+        ctrl_par.is_string("vector_variable", basic_vector_variable)
         ctrl_par.is_int("current_vector_size", current_vector_size)
-        ctrl_def.is_defined_variable_as_type(vector_variable, VECTOR, self.__definitions)
-        if current_vector_size < self.__definitions[vector_variable][1]:
-            r = current_vector_size - self.__definitions[vector_variable][1]
-        elif self.__definitions[vector_variable][1] <= current_vector_size < self.__definitions[vector_variable][2]:
-            r = self.__definitions[vector_variable][2] - current_vector_size
+        ctrl_def.is_defined_vector_and_components_as_type(basic_vector_variable, BASIC, self.__definitions)
+        if current_vector_size < self.__definitions[basic_vector_variable][1]:
+            r = current_vector_size - self.__definitions[basic_vector_variable][1]
+        elif self.__definitions[basic_vector_variable][1] <= current_vector_size < self.__definitions[basic_vector_variable][2]:
+            r = self.__definitions[basic_vector_variable][2] - current_vector_size
         else:
             r = 0
         return r
+
+    def get_remaining_available_layer_components(self, layer_vector_variable: str, layer_value: dict) -> list:
+        pass
 
     # **** CHECK METHODS ***
 
@@ -1040,7 +1043,7 @@ class Domain:
                 elif components_type is LAYER:
                     if type(values) == dict:
                         ctrl_par.element_is_none(variable, element, "e")
-                        r = Domain.__check_layer_element_values(self.__definitions[variable][4][1],values)
+                        r = Domain.__check_layer_element_values(self.__definitions[variable][4][1], values)
                     else:
                         ctrl_par.element_not_none(variable, element, "b")
                         ctrl_par.is_string("element", element)
