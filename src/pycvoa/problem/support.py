@@ -64,8 +64,8 @@ def build_random_solution(domain, fitness_function=None):
                 elif vector_component_type == LAYER:
                     for element in domain.get_component_element_list(variable):
                         element_definition = domain.get_component_element_definition(element)
-                        new_solution.set_component_element(variable, i, element,
-                                                           get_random_value_for_basic_variable(
+                        new_solution.set_element_of_layer_component(variable, i, element,
+                                                                    get_random_value_for_basic_variable(
                                                                            element_definition))
 
     # If the fitness function has been passed, it is computed for the new solution.
@@ -225,8 +225,8 @@ def alter_vector_variable(solution, variable, definition):
 
                 # If that element is an integer or a real modify its value with modify_number_from_interval_random_way
                 if layer_element_definition[0] is INTEGER or layer_element_definition[0] is REAL:
-                    solution.set_component_element(variable, i, element_name,
-                                                   modify_number_from_interval_random_way(
+                    solution.set_element_of_layer_component(variable, i, element_name,
+                                                            modify_number_from_interval_random_way(
                                                                    solution.get_layer_component_value(
                                                                        variable, i,
                                                                        element_name),
@@ -239,7 +239,7 @@ def alter_vector_variable(solution, variable, definition):
                     current_category = solution.get_layer_component_value(variable, i, element_name)
                     new_category = get_random_element_from_list_excluding_one(current_category,
                                                                               layer_element_definition[1])
-                    solution.set_component_element(variable, i, element_name, new_category)
+                    solution.set_element_of_layer_component(variable, i, element_name, new_category)
 
 
 def get_random_element_from_list_excluding_one(excluded_element, list_of_elements):

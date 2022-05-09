@@ -79,6 +79,10 @@ def check_layer_vector_values(layer_vector_variable: str, value_list: list, exte
     valid_domain = get_valid_domain(external_domain, internal_domain)
     __list_size(layer_vector_variable, value_list, valid_domain)
     for layer in value_list:
+        if type(layer) != dict:
+            raise DomainError(
+                "The " + str(value_list.index(layer)) + "-nh value, " + str(layer)
+                + ", is not compatible with its definition.")
         for element, value in layer.items():
             if not valid_domain.check_vector_layer_element_value(layer_vector_variable, element, value):
                 raise DomainError(
@@ -86,39 +90,33 @@ def check_layer_vector_values(layer_vector_variable: str, value_list: list, exte
                     + "-nh component is not compatible with its definition.")
 
 
-########################################################################################################################
-########################################################################################################################
-########################################################################################################################
-
-def domain_layer_vector_element(layer_vector_variable, element, value, external_domain: Domain,
-                                internal_domain: Domain):
+def check_layer_vector_component(layer_vector_variable: str, layer_values: dict, external_domain: Domain,
+                                 internal_domain: Domain):
+    ctrl_param.is_dict("layer_values", layer_values)
     valid_domain = get_valid_domain(external_domain, internal_domain)
-    if not valid_domain.check_vector_layer_element_value(layer_vector_variable, element, value):
-        raise ValueError(
-            "The value " + value + " is not valid for the " + element + " element in the "
-            + layer_vector_variable + "variable.")
+    for element, value in layer_values.items():
+        if not valid_domain.check_vector_layer_element_value(layer_vector_variable, element, value):
+            raise DomainError(
+                "The " + element + " element of the is not compatible with its definition.")
     return valid_domain
 
 
-def domain_layer_vector_component(layer_vector_variable, layer_values, external_domain: Domain,
-                                  internal_domain: Domain):
-    ctrl_param.is_dict("layer_values", layer_values)
+
+
+########################################################################################################################
+########################################################################################################################
+########################################################################################################################
+
+
+def check_layer_vector_element(layer_vector_variable, element, value, external_domain: Domain,
+                               internal_domain: Domain):
     valid_domain = get_valid_domain(external_domain, internal_domain)
-    __check_component_type(layer_vector_variable, LAYER, valid_domain)
-    for element, value in layer_values:
-        element_definition = valid_domain.get_component_element_definition(layer_vector_variable, element)
-        if element_definition[0] is INTEGER:
-            ctrl_param.is_int("value", value)
-            if value < element_definition[1] or value > element_definition[2]:
-                raise ValueError("The " + element + " element is not compatible with its definition.")
-        elif element_definition[0] is REAL:
-            ctrl_param.is_float("value", value)
-            if value < element_definition[1] or value > element_definition[2]:
-                raise ValueError("The " + element + " element is not compatible with its definition.")
-        elif element_definition[0] is CATEGORICAL:
-            ctrl_param.same_class("value", element_definition[1], value)
-            if value not in element_definition[1]:
-                raise ValueError("The " + element + " element is not compatible with its definition.")
+    if not valid_domain.check_vector_layer_element_value(layer_vector_variable, element, value):
+        raise ValueError(
+            "The value " + str(value) + " is not valid for the " + str(element) + " element in the "
+            + str(layer_vector_variable) + "variable.")
+    return valid_domain
+
 
 
 def basic_variable(check_basic_variable, external_domain: Domain, internal_domain: Domain):
