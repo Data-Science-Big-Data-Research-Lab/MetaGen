@@ -266,23 +266,23 @@ print("V_L definition = " + str(domain.get_variable_definition("V_I")))
 # If the current size is lower than the minimum size of the vector definition, returns the number of remaining elements
 # to satisfy the size definition multiplying by -1.
 current_size = 10
-r_components = domain.get_remaining_available_basic_components("V_I", current_size)
+r_components = domain.get_remaining_available_complete_components("V_I", current_size)
 print("Available components with current size (" + str(current_size) + ") = " + str(r_components))
 
 # If the current size is greater or equal than the minimum size and lower than the maximum size, returns
 # the number of remaining available components to complete the vector and satisfy the size definition.
 current_size = 25
-r_components = domain.get_remaining_available_basic_components("V_I", current_size)
+r_components = domain.get_remaining_available_complete_components("V_I", current_size)
 print("Available components with current size (" + str(current_size) + ") = " + str(r_components))
 
 # Otherwise returns 0
 
 current_size = 100
-r_components = domain.get_remaining_available_basic_components("V_I", current_size)
+r_components = domain.get_remaining_available_complete_components("V_I", current_size)
 print("Available components with current size (" + str(current_size) + ") = " + str(r_components))
 
 current_size = 120
-r_components = domain.get_remaining_available_basic_components("V_I", current_size)
+r_components = domain.get_remaining_available_complete_components("V_I", current_size)
 print("Available components with current size (" + str(current_size) + ") = " + str(r_components)+"\n")
 
 # ************ Possible errors

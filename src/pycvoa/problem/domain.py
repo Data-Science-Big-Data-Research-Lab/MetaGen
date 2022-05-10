@@ -776,8 +776,8 @@ class Domain:
                 self.__definitions[layer_variable][1][numerical_element][3]]
 
     def get_categorical_element_attributes(self, layer_variable: str, categorical_element: str) -> list:
-        ctrl_par.are_stringctrl_par.are_string("layer_variable", layer_variable
-                                               , "categorical_element", categorical_element)
+        ctrl_par.are_stringctrl_par.are_string("layer_variable", layer_variable,
+                                               "categorical_element", categorical_element)
         ctrl_def.is_defined_layer_and_element_as_type(layer_variable, categorical_element, CATEGORICAL,
                                                       self.__definitions)
         return copy.deepcopy(self.__definitions[layer_variable][1][categorical_element][1])
@@ -800,9 +800,14 @@ class Domain:
         ctrl_def.is_defined_vector_and_components_as_type(categorical_vector_variable, CATEGORICAL, self.__definitions)
         return copy.deepcopy(self.__definitions[categorical_vector_variable][4][1])
 
+    def get_layer_components_attributes(self, layer_vector_variable: str) -> list:
+        ctrl_par.is_string("layer_vector_variable", layer_vector_variable)
+        ctrl_def.is_defined_vector_and_components_as_type(layer_vector_variable, LAYER, self.__definitions)
+        return copy.deepcopy(self.__definitions[layer_vector_variable][4][1])
+
     def get_layer_vector_numerical_element_attributes(self, layer_vector_variable: str, numerical_element: str) -> list:
-        ctrl_par.are_stringctrl_par.are_string("layer_vector_variable", layer_vector_variable
-                                               , "numerical_element", numerical_element)
+        ctrl_par.are_string("layer_vector_variable", layer_vector_variable,
+                            "numerical_element", numerical_element)
         ctrl_def.is_defined_layer_vector_and_component_element_as_type(layer_vector_variable, numerical_element,
                                                                        NUMERICAL, self.__definitions)
         return [self.__definitions[layer_vector_variable][4][1][numerical_element][1],
@@ -811,28 +816,57 @@ class Domain:
 
     def get_layer_vector_categorical_attributes(self, layer_vector_variable: str,
                                                 categorical_element: str) -> list:
-        ctrl_par.are_stringctrl_par.are_string("layer_vector_variable", layer_vector_variable
-                                               , "categorical_element", categorical_element)
+        ctrl_par.are_string("layer_vector_variable", layer_vector_variable,
+                            "categorical_element", categorical_element)
         ctrl_def.is_defined_layer_vector_and_component_element_as_type(layer_vector_variable, categorical_element,
                                                                        CATEGORICAL, self.__definitions)
         return copy.deepcopy(self.__definitions[layer_vector_variable][4][1][categorical_element][1])
 
     # **** GET AVAILABLE COMPONENTS ***
 
-    def get_remaining_available_basic_components(self, basic_vector_variable: str, current_vector_size: int) -> int:
-        ctrl_par.is_string("vector_variable", basic_vector_variable)
+    def get_remaining_available_complete_components(self, basic_vector_variable: str, current_vector_size: int) -> int:
+        ctrl_par.is_string("basic_vector_variable", basic_vector_variable)
         ctrl_par.is_int("current_vector_size", current_vector_size)
-        ctrl_def.is_defined_vector_and_components_as_type(basic_vector_variable, BASIC, self.__definitions)
-        if current_vector_size < self.__definitions[basic_vector_variable][1]:
-            r = current_vector_size - self.__definitions[basic_vector_variable][1]
-        elif self.__definitions[basic_vector_variable][1] <= current_vector_size < self.__definitions[basic_vector_variable][2]:
-            r = self.__definitions[basic_vector_variable][2] - current_vector_size
-        else:
-            r = 0
-        return r
+        ctrl_def.is_defined_vector_with_components(basic_vector_variable, self.__definitions)
+        return Domain.__available_size(basic_vector_variable, current_vector_size, self.__definitions)
 
-    def get_remaining_available_layer_components(self, layer_vector_variable: str, layer_value: dict) -> list:
-        pass
+    def get_remaining_available_layer_components(self, layer_vector_variable: str, current_vector_size: int,
+                                                 layer_value: dict) -> list:
+        ctrl_par.is_string("layer_vector_variable", layer_vector_variable)
+        ctrl_par.is_int("current_vector_size", current_vector_size)
+        ctrl_def.is_defined_vector_and_components_as_type(layer_vector_variable, LAYER, self.__definitions)
+        e_s = len(layer_value.keys() & self.__definitions[layer_vector_variable][4][1].keys())
+        if e_s == 0:
+            valid_vector_size = current_vector_size
+        else:
+            valid_vector_size = current_vector_size - 1
+        v_s = Domain.__available_size(layer_vector_variable, valid_vector_size, self.__definitions)
+        return [v_s, len(self.__definitions[layer_vector_variable][4][1].keys())-e_s]
+
+    def get_remaining_available_components(self, vector_variable: str, current_vector_size: int,
+                                           layer_value: dict = None):
+        ctrl_par.is_string("vector_variable", vector_variable)
+        ctrl_par.is_int("current_vector_size", current_vector_size)
+        ctrl_def.is_defined_vector_with_components(vector_variable, self.__definitions)
+        cmp_type = self.__definitions[vector_variable][4][1]
+        r = 0
+        if cmp_type in BASIC:
+            ctrl_par.assigned_elements_is_none("layer_value", layer_value)
+            r = Domain.__available_size(vector_variable, current_vector_size, self.__definitions)
+        elif cmp_type is LAYER:
+            ctrl_par.assigned_elements_not_none("layer_value", layer_value)
+            ctrl_par.is_dict("layer_value", layer_value)
+            if not Domain.__check_layer_element_values(self.__definitions[vector_variable][4], layer_value, False):
+                raise ValueError("The layer values are not compatible with the LAYER VECTOR component definition")
+            else:
+                e_s = len(layer_value.keys() & self.__definitions[vector_variable][4][1].keys())
+                if e_s == 0:
+                    valid_vector_size = current_vector_size
+                else:
+                    valid_vector_size = current_vector_size - 1
+                v_s = Domain.__available_size(vector_variable, valid_vector_size, self.__definitions)
+                r = [v_s, e_s]
+        return r
 
     # **** CHECK METHODS ***
 
@@ -1163,8 +1197,9 @@ class Domain:
         return r
 
     @staticmethod
-    def __check_layer_element_values(layer_definition, values):
-        ctrl_def.is_a_complete_layer(layer_definition, values)
+    def __check_layer_element_values(layer_definition, values, complete: bool = True):
+        if complete:
+            ctrl_def.is_a_complete_layer(layer_definition, values)
         r = True
         i = 0
         key_list = list(values.keys())
@@ -1191,14 +1226,24 @@ class Domain:
         return r
 
     @staticmethod
-    def __check_vector_layer_element_values(vector_layer_definition, values):
+    def __check_vector_layer_element_values(vector_layer_definition, values, complete: bool = True):
         ctrl_par.is_list_of_dict("values", values)
         r = True
         i = 0
         while r and i < len(values):
             layer = values[i]
-            if not Domain.__check_layer_element_values(vector_layer_definition, layer):
+            if not Domain.__check_layer_element_values(vector_layer_definition, layer, complete):
                 r = False
             else:
                 i += 1
+        return r
+
+    @staticmethod
+    def __available_size(vector_variable, current_size, definitions: dict):
+        if current_size < definitions[vector_variable][1]:
+            r = current_size - definitions[vector_variable][1]
+        elif definitions[vector_variable][1] <= current_size < definitions[vector_variable][2]:
+            r = definitions[vector_variable][2] - current_size
+        else:
+            r = 0
         return r

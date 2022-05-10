@@ -101,8 +101,6 @@ def check_layer_vector_component(layer_vector_variable: str, layer_values: dict,
     return valid_domain
 
 
-
-
 ########################################################################################################################
 ########################################################################################################################
 ########################################################################################################################
@@ -116,7 +114,6 @@ def check_layer_vector_element(layer_vector_variable, element, value, external_d
             "The value " + str(value) + " is not valid for the " + str(element) + " element in the "
             + str(layer_vector_variable) + "variable.")
     return valid_domain
-
 
 
 def basic_variable(check_basic_variable, external_domain: Domain, internal_domain: Domain):

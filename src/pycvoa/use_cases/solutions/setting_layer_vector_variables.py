@@ -10,7 +10,7 @@ from pycvoa.use_cases.domains.support_domain import example_domain as domain
 
 values = [{"el-1": 11, "el-2": 0.1, "el-3": 1}, {"el-1": 12, "el-2": 0.4, "el-3": 3}]
 
-solution.set_layer_vector("V_L", values, domain)
+# solution.set_layer_vector("V_L", values, domain)
 # print("\nSolution:\n" + str(solution)+"\n")
 
 # ************ Possible errors
@@ -43,12 +43,12 @@ solution.set_layer_vector("V_L", values, domain)
 # =========================== 2. Adding values to a LAYER VECTOR variable ============================================ #
 # ==================================================================================================================== #
 
-solution.set_layer_vector("V_L", values, domain)
+# solution.set_layer_vector("V_L", values, domain)
 
-remain = solution.add_layer_component("V_L", {"el-1": 14, "el-2": 0.1, "el-3": 1}, domain)
+# remain = solution.add_layer_component("V_L", {"el-1": 14, "el-2": 0.1, "el-3": 1}, domain)
 # print("Solution = " + str(solution) + " => [" + str(remain) + "]")
 
-remain = solution.add_layer_component("V_L", {"el-1": 12, "el-2": 0.2, "el-3": 2}, domain)
+# remain = solution.add_layer_component("V_L", {"el-1": 12, "el-2": 0.2, "el-3": 2}, domain)
 # print("Solution = " + str(solution) + " => [" + str(remain) + "]\n")
 
 
@@ -81,12 +81,12 @@ remain = solution.add_layer_component("V_L", {"el-1": 12, "el-2": 0.2, "el-3": 2
 # =========================== 3. Inserting values to a LAYER VECTOR variable ========================================= #
 # ==================================================================================================================== #
 
-solution.set_layer_vector("V_L", values, domain)
-
-remain = solution.insert_layer_component("V_L", 1, {"el-1": 15, "el-2": 0.12, "el-3": 3}, domain)
-# print("Solution = " + str(solution) + " => [" + str(remain) + "]")
-
-remain = solution.insert_layer_component("V_L", 3, {"el-1": 17, "el-2": 0.12, "el-3": 3}, domain)
+# solution.set_layer_vector("V_L", values, domain)
+#
+# remain = solution.insert_layer_component("V_L", 1, {"el-1": 15, "el-2": 0.12, "el-3": 3}, domain)
+# # print("Solution = " + str(solution) + " => [" + str(remain) + "]")
+#
+# remain = solution.insert_layer_component("V_L", 3, {"el-1": 17, "el-2": 0.12, "el-3": 3}, domain)
 # print("Solution = " + str(solution) + " => [" + str(remain) + "]")
 
 # ************ Possible errors
@@ -120,7 +120,7 @@ remain = solution.insert_layer_component("V_L", 3, {"el-1": 17, "el-2": 0.12, "e
 # =========================== 4. Setting a component of a LAYER VECTOR variable ====================================== #
 # ==================================================================================================================== #
 
-solution.set_layer_component("V_L", 3,  {"el-1": 17, "el-2": 0.123456789, "el-3": 3}, domain)
+# solution.set_layer_component("V_L", 3,  {"el-1": 17, "el-2": 0.123456789, "el-3": 3}, domain)
 
 # print("\nSolution:\n" + str(solution))
 
@@ -159,13 +159,13 @@ solution.set_layer_component("V_L", 3,  {"el-1": 17, "el-2": 0.123456789, "el-3"
 solution.set_layer_vector("V_L", values, domain)
 
 remain = solution.add_element_to_layer_component("V_L", "el-1", 14, domain)
-print("Solution = " + str(solution) + " => [" + str(remain) + "]")
+print("Solution = " + str(solution) + " => " + str(remain))
 
 remain = solution.add_element_to_layer_component("V_L", "el-2", 0.14, domain)
-print("Solution = " + str(solution) + " => [" + str(remain) + "]")
+print("Solution = " + str(solution) + " => " + str(remain))
 
 remain = solution.add_element_to_layer_component("V_L", "el-3", 1, domain)
-print("Solution = " + str(solution) + " => [" + str(remain) + "]")
+print("Solution = " + str(solution) + " => " + str(remain))
 
 # ************ Possible errors
 # 1. Argument type errors:

@@ -28,11 +28,7 @@ def is_assigned_component_element(layer_vector_variable: str, index: int, elemen
 
 
 def vector_insertion_available(vector_variable: str, domain: Domain, solution_structure: dict):
-    if vector_variable in solution_structure.keys():
-        vector_size = len(solution_structure[vector_variable])
-    else:
-        vector_size = 0
-    if domain.get_remaining_available_basic_components(vector_variable, vector_size) == 0:
+    if domain.get_remaining_available_complete_components(vector_variable, len(solution_structure[vector_variable])) == 0:
         raise SolutionError("The " + str(vector_variable) + " is complete.")
 
 
@@ -42,11 +38,18 @@ def vector_adding_available(vector_variable: str, remaining: int):
 
 
 def vector_element_adding_available(layer_vector_variable: str, solution_structure: dict, domain: Domain):
-    pass
+    key_sizes = len(solution_structure[layer_vector_variable][-1].keys() &
+                    domain.get_layer_components_attributes(layer_vector_variable).keys())
+    if key_sizes == 0:
+        v_size = len(solution_structure[layer_vector_variable])
+    else:
+        v_size = len(solution_structure[layer_vector_variable]) - 1
+    if domain.get_remaining_available_complete_components(layer_vector_variable, v_size) == 0:
+        raise SolutionError("The " + str(layer_vector_variable) + " is complete.")
 
 
 def assigned_vector_removal_available(vector_variable, solution_structure: dict, domain: Domain):
     is_assigned_variable(vector_variable, solution_structure)
-    if domain.get_remaining_available_basic_components(vector_variable,
-                                                       len(solution_structure.get(vector_variable))) < 0:
+    if domain.get_remaining_available_complete_components(vector_variable,
+                                                          len(solution_structure.get(vector_variable))) < 0:
         raise SolutionError("The " + str(vector_variable) + " can not deleting.")

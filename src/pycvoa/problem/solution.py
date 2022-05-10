@@ -151,19 +151,7 @@ class Solution:
         :raise :py:class:`~pycvoa.problem.domain.WrongComponentType: The components of the **VECTOR** variable are not
         defined as a **BASIC** type.
         """
-        valid_domain = ctrl_dom.check_basic_vector_value(basic_vector_variable, value, domain, self.__domain)
-        ctrl_sol.vector_insertion_available(basic_vector_variable, valid_domain, self.__variables)
-        if basic_vector_variable not in self.__variables.keys():
-            self.__variables[basic_vector_variable] = [value]
-            r = valid_domain.get_remaining_available_basic_components(basic_vector_variable,
-                                                                      len(self.__variables[basic_vector_variable]))
-        else:
-            r = valid_domain.get_remaining_available_basic_components(basic_vector_variable,
-                                                                      len(self.__variables[basic_vector_variable]))
-            ctrl_sol.vector_adding_available(basic_vector_variable, r)
-            self.__variables[basic_vector_variable].append(value)
-            r -= 1
-        return r
+        return Solution.__put_basic(self.__variables, basic_vector_variable, value, domain, self.__domain)
 
     def insert_basic_component(self, basic_vector_variable: str, index: int, value, domain: Domain = None) -> int:
         """ It inserts a value in the **index**-nh position of a **VECTOR** variable. If the **VECTOR** variable
@@ -184,19 +172,7 @@ class Solution:
         defined as a **BASIC** type.
         """
         ctrl_par.is_int("index", index)
-        valid_domain = ctrl_dom.check_basic_vector_value(basic_vector_variable, value, domain, self.__domain)
-        ctrl_sol.vector_insertion_available(basic_vector_variable, valid_domain, self.__variables)
-        if basic_vector_variable not in self.__variables:
-            self.__variables[basic_vector_variable] = [value]
-            r = valid_domain.get_remaining_available_basic_components(basic_vector_variable,
-                                                                      len(self.__variables[basic_vector_variable]))
-        else:
-            r = valid_domain.get_remaining_available_basic_components(basic_vector_variable,
-                                                                      len(self.__variables[basic_vector_variable]))
-            ctrl_sol.vector_adding_available(basic_vector_variable, r)
-            self.__variables[basic_vector_variable].insert(index, value)
-            r -= 1
-        return r
+        return Solution.__put_basic(self.__variables, basic_vector_variable, value, domain, self.__domain, index)
 
     def set_basic_component(self, basic_vector_variable: str, index: int, value, domain: Domain = None):
         """ It sets **index**-nh position of a **VECTOR** variable. If the **VECTOR** variable does not exist,
@@ -241,36 +217,12 @@ class Solution:
 
     # ++ COMPONENT LEVEL
     def add_layer_component(self, layer_vector_variable: str, layer_values: dict, domain: Domain = None) -> int:
-        current_domain = ctrl_dom.check_layer_vector_component(layer_vector_variable, layer_values,
-                                                               domain, self.__domain)
-        if layer_vector_variable not in self.__variables.keys():
-            self.__variables[layer_vector_variable] = [copy.deepcopy(layer_values)]
-            r = current_domain.get_remaining_available_basic_components(layer_vector_variable,
-                                                                        len(self.__variables[layer_vector_variable]))
-        else:
-            r = current_domain.get_remaining_available_basic_components(layer_vector_variable,
-                                                                        len(self.__variables[layer_vector_variable]))
-            ctrl_sol.vector_adding_available(layer_vector_variable, r)
-            self.__variables[layer_vector_variable].append(copy.deepcopy(layer_values))
-            r -= 1
-        return r
+        return Solution.__put_layer(self.__variables, layer_vector_variable, layer_values, domain, self.__domain)
 
-    def insert_layer_component(self, layer_vector_variable: str, index: int, layer_values: dict
-                               , domain: Domain = None) -> int:
+    def insert_layer_component(self, layer_vector_variable: str, index: int, layer_values: dict,
+                               domain: Domain = None) -> int:
         ctrl_par.is_int("index", index)
-        valid_domain = ctrl_dom.check_layer_vector_component(layer_vector_variable, layer_values,
-                                                             domain, self.__domain)
-        if layer_vector_variable not in self.__variables.keys():
-            self.__variables[layer_vector_variable] = [layer_values]
-            r = valid_domain.get_remaining_available_basic_components(layer_vector_variable,
-                                                                      len(self.__variables[layer_vector_variable]))
-        else:
-            r = valid_domain.get_remaining_available_basic_components(layer_vector_variable,
-                                                                      len(self.__variables[layer_vector_variable]))
-            ctrl_sol.vector_adding_available(layer_vector_variable, r)
-            self.__variables[layer_vector_variable].insert(index, layer_values)
-            r -= 1
-        return r
+        return Solution.__put_layer(self.__variables, layer_vector_variable, layer_values, domain, self.__domain, index)
 
     def set_layer_component(self, layer_vector_variable: str, index: int, layer_values: dict, domain: Domain = None):
         ctrl_par.is_int("index", index)
@@ -282,8 +234,8 @@ class Solution:
             self.__variables[layer_vector_variable][index] = copy.deepcopy(layer_values)
 
     # ++ COMPONENT ELEMENT LEVEL
-    def add_element_to_layer_component(self, layer_vector_variable: str, element: str, value
-                                       , domain: Domain = None) -> int:
+    def add_element_to_layer_component(self, layer_vector_variable: str, element: str, value,
+                                       domain: Domain = None) -> list:
         """ It appends a value at last of a **VECTOR** variable. If the **VECTOR** variable does not exist,
         it will be created with the indicated value in the 0 position.
 
@@ -300,22 +252,11 @@ class Solution:
         :raise :py:class:`~pycvoa.problem.domain.WrongComponentType: The components of the **VECTOR** variable are not
         defined as a **BASIC** type.
         """
-        valid_domain = ctrl_dom.check_layer_vector_element(layer_vector_variable, element, value, domain,
-                                                           self.__domain)
-        if layer_vector_variable not in self.__variables.keys():
-            self.__variables[layer_vector_variable] = [{element: value}]
-        else:
-            ctrl_sol.vector_element_adding_available(layer_vector_variable, self.__variables, valid_domain)
-            if element in self.__variables[layer_vector_variable][-1].keys():
-                self.__variables[layer_vector_variable].append({element: value})
-            else:
-                self.__variables[layer_vector_variable][-1][element] = value
-
-        return valid_domain.get_remaining_available_layer_components(layer_vector_variable,
-                                                                     self.__variables[layer_vector_variable])
+        return Solution.__put_element(self.__variables, layer_vector_variable, element, value,
+                                      domain, self.__domain)
 
     def insert_element_to_layer_component(self, layer_vector_variable: str, index: int, element: str, value,
-                                          domain: Domain = None) -> int:
+                                          domain: Domain = None) -> list:
         """ It inserts a value in the **index**-nh position of a **VECTOR** variable. If the **VECTOR** variable
         does not exist, it will be created with the indicated value in the 0 position.
 
@@ -334,19 +275,8 @@ class Solution:
         :raise :py:class:`~pycvoa.problem.domain.WrongComponentType: The components of the **VECTOR** variable are not
         defined as a **BASIC** type.
         """
-        valid_domain = ctrl_dom.check_layer_vector_element(layer_vector_variable, element, value, domain,
-                                                           self.__domain)
-        if layer_vector_variable not in self.__variables:
-            self.__variables[layer_vector_variable] = [{element: value}]
-            r = valid_domain.get_remaining_available_basic_components(layer_vector_variable,
-                                                                      len(self.__variables[layer_vector_variable]))
-        else:
-            r = valid_domain.get_remaining_available_basic_components(layer_vector_variable,
-                                                                      len(self.__variables[layer_vector_variable]))
-            ctrl_sol.vector_adding_available(layer_vector_variable, r)
-            self.__variables[layer_vector_variable].insert(index, {element: value})
-            r -= 1
-        return r
+        return Solution.__put_element(self.__variables, layer_vector_variable, element, value, domain,
+                                      self.__domain, index)
 
     def set_element_of_layer_component(self, layer_vector_variable: str, index: int, element: str, value,
                                        domain: Domain = None):
@@ -789,6 +719,74 @@ class Solution:
         ctrl_dom.vector_type(vector_variable, domain, self.__domain)
         ctrl_sol.is_assigned_variable(vector_variable, self.__variables)
         return len(self.__variables.get(vector_variable))
+
+    # ** STATICS METHODS **
+
+    @staticmethod
+    def __put_basic(variables: dict,
+                    basic_vector_variable: str, value,
+                    external_domain: Domain, internal_domain: Domain,
+                    index: int = None):
+        valid_domain = ctrl_dom.check_basic_vector_value(basic_vector_variable, value, external_domain, internal_domain)
+        if basic_vector_variable not in variables:
+            variables[basic_vector_variable] = [value]
+            r = valid_domain.get_remaining_available_complete_components(basic_vector_variable,
+                                                                         len(variables[basic_vector_variable]))
+        else:
+            ctrl_sol.vector_insertion_available(basic_vector_variable, valid_domain, variables)
+            r = valid_domain.get_remaining_available_complete_components(basic_vector_variable,
+                                                                         len(variables[basic_vector_variable]))
+            ctrl_sol.vector_adding_available(basic_vector_variable, r)
+            if index is None:
+                variables[basic_vector_variable].append(value)
+            else:
+                variables[basic_vector_variable].insert(index, value)
+            r -= 1
+        return r
+
+    @staticmethod
+    def __put_layer(variables: dict, layer_vector_variable: str, layer_values: dict,
+                    external_domain: Domain, internal_domain: Domain,
+                    index: int = None):
+        current_domain = ctrl_dom.check_layer_vector_component(layer_vector_variable, layer_values,
+                                                               external_domain, internal_domain)
+        if layer_vector_variable not in variables.keys():
+            variables[layer_vector_variable] = [copy.deepcopy(layer_values)]
+            r = current_domain.get_remaining_available_complete_components(layer_vector_variable,
+                                                                           len(variables[layer_vector_variable]))
+        else:
+            r = current_domain.get_remaining_available_complete_components(layer_vector_variable,
+                                                                           len(variables[layer_vector_variable]))
+            ctrl_sol.vector_adding_available(layer_vector_variable, r)
+            if index is None:
+                variables[layer_vector_variable].append(copy.deepcopy(layer_values))
+            else:
+                variables[layer_vector_variable].insert(index, layer_values)
+            r -= 1
+        return r
+
+    @staticmethod
+    def __put_element(variables: dict,
+                      layer_vector_variable: str, element: str, value,
+                      external_domain: Domain, internal_domain: Domain,
+                      index: int = None) -> list:
+        valid_domain = ctrl_dom.check_layer_vector_element(layer_vector_variable, element, value, external_domain,
+                                                           internal_domain)
+        if layer_vector_variable not in variables.keys():
+            variables[layer_vector_variable] = [{element: value}]
+        else:
+            ctrl_sol.vector_element_adding_available(layer_vector_variable, variables, valid_domain)
+            if element in variables[layer_vector_variable][-1].keys():
+                variables[layer_vector_variable].append({element: value})
+            else:
+                if index is None:
+                    variables[layer_vector_variable][-1][element] = value
+                else:
+                    variables[layer_vector_variable].insert(index, {element: value})
+
+        return valid_domain.get_remaining_available_layer_components(layer_vector_variable,
+                                                                     len(variables[layer_vector_variable]),
+                                                                     variables[layer_vector_variable][-1])
 
     # ** TO STRING **
 
