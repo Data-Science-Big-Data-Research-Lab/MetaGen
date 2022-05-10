@@ -300,14 +300,13 @@ def is_defined_layer_vector_and_component_element_as_type(layer_vector_variable:
 # ================================================= OTHERS =========================================================== #
 # ==================================================================================================================== #
 
-def is_defined_element_item_definition(item_definition, element):
+def is_defined_element_item_definition(item_definition: dict, element: str):
     """ It checks if an element is defined in a **LAYER** variable, if not, raise
     py:class:`~pycvoa.problem.domain.NotDefinedItem`.
 
-    :param layer_variable: The variable.
+    :param item_definition: The variable.
     :param element: The element.
-    :param definitions: The definitions.
-    :type layer_variable: str
+    :type item_definition: str
     :type element: str
     """
     if element not in item_definition.keys():
@@ -315,7 +314,7 @@ def is_defined_element_item_definition(item_definition, element):
             "The element " + element + " is not defined in the LAYER variable.")
 
 
-def is_a_complete_layer(layer_definition, layer:dict):
+def is_a_complete_layer(layer_definition: str, layer: dict):
     if len(layer) < len(layer_definition):
         raise DefinitionError(
             "The layer " + str(layer) + " is not complete.")
