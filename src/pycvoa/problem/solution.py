@@ -302,6 +302,7 @@ class Solution:
         **VECTOR** variable is not available.
         :raise :py:class:`~pycvoa.problem.solution.WrongValue: The value is not valid.
         """
+        ctrl_par.is_int("index", index)
         ctrl_dom.check_layer_vector_element(layer_vector_variable, element, value, domain, self.__domain)
         if layer_vector_variable not in self.__variables.keys():
             self.__variables[layer_vector_variable] = [{element: value}]
@@ -309,40 +310,7 @@ class Solution:
             ctrl_sol.is_assigned_component(layer_vector_variable, index, self.__variables)
             self.__variables[layer_vector_variable][index][element] = value
 
-    # ** VECTOR REMOVES ***
-
-    def remove_component(self, vector_variable: str, domain=None):
-        """ It removes the last position of a **VECTOR** variable.
-
-        :param vector_variable: The name of the **VECTOR** variable to modify.
-        :param domain: The domain used to check the type, defaults to None.
-        :type vector_variable: str
-        :type domain: :py:class:`~pycvoa.problem.domain.Domain
-        :raise :py:class:`~pycvoa.problem.solution.NotSpecifiedDomain: The domain is not set.
-        :raise :py:class:`~pycvoa.problem.solution.NotInSolutionError: The variable is not in this solution.
-        :raise :py:class:`~pycvoa.problem.solution.WrongType: The variable is not defined as VECTOR.
-        """
-        valid_domain = ctrl_dom.domain_vector_type(vector_variable, domain, self.__domain)
-        ctrl_sol.assigned_vector_removal_available(vector_variable, self.__variables, valid_domain)
-        self.__variables[vector_variable].pop()
-
-    def delete_component(self, vector_variable: str, index: int, domain=None):
-        """ It removes a value in the **index**-nh position of a **VECTOR** variable.
-
-        :param vector_variable: The name of the **VECTOR** variable to modify.
-        :param index: The index.
-        :param domain: The domain used to check the type, defaults to None.
-        :type vector_variable: str
-        :type domain: :py:class:`~pycvoa.problem.domain.Domain
-        :raise :py:class:`~pycvoa.problem.solution.NotSpecifiedDomain: The domain is not set.
-        :raise :py:class:`~pycvoa.problem.solution.NotInSolutionError: The variable is not in this solution.
-        :raise :py:class:`~pycvoa.problem.solution.WrongType: The variable is not defined as **VECTOR**.
-        :raise :py:class:`~pycvoa.problem.solution.NotDefinedVectorComponentError: The **index**-nh component of the
-        **VECTOR** variable is not available.
-        """
-        valid_domain = ctrl_dom.domain_vector_type(vector_variable, domain, self.__domain)
-        ctrl_sol.assigned_vector_removal_available(vector_variable, self.__variables, valid_domain)
-        del self.__variables[vector_variable][index]
+    # ** SET VALUE METHOD
 
     def set_value(self, variable: str, value, index=None, element=None, domain=None):
         """ It sets a value of a variable.
@@ -395,6 +363,46 @@ class Solution:
             elif vector_definition is LAYER:
                 ctrl_par.element_not_none(variable, element, "a")
                 self.set_element_of_layer_component(variable, index, element, value, current_domain)
+
+    # ** VECTOR REMOVES ***
+
+    def remove_component(self, vector_variable: str, domain=None):
+        """ It removes the last position of a **VECTOR** variable.
+
+        :param vector_variable: The name of the **VECTOR** variable to modify.
+        :param domain: The domain used to check the type, defaults to None.
+        :type vector_variable: str
+        :type domain: :py:class:`~pycvoa.problem.domain.Domain
+        :raise :py:class:`~pycvoa.problem.solution.NotSpecifiedDomain: The domain is not set.
+        :raise :py:class:`~pycvoa.problem.solution.NotInSolutionError: The variable is not in this solution.
+        :raise :py:class:`~pycvoa.problem.solution.WrongType: The variable is not defined as VECTOR.
+        """
+        valid_domain = ctrl_dom.get_valid_domain(domain, self.__domain)
+        r = ctrl_sol.assigned_vector_removal_available(vector_variable, self.__variables, valid_domain)
+
+        self.__variables[vector_variable].pop()
+        return r
+
+    def delete_component(self, vector_variable: str, index: int, domain=None):
+        """ It removes a value in the **index**-nh position of a **VECTOR** variable.
+
+        :param vector_variable: The name of the **VECTOR** variable to modify.
+        :param index: The index.
+        :param domain: The domain used to check the type, defaults to None.
+        :type vector_variable: str
+        :type domain: :py:class:`~pycvoa.problem.domain.Domain
+        :raise :py:class:`~pycvoa.problem.solution.NotSpecifiedDomain: The domain is not set.
+        :raise :py:class:`~pycvoa.problem.solution.NotInSolutionError: The variable is not in this solution.
+        :raise :py:class:`~pycvoa.problem.solution.WrongType: The variable is not defined as **VECTOR**.
+        :raise :py:class:`~pycvoa.problem.solution.NotDefinedVectorComponentError: The **index**-nh component of the
+        **VECTOR** variable is not available.
+        """
+        ctrl_par.is_int("index", index)
+        valid_domain = ctrl_dom.get_valid_domain(domain, self.__domain)
+        r = ctrl_sol.assigned_vector_removal_available(vector_variable, self.__variables, valid_domain)
+        ctrl_sol.is_assigned_component(vector_variable, index, self.__variables)
+        del self.__variables[vector_variable][index]
+        return r
 
     # ** IS METHODS ***
 
@@ -776,17 +784,23 @@ class Solution:
             variables[layer_vector_variable] = [{element: value}]
         else:
             ctrl_sol.vector_element_adding_available(layer_vector_variable, variables, valid_domain)
-            if element in variables[layer_vector_variable][-1].keys():
-                variables[layer_vector_variable].append({element: value})
+            if index is None:
+                valid_index = -1
             else:
+                ctrl_par.is_int("index", index)
+                valid_index = index
+
+            if element in variables[layer_vector_variable][valid_index].keys():
                 if index is None:
-                    variables[layer_vector_variable][-1][element] = value
+                    variables[layer_vector_variable].append({element: value})
                 else:
                     variables[layer_vector_variable].insert(index, {element: value})
+            else:
+                variables[layer_vector_variable][valid_index][element] = value
 
         return valid_domain.get_remaining_available_layer_components(layer_vector_variable,
                                                                      len(variables[layer_vector_variable]),
-                                                                     variables[layer_vector_variable][-1])
+                                                                     variables[layer_vector_variable][valid_index])
 
     # ** TO STRING **
 
