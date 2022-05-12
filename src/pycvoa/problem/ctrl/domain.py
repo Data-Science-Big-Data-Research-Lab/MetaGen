@@ -112,7 +112,7 @@ def check_layer_vector_element(layer_vector_variable, element, value, external_d
     if not valid_domain.check_vector_layer_element_value(layer_vector_variable, element, value):
         raise ValueError(
             "The value " + str(value) + " is not valid for the " + str(element) + " element in the "
-            + str(layer_vector_variable) + "variable.")
+            + str(layer_vector_variable) + " variable.")
     return valid_domain
 
 
