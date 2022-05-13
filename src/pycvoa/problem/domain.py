@@ -1,6 +1,8 @@
 import copy
+from typing import Optional, Union
 
-from pycvoa.problem.ctrl import parameter as ctrl_par
+from pycvoa.problem.ctrl import parameter as ctrl_par, OptInt, OptFloat, CategoryList, NumericalList, OptDict, \
+    IntOrIntList, OptStr, SupportedValues, BasicValue
 from pycvoa.problem.ctrl import definition as ctrl_def
 from pycvoa.problem.types import *
 
@@ -71,8 +73,7 @@ class Domain:
         self.__definitions = {}
 
     # **** DEFINE BASIC VARIABLE METHODS ****
-
-    def define_integer(self, variable_name: str, min_value: int, max_value: int, step: int = None):
+    def define_integer(self, variable_name: str, min_value: int, max_value: int, step: OptInt = None):
         """ It defines an **INTEGER** variable receiving the variable name, the minimum and maximum values that it will
         be able to have, and the step size to traverse the interval.
 
@@ -96,7 +97,7 @@ class Domain:
         ctrl_def.not_defined_variable(variable_name, self.__definitions)
         self.__definitions[variable_name] = [INTEGER, min_value, max_value, valid_step]
 
-    def define_real(self, variable_name: str, min_value: float, max_value: float, step: float = None):
+    def define_real(self, variable_name: str, min_value: float, max_value: float, step: OptFloat = None):
         """ It defines a **REAL** variable receiving the variable name, the minimum and maximum values that it will be
         able to have, and the step size to traverse the interval.
 
@@ -120,7 +121,7 @@ class Domain:
         ctrl_def.not_defined_variable(variable_name, self.__definitions)
         self.__definitions[variable_name] = [REAL, min_value, max_value, valid_step]
 
-    def define_categorical(self, variable_name: str, categories: list):
+    def define_categorical(self, variable_name: str, categories: CategoryList):
         """ It defines a **CATEGORICAL** variable receiving the variable name, and a list with the categories that it
         will be able to have.
 
@@ -156,12 +157,11 @@ class Domain:
         :type variable_name: str
         :raise :py:class:`~pycvoa.problem.domain.DefinitionError`: The variable name is already used.
         """
-        ctrl_par.is_string("variable_name", variable_name)
         ctrl_def.not_defined_variable(variable_name, self.__definitions)
         self.__definitions[variable_name] = [LAYER, {}]
 
     def define_integer_element(self, layer_variable: str, element_name: str, min_value: int, max_value: int,
-                               step: int = None):
+                               step: OptInt = None):
         """ It defines an **INTEGER** element into a **LAYER** variable by receiving the minimum and
         maximum values that it will be able to have, and the step size to traverse the interval.
 
@@ -191,7 +191,7 @@ class Domain:
         self.__definitions[layer_variable][1][element_name] = [INTEGER, min_value, max_value, valid_step]
 
     def define_real_element(self, layer_variable: str, element_name: str, min_value: float, max_value: float,
-                            step: float = None):
+                            step: OptFloat = None):
         """ It defines a **REAL** element into a **LAYER** variable by receiving the minimum and
         maximum values that it will be able to have, and the step size to traverse the interval.
 
@@ -220,7 +220,7 @@ class Domain:
         ctrl_def.is_defined_layer_without_element(layer_variable, element_name, self.__definitions)
         self.__definitions[layer_variable][1][element_name] = [REAL, min_value, max_value, valid_step]
 
-    def define_categorical_element(self, layer_variable: str, element_name: str, categories: list):
+    def define_categorical_element(self, layer_variable: str, element_name: str, categories: CategoryList):
         """ It defines a **CATEGORICAL** element into a **LAYER** variable by receiving a list with
         the categories that it will be able to have.
 
@@ -246,7 +246,7 @@ class Domain:
 
     # **** DEFINE BASIC VECTOR VARIABLE METHODS ****
 
-    def define_vector(self, variable_name: str, min_size: int, max_size: int, step_size: int = None):
+    def define_vector(self, variable_name: str, min_size: int, max_size: int, step_size: OptInt = None):
         """ It defines a **VECTOR** variable receiving the variable name, the minimum and maximum size that it will be
         able to have, and the step size to select the size from the :math:`[min\_size, max\_size]`. Afterwards,
         the type of the components of the **VECTOR** variable must be set using the following methods:
@@ -277,7 +277,8 @@ class Domain:
         ctrl_def.not_defined_variable(variable_name, self.__definitions)
         self.__definitions[variable_name] = [VECTOR, min_size, max_size, valid_step_size, {}]
 
-    def define_components_as_integer(self, vector_variable: str, min_value: int, max_value: int, step: int = None):
+    def define_components_as_integer(self, vector_variable: str, min_value: int, max_value: int,
+                                     step: OptInt = None):
         """ It defines the components of a **VECTOR** variable as **INTEGER** by receiving the minimum and
         maximum values that it will be able to have, and the step size to traverse the interval.
 
@@ -304,7 +305,8 @@ class Domain:
         ctrl_def.is_defined_vector_without_components(vector_variable, self.__definitions)
         self.__definitions[vector_variable][4] = [INTEGER, min_value, max_value, valid_step]
 
-    def define_components_as_real(self, vector_variable: str, min_value: float, max_value: float, step: float = None):
+    def define_components_as_real(self, vector_variable: str, min_value: float, max_value: float,
+                                  step: OptFloat = None):
         """ It defines the components of a **VECTOR** variable as **REAL** by receiving the minimum and
         maximum values that it will be able to have, and the step size to traverse the interval.
 
@@ -331,7 +333,8 @@ class Domain:
         ctrl_def.is_defined_vector_without_components(vector_variable, self.__definitions)
         self.__definitions[vector_variable][4] = [REAL, min_value, max_value, valid_step]
 
-    def define_components_as_categorical(self, vector_variable: str, categories: list):
+    def define_components_as_categorical(self, vector_variable: str,
+                                         categories: CategoryList):
         """ It defines the components of a **VECTOR** variable as **CATEGORICAL** by receiving a list with
         the categories that it will be able to have.
 
@@ -373,12 +376,11 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.WrongItemType`: The variable is not defined as **VECTOR**.
         :raise :py:class:`~pycvoa.problem.domain.DefinitionError`: The component type is already defined.
         """
-        ctrl_par.is_string("vector_variable", vector_variable)
         ctrl_def.is_defined_vector_without_components(vector_variable, self.__definitions)
         self.__definitions[vector_variable][4] = [LAYER, {}]
 
     def define_layer_vector_integer_element(self, layer_vector_variable: str, element_name: str, min_value: int,
-                                            max_value: int, step: int = None):
+                                            max_value: int, step: OptInt = None):
         """ It defines an **INTEGER** element of a **VECTOR** variable where its components are defined as **LAYER**.
         The element is defined by receiving the minimum and maximum values that it will be able to have, and the step
         size to traverse the interval.
@@ -413,7 +415,7 @@ class Domain:
         self.__definitions[layer_vector_variable][4][1][element_name] = [INTEGER, min_value, max_value, valid_step]
 
     def define_layer_vector_real_element(self, layer_vector_variable: str, element_name: str, min_value: float,
-                                         max_value: float, step: float = None):
+                                         max_value: float, step: OptFloat = None):
         """ It defines a **REAL** element of a **VECTOR** variable where its components are defined as **LAYER**.
         The element is defined by receiving the minimum and maximum values that it will be able to have, and the step
         size to traverse the interval.
@@ -447,7 +449,8 @@ class Domain:
         ctrl_def.is_defined_layer_vector_without_element(layer_vector_variable, element_name, self.__definitions)
         self.__definitions[layer_vector_variable][4][1][element_name] = [REAL, min_value, max_value, valid_step]
 
-    def define_layer_vector_categorical_element(self, layer_vector_variable: str, element_name: str, categories: list):
+    def define_layer_vector_categorical_element(self, layer_vector_variable: str, element_name: str,
+                                                categories: CategoryList):
         """ It defines a **CATEGORICAL** element of a **VECTOR** variable where its components are defined as **LAYER**.
         The element is defined by receiving a list with the categories that it will be able to have.
 
@@ -483,10 +486,10 @@ class Domain:
         :returns: True if the variable is defined in the domain, otherwise False.
         :rtype: bool
         """
-        ctrl_par.is_string("variable", variable)
-        r = False
         if variable in self.__definitions.keys():
             r = True
+        else:
+            r = False
         return r
 
     def is_defined_element(self, layer_variable: str, element: str) -> bool:
@@ -505,7 +508,6 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.NotDefinedItem`: The variable is not the defined in the domain.
         :raise :py:class:`~pycvoa.problem.domain.WrongItemType`: The variable is not defined as **LAYER**.
         """
-        ctrl_par.are_string("layer_variable", layer_variable, "element", element)
         ctrl_def.is_defined_variable_as_type(layer_variable, LAYER, self.__definitions)
         r = False
         if element in self.__definitions[layer_variable][1].keys():
@@ -526,7 +528,6 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.NotDefinedItem`: The variable is not the defined in the domain.
         :raise :py:class:`~pycvoa.problem.domain.WrongItemType`: The variable is not defined as **LAYER**.
         """
-        ctrl_par.is_string("vector_variable", vector_variable)
         ctrl_def.is_defined_variable_as_type(vector_variable, VECTOR, self.__definitions)
         r = False
         if len(self.__definitions[vector_variable][4]) > 0:
@@ -548,7 +549,6 @@ class Domain:
         :rtype: **INTEGER**, **REAL**, **CATEGORICAL**, **LAYER** or **VECTOR**
         :raise :py:class:`~pycvoa.problem.domain.NotDefinedItem`: The variable is not the defined in the domain.
         """
-        ctrl_par.is_string("variable", variable)
         ctrl_def.is_defined_variable(variable, self.__definitions)
         return self.__definitions[variable][0]
 
@@ -570,7 +570,6 @@ class Domain:
         element is not defined in the **LAYER** variable.
         :raise :py:class:`~pycvoa.problem.domain.WrongItemType`: The variable is not defined as **LAYER**.
         """
-        ctrl_par.are_string("layer_variable", layer_variable, "element", element)
         ctrl_def.is_defined_layer_with_element(layer_variable, element, self.__definitions)
         return self.__definitions[layer_variable][1][element][0]
 
@@ -590,12 +589,10 @@ class Domain:
         the component type is not defined.
         :raise :py:class:`~pycvoa.problem.domain.WrongItemType`: The variable is not defined as **VECTOR**.
         """
-        ctrl_par.is_string("vector_variable", vector_variable)
         ctrl_def.is_defined_vector_with_components(vector_variable, self.__definitions)
         return self.__definitions[vector_variable][4][0]
 
     def get_layer_vector_component_element_type(self, layer_vector_variable: str, element: str) -> str:
-        ctrl_par.are_string("layer_vector_variable", layer_vector_variable, "element", element)
         ctrl_def.is_defined_layer_vector_with_element(layer_vector_variable, element, self.__definitions)
         return self.__definitions[layer_vector_variable][4][1][element][0]
 
@@ -618,7 +615,7 @@ class Domain:
         """
         return self.__definitions.items()
 
-    def get_variable_list(self) -> list:
+    def get_variable_list(self) -> list[str]:
         """ Get a list with the defined variables. It is useful to iterate throw the registered variables
         using a for loop.
 
@@ -640,13 +637,12 @@ class Domain:
         :rtype: list
         :raise :py:class:`~pycvoa.problem.domain.NotDefinedItem`: The variable is not the defined in the domain.
         """
-        ctrl_par.is_string("variable", variable)
         ctrl_def.is_defined_variable(variable, self.__definitions)
         return self.__definitions[variable]
 
     # **** GET ELEMENT DEFINITION METHODS ***
 
-    def get_element_list(self, layer_variable: str) -> list:
+    def get_element_list(self, layer_variable: str) -> list[str]:
         """ Get a list with the elements of a registered **LAYER** variable. It is useful to iterate throw
         the elements of a registered **LAYER** variable using a for loop.
 
@@ -661,7 +657,6 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.NotDefinedItem`: The variable is not the defined in the domain.
         :raise :py:class:`~pycvoa.problem.domain.WrongItemType`: The variable is not defined as **LAYER**.
         """
-        ctrl_par.is_string("layer_variable", layer_variable)
         ctrl_def.is_defined_variable_as_type(layer_variable, LAYER, self.__definitions)
         return list(self.__definitions[layer_variable][1].keys())
 
@@ -683,7 +678,6 @@ class Domain:
         The element is not defined.
         :raise :py:class:`~pycvoa.problem.domain.WrongItemType`: The variable is not defined as **LAYER**.
         """
-        ctrl_par.are_string("layer_variable", layer_variable, "element", element)
         ctrl_def.is_defined_layer_with_element(layer_variable, element, self.__definitions)
         return self.__definitions[layer_variable][1][element]
 
@@ -705,11 +699,10 @@ class Domain:
         the component type is not defined.
         :raise :py:class:`~pycvoa.problem.domain.WrongItemType`: The variable is not defined as **VECTOR**.
         """
-        ctrl_par.is_string("vector_variable", vector_variable)
         ctrl_def.is_defined_vector_with_components(vector_variable, self.__definitions)
         return self.__definitions[vector_variable][4]
 
-    def get_component_element_list(self, layer_vector_variable: str) -> list:
+    def get_component_element_list(self, layer_vector_variable: str) -> list[str]:
         """ Get a list with the elements of a registered **VECTOR** variable registered as **LAYER**. It is useful to
         iterate throw the elements of the layers in a registered **LAYER** variable using a for loop.
 
@@ -727,7 +720,6 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.WrongItemType`: The variable is not defined as **VECTOR**.
         The component type is not defined as **LAYER**.
         """
-        ctrl_par.is_string("layer_vector_variable", layer_vector_variable)
         ctrl_def.is_defined_vector_and_components_as_type(layer_vector_variable, LAYER, self.__definitions)
         return list(self.__definitions[layer_vector_variable][4][1].keys())
 
@@ -751,63 +743,52 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.WrongItemType`: The variable is not defined as **VECTOR**.
         The component type is not defined as **LAYER**.
         """
-        ctrl_par.are_string("layer_vector_variable", layer_vector_variable, "element", element)
         ctrl_def.is_defined_layer_vector_and_component_element(layer_vector_variable, element, self.__definitions)
         return self.__definitions[layer_vector_variable][4][1][element]
 
     # **** GET DEFINITION ITEMS ***
 
-    def get_numerical_variable_attributes(self, numerical_variable: str) -> list:
-        ctrl_par.is_string("numerical_variable", numerical_variable)
+    def get_numerical_variable_attributes(self, numerical_variable: str) -> NumericalList:
         ctrl_def.is_defined_variable_as_type(numerical_variable, NUMERICAL, self.__definitions)
         return [self.__definitions[numerical_variable][1], self.__definitions[numerical_variable][2],
                 self.__definitions[numerical_variable][3]]
 
-    def get_categorical_variable_attributes(self, categorical_variable: str) -> list:
-        ctrl_par.is_string("categorical_variable", categorical_variable)
+    def get_categorical_variable_attributes(self, categorical_variable: str) -> CategoryList:
         ctrl_def.is_defined_variable_as_type(categorical_variable, CATEGORICAL, self.__definitions)
         return copy.deepcopy(self.__definitions[categorical_variable][1])
 
-    def get_numerical_element_attributes(self, layer_variable: str, numerical_element: str) -> list:
-        ctrl_par.are_string("layer_variable", layer_variable, "numerical_element", numerical_element)
+    def get_numerical_element_attributes(self, layer_variable: str, numerical_element: str) -> NumericalList:
         ctrl_def.is_defined_layer_and_element_as_type(layer_variable, numerical_element, NUMERICAL, self.__definitions)
         return [self.__definitions[layer_variable][1][numerical_element][1],
                 self.__definitions[layer_variable][1][numerical_element][2],
                 self.__definitions[layer_variable][1][numerical_element][3]]
 
-    def get_categorical_element_attributes(self, layer_variable: str, categorical_element: str) -> list:
-        ctrl_par.are_stringctrl_par.are_string("layer_variable", layer_variable,
-                                               "categorical_element", categorical_element)
+    def get_categorical_element_attributes(self, layer_variable: str, categorical_element: str) -> CategoryList:
         ctrl_def.is_defined_layer_and_element_as_type(layer_variable, categorical_element, CATEGORICAL,
                                                       self.__definitions)
         return copy.deepcopy(self.__definitions[layer_variable][1][categorical_element][1])
 
-    def get_vector_variable_attributes(self, vector_variable: str) -> list:
-        ctrl_par.is_string("vector_variable", vector_variable)
+    def get_vector_variable_attributes(self, vector_variable: str) -> list[int]:
         ctrl_def.is_defined_variable_as_type(vector_variable, VECTOR, self.__definitions)
         return [self.__definitions[vector_variable][1], self.__definitions[vector_variable][2],
                 self.__definitions[vector_variable][3]]
 
-    def get_numerical_components_attributes(self, numerical_vector_variable: str) -> list:
-        ctrl_par.is_string("numerical_vector_variable", numerical_vector_variable)
+    def get_numerical_components_attributes(self, numerical_vector_variable: str) -> NumericalList:
         ctrl_def.is_defined_vector_and_components_as_type(numerical_vector_variable, NUMERICAL, self.__definitions)
         return [self.__definitions[numerical_vector_variable][4][1],
                 self.__definitions[numerical_vector_variable][4][2],
                 self.__definitions[numerical_vector_variable][4][3]]
 
-    def get_categorical_components_attributes(self, categorical_vector_variable: str) -> list:
-        ctrl_par.is_string("categorical_vector_variable", categorical_vector_variable)
+    def get_categorical_components_attributes(self, categorical_vector_variable: str) -> CategoryList:
         ctrl_def.is_defined_vector_and_components_as_type(categorical_vector_variable, CATEGORICAL, self.__definitions)
         return copy.deepcopy(self.__definitions[categorical_vector_variable][4][1])
 
-    def get_layer_components_attributes(self, layer_vector_variable: str) -> list:
-        ctrl_par.is_string("layer_vector_variable", layer_vector_variable)
+    def get_layer_components_attributes(self, layer_vector_variable: str) -> dict:
         ctrl_def.is_defined_vector_and_components_as_type(layer_vector_variable, LAYER, self.__definitions)
         return copy.deepcopy(self.__definitions[layer_vector_variable][4][1])
 
-    def get_layer_vector_numerical_element_attributes(self, layer_vector_variable: str, numerical_element: str) -> list:
-        ctrl_par.are_string("layer_vector_variable", layer_vector_variable,
-                            "numerical_element", numerical_element)
+    def get_layer_vector_numerical_element_attributes(self, layer_vector_variable: str,
+                                                      numerical_element: str) -> NumericalList:
         ctrl_def.is_defined_layer_vector_and_component_element_as_type(layer_vector_variable, numerical_element,
                                                                        NUMERICAL, self.__definitions)
         return [self.__definitions[layer_vector_variable][4][1][numerical_element][1],
@@ -815,9 +796,7 @@ class Domain:
                 self.__definitions[layer_vector_variable][4][1][numerical_element][3]]
 
     def get_layer_vector_categorical_attributes(self, layer_vector_variable: str,
-                                                categorical_element: str) -> list:
-        ctrl_par.are_string("layer_vector_variable", layer_vector_variable,
-                            "categorical_element", categorical_element)
+                                                categorical_element: str) -> CategoryList:
         ctrl_def.is_defined_layer_vector_and_component_element_as_type(layer_vector_variable, categorical_element,
                                                                        CATEGORICAL, self.__definitions)
         return copy.deepcopy(self.__definitions[layer_vector_variable][4][1][categorical_element][1])
@@ -825,15 +804,11 @@ class Domain:
     # **** GET AVAILABLE COMPONENTS ***
 
     def get_remaining_available_complete_components(self, basic_vector_variable: str, current_vector_size: int) -> int:
-        ctrl_par.is_string("basic_vector_variable", basic_vector_variable)
-        ctrl_par.is_int("current_vector_size", current_vector_size)
         ctrl_def.is_defined_vector_with_components(basic_vector_variable, self.__definitions)
         return Domain.__available_size(basic_vector_variable, current_vector_size, self.__definitions)
 
     def get_remaining_available_layer_components(self, layer_vector_variable: str, current_vector_size: int,
                                                  layer_value: dict) -> list:
-        ctrl_par.is_string("layer_vector_variable", layer_vector_variable)
-        ctrl_par.is_int("current_vector_size", current_vector_size)
         ctrl_def.is_defined_vector_and_components_as_type(layer_vector_variable, LAYER, self.__definitions)
         e_s = len(layer_value.keys() & self.__definitions[layer_vector_variable][4][1].keys())
         if e_s == 0:
@@ -841,12 +816,10 @@ class Domain:
         else:
             valid_vector_size = current_vector_size - 1
         v_s = Domain.__available_size(layer_vector_variable, valid_vector_size, self.__definitions)
-        return [v_s, len(self.__definitions[layer_vector_variable][4][1].keys())-e_s]
+        return [v_s, len(self.__definitions[layer_vector_variable][4][1].keys()) - e_s]
 
     def get_remaining_available_components(self, vector_variable: str, current_vector_size: int,
-                                           layer_value: dict = None):
-        ctrl_par.is_string("vector_variable", vector_variable)
-        ctrl_par.is_int("current_vector_size", current_vector_size)
+                                           layer_value: OptDict = None) -> IntOrIntList:
         ctrl_def.is_defined_vector_with_components(vector_variable, self.__definitions)
         cmp_type = self.__definitions[vector_variable][4][1]
         r = 0
@@ -855,7 +828,6 @@ class Domain:
             r = Domain.__available_size(vector_variable, current_vector_size, self.__definitions)
         elif cmp_type is LAYER:
             ctrl_par.assigned_elements_not_none("layer_value", layer_value)
-            ctrl_par.is_dict("layer_value", layer_value)
             if not Domain.__check_layer_element_values(self.__definitions[vector_variable][4], layer_value, False):
                 raise ValueError("The layer values are not compatible with the LAYER VECTOR component definition")
             else:
@@ -870,7 +842,7 @@ class Domain:
 
     # **** CHECK METHODS ***
 
-    def check_basic(self, basic_variable: str, value) -> bool:
+    def check_basic(self, basic_variable: str, value: BasicValue) -> bool:
         """ It checks if a value of a **BASIC** variable fulfills its definition in the domain.
 
         **Preconditions:**
@@ -886,16 +858,14 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.NotDefinedItem`: The variable is not the defined in the domain.
         :raise :py:class:`~pycvoa.problem.domain.WrongItemType`: The variable is not defined as **BASIC**.
         """
-        ctrl_par.is_string("basic_variable", basic_variable)
         ctrl_def.is_defined_variable_as_type(basic_variable, BASIC, self.__definitions)
         return Domain.__check_basic_value_item(self.__definitions[basic_variable], value)
 
     def check_layer(self, layer_variable: str, layer_values: dict) -> bool:
-        ctrl_par.is_string("layer_variable", layer_variable)
         ctrl_def.is_defined_variable_as_type(layer_variable, LAYER, self.__definitions)
         return Domain.__check_layer_element_values(self.__definitions[layer_variable][1], layer_values)
 
-    def check_element(self, layer_variable: str, element: str, value) -> bool:
+    def check_element(self, layer_variable: str, element: str, value: BasicValue) -> bool:
         """ It checks if a value for an element of a **LAYER** variable fulfills its definition in the domain.
 
         **Preconditions:**
@@ -915,7 +885,6 @@ class Domain:
         The element is not defined.
         :raise :py:class:`~pycvoa.problem.domain.WrongItemType`: The variable is not defined as **BASIC**.
         """
-        ctrl_par.are_string("layer_variable", layer_variable, "element", element)
         ctrl_def.is_defined_layer_with_element(layer_variable, element, self.__definitions)
         return Domain.__check_basic_value_item(self.__definitions[layer_variable][1][element], value)
 
@@ -940,7 +909,6 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.WrongItemType`: The variable is not defined as **VECTOR**.
         The component type is not **BASIC**.
         """
-        ctrl_par.is_string("basic_vector_variable", basic_vector_variable)
         ctrl_def.is_defined_vector_and_components_as_type(basic_vector_variable, BASIC, self.__definitions)
         return Domain.__check_basic_value_item(self.__definitions[basic_vector_variable][4], value)
 
@@ -959,8 +927,6 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.NotDefinedItem`: The variable is not the defined in the domain.
         :raise :py:class:`~pycvoa.problem.domain.WrongItemType`: The variable is not defined as **LAYER**.
         """
-        ctrl_par.is_string("vector_variable", vector_variable)
-        ctrl_par.is_list("values", values)
         ctrl_def.is_defined_variable_as_type(vector_variable, VECTOR, self.__definitions)
         r = False
         if self.__definitions[vector_variable][1] <= len(values) <= self.__definitions[vector_variable][2]:
@@ -968,8 +934,6 @@ class Domain:
         return r
 
     def check_vector_basic_values(self, basic_vector_variable: str, values: list) -> bool:
-        ctrl_par.is_string("basic_vector_variable", basic_vector_variable)
-        ctrl_par.is_list("values", values)
         ctrl_def.is_defined_vector_and_components_as_type(basic_vector_variable, BASIC, self.__definitions)
         ctrl_def.check_vector_values_size(basic_vector_variable, values, self.__definitions)
         return Domain.__check_vector_basic_values(self.__definitions[basic_vector_variable][4], values)
@@ -996,24 +960,19 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.WrongItemType`: The variable is not defined as **VECTOR**.
         The component type is not defined as **LAYER**.
         """
-        ctrl_par.are_string("layer_vector_variable", layer_vector_variable, "element", element)
         ctrl_def.is_defined_layer_vector_with_element(layer_vector_variable, element, self.__definitions)
         return Domain.__check_basic_value_item(self.__definitions[layer_vector_variable][4][1][element], value)
 
     def check_vector_layer_elements_values(self, layer_vector_variable: str, layer_values: dict) -> bool:
-        ctrl_par.is_string("layer_vector_variable", layer_vector_variable)
-        ctrl_par.is_dict("layer_values", layer_values)
         ctrl_def.is_defined_vector_and_components_as_type(layer_vector_variable, LAYER, self.__definitions)
         return Domain.__check_layer_element_values(self.__definitions[layer_vector_variable][4][1], layer_values)
 
-    def check_vector_layer_values(self, layer_vector_variable: str, values: list) -> bool:
-        ctrl_par.is_string("layer_vector_variable", layer_vector_variable)
-        ctrl_par.is_list_of_dict("values", values)
+    def check_vector_layer_values(self, layer_vector_variable: str, values: list[dict]) -> bool:
         ctrl_def.is_defined_vector_and_components_as_type(layer_vector_variable, LAYER, self.__definitions)
         ctrl_def.check_vector_values_size(layer_vector_variable, values, self.__definitions)
         return Domain.__check_vector_layer_element_values(self.__definitions[layer_vector_variable][4][1], values)
 
-    def check_value(self, variable: str, values, element=None) -> bool:
+    def check_value(self, variable: str, values: SupportedValues, element: OptStr = None) -> bool:
         """ It checks if a value of a defined variable fulfills its definition in the domain.
 
         **Preconditions:**
@@ -1038,7 +997,6 @@ class Domain:
         An element name is not provided when a **VECTOR** variable, whose components are defined as ***LAYER**,
         are checked.
         """
-        ctrl_par.is_string("variable", variable)
         ctrl_def.is_defined_variable(variable, self.__definitions)
         r = False
         if self.__definitions[variable][0] in BASIC:
@@ -1104,7 +1062,7 @@ class Domain:
         return res
 
     @staticmethod
-    def __basic_definition_to_string(variable, definition):
+    def __basic_definition_to_string(variable: str, definition: list):
         """ Get a string representation of the definition of a **REAL**, **INTEGER** or **CATEGORICAL** variable.
 
             :param variable: Variable name.
@@ -1123,17 +1081,17 @@ class Domain:
         return res
 
     @staticmethod
-    def __layer_definition_to_string(variable_name, definition):
+    def __layer_definition_to_string(variable: str, definition: list):
         """ Get a string representation of the definition of a **LAYER** variable.
 
-            :param variable_name: Variable name.
+            :param variable: Variable name.
             :param definition: Definition of the variable.
-            :type variable_name: str
+            :type variable: str
             :type definition: list
             :returns: A string representation of the input LAYER variable.
             :rtype: str
             """
-        res = "[" + definition[0] + "] " + variable_name + " "
+        res = "[" + definition[0] + "] " + variable + " "
         res += "\n"
         cnt = 1
         for element, element_definition in definition[1].items():
@@ -1144,17 +1102,17 @@ class Domain:
         return res
 
     @staticmethod
-    def __vector_definition_to_string(variable_name, definition):
+    def __vector_definition_to_string(variable: str, definition: list):
         """ Get a string representation of the definition of a **VECTOR** variable.
 
-        :param variable_name: Variable name.
+        :param variable: Variable name.
         :param definition: Definition of the variable.
-        :type variable_name: str
+        :type variable: str
         :type definition: list
         :returns: A string representation of the input VECTOR variable.
         :rtype: str
         """
-        res = "[" + definition[0] + "] " + variable_name + " {Minimum size = " + str(definition[1]) + \
+        res = "[" + definition[0] + "] " + variable + " {Minimum size = " + str(definition[1]) + \
               ", Maximum size = " + str(definition[2]) + ", Step size = " \
               + str(definition[3]) + "}"
 
@@ -1181,18 +1139,18 @@ class Domain:
         return res
 
     @staticmethod
-    def __check_basic_value_item(item_definition, values):
+    def __check_basic_value_item(item_definition: list, value: int | float | str):
         r = False
         if item_definition[0] in INTEGER:
-            if type(values) == int:
-                if item_definition[1] <= values <= item_definition[2]:
+            if type(value) == int:
+                if item_definition[1] <= value <= item_definition[2]:
                     r = True
         elif item_definition[0] in REAL:
-            if type(values) == float:
-                if item_definition[1] <= values <= item_definition[2]:
+            if type(value) == float:
+                if item_definition[1] <= value <= item_definition[2]:
                     r = True
         elif item_definition[0] is CATEGORICAL:
-            if values in item_definition[1]:
+            if value in item_definition[1]:
                 r = True
         return r
 

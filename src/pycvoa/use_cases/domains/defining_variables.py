@@ -20,7 +20,7 @@ domain = Domain()
 
 # To define a INTEGER variable "I", in the interval [0, 100] and step 50 (that is, in a random selection, the available
 # values will be {0, 50, 100}):
-domain.define_integer("I", 0, 100, 20)
+domain.define_integer(1, 0, 100, 20)
 # If the step is not provided, it is set to the default value ((maximum value - minimum value) / 2)
 # domain.define_integer("I", 0, 100)
 # print(str(domain))
