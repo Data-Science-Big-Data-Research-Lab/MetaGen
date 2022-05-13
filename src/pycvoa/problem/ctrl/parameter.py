@@ -1,97 +1,98 @@
 import math
+from typing import Optional
 
 import pycvoa
 
 
 # =========================================== SINGLE TYPES ============================================================#
 
-def is_string(parameter_name: str, value):
-    if type(value) != str:
-        raise TypeError("The " + parameter_name + " parameter must be <str>.")
+# def is_string(parameter_name: str, value):
+#     if type(value) != str:
+#         raise TypeError("The " + parameter_name + " parameter must be <str>.")
+
+#
+# def are_string(parameter_name_1: str, value_1, parameter_name_2: str, value_2):
+#     if type(value_1) != str and type(value_2) == str:
+#         raise TypeError("The " + parameter_name_1 + " parameter must be <str>.")
+#     elif type(value_1) == str and type(value_2) != str:
+#         raise TypeError("The " + parameter_name_2 + " parameter must be <str>.")
+#     elif type(value_1) != str and type(value_2) != str:
+#         raise TypeError("The " + parameter_name_1 + " and " + parameter_name_2 + " parameters must be <str>.")
 
 
-def are_string(parameter_name_1: str, value_1, parameter_name_2: str, value_2):
-    if type(value_1) != str and type(value_2) == str:
-        raise TypeError("The " + parameter_name_1 + " parameter must be <str>.")
-    elif type(value_1) == str and type(value_2) != str:
-        raise TypeError("The " + parameter_name_2 + " parameter must be <str>.")
-    elif type(value_1) != str and type(value_2) != str:
-        raise TypeError("The " + parameter_name_1 + " and " + parameter_name_2 + " parameters must be <str>.")
+# def is_int(parameter_name: str, value):
+#     if type(value) != int:
+#         raise TypeError("The " + parameter_name + " parameter must be <int>.")
+#
+#
+# def is_optional_int(parameter_name: str, value):
+#     if value is not None:
+#         if type(value) != int:
+#             raise TypeError("The " + parameter_name + " parameter must be <int>.")
+#
+#
+# def are_int(parameter_name_1: str, value_1, parameter_name_2: str, value_2):
+#     if type(value_1) != int and type(value_2) == int:
+#         raise TypeError("The " + parameter_name_1 + " parameter must be <int>.")
+#     elif type(value_1) == int and type(value_2) != int:
+#         raise TypeError("The " + parameter_name_2 + " parameter must be <int>.")
+#     elif type(value_1) != int and type(value_2) != int:
+#         raise TypeError("The " + parameter_name_1 + " and " + parameter_name_2 + " parameters must be <int>.")
+#
+#
+# def is_float(parameter_name: str, value):
+#     if type(value) != float:
+#         raise TypeError("The " + parameter_name + " parameter must be <float>.")
 
 
-def is_int(parameter_name: str, value):
-    if type(value) != int:
-        raise TypeError("The " + parameter_name + " parameter must be <int>.")
+# def is_optional_float(parameter_name: str, value):
+#     if value is not None:
+#         if type(value) != float:
+#             raise TypeError("The " + parameter_name + " parameter must be <float>.")
 
 
-def is_optional_int(parameter_name: str, value):
-    if value is not None:
-        if type(value) != int:
-            raise TypeError("The " + parameter_name + " parameter must be <int>.")
-
-
-def are_int(parameter_name_1: str, value_1, parameter_name_2: str, value_2):
-    if type(value_1) != int and type(value_2) == int:
-        raise TypeError("The " + parameter_name_1 + " parameter must be <int>.")
-    elif type(value_1) == int and type(value_2) != int:
-        raise TypeError("The " + parameter_name_2 + " parameter must be <int>.")
-    elif type(value_1) != int and type(value_2) != int:
-        raise TypeError("The " + parameter_name_1 + " and " + parameter_name_2 + " parameters must be <int>.")
-
-
-def is_float(parameter_name: str, value):
-    if type(value) != float:
-        raise TypeError("The " + parameter_name + " parameter must be <float>.")
-
-
-def is_optional_float(parameter_name: str, value):
-    if value is not None:
-        if type(value) != float:
-            raise TypeError("The " + parameter_name + " parameter must be <float>.")
-
-
-def are_float(parameter_name_1: str, value_1, parameter_name_2: str, value_2):
-    if type(value_1) != float and type(value_2) == float:
-        raise TypeError("The " + parameter_name_1 + " parameter must be <float>.")
-    elif type(value_1) == float and type(value_2) != float:
-        raise TypeError("The " + parameter_name_2 + " parameter must be <float>.")
-    elif type(value_1) != float and type(value_2) != float:
-        raise TypeError("The " + parameter_name_1 + " and " + parameter_name_2 + " parameters must be <float>.")
-
-
-def is_basic(parameter_name: str, value):
-    if type(value) not in (int, float, str):
-        raise TypeError("The " + parameter_name + " parameter must be <int>, <float> or <str>.")
+# def are_float(parameter_name_1: str, value_1, parameter_name_2: str, value_2):
+#     if type(value_1) != float and type(value_2) == float:
+#         raise TypeError("The " + parameter_name_1 + " parameter must be <float>.")
+#     elif type(value_1) == float and type(value_2) != float:
+#         raise TypeError("The " + parameter_name_2 + " parameter must be <float>.")
+#     elif type(value_1) != float and type(value_2) != float:
+#         raise TypeError("The " + parameter_name_1 + " and " + parameter_name_2 + " parameters must be <float>.")
+#
+#
+# def is_basic(parameter_name: str, value):
+#     if type(value) not in (int, float, str):
+#         raise TypeError("The " + parameter_name + " parameter must be <int>, <float> or <str>.")
 
 
 # =========================================== DICT/LIST TYPES =========================================================#
 
-def is_dict(parameter_name: str, values):
-    if type(values) != dict:
-        raise TypeError("The " + parameter_name + " parameter must be <dict>.")
-
-
-def not_dict(parameter_name: str, values):
-    if type(values) == dict:
-        raise TypeError("The " + parameter_name + " parameter must not be <dict>.")
-
-
-def is_list(parameter_name: str, values):
-    if type(values) != list:
-        raise TypeError("The " + parameter_name + " parameter must be <list>.")
-
-
-def not_list(parameter_name: str, values):
-    if type(values) == list:
-        raise TypeError("The " + parameter_name + " parameter must not be <list>.")
-
-
-def is_list_of_dict(parameter_name: str, values):
-    is_list(parameter_name, values)
-    for e in values:
-        if type(e) != dict:
-            raise TypeError("The " + values.index(e) + "-nh value for the "
-                            + parameter_name + " parameter must be <dict>.")
+# def is_dict(parameter_name: str, values):
+#     if type(values) != dict:
+#         raise TypeError("The " + parameter_name + " parameter must be <dict>.")
+#
+#
+# def not_dict(parameter_name: str, values):
+#     if type(values) == dict:
+#         raise TypeError("The " + parameter_name + " parameter must not be <dict>.")
+#
+#
+# def is_list(parameter_name: str, values):
+#     if type(values) != list:
+#         raise TypeError("The " + parameter_name + " parameter must be <list>.")
+#
+#
+# def not_list(parameter_name: str, values):
+#     if type(values) == list:
+#         raise TypeError("The " + parameter_name + " parameter must not be <list>.")
+#
+#
+# def is_list_of_dict(parameter_name: str, values):
+#     is_list(parameter_name, values)
+#     for e in values:
+#         if type(e) != dict:
+#             raise TypeError("The " + values.index(e) + "-nh value for the "
+#                             + parameter_name + " parameter must be <dict>.")
 
 
 # =========================================== MULTIPLE TYPES===========================================================#
@@ -275,9 +276,7 @@ def categories_length_type_values(categories: list):
 # =========================================== GLOBAL PROCEDURES =======================================================#
 
 def check_integer_range_step(min_value, max_value, step, case: str):
-    are_int("min_value", min_value, "max_value", max_value)
     check_range(min_value, max_value, case)
-    is_optional_int("step", step)
     return check_int_step(min_value, max_value, step, case)
 
 
@@ -288,8 +287,7 @@ def check_real_range_step(min_value, max_value, step, case: str):
     return check_float_step(min_value, max_value, step, case)
 
 
-def check_integer_definition(variable_name, min_value, max_value, step, case: str):
-    is_string("variable_name", variable_name)
+def check_integer_definition(variable_name: str, min_value: int, max_value: int, step: Optional[int], case: str):
     return check_integer_range_step(min_value, max_value, step, case)
 
 
