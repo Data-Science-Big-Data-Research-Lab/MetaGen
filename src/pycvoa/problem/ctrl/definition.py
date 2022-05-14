@@ -1,4 +1,4 @@
-from pycvoa.problem.ctrl import DefinitionError
+from pycvoa.problem.ctrl import DefinitionError, PyCvoaType
 from pycvoa.problem.types import *
 
 
@@ -32,7 +32,7 @@ def not_defined_variable(variable_name: str, definitions: dict):
                                      "name.")
 
 
-def check_variable_type(variable: str, check_type: str, definitions: dict):
+def check_variable_type(variable: str, check_type: PyCvoaType, definitions: dict):
     if check_type is BASIC:
         if definitions[variable][0] not in check_type:
             raise DefinitionError("The variable " + variable + " is not defined as BASIC type.")
@@ -44,7 +44,7 @@ def check_variable_type(variable: str, check_type: str, definitions: dict):
             raise DefinitionError("The variable " + variable + " is not defined as " + check_type + " type.")
 
 
-def is_defined_variable_as_type(variable: str, variable_type: str, definitions: dict):
+def is_defined_variable_as_type(variable: str, variable_type: PyCvoaType, definitions: dict):
     """ It checks if a variable is defined in the domain, if not, raise
         py:class:`~pycvoa.problem.domain.DefinitionError`.
 
@@ -126,7 +126,7 @@ def is_defined_element_as_type(layer_variable: str, element: str, check_type: st
     check_element_type(layer_variable, element, check_type, definitions)
 
 
-def is_defined_layer_and_element_as_type(layer_variable: str, element: str, check_type: str,
+def is_defined_layer_and_element_as_type(layer_variable: str, element: str, check_type: PyCvoaType,
                                          definitions: dict):
     is_defined_variable_as_type(layer_variable, LAYER, definitions)
     is_defined_element_as_type(layer_variable, element, check_type, definitions)
@@ -171,7 +171,7 @@ def check_vector_values_size(vector_variable, values, definitions: dict):
             + "," + str(definitions[vector_variable][2]) + "].")
 
 
-def check_component_type(vector_variable: str, check_type: str, definitions: dict):
+def check_component_type(vector_variable: str, check_type: PyCvoaType, definitions: dict):
     """ It checks if the components of a **VECTOR** variable are defined as a concrete type, if not, raise
     py:class:`~pycvoa.problem.domain.WrongItemType`.
 
@@ -211,7 +211,7 @@ def are_defined_components_as_type(vector_variable: str, check_type: str, defini
     check_component_type(vector_variable, check_type, definitions)
 
 
-def is_defined_vector_and_components_as_type(vector_variable: str, check_type: str, definitions: dict):
+def is_defined_vector_and_components_as_type(vector_variable: str, check_type: PyCvoaType, definitions: dict):
     is_defined_variable_as_type(vector_variable, VECTOR, definitions)
     are_defined_components_as_type(vector_variable, check_type, definitions)
 
@@ -291,7 +291,7 @@ def is_defined_layer_vector_and_component_element(layer_vector_variable: str, el
 
 
 def is_defined_layer_vector_and_component_element_as_type(layer_vector_variable: str, element: str,
-                                                          check_type: str, definitions: dict):
+                                                          check_type: PyCvoaType, definitions: dict):
     is_defined_vector_and_components_as_type(layer_vector_variable, LAYER, definitions)
     is_defined_component_element_as_type(layer_vector_variable, element, check_type, definitions)
 
