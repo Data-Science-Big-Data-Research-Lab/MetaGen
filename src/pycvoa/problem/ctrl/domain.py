@@ -92,7 +92,6 @@ def check_layer_vector_values(layer_vector_variable: str, value_list: list, exte
 
 def check_layer_vector_component(layer_vector_variable: str, layer_values: dict, external_domain: Domain,
                                  internal_domain: Domain):
-    ctrl_param.is_dict("layer_values", layer_values)
     valid_domain = get_valid_domain(external_domain, internal_domain)
     for element, value in layer_values.items():
         if not valid_domain.check_vector_layer_element_value(layer_vector_variable, element, value):

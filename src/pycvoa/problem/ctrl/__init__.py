@@ -3,7 +3,7 @@ from typing import TypeAlias
 __all__ = ["parameter", "definition", "domain", "solution",
            "DefinitionError", "DomainError",
            "CategoryList", "OptInt", "OptFloat", "OptDict", "NumericalList", "IntOrIntList",
-           "OptStr", "SupportedValues", "BasicValue"]
+           "OptStr", "SupportedValues", "BasicValue", "PyCvoaType"]
 
 CategoryList: TypeAlias = list[str] | list[int] | list[float]
 OptInt: TypeAlias = int | None
@@ -14,6 +14,9 @@ NumericalList: TypeAlias = list[int] | list[float]
 IntOrIntList: TypeAlias = int | list[int]
 SupportedValues: TypeAlias = int | float | str | list | dict
 BasicValue: TypeAlias = int | float | str
+PyCvoaType: TypeAlias = str | list[str]
+
+
 
 class DefinitionError(Exception):
     """ It is raised when the type of the variable is wrong.

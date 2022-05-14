@@ -1,5 +1,4 @@
 import copy
-from typing import Optional, Union
 
 from pycvoa.problem.ctrl import parameter as ctrl_par, OptInt, OptFloat, CategoryList, NumericalList, OptDict, \
     IntOrIntList, OptStr, SupportedValues, BasicValue
@@ -93,7 +92,7 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.DefinitionError`: The variable name is already used,
          min_value >= max_value or step >= (max_value - min_value) / 2.
         """
-        valid_step = ctrl_par.check_integer_definition(variable_name, min_value, max_value, step, "a")
+        valid_step = ctrl_par.check_integer_range_step(min_value, max_value, step, "a")
         ctrl_def.not_defined_variable(variable_name, self.__definitions)
         self.__definitions[variable_name] = [INTEGER, min_value, max_value, valid_step]
 
@@ -117,7 +116,7 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.DefinitionError`: The variable name is already used,
          min_value >= max_value or step >= (max_value - min_value) / 2.
         """
-        valid_step = ctrl_par.check_real_definition(variable_name, min_value, max_value, step, "a")
+        valid_step = ctrl_par.check_real_range_step(min_value, max_value, step, "a")
         ctrl_def.not_defined_variable(variable_name, self.__definitions)
         self.__definitions[variable_name] = [REAL, min_value, max_value, valid_step]
 
@@ -135,7 +134,7 @@ class Domain:
         :type categories: list of int, float or str
         :raise :py:class:`~pycvoa.problem.domain.DefinitionError`: The variable name is already used.
         """
-        ctrl_par.check_categorical_definition(variable_name, categories)
+        ctrl_par.check_categories(categories)
         ctrl_def.not_defined_variable(variable_name, self.__definitions)
         self.__definitions[variable_name] = [CATEGORICAL, copy.deepcopy(categories)]
 
@@ -186,7 +185,7 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.DefinitionError`: The element name is already used,
          min_size >= max_size or step_size >= (min_size - max_size) / 2.
         """
-        valid_step = ctrl_par.check_integer_element_definition(layer_variable, element_name, min_value, max_value, step)
+        valid_step = ctrl_par.check_integer_range_step(min_value, max_value, step, "b")
         ctrl_def.is_defined_layer_without_element(layer_variable, element_name, self.__definitions)
         self.__definitions[layer_variable][1][element_name] = [INTEGER, min_value, max_value, valid_step]
 
@@ -216,7 +215,7 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.DefinitionError`: The element name is already used,
          min_size >= max_size or step_size >= (min_size - max_size) / 2.
         """
-        valid_step = ctrl_par.check_real_element_definition(layer_variable, element_name, min_value, max_value, step)
+        valid_step = ctrl_par.check_real_range_step(min_value, max_value, step, "b")
         ctrl_def.is_defined_layer_without_element(layer_variable, element_name, self.__definitions)
         self.__definitions[layer_variable][1][element_name] = [REAL, min_value, max_value, valid_step]
 
@@ -240,7 +239,7 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.DefinitionError`: The element name is already used,
          min_size >= max_size or step_size >= (min_size - max_size) / 2.
         """
-        ctrl_par.check_categorical_element_definition(layer_variable, element_name, categories)
+        ctrl_par.check_categories(categories)
         ctrl_def.is_defined_layer_without_element(layer_variable, element_name, self.__definitions)
         self.__definitions[layer_variable][1][element_name] = [CATEGORICAL, copy.deepcopy(categories)]
 
@@ -273,7 +272,7 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.DefinitionError`: The variable name is already used,
          min_value >= max_value or step >= (max_value - min_value) / 2.
         """
-        valid_step_size = ctrl_par.check_integer_definition(variable_name, min_size, max_size, step_size, "c")
+        valid_step_size = ctrl_par.check_integer_range_step(min_size, max_size, step_size, "c")
         ctrl_def.not_defined_variable(variable_name, self.__definitions)
         self.__definitions[variable_name] = [VECTOR, min_size, max_size, valid_step_size, {}]
 
@@ -301,7 +300,7 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.DefinitionError`: The component type is already defined,
          min_size >= max_size or step_size >= (min_size - max_size) / 2.
         """
-        valid_step = ctrl_par.check_integer_definition(vector_variable, min_value, max_value, step, "a")
+        valid_step = ctrl_par.check_integer_range_step(min_value, max_value, step, "a")
         ctrl_def.is_defined_vector_without_components(vector_variable, self.__definitions)
         self.__definitions[vector_variable][4] = [INTEGER, min_value, max_value, valid_step]
 
@@ -329,7 +328,7 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.DefinitionError`: The component type is already defined,
          min_size >= max_size or step_size >= (min_size - max_size) / 2.
         """
-        valid_step = ctrl_par.check_real_definition(vector_variable, min_value, max_value, step, "a")
+        valid_step = ctrl_par.check_real_range_step(min_value, max_value, step, "a")
         ctrl_def.is_defined_vector_without_components(vector_variable, self.__definitions)
         self.__definitions[vector_variable][4] = [REAL, min_value, max_value, valid_step]
 
@@ -351,7 +350,7 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.WrongItemType`: The variable is not defined as **VECTOR**.
         :raise :py:class:`~pycvoa.problem.domain.DefinitionError`: The component type is already defined.
         """
-        ctrl_par.check_categorical_definition(vector_variable, categories)
+        ctrl_par.check_categories(categories)
         ctrl_def.is_defined_vector_without_components(vector_variable, self.__definitions)
         self.__definitions[vector_variable][4] = [CATEGORICAL, copy.deepcopy(categories)]
 
@@ -409,8 +408,7 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.DefinitionError`: The element name is already used,
          min_size >= max_size or step_size >= (min_size - max_size) / 2.
         """
-        valid_step = ctrl_par.check_integer_element_definition(layer_vector_variable, element_name, min_value,
-                                                               max_value, step)
+        valid_step = ctrl_par.check_integer_range_step(min_value, max_value, step, "b")
         ctrl_def.is_defined_layer_vector_without_element(layer_vector_variable, element_name, self.__definitions)
         self.__definitions[layer_vector_variable][4][1][element_name] = [INTEGER, min_value, max_value, valid_step]
 
@@ -444,8 +442,7 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.DefinitionError`: The element name is already used,
          min_size >= max_size or step_size >= (min_size - max_size) / 2.
         """
-        valid_step = ctrl_par.check_real_element_definition(layer_vector_variable, element_name, min_value,
-                                                            max_value, step)
+        valid_step = ctrl_par.check_real_range_step(min_value, max_value, step, "b")
         ctrl_def.is_defined_layer_vector_without_element(layer_vector_variable, element_name, self.__definitions)
         self.__definitions[layer_vector_variable][4][1][element_name] = [REAL, min_value, max_value, valid_step]
 
@@ -472,7 +469,7 @@ class Domain:
         the component type is not defined as **LAYER**.
         :raise :py:class:`~pycvoa.problem.domain.DefinitionError`: The element name is already used.
         """
-        ctrl_par.check_categorical_element_definition(layer_vector_variable, element_name, categories)
+        ctrl_par.check_categories(categories)
         ctrl_def.is_defined_layer_vector_without_element(layer_vector_variable, element_name, self.__definitions)
         self.__definitions[layer_vector_variable][4][1][element_name] = [CATEGORICAL, copy.deepcopy(categories)]
 
@@ -819,15 +816,15 @@ class Domain:
         return [v_s, len(self.__definitions[layer_vector_variable][4][1].keys()) - e_s]
 
     def get_remaining_available_components(self, vector_variable: str, current_vector_size: int,
-                                           layer_value: OptDict = None) -> IntOrIntList:
+                                           layer_value: OptDict) -> IntOrIntList:
         ctrl_def.is_defined_vector_with_components(vector_variable, self.__definitions)
         cmp_type = self.__definitions[vector_variable][4][1]
-        r = 0
+        r: IntOrIntList = 0
         if cmp_type in BASIC:
             ctrl_par.assigned_elements_is_none("layer_value", layer_value)
             r = Domain.__available_size(vector_variable, current_vector_size, self.__definitions)
         elif cmp_type is LAYER:
-            ctrl_par.assigned_elements_not_none("layer_value", layer_value)
+            assert layer_value is not None
             if not Domain.__check_layer_element_values(self.__definitions[vector_variable][4], layer_value, False):
                 raise ValueError("The layer values are not compatible with the LAYER VECTOR component definition")
             else:
@@ -1000,25 +997,23 @@ class Domain:
         ctrl_def.is_defined_variable(variable, self.__definitions)
         r = False
         if self.__definitions[variable][0] in BASIC:
-            ctrl_par.not_list("values", values)
-            ctrl_par.not_dict("values", values)
-            ctrl_par.element_is_none(variable, element, "a")
+            assert type(values) is not dict
+            assert element is None
             r = Domain.__check_basic_value_item(self.__definitions[variable], values)
         elif self.__definitions[variable][0] is LAYER:
-            ctrl_par.not_list("values", values)
+            assert type(values) is not list
             if type(values) != dict:
-                ctrl_par.element_not_none(variable, element, "a")
-                ctrl_par.is_string("element", element)
+                assert element is not None
                 ctrl_def.is_defined_element(variable, element, self.__definitions)
                 r = Domain.__check_basic_value_item(self.__definitions[variable][1][element], values)
             else:
-                ctrl_par.element_is_none(variable, element, "b")
+                assert element is None
                 r = Domain.__check_layer_element_values(self.__definitions[variable][1], values)
         elif self.__definitions[variable][0] is VECTOR:
             ctrl_def.are_defined_components(variable, self.__definitions)
             components_type = self.__definitions[variable][4][0]
             if type(values) == list:
-                ctrl_par.element_is_none(variable, element, "c")
+                assert element is None
                 cmp_tpy = type(values[0])
                 ctrl_def.check_vector_values_size(variable, values, self.__definitions)
                 if cmp_tpy != dict:
@@ -1029,16 +1024,15 @@ class Domain:
                     r = Domain.__check_vector_layer_element_values(self.__definitions[variable][4][1], values)
             else:
                 if components_type in BASIC:
-                    ctrl_par.element_is_none(variable, element, "d")
-                    ctrl_par.not_dict("values", values)
+                    assert element is None
+                    assert type(values) is not dict
                     r = Domain.__check_basic_value_item(self.__definitions[variable][4], values)
                 elif components_type is LAYER:
                     if type(values) == dict:
-                        ctrl_par.element_is_none(variable, element, "e")
+                        assert element is None
                         r = Domain.__check_layer_element_values(self.__definitions[variable][4][1], values)
                     else:
-                        ctrl_par.element_not_none(variable, element, "b")
-                        ctrl_par.is_string("element", element)
+                        assert element is not None
                         ctrl_def.is_defined_component_element(variable, element, self.__definitions)
                         r = Domain.__check_basic_value_item(self.__definitions[variable][4][1][element], values)
         return r
@@ -1139,7 +1133,7 @@ class Domain:
         return res
 
     @staticmethod
-    def __check_basic_value_item(item_definition: list, value: int | float | str):
+    def __check_basic_value_item(item_definition: list, value: SupportedValues):
         r = False
         if item_definition[0] in INTEGER:
             if type(value) == int:
@@ -1184,8 +1178,7 @@ class Domain:
         return r
 
     @staticmethod
-    def __check_vector_layer_element_values(vector_layer_definition, values, complete: bool = True):
-        ctrl_par.is_list_of_dict("values", values)
+    def __check_vector_layer_element_values(vector_layer_definition, values: list[dict], complete: bool = True):
         r = True
         i = 0
         while r and i < len(values):
@@ -1197,7 +1190,7 @@ class Domain:
         return r
 
     @staticmethod
-    def __available_size(vector_variable, current_size, definitions: dict):
+    def __available_size(vector_variable, current_size, definitions: dict) -> int:
         if current_size < definitions[vector_variable][1]:
             r = current_size - definitions[vector_variable][1]
         elif definitions[vector_variable][1] <= current_size < definitions[vector_variable][2]:
