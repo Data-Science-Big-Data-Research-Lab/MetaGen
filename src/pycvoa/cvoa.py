@@ -7,7 +7,7 @@ from concurrent.futures.thread import ThreadPoolExecutor
 from datetime import timedelta
 from time import time
 
-from pycvoa.problem import INTEGER, REAL, CATEGORICAL, LAYER, VECTOR
+from pycvoa.problem import INTEGER_TYPE, REAL_TYPE, CATEGORICAL_TYPE, LAYER_TYPE, VECTOR_TYPE
 from pycvoa.problem.solution import Solution
 from pycvoa.problem.support import get_random_value_for_basic_variable, get_number_from_interval, alter_solution
 
@@ -349,20 +349,20 @@ class CVOA:
 
             # If the variable is INTEGER, REAL or CATEGORICAL, set it with a random value
             # using the get_random_value_for_simple_variable auxiliary method.
-            if definition[0] is INTEGER or definition[0] is REAL or definition[0] is CATEGORICAL:
+            if definition[0] is INTEGER_TYPE or definition[0] is REAL_TYPE or definition[0] is CATEGORICAL_TYPE:
                 # logging.debug(">INTEGER")
                 patient_zero.set_basic(variable, get_random_value_for_basic_variable(definition))
 
             # If the variable is LAYER, iterate over its elements and set them with a random value
             # using the get_random_value_for_simple_variable auxiliary method.
-            elif definition[0] == LAYER:
+            elif definition[0] == LAYER_TYPE:
                 # logging.debug(">LAYER")
                 for element_name, element_definition in definition[1].items():
                     patient_zero.set_element(variable, element_name,
                                              get_random_value_for_basic_variable(element_definition))
 
             # If the variable is VECTOR:
-            elif definition[0] == VECTOR:
+            elif definition[0] == VECTOR_TYPE:
                 #  logging.debug(">VECTOR")
 
                 # Get a random size using the get_number_from_interval auxiliary method.
@@ -377,8 +377,8 @@ class CVOA:
                     # If the vector type is INTEGER, REAL or CATEGORICAL,
                     # add a random value (using the get_random_value_for_simple_variable auxiliary method)
                     # to the current element.
-                    if vector_component_type[0] is INTEGER or vector_component_type[0] is REAL or \
-                            vector_component_type[0] is CATEGORICAL:
+                    if vector_component_type[0] is INTEGER_TYPE or vector_component_type[0] is REAL_TYPE or \
+                            vector_component_type[0] is CATEGORICAL_TYPE:
 
                         value = get_random_value_for_basic_variable(vector_component_type)
                         patient_zero.add_basic_component(variable, value)
@@ -387,7 +387,7 @@ class CVOA:
                     # If the vector type is LAYER,
                     # build a random value for each element of the layer (using the
                     # get_random_value_for_simple_variable auxiliary method) and add it to the current element.
-                    elif vector_component_type[0] is LAYER:
+                    elif vector_component_type[0] is LAYER_TYPE:
                         layer_values = {}
                         for element_name, element_definition in vector_component_type[1].items():
                             layer_values[element_name] = get_random_value_for_basic_variable(element_definition)

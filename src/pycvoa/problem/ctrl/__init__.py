@@ -1,21 +1,5 @@
-from typing import TypeAlias
-
 __all__ = ["parameter", "definition", "domain", "solution",
-           "DefinitionError", "DomainError",
-           "CategoryList", "OptInt", "OptFloat", "OptDict", "NumericalList", "IntOrIntList",
-           "OptStr", "SupportedValues", "BasicValue", "PyCvoaType"]
-
-CategoryList: TypeAlias = list[str] | list[int] | list[float]
-OptInt: TypeAlias = int | None
-OptFloat: TypeAlias = float | None
-OptStr: TypeAlias = str | None
-OptDict: TypeAlias = dict | None
-NumericalList: TypeAlias = list[int] | list[float]
-IntOrIntList: TypeAlias = int | list[int]
-SupportedValues: TypeAlias = int | float | str | list | dict
-BasicValue: TypeAlias = int | float | str
-PyCvoaType: TypeAlias = str | list[str]
-
+           "DefinitionError", "DomainError", "SolutionError"]
 
 
 class DefinitionError(Exception):
@@ -51,6 +35,7 @@ class DefinitionError(Exception):
     def __init__(self, message):
         self.message = message
 
+
 class DomainError(Exception):
     """ It is raised when the type of the variable is wrong.
 
@@ -83,8 +68,6 @@ class DomainError(Exception):
 
     def __init__(self, message):
         self.message = message
-
-
 
 
 class SolutionError(Exception):

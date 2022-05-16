@@ -2,7 +2,7 @@ import copy
 import math
 import random
 
-from pycvoa.problem import INTEGER, REAL, CATEGORICAL, LAYER, VECTOR
+from pycvoa.problem import INTEGER_TYPE, REAL_TYPE, CATEGORICAL_TYPE, LAYER_TYPE, VECTOR_TYPE
 from pycvoa.problem.solution import Solution
 
 
@@ -28,19 +28,19 @@ def build_random_solution(domain, fitness_function=None):
 
         # If the variable is INTEGER, REAL or CATEGORICAL, set it with a random value
         # using the get_random_value_for_simple_variable auxiliary method.
-        if variable_type in (INTEGER, REAL, CATEGORICAL):
+        if variable_type in (INTEGER_TYPE, REAL_TYPE, CATEGORICAL_TYPE):
             new_solution.set_basic(variable, get_random_value_for_basic_variable(variable_definition))
 
         # If the variable is LAYER, iterate over its elements and set them with a random value
         # using the get_random_value_for_simple_variable auxiliary method.
-        elif variable_type == LAYER:
+        elif variable_type == LAYER_TYPE:
             for element in domain.get_element_list(variable_type):
                 element_definition = domain.get_element_definition(variable, element)
                 new_solution.set_element(variable, element,
                                          get_random_value_for_basic_variable(element_definition))
 
         # If the variable is VECTOR:
-        elif variable_type == VECTOR:
+        elif variable_type == VECTOR_TYPE:
 
             # Get a random size using the get_number_from_interval auxiliary method.
             vector_size = get_number_from_interval(variable_definition[1], variable_definition[2],
@@ -54,14 +54,14 @@ def build_random_solution(domain, fitness_function=None):
                 # If the vector type is INTEGER, REAL or CATEGORICAL,
                 # add a random value (using the get_random_value_for_simple_variable auxiliary method)
                 # to the current element.
-                if vector_component_type in (INTEGER, REAL, CATEGORICAL):
+                if vector_component_type in (INTEGER_TYPE, REAL_TYPE, CATEGORICAL_TYPE):
                     new_solution.add_basic_component(variable,
                                                      get_random_value_for_basic_variable(vector_component_definition))
 
                 # If the vector type is LAYER,
                 # build a random value for each element of the layer (using the
                 # get_random_value_for_simple_variable auxiliary method) and add it to the current element.
-                elif vector_component_type == LAYER:
+                elif vector_component_type == LAYER_TYPE:
                     for element in domain.get_component_element_list(variable):
                         element_definition = domain.get_component_element_definition(element)
                         new_solution.set_element_of_layer_component(variable, i, element,
@@ -88,11 +88,11 @@ def alter_solution(solution, variable, definition):
     # logging.debug("alter_solution")
 
     # If variable is an INTEGER or REAL apply alter_simple_variable
-    if definition[0] is INTEGER or definition[0] is REAL or definition[0] == CATEGORICAL:
+    if definition[0] is INTEGER_TYPE or definition[0] is REAL_TYPE or definition[0] == CATEGORICAL_TYPE:
         alter_basic_variable(solution, variable, definition)
 
     # If variable is a LAYER
-    elif definition[0] == LAYER:
+    elif definition[0] == LAYER_TYPE:
 
         # Get the layer definition and select the elements of the layer to be changed
         layer_definition = definition[1]
@@ -106,7 +106,7 @@ def alter_solution(solution, variable, definition):
             element_definition = layer_definition[element_name]
 
             # If the element is an INTEGER or REAL set it with modify_number_from_interval_random_way
-            if element_definition[0] is INTEGER or element_definition[0] is REAL:
+            if element_definition[0] is INTEGER_TYPE or element_definition[0] is REAL_TYPE:
                 solution.set_element(variable, element_name,
                                      modify_number_from_interval_random_way(
                                                      solution.get_element_value(variable, element_name),
@@ -114,13 +114,13 @@ def alter_solution(solution, variable, definition):
                                                      element_definition[3]))
 
             # If the element is an CATEGORICAL set it another random label
-            elif element_definition[0] == CATEGORICAL:
+            elif element_definition[0] == CATEGORICAL_TYPE:
                 current_category = solution.get_element_value(variable, element_name)
                 new_category = get_random_element_from_list_excluding_one(current_category, element_definition[1])
                 solution.set_element(variable, element_name, new_category)
 
     # If variable is a VECTOR
-    elif definition[0] == VECTOR:
+    elif definition[0] == VECTOR_TYPE:
 
         # Select an action out of three: resizing (1), changing (2) and resizing and changing (3)
         action = random.choice([1, 2, 3])
@@ -159,7 +159,7 @@ def alter_basic_variable(solution, variable, definition):
     """
 
     # If the variable is INTEGER or REAL set the variable with modify_number_from_interval_random_way.
-    if definition[0] is INTEGER or definition[0] is REAL:
+    if definition[0] is INTEGER_TYPE or definition[0] is REAL_TYPE:
         solution.set_basic(variable,
                            modify_number_from_interval_random_way(solution.get_basic_value(variable),
                                                                            definition[1], definition[2],
@@ -167,7 +167,7 @@ def alter_basic_variable(solution, variable, definition):
                                                                            definition[3]))
 
     # If the variable is CATEGORICAL set the current category with another randomly selected one.
-    elif definition[0] == CATEGORICAL:
+    elif definition[0] == CATEGORICAL_TYPE:
         current_category = solution.get_basic_value(variable)
         new_category = get_random_element_from_list_excluding_one(current_category, definition[1])
         solution.set_basic(variable, new_category)
@@ -196,7 +196,7 @@ def alter_vector_variable(solution, variable, definition):
         # logging.debug("[%s] vector_element_definition = %s", i, str(vector_element_definition))
 
         # If it is a vector of integer or real modify the value with modify_number_from_interval_random_way
-        if vector_element_definition[0] is INTEGER or vector_element_definition[0] is REAL:
+        if vector_element_definition[0] is INTEGER_TYPE or vector_element_definition[0] is REAL_TYPE:
             solution.set_basic_component(variable,
                                          i, modify_number_from_interval_random_way(
                     solution.get_basic_component_value(variable, i),
@@ -204,14 +204,14 @@ def alter_vector_variable(solution, variable, definition):
                     vector_element_definition[3]))
 
         # If it is a vector of categorical modify the value with a new label randomly selected
-        elif vector_element_definition[0] is CATEGORICAL:
+        elif vector_element_definition[0] is CATEGORICAL_TYPE:
             # logging.debug("CAT")
             current_category = solution.get_basic_component_value(variable, i)
             new_category = get_random_element_from_list_excluding_one(current_category, vector_element_definition[1])
             solution.set_basic_component(variable, i, new_category)
 
         # If it is a vector of layer
-        elif vector_element_definition[0] == LAYER:
+        elif vector_element_definition[0] == LAYER_TYPE:
             # logging.debug("LAYER")
 
             # Select a random set of elements of the layer to be changed
@@ -224,7 +224,7 @@ def alter_vector_variable(solution, variable, definition):
                 layer_element_definition = layer_definition[element_name]
 
                 # If that element is an integer or a real modify its value with modify_number_from_interval_random_way
-                if layer_element_definition[0] is INTEGER or layer_element_definition[0] is REAL:
+                if layer_element_definition[0] is INTEGER_TYPE or layer_element_definition[0] is REAL_TYPE:
                     solution.set_element_of_layer_component(variable, i, element_name,
                                                             modify_number_from_interval_random_way(
                                                                    solution.get_layer_component_value(
@@ -235,7 +235,7 @@ def alter_vector_variable(solution, variable, definition):
                                                                    layer_element_definition[3]))
 
                 # If that element is a categorical one modify its value with a new label randomly selected
-                elif layer_element_definition[0] == CATEGORICAL:
+                elif layer_element_definition[0] == CATEGORICAL_TYPE:
                     current_category = solution.get_layer_component_value(variable, i, element_name)
                     new_category = get_random_element_from_list_excluding_one(current_category,
                                                                               layer_element_definition[1])
@@ -290,8 +290,8 @@ def resize_vector_variable(solution, variable, definition):
             # logging.debug("add index %s", selected_index)
 
             # If the vector is defined as a BASIC type use get_random_value_for_simple_variable to yield the new value.
-            if vector_element_definition[0] is INTEGER or vector_element_definition[0] is REAL or \
-                    vector_element_definition[0] is CATEGORICAL:
+            if vector_element_definition[0] is INTEGER_TYPE or vector_element_definition[0] is REAL_TYPE or \
+                    vector_element_definition[0] is CATEGORICAL_TYPE:
                 solution.insert_basic_component(variable,
                                                 selected_index,
                                                 get_random_value_for_basic_variable(
@@ -299,7 +299,7 @@ def resize_vector_variable(solution, variable, definition):
 
             # If the vector is defined as a LAYER type, build the internal LAYER structure
             # using get_random_value_for_simple_variable to yield the new elements values.
-            elif vector_element_definition[0] == LAYER:
+            elif vector_element_definition[0] == LAYER_TYPE:
                 layer_values = {}
                 for element_name, element_definition in vector_element_definition[1].items():
                     layer_values[element_name] = get_random_value_for_basic_variable(element_definition)
@@ -383,11 +383,11 @@ def get_random_value_for_basic_variable(definition):
     :rtype: int, float, str
     """
     res = 0
-    if definition[0] == REAL:
+    if definition[0] == REAL_TYPE:
         res = get_number_from_interval(definition[1], definition[2], definition[3])
-    elif definition[0] == INTEGER:
+    elif definition[0] == INTEGER_TYPE:
         res = random.randrange(definition[1], definition[2], definition[3])
-    elif definition[0] == CATEGORICAL:
+    elif definition[0] == CATEGORICAL_TYPE:
         res = random.sample(definition[1], 1)[0]
 
     return res
