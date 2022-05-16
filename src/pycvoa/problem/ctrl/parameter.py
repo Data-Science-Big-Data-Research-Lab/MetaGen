@@ -1,15 +1,5 @@
 import math
-import pycvoa
-from pycvoa.problem.ctrl import CategoryList, OptInt, OptFloat
-
-
-# =========================================== DOMAIN TYPES ============================================================#
-
-def is_domain_class(parameter_name: str, domain):
-    if domain is not None:
-        if type(domain) is not pycvoa.problem.domain.Domain:
-            raise TypeError("The " + parameter_name + " parameter must be an instance of <Domain> class.")
-
+from pycvoa.problem.types import *
 
 # =========================================== NONE TYPES ==============================================================#
 
@@ -156,7 +146,7 @@ def check_float_step(min_value: float, max_value: float, step: OptFloat, case: s
     return r
 
 
-def check_categories(categories: CategoryList):
+def check_categories(categories: BasicVectorValues):
     if len(categories) < 2:
         raise ValueError("The categories parameter must have al least two elements.")
     i = 0
