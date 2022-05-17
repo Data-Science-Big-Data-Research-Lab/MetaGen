@@ -23,7 +23,7 @@ domain = Domain()
 domain.define_integer(1, 0, 100, 20)
 # If the step is not provided, it is set to the default value ((maximum value - minimum value) / 2)
 # domain.define_integer("I", 0, 100)
-# print(str(domain))
+print(str(domain))
 
 # ************ Possible errors
 # 1. Argument type errors:
@@ -58,7 +58,7 @@ domain.define_integer(1, 0, 100, 20)
 domain.define_real("R", 0.0, 1.0, 0.1)
 # If the step is not provided, it is set to the default value ((maximum value - minimum value) / 2)
 # domain.define_real("R", 0.0, 1.0)
-# print(str(domain))
+print(str(domain))
 
 # ************ Possible errors
 # 1. Argument type errors:
@@ -88,7 +88,7 @@ domain.define_real("R", 0.0, 1.0, 0.1)
 domain.define_categorical("C_A", ["C1", "C2", "C3", "C4"])
 domain.define_categorical("C_B", [1, 2, 3, 4])
 domain.define_categorical("C_C", [0.1, 0.2, 0.3, 0.4])
-# print(str(domain))
+print(str(domain))
 
 # ************ Possible errors
 # 1. Argument type errors:
@@ -139,7 +139,7 @@ domain.define_layer("L")
 domain.define_integer_element("L", "E_I", 0, 100, 20)
 # If the step is not provided, it is set to the default value ((maximum value - minimum value) / 2)
 # domain.define_integer_element("L", "E_I", 0, 100)
-# print(str(domain))
+print(str(domain))
 
 # ************ Possible errors
 # 1. Argument type errors:
@@ -179,7 +179,7 @@ domain.define_integer_element("L", "E_I", 0, 100, 20)
 domain.define_real_element("L", "E_R", 1.5, 3.0, 0.01)
 # If the step is not provided, it is set to the default value ((maximum value - minimum value) / 2)
 # domain.define_real_element("L", "E_R", 1.5, 3.0)
-# print(str(domain))
+print(str(domain))
 
 # ************ Possible errors
 # 1. Argument type errors:
@@ -213,7 +213,7 @@ domain.define_real_element("L", "E_R", 1.5, 3.0, 0.01)
 #       - A variable name.
 #       - A list with the categories; these values must have the same Python type, i.e., int, float or str.
 domain.define_categorical_element("L", "E_C", ["Lb1", "Lb2", "Lb3"])
-# print(str(domain))
+print(str(domain))
 
 # ************ Possible errors
 # 1. Argument type errors:
@@ -252,7 +252,7 @@ domain.define_categorical_element("L", "E_C", ["Lb1", "Lb2", "Lb3"])
 
 # To define a VECTOR variable "V_I", whose size is in the interval [2, 8], with step size 2:
 domain.define_vector("V", 2, 8, 1)
-# print(str(domain))
+print(str(domain))
 # If the step size is not provided, it is set to the default value ((maximum size - minimum size) / 2)
 # domain.define_vector("V_I", 2, 8)
 # print(str(domain))
@@ -281,6 +281,7 @@ domain.define_vector("V", 2, 8, 1)
 # To illustrate the INTEGER definition of a VECTOR variable, first, define a VECTOR variable "V_I", whose size is in
 # the interval [2, 8] and step 1:
 domain.define_vector("V_I", 2, 8, 1)
+print(str(domain))
 
 # To set the components of the VECTOR variable "V_I" to INTEGER, four parameters must be provided to the
 # "define_components_integer" function:
@@ -292,6 +293,7 @@ domain.define_vector("V_I", 2, 8, 1)
 
 # To define the components of the vector "V_I" as INTEGER, in the interval [1, 10] and step 2:
 domain.define_components_as_integer("V_I", 1, 10, 2)
+print(str(domain))
 # If the step is not provided, it is set to the default value ((maximum value - minimum value) / 2)
 # domain.define_components_as_integer("V_I", 1, 10)
 # print(str(domain))
