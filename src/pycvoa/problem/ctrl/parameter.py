@@ -1,7 +1,10 @@
 import math
-from pycvoa.problem.types import *
+from pycvoa.types import OptInt, OptFloat, BasicValueList
+
 
 # =========================================== NONE TYPES ==============================================================#
+
+
 
 def element_is_none(variable: str, element: str, case: str):
     if element is not None:
@@ -146,7 +149,7 @@ def check_float_step(min_value: float, max_value: float, step: OptFloat, case: s
     return r
 
 
-def check_categories(categories: BasicVectorValues):
+def check_categories(categories: BasicValueList):
     if len(categories) < 2:
         raise ValueError("The categories parameter must have al least two elements.")
     i = 0

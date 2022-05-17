@@ -1,7 +1,6 @@
 import copy
 import sys
-from pycvoa.problem.ctrl import parameter as ctrl_par, OptDomain, OptInt, BasicValue, BasicVectorValues, AllValues, OptStr, \
-    VarStructureType, LayerValue, ValueTypes, OptValueTypes
+from pycvoa.problem.ctrl import parameter as ctrl_par
 from pycvoa.problem.ctrl import solution as ctrl_sol
 from pycvoa.problem.ctrl import domain as ctrl_dom
 from pycvoa.problem.domain import Domain
