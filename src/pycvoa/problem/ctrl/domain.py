@@ -1,7 +1,8 @@
 from pycvoa.problem.ctrl import DefinitionError, DomainError
 from pycvoa.problem.domain import Domain
-from pycvoa.problem.types import *
+from pycvoa.types import *
 
+OptDomain: TypeAlias = Union[Domain, None]
 
 # ================================================== AUXILIARY ======================================================= #
 
@@ -54,7 +55,7 @@ def check_layer_element_value(layer_variable: str, element: str, value: BasicVal
 
 # =============================================== BASIC VECTOR ======================================================= #
 
-def check_basic_vector_values(check_basic_vector_variable: str, value_list: BasicVectorValues, external_domain: OptDomain,
+def check_basic_vector_values(check_basic_vector_variable: str, value_list:BasicValueList, external_domain: OptDomain,
                               internal_domain: OptDomain):
     valid_domain = get_valid_domain(external_domain, internal_domain)
     if not valid_domain.check_vector_basic_values(check_basic_vector_variable, value_list):
@@ -114,7 +115,7 @@ def check_layer_vector_element(layer_vector_variable: str, element: str, value: 
 
 def basic_variable(check_basic_variable: str, external_domain: OptDomain, internal_domain: OptDomain):
     valid_domain = get_valid_domain(external_domain, internal_domain)
-    __check_variable_type(check_basic_variable, BASIC_TYPE, valid_domain)
+    __check_variable_type(check_basic_variable, BASIC, valid_domain)
     return valid_domain
 
 
@@ -131,14 +132,14 @@ def layer_variable_element(check_layer_variable: str, element: str, external_dom
 
 def basic_vector_variable(check_vector_variable: str, external_domain: OptDomain, internal_domain: OptDomain):
     valid_domain = get_valid_domain(external_domain, internal_domain)
-    __check_component_type(check_vector_variable, BASIC_TYPE, valid_domain)
+    __check_component_type(check_vector_variable, BASIC, valid_domain)
     return valid_domain
 
 
 def __check_variable_type(variable: str, check_type: PYCVOA_TYPE, domain: Domain):
     var_type = domain.get_variable_type(variable)
-    if check_type is BASIC_TYPE:
-        if var_type not in BASIC_TYPE:
+    if check_type is BASIC:
+        if var_type not in BASIC:
             raise ValueError("The " + variable + " variable is not defined as BASIC.")
     else:
         if var_type is not check_type:
@@ -156,8 +157,8 @@ def __check_component_type(check_vector_variable:str, check_type:PYCVOA_TYPE, do
     :type check_type: **INTEGER**, **REAL**, **CATEGORICAL**, **BASIC**, **LAYER**, **VECTOR**
     """
     comp_type = domain.get_vector_components_type(check_vector_variable)
-    if check_type is BASIC_TYPE:
-        if comp_type not in BASIC_TYPE:
+    if check_type is BASIC:
+        if comp_type not in BASIC:
             raise ValueError("The components of " + check_vector_variable + " are not defined as BASIC.")
     else:
         if comp_type is not check_type:

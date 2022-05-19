@@ -37,7 +37,7 @@ def check_variable_type(variable: str, definitions: DefStructure, check_type: st
         raise DefinitionError("The variable " + variable + " is not defined as " + str(check_type) + " type.")
 
 
-def is_defined_variable_as_type(variable: str, definitions: DefStructure, variable_type: str):
+def is_defined_variable_as_type(variable: str, definitions: DefStructure, variable_type: PYCVOA_TYPE):
     """ It checks if a variable is defined in the domain, if not, raise
         py:class:`~pycvoa.problem.domain.DefinitionError`.
 
