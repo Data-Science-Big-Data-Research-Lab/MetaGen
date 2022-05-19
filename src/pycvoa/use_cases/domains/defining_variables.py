@@ -58,7 +58,7 @@ print(str(domain))
 domain.define_real("R", 0.0, 1.0, 0.1)
 # If the step is not provided, it is set to the default value ((maximum value - minimum value) / 2)
 # domain.define_real("R", 0.0, 1.0)
-print(str(domain))
+# print(str(domain))
 
 # ************ Possible errors
 # 1. Argument type errors:
@@ -85,10 +85,10 @@ print(str(domain))
 # To define a CATEGORICAL variable, two parameters must be provided to the "define_real" function:
 #       - A variable name.
 #       - A list with the categories; these values must have the same Python type, i.e., int, float or str.
-domain.define_categorical("C_A", ["C1", "C2", "C3", "C4"])
-domain.define_categorical("C_B", [1, 2, 3, 4])
-domain.define_categorical("C_C", [0.1, 0.2, 0.3, 0.4])
-print(str(domain))
+# domain.define_categorical("C_A", ["C1", "C2", "C3", "C4"])
+# domain.define_categorical("C_B", [1, 2, 3, 4])
+# domain.define_categorical("C_C", [0.1, 0.2, 0.3, 0.4])
+# print(str(domain))
 
 # ************ Possible errors
 # 1. Argument type errors:
@@ -116,7 +116,7 @@ print(str(domain))
 # own set of variables.
 
 # To define a LAYER variable, just a variable name must be provided to the "define_layer" function:
-domain.define_layer("L")
+# domain.define_layer("L")
 
 # **** Possible errors
 # 1. If the variable name is already used, raise a definition error
@@ -136,10 +136,10 @@ domain.define_layer("L")
 #       - The step: a number to divide the interval, in order to generate random values
 
 # To define an INTEGER element "E_I" for the "L" variable, in the interval [0, 100] and step 20:
-domain.define_integer_element("L", "E_I", 0, 100, 20)
+# domain.define_integer_element("L", "E_I", 0, 100, 20)
 # If the step is not provided, it is set to the default value ((maximum value - minimum value) / 2)
 # domain.define_integer_element("L", "E_I", 0, 100)
-print(str(domain))
+# print(str(domain))
 
 # ************ Possible errors
 # 1. Argument type errors:
@@ -176,10 +176,10 @@ print(str(domain))
 #       - The step: a number to divide the interval, in order to generate random values
 
 # To define a REAL element "E_R" for the "L" variable, in the interval [1.5, 3.0] and step 0.01:
-domain.define_real_element("L", "E_R", 1.5, 3.0, 0.01)
+# domain.define_real_element("L", "E_R", 1.5, 3.0, 0.01)
 # If the step is not provided, it is set to the default value ((maximum value - minimum value) / 2)
 # domain.define_real_element("L", "E_R", 1.5, 3.0)
-print(str(domain))
+# print(str(domain))
 
 # ************ Possible errors
 # 1. Argument type errors:
@@ -212,8 +212,8 @@ print(str(domain))
 # "define_categorical_element" function:
 #       - A variable name.
 #       - A list with the categories; these values must have the same Python type, i.e., int, float or str.
-domain.define_categorical_element("L", "E_C", ["Lb1", "Lb2", "Lb3"])
-print(str(domain))
+# domain.define_categorical_element("L", "E_C", ["Lb1", "Lb2", "Lb3"])
+# print(str(domain))
 
 # ************ Possible errors
 # 1. Argument type errors:
@@ -251,8 +251,8 @@ print(str(domain))
 #        provided, will be set to a default value ((maximum size - minimum size) / 2)
 
 # To define a VECTOR variable "V_I", whose size is in the interval [2, 8], with step size 2:
-domain.define_vector("V", 2, 8, 1)
-print(str(domain))
+# domain.define_vector("V", 2, 8, 1)
+# print(str(domain))
 # If the step size is not provided, it is set to the default value ((maximum size - minimum size) / 2)
 # domain.define_vector("V_I", 2, 8)
 # print(str(domain))
@@ -280,8 +280,8 @@ print(str(domain))
 # After defining the vector variable, the component type must be defined as INTEGER, REAL, CATEGORICAL or LAYER.
 # To illustrate the INTEGER definition of a VECTOR variable, first, define a VECTOR variable "V_I", whose size is in
 # the interval [2, 8] and step 1:
-domain.define_vector("V_I", 2, 8, 1)
-print(str(domain))
+# domain.define_vector("V_I", 2, 8, 1)
+# print(str(domain))
 
 # To set the components of the VECTOR variable "V_I" to INTEGER, four parameters must be provided to the
 # "define_components_integer" function:
@@ -292,8 +292,8 @@ print(str(domain))
 #         provided, will be set to a default value ((maximum value - minimum value) / 2)
 
 # To define the components of the vector "V_I" as INTEGER, in the interval [1, 10] and step 2:
-domain.define_components_as_integer("V_I", 1, 10, 2)
-print(str(domain))
+# domain.define_components_as_integer("V_I", 1, 10, 2)
+# print(str(domain))
 # If the step is not provided, it is set to the default value ((maximum value - minimum value) / 2)
 # domain.define_components_as_integer("V_I", 1, 10)
 # print(str(domain))
@@ -325,7 +325,7 @@ print(str(domain))
 
 # To illustrate the REAL definition of a VECTOR variable, first, define a VECTOR variable "V_R", whose size is in
 # the interval [1, 10] and step 1:
-domain.define_vector("V_R", 1, 10, 1)
+# domain.define_vector("V_R", 1, 10, 1)
 
 # To set the components of the VECTOR variable "V_R" to REAL, four parameters must be provided to the
 # "define_components_real" function:
@@ -336,7 +336,7 @@ domain.define_vector("V_R", 1, 10, 1)
 #         provided, will be set to a default value ((maximum value - minimum value) / 2)
 
 # To define the components of the vector "V_R" as REAL, in the interval [0.0, 0.1] and step 0.0001:
-domain.define_components_as_real("V_R", 0.0, 0.1, 0.0001)
+# domain.define_components_as_real("V_R", 0.0, 0.1, 0.0001)
 # If the step is not provided, it is set to the default value ((maximum value - minimum value) / 2)
 # domain.define_components_as_real("V_R", 0.0, 0.1)
 # print(str(domain))
@@ -368,13 +368,13 @@ domain.define_components_as_real("V_R", 0.0, 0.1, 0.0001)
 
 # To illustrate the CATEGORICAL definition of a VECTOR variable, first, define a VECTOR variable "V_C", whose size is in
 # the interval [10, 20] and step 1:
-domain.define_vector("V_C", 10, 20, 1)
+# domain.define_vector("V_C", 10, 20, 1)
 
 # To set the components of the VECTOR variable "V_C" to CATEGORICAL, two parameters must be provided to the
 # "define_components_categorical" function:
 #       - A variable name.
 #       - A list with the categories; these values must have the same Python type, i.e., int, float or str.
-domain.define_components_as_categorical("V_C", ["V1", "V2", "V3"])
+# domain.define_components_as_categorical("V_C", ["V1", "V2", "V3"])
 # print(str(domain))
 
 # ************ Possible errors
@@ -403,10 +403,10 @@ domain.define_components_as_categorical("V_C", ["V1", "V2", "V3"])
 
 # To illustrate the LAYER definition of a VECTOR variable, first, define a VECTOR variable "V_L", whose size is in
 # the interval [10, 20] and step 1:
-domain.define_vector("V_L", 10, 20, 1)
+# domain.define_vector("V_L", 10, 20, 1)
 
 # Next, define its components type as LAYER with the "define_components_layer" method:
-domain.define_components_as_layer("V_L")
+# domain.define_components_as_layer("V_L")
 # print(str(domain))
 
 # ************ Possible errors
@@ -435,7 +435,7 @@ domain.define_components_as_layer("V_L")
 #         provided, will be set to a default value ((maximum value - minimum value) / 2)
 
 # To define an INTEGER element "el-1" for the "V_L" VECTOR variable, in the interval [10, 20] and step 1:
-domain.define_layer_vector_integer_element("V_L", "el-1", 10, 20, 1)
+# domain.define_layer_vector_integer_element("V_L", "el-1", 10, 20, 1)
 # If the step is not provided, it is set to the default value ((maximum value - minimum value) / 2)
 # domain.define_layer_vector_integer_element("V_L", "el-1", 10, 20)
 # print(str(domain))
@@ -479,7 +479,7 @@ domain.define_layer_vector_integer_element("V_L", "el-1", 10, 20, 1)
 #         provided, will be set to a default value ((maximum value - minimum value) / 2)
 
 # To define a REAL element "el-2" for the "V_L" VECTOR variable, in the interval [0.1, 0.5] and step 0.1:
-domain.define_layer_vector_real_element("V_L", "el-2", 0.1, 0.5, 0.1)
+# domain.define_layer_vector_real_element("V_L", "el-2", 0.1, 0.5, 0.1)
 # If the step is not provided, it is set to the default value ((maximum value - minimum value) / 2)
 # domain.define_layer_vector_real_element("V_L", "el-2", 0.1, 0.5)
 # print(str(domain))
@@ -517,7 +517,7 @@ domain.define_layer_vector_real_element("V_L", "el-2", 0.1, 0.5, 0.1)
 # "define_vector_categorical_element" function:
 #       - A element name.
 #       - A list with the categories; these values must have the same Python type, i.e., int, float or str.
-domain.define_layer_vector_categorical_element("V_L", "el-3", [1, 2, 3])
+# domain.define_layer_vector_categorical_element("V_L", "el-3", [1, 2, 3])
 # print(str(domain))
 
 # ************ Possible errors
@@ -543,4 +543,4 @@ domain.define_layer_vector_categorical_element("V_L", "el-3", [1, 2, 3])
 # 3.3. The variable element is already used.
 # domain.define_layer_vector_categorical_element("V_L", "el-3", [1, 2, 3])
 
-print(str(domain))
+# print(str(domain))
