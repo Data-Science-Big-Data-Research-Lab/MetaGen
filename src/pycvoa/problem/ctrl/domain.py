@@ -122,7 +122,7 @@ def basic_variable(check_basic_variable: str, external_domain: OptDomain, intern
 def layer_variable_element(check_layer_variable: str, element: str, external_domain: OptDomain,
                            internal_domain: OptDomain):
     valid_domain = get_valid_domain(external_domain, internal_domain)
-    __check_variable_type(check_layer_variable, LAYER_TYPE, valid_domain)
+    __check_variable_type(check_layer_variable, LAYER, valid_domain)
     if valid_domain.is_defined_element(check_layer_variable, element) is not True:
         raise DefinitionError(
             "The element " + element + " of the " + check_layer_variable +

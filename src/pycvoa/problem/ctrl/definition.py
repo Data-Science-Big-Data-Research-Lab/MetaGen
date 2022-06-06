@@ -1,3 +1,5 @@
+from typing import cast
+
 from pycvoa.problem.ctrl import DefinitionError
 from pycvoa.types import *
 
@@ -97,12 +99,12 @@ def check_element_type(layer_variable: str, element: str, layer_definition: Laye
 
 def is_defined_layer_without_element(layer_variable: str, element: str, definitions: DefStructure):
     is_defined_variable_as_type(layer_variable, definitions, LAYER)
-    not_defined_element(layer_variable, element, definitions[layer_variable])
+    not_defined_element(layer_variable, element, cast(LayerDef, definitions[layer_variable]))
 
 
 def is_defined_layer_with_element(layer_variable: str, element: str, definitions: DefStructure):
     is_defined_variable_as_type(layer_variable, definitions, LAYER)
-    is_defined_element(layer_variable, element, definitions[layer_variable])
+    is_defined_element(layer_variable, element, cast(LayerDef, definitions[layer_variable]))
 
 
 def is_defined_element_as_type(layer_variable: str, element: str, layer_definition: LayerDef, check_type: str):
@@ -112,8 +114,8 @@ def is_defined_element_as_type(layer_variable: str, element: str, layer_definiti
 
 def is_defined_layer_and_element_as_type(layer_variable: str, element: str, definitions: DefStructure,
                                          check_type: str):
-    is_defined_variable_as_type(layer_variable, definitions, LAYER_TYPE)
-    is_defined_element_as_type(layer_variable, element, definitions[layer_variable], check_type)
+    is_defined_variable_as_type(layer_variable, definitions, LAYER)
+    is_defined_element_as_type(layer_variable, element, cast(LayerDef, definitions[layer_variable]), check_type)
 
 
 # ==================================================================================================================== #
@@ -165,6 +167,7 @@ def check_component_type(vector_variable: str, vector_definition: VectorDef, che
     :type vector_variable: str
     :type check_type: **INTEGER**, **REAL**, **CATEGORICAL**, **BASIC**, **LAYER**, **VECTOR**
     """
+    assert vector_definition[4] is not None
     if vector_definition[4][0] is not check_type:
         raise DefinitionError(
             "The components of the VECTOR variable " + vector_variable + " are not defined as " + str(check_type)
@@ -173,12 +176,12 @@ def check_component_type(vector_variable: str, vector_definition: VectorDef, che
 
 def is_defined_vector_without_components(vector_variable: str, definitions: DefStructure):
     is_defined_variable_as_type(vector_variable, definitions, VECTOR)
-    not_defined_components(vector_variable, definitions[vector_variable])
+    not_defined_components(vector_variable, cast(VectorDef, definitions[vector_variable]))
 
 
 def is_defined_vector_with_components(vector_variable: str, definitions: DefStructure):
     is_defined_variable_as_type(vector_variable, definitions, VECTOR)
-    are_defined_components(vector_variable, definitions[vector_variable])
+    are_defined_components(vector_variable, cast(VectorDef, definitions[vector_variable]))
 
 
 def are_defined_components_as_type(vector_variable: str, vector_definition: VectorDef, check_type: str):
@@ -188,7 +191,7 @@ def are_defined_components_as_type(vector_variable: str, vector_definition: Vect
 
 def is_defined_vector_and_components_as_type(vector_variable: str, definitions: DefStructure, check_type: str):
     is_defined_variable_as_type(vector_variable, definitions, VECTOR)
-    are_defined_components_as_type(vector_variable, definitions[vector_variable], check_type)
+    are_defined_components_as_type(vector_variable, cast(VectorDef, definitions[vector_variable]), check_type)
 
 
 # ==================================================================================================================== #
@@ -205,7 +208,7 @@ def is_defined_component_element(layer_vector_variable: str, element: str, layer
     :type layer_vector_variable: str
     :type element: str
     """
-    if element not in layer_vector_definition[4][1].keys():
+    if element not in cast(LayerDef, layer_vector_definition[4])[1].keys():
         raise DefinitionError(
             "The element " + str(element) + " is not defined in the LAYER components of the "
             + str(layer_vector_variable) + " VECTOR variable.")
@@ -221,7 +224,7 @@ def not_defined_component_element(layer_vector_variable: str, element: str, laye
     :type layer_vector_variable: str
     :type element: str
     """
-    if element in layer_vector_definition[4][1].keys():
+    if element in cast(LayerDef, layer_vector_definition[4])[1].keys():
         raise DefinitionError(
             "The " + element + " element is already defined in the LAYER components of the "
             + layer_vector_variable + " VECTOR variable, please, select another element name.")
@@ -229,7 +232,7 @@ def not_defined_component_element(layer_vector_variable: str, element: str, laye
 
 def check_component_element_type(layer_vector_variable: str, element: str, layer_vector_definition: VectorDef,
                                  check_type: str):
-    if layer_vector_definition[4][1][element][0] is not check_type:
+    if cast(LayerDef, layer_vector_definition[4])[1][element][0] is not check_type:
         raise DefinitionError(
             "The element " + element + " of the LAYER VECTOR variable " + layer_vector_variable
             + " are not defined as " + check_type + " type.")
@@ -237,12 +240,12 @@ def check_component_element_type(layer_vector_variable: str, element: str, layer
 
 def is_defined_layer_vector_without_element(layer_vector_variable: str, element: str, definitions: DefStructure):
     is_defined_vector_and_components_as_type(layer_vector_variable, definitions, LAYER)
-    not_defined_component_element(layer_vector_variable, element, definitions[layer_vector_variable])
+    not_defined_component_element(layer_vector_variable, element, cast(VectorDef, definitions[layer_vector_variable]))
 
 
 def is_defined_layer_vector_with_element(layer_vector_variable: str, element: str, definitions: DefStructure):
     is_defined_vector_and_components_as_type(layer_vector_variable, definitions, LAYER)
-    is_defined_component_element(layer_vector_variable, element, definitions[layer_vector_variable])
+    is_defined_component_element(layer_vector_variable, element, cast(VectorDef, definitions[layer_vector_variable]))
 
 
 def is_defined_component_element_as_type(layer_vector_variable: str, element: str,
@@ -253,13 +256,14 @@ def is_defined_component_element_as_type(layer_vector_variable: str, element: st
 
 def is_defined_layer_vector_and_component_element(layer_vector_variable: str, element: str, definitions: DefStructure):
     is_defined_vector_and_components_as_type(layer_vector_variable, definitions, LAYER)
-    is_defined_component_element(layer_vector_variable, element, definitions[layer_vector_variable])
+    is_defined_component_element(layer_vector_variable, element, cast(VectorDef, definitions[layer_vector_variable]))
 
 
 def is_defined_layer_vector_and_component_element_as_type(layer_vector_variable: str, element: str,
                                                           definitions: DefStructure, check_type: str):
     is_defined_vector_and_components_as_type(layer_vector_variable, definitions, LAYER)
-    is_defined_component_element_as_type(layer_vector_variable, element, definitions[layer_vector_variable], check_type)
+    is_defined_component_element_as_type(layer_vector_variable, element,
+                                         cast(VectorDef, definitions[layer_vector_variable]), check_type)
 
 
 # ==================================================================================================================== #

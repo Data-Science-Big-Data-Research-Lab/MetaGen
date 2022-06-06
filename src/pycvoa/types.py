@@ -26,48 +26,28 @@ CategoricalDef: TypeAlias = Tuple[CATEGORICAL_TYPE, List[int] | List[float] | Li
 BasicDef: TypeAlias = Union[IntegerDef, RealDef, CategoricalDef]
 NumericalDef: TypeAlias = Union[IntegerDef, RealDef]
 NumericalAttributes: TypeAlias = Union[Tuple[int, int, int], Tuple[float, float, float]]
-
 LayerAttributes: TypeAlias = Union[Dict[str, BasicDef], Dict]
 LayerDef: TypeAlias = Tuple[LAYER_TYPE, LayerAttributes]
-
 ComponentDef: TypeAlias = Union[BasicDef, LayerDef]
 VectorDef: TypeAlias = Tuple[VECTOR_TYPE, int, int, int, Union[ComponentDef, None]]
 VectorAttributes: TypeAlias = Tuple[int, int, int]
-
 VarDefinition: TypeAlias = Union[IntegerDef, RealDef, CategoricalDef, LayerDef, VectorDef]
 DefStructure: TypeAlias = Dict[str, VarDefinition]
 
-
-
-
-
-# IntegerDef: TypeAlias = Tuple[INTEGER_TYPE, int, int, int]
-# RealDef: TypeAlias = Tuple[REAL_TYPE, float, float, float]
-# NumericalDef: TypeAlias = Union[IntegerDef, RealDef]
-# CategoricalDef: TypeAlias = Tuple[CATEGORICAL_TYPE, List[int] | List[float] | List[str]]
-# BasicDef: TypeAlias = Union[IntegerDef, RealDef, CategoricalDef]
-# LayerDef: TypeAlias = Tuple[LAYER_TYPE, Union[Dict[str, BasicDef], Dict]]
-# ComponentDef: TypeAlias = Union[BasicDef, LayerDef, None]
-# VectorDef: TypeAlias = Tuple[VECTOR_TYPE, int, int, int, Union[BasicDef, LayerDef]]
-# VarDefinition: TypeAlias = Union[IntegerDef, RealDef, CategoricalDef, LayerDef, VectorDef]
-# DefStructure: TypeAlias = Dict[str, VarDefinition]
-
-# LAYER definition type
-
-
+# VALUES types
 OptInt: TypeAlias = int | None
 OptFloat: TypeAlias = float | None
 OptStr: TypeAlias = str | None
 OptDict: TypeAlias = dict | None
-NumericaVectorValues: TypeAlias = list[int] | list[float]
-IntOrIntList: TypeAlias = int | list[int]
-BasicValueList: TypeAlias = list[str] | list[int] | list[float]
+NumericaVectorValues: TypeAlias = List[int] | List[float]
+IntOrIntList: TypeAlias = int | List[int]
 
-# VALUES types
+
 BasicValue: TypeAlias = int | float | str
+BasicValueList: TypeAlias = List[BasicValue]
 NumericalValue: TypeAlias = int | float
 LayerValue: TypeAlias = Dict[str, BasicValue]
-VectorValue: TypeAlias = Union[List[int], List[float], List[str], List[LayerValue]]
+VectorValue: TypeAlias = Union[BasicValueList, List[LayerValue]]
 SupportedValues: TypeAlias = Union[BasicValue, LayerValue, VectorValue]
 OptSupportedValues: TypeAlias = Union[BasicValue, LayerValue, VectorValue, None]
 VarStructureType: TypeAlias = Dict[str, SupportedValues]

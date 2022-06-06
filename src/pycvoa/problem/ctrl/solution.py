@@ -1,5 +1,4 @@
 from pycvoa.problem.ctrl import SolutionError
-from pycvoa.problem.types import *
 
 
 def is_assigned_layer_element(layer_variable: str, element: str, solution_structure: VarStructureType):
