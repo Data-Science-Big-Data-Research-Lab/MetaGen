@@ -1053,12 +1053,12 @@ class Domain:
             if type(values) is BasicValue:
                 assert element is not None
                 ctrl_def.is_defined_element(variable, element, layer_def)
-                r = Domain.__check_basic_value_item(cast(BasicDef,layer_def[1][element]), cast(BasicValue, values))
+                r = Domain.__check_basic_value_item(cast(BasicDef, layer_def[1][element]), cast(BasicValue, values))
             else:
                 assert element is None
                 r = Domain.__check_layer_element_values(variable, layer_def, cast(LayerValue, values))
         elif self.__definitions[variable][0] is VECTOR:
-            assert type(values) is Union[VectorValue, LayerValue,BasicValue]
+            assert type(values) is Union[VectorValue, LayerValue, BasicValue]
             vector_def = cast(VectorDef, self.__definitions[variable])
             ctrl_def.are_defined_components(variable, vector_def)
             components_type = cast(ComponentDef, vector_def[4])[0]
@@ -1172,9 +1172,10 @@ class Domain:
             res += "  Component definition: [" + component_definition[0] + "] "
 
             if component_definition[0] in NUMERICAL:
-                res += "{Minimum = " + str(component_definition[1]) + ", Maximum = " + str(component_definition[2]) \
+                num_def = cast(NumericalDef, component_definition)
+                res += "{Minimum = " + str(num_def[1]) + ", Maximum = " + str(num_def[2]) \
                        + ", Step = " + str(
-                    component_definition[3]) + "}"
+                    num_def[3]) + "}"
             elif component_definition[0] is CATEGORICAL:
                 res += "{Values = " + str(component_definition[1]) + "}"
             elif component_definition[0] is LAYER:
@@ -1191,12 +1192,13 @@ class Domain:
     @staticmethod
     def __check_basic_value_item(basic_item_definition: BasicDef, value: BasicValue) -> bool:
         r = False
-        if basic_item_definition[0] is NUMERICAL:
-            num_def = cast(NumericalDef, BasicDef)
+        if basic_item_definition[0] in NUMERICAL_PYTYPES:
+            assert type(value) is int | float
+            num_def = cast(NumericalDef, basic_item_definition)
             if num_def[1] <= value <= num_def[2]:
                 r = True
         elif basic_item_definition[0] is CATEGORICAL:
-            cat_def = cast(CategoricalDef, BasicDef)
+            cat_def = cast(CategoricalDef, basic_item_definition)
             if value in cat_def[1]:
                 r = True
         return r
@@ -1214,6 +1216,7 @@ class Domain:
             element = key_list[i]
             value = values.get(element)
             ctrl_def.is_defined_element_item_definition(layer_variable, element, layer_definition)
+
             if not Domain.__check_basic_value_item(layer_definition[1][element], value):
                 r = False
             else:
