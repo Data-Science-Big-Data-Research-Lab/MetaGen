@@ -1,6 +1,5 @@
 import copy
 from typing import cast
-
 from pycvoa.problem.ctrl import parameter as ctrl_par
 from pycvoa.problem.ctrl import definition as ctrl_def
 from pycvoa.types import *
@@ -1208,13 +1207,13 @@ class Domain:
                                      complete: bool = True) -> bool:
         if complete:
             ctrl_def.is_a_complete_layer(layer_definition, values)
-
         r = True
         i = 0
         key_list = list(values.keys())
         while r and i < len(key_list):
             element = key_list[i]
             value = values.get(element)
+            assert value is not None
             ctrl_def.is_defined_element_item_definition(layer_variable, element, layer_definition)
 
             if not Domain.__check_basic_value_item(layer_definition[1][element], value):
@@ -1228,7 +1227,7 @@ class Domain:
         r = True
         i = 0
         while r and i < len(values):
-            if not Domain.__check_basic_value_item(vector_basic_definition[4], values[i]):
+            if not Domain.__check_basic_value_item(cast(BasicDef, vector_basic_definition[4]), values[i]):
                 r = False
             else:
                 i += 1
@@ -1242,7 +1241,7 @@ class Domain:
         i = 0
         while r and i < len(values):
             layer = values[i]
-            if not Domain.__check_layer_element_values("-", LayerDef(vector_layer_definition), layer, complete):
+            if not Domain.__check_layer_element_values("-", cast(LayerDef, vector_layer_definition), layer, complete):
                 r = False
             else:
                 i += 1
@@ -1250,10 +1249,11 @@ class Domain:
 
     @staticmethod
     def __available_size(vector_variable: str, current_size: int, definitions: DefStructure) -> int:
-        if current_size < definitions[vector_variable][1]:
-            r = current_size - definitions[vector_variable][1]
-        elif definitions[vector_variable][1] <= current_size < definitions[vector_variable][2]:
-            r = definitions[vector_variable][2] - current_size
+        vec_def = cast(VectorDef,definitions[vector_variable])
+        if current_size < vec_def[1]:
+            r = current_size - vec_def[1]
+        elif vec_def[1] <= current_size < vec_def[2]:
+            r = vec_def[2] - current_size
         else:
             r = 0
         return r
