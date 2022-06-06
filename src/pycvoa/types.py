@@ -65,6 +65,7 @@ BasicValueList: TypeAlias = list[str] | list[int] | list[float]
 
 # VALUES types
 BasicValue: TypeAlias = int | float | str
+NumericalValue: TypeAlias = int | float
 LayerValue: TypeAlias = Dict[str, BasicValue]
 VectorValue: TypeAlias = Union[List[int], List[float], List[str], List[LayerValue]]
 SupportedValues: TypeAlias = Union[BasicValue, LayerValue, VectorValue]
