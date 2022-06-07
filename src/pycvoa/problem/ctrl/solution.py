@@ -1,4 +1,6 @@
+from pycvoa.problem import Domain
 from pycvoa.problem.ctrl import SolutionError
+from pycvoa.types import VarStructureType, OptSupportedValues, VectorValue, LayerValue, LayerVectorValue
 
 
 def is_assigned_layer_element(layer_variable: str, element: str, solution_structure: VarStructureType):
@@ -16,15 +18,15 @@ def is_assigned_variable(variable: str, solution_structure: VarStructureType):
         raise SolutionError("The " + str(variable) + " variable is not assigned in this solution.")
 
 
-def is_assigned_component(vector_variable: str, index: int, vector_values: VectorValue):
-    if index < 0 or index >= len(vector_values):
+def is_assigned_component(vector_variable: str, index: int, vector_values_size: int):
+    if index < 0 or index >= vector_values_size:
         raise SolutionError(
             "The " + str(
                 index) + "-nh component of " + vector_variable + " VECTOR variable is not assigned in this solution.")
 
 
 def is_assigned_component_element(layer_vector_variable: str, index: int, element:str,
-                                  layer_vector_value: list[LayerValue]):
+                                  layer_vector_value: LayerVectorValue):
     if element not in layer_vector_value[index].keys():
         raise SolutionError("The element " + str(element) + " in not assigned in the " + str(index)
                             + "-nh component of the " + str(layer_vector_variable) + " variable in this solution.")
@@ -40,7 +42,7 @@ def vector_adding_available(vector_variable: str, remaining: int):
         raise SolutionError("The " + str(vector_variable) + " is complete.")
 
 
-def vector_element_adding_available(layer_vector_variable: str, layer_vector_value:  list[LayerValue], domain: Domain):
+def vector_element_adding_available(layer_vector_variable: str, layer_vector_value: LayerVectorValue, domain: Domain):
     key_sizes = len(layer_vector_value[-1].keys()
                     & domain.get_layer_components_attributes(layer_vector_variable).keys())
     if key_sizes == 0:
@@ -51,9 +53,8 @@ def vector_element_adding_available(layer_vector_variable: str, layer_vector_val
         raise SolutionError("The " + str(layer_vector_variable) + " is complete.")
 
 
-def assigned_vector_removal_available(vector_variable, vector_value: VectorValue, domain: Domain):
-    current_length = len(vector_value)
-    r = domain.get_remaining_available_complete_components(vector_variable, current_length - 1)
+def assigned_vector_removal_available(vector_variable, vector_value_size: int, domain: Domain):
+    r = domain.get_remaining_available_complete_components(vector_variable, vector_value_size - 1)
     if r < 0:
         raise SolutionError("The " + str(vector_variable) + " can not deleting.")
-    return current_length - r
+    return vector_value_size - r

@@ -2,8 +2,8 @@ import copy
 import math
 import random
 
-from pycvoa.problem import INTEGER_TYPE, REAL_TYPE, CATEGORICAL_TYPE, LAYER_TYPE, VECTOR_TYPE
 from pycvoa.problem.solution import Solution
+from pycvoa.types import BASIC, LAYER, VECTOR
 
 
 def build_random_solution(domain, fitness_function=None):
@@ -28,19 +28,19 @@ def build_random_solution(domain, fitness_function=None):
 
         # If the variable is INTEGER, REAL or CATEGORICAL, set it with a random value
         # using the get_random_value_for_simple_variable auxiliary method.
-        if variable_type in (INTEGER_TYPE, REAL_TYPE, CATEGORICAL_TYPE):
+        if variable_type in BASIC:
             new_solution.set_basic(variable, get_random_value_for_basic_variable(variable_definition))
 
         # If the variable is LAYER, iterate over its elements and set them with a random value
         # using the get_random_value_for_simple_variable auxiliary method.
-        elif variable_type == LAYER_TYPE:
+        elif variable_type is LAYER:
             for element in domain.get_element_list(variable_type):
                 element_definition = domain.get_element_definition(variable, element)
                 new_solution.set_element(variable, element,
                                          get_random_value_for_basic_variable(element_definition))
 
         # If the variable is VECTOR:
-        elif variable_type == VECTOR_TYPE:
+        elif variable_type is VECTOR:
 
             # Get a random size using the get_number_from_interval auxiliary method.
             vector_size = get_number_from_interval(variable_definition[1], variable_definition[2],
