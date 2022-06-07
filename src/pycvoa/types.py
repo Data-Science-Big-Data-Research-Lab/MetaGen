@@ -19,10 +19,12 @@ LAYER_TYPE = Literal["LAYER"]
 VECTOR_TYPE = Literal["VECTOR"]
 PYCVOA_TYPE = Literal["INTEGER", "REAL", "CATEGORICAL", "LAYER", "VECTOR", "BASIC", "NUMERICAL"]
 
+BasicValue: TypeAlias = int | float | str
+BasicValueList: TypeAlias = List[BasicValue]
 
 IntegerDef: TypeAlias = Tuple[INTEGER_TYPE, int, int, int]
 RealDef: TypeAlias = Tuple[REAL_TYPE, float, float, float]
-CategoricalDef: TypeAlias = Tuple[CATEGORICAL_TYPE, List[int] | List[float] | List[str]]
+CategoricalDef: TypeAlias = Tuple[CATEGORICAL_TYPE, BasicValueList]
 BasicDef: TypeAlias = Union[IntegerDef, RealDef, CategoricalDef]
 NumericalDef: TypeAlias = Union[IntegerDef, RealDef]
 NumericalAttributes: TypeAlias = Union[Tuple[int, int, int], Tuple[float, float, float]]
@@ -42,9 +44,6 @@ OptDict: TypeAlias = dict | None
 NumericaVectorValues: TypeAlias = List[int] | List[float]
 IntOrIntList: TypeAlias = int | List[int]
 
-
-BasicValue: TypeAlias = int | float | str
-BasicValueList: TypeAlias = List[BasicValue]
 NumericalValue: TypeAlias = int | float
 LayerValue: TypeAlias = Dict[str, BasicValue]
 VectorValue: TypeAlias = Union[BasicValueList, List[LayerValue]]

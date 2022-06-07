@@ -93,7 +93,7 @@ class Domain:
         """
         valid_step: int = ctrl_par.check_integer_range_step(min_value, max_value, step, "a")
         ctrl_def.not_defined_variable(variable_name, self.__definitions)
-        self.__definitions[variable_name] = ("INTEGER", min_value, max_value, valid_step)
+        self.__definitions[variable_name] = (INTEGER, min_value, max_value, valid_step)
 
     def define_real(self, variable_name: str, min_value: float, max_value: float, step: OptFloat = None):
         """ It defines a **REAL** variable receiving the variable name, the minimum and maximum values that it will be
@@ -117,7 +117,7 @@ class Domain:
         """
         valid_step = ctrl_par.check_real_range_step(min_value, max_value, step, "a")
         ctrl_def.not_defined_variable(variable_name, self.__definitions)
-        self.__definitions[variable_name] = ("REAL", min_value, max_value, valid_step)
+        self.__definitions[variable_name] = (REAL, min_value, max_value, valid_step)
 
     def define_categorical(self, variable_name: str, categories: BasicValueList):
         """ It defines a **CATEGORICAL** variable receiving the variable name, and a list with the categories that it
@@ -135,7 +135,7 @@ class Domain:
         """
         ctrl_par.check_categories(categories)
         ctrl_def.not_defined_variable(variable_name, self.__definitions)
-        self.__definitions[variable_name] = ("CATEGORICAL", copy.deepcopy(categories))
+        self.__definitions[variable_name] = (CATEGORICAL, copy.deepcopy(categories))
 
     # **** DEFINE LAYER VARIABLE METHODS ****
 

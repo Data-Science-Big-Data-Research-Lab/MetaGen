@@ -4,6 +4,7 @@ from pycvoa.types import *
 
 OptDomain: TypeAlias = Union[Domain, None]
 
+
 # ================================================== AUXILIARY ======================================================= #
 
 
@@ -55,7 +56,7 @@ def check_layer_element_value(layer_variable: str, element: str, value: BasicVal
 
 # =============================================== BASIC VECTOR ======================================================= #
 
-def check_basic_vector_values(check_basic_vector_variable: str, value_list:BasicValueList, external_domain: OptDomain,
+def check_basic_vector_values(check_basic_vector_variable: str, value_list: BasicValueList, external_domain: OptDomain,
                               internal_domain: OptDomain):
     valid_domain = get_valid_domain(external_domain, internal_domain)
     if not valid_domain.check_vector_basic_values(check_basic_vector_variable, value_list):
@@ -98,10 +99,39 @@ def check_layer_vector_component(layer_vector_variable: str, layer_values: Layer
     return valid_domain
 
 
-########################################################################################################################
-########################################################################################################################
-########################################################################################################################
+# =============================================== DEF. CHECKING ====================================================== #
 
+def is_defined_variable(variable: str, external_domain: OptDomain, internal_domain: OptDomain) -> Domain:
+    valid_domain = get_valid_domain(external_domain, internal_domain)
+    if valid_domain.is_defined_variable(variable) is not True:
+        raise DomainError(
+            "The variable " + variable + " is not defined in this domain.")
+    return valid_domain
+
+
+def is_defined_as_layer(variable: str, external_domain: OptDomain, internal_domain: OptDomain):
+    valid_domain = is_defined_variable(variable, external_domain, internal_domain)
+    if valid_domain.get_variable_type(variable) is not LAYER:
+        raise DomainError("The variable " + variable + " is not defined as LAYER.")
+
+
+def is_defined_as_vector_variable(variable: str, external_domain: OptDomain, internal_domain: OptDomain):
+    valid_domain = is_defined_variable(variable, external_domain, internal_domain)
+    if valid_domain.get_variable_type(variable) is not VECTOR:
+        raise DomainError("The variable " + variable + " is not defined as LAYER.")
+    if not valid_domain.are_defined_components(variable):
+        raise DomainError("The components of the " + variable + " VECTOR variable have not defined.")
+
+
+def is_defined_as_layer_vector_variable(variable: str, external_domain: OptDomain, internal_domain: OptDomain):
+    valid_domain = is_defined_variable(variable, external_domain, internal_domain)
+    if valid_domain.get_variable_type(variable) is not VECTOR:
+        raise DomainError("The variable " + variable + " is not defined as LAYER.")
+    if not valid_domain.get_vector_components_type(variable) is not LAYER:
+        raise DomainError("The components of the " + variable + " VECTOR variable have not defined as LAYER.")
+
+
+# =============================================== GENERAL =========================================================== #
 
 def check_layer_vector_element(layer_vector_variable: str, element: str, value: BasicValue, external_domain: OptDomain,
                                internal_domain: OptDomain):
@@ -146,7 +176,7 @@ def __check_variable_type(variable: str, check_type: PYCVOA_TYPE, domain: Domain
             raise ValueError("The " + variable + " variable is not defined as " + str(check_type) + ".")
 
 
-def __check_component_type(check_vector_variable:str, check_type:PYCVOA_TYPE, domain:Domain):
+def __check_component_type(check_vector_variable: str, check_type: PYCVOA_TYPE, domain: Domain):
     """ It checks if the components of a **VECTOR** variable are defined as a concrete type, if not, raise
     py:class:`~pycvoa.problem.domain.WrongItemType`.
 
