@@ -1098,11 +1098,11 @@ class Domain:
         count = 1
         for variable, definition in self.__definitions.items():
             if definition[0] is VECTOR:
-                res += Domain.__vector_definition_to_string(variable, definition)
+                res += Domain.__vector_definition_to_string(variable, cast(VectorDef, definition))
             elif definition[0] is LAYER:
-                res += Domain.__layer_definition_to_string(variable, definition)
+                res += Domain.__layer_definition_to_string(variable, cast(LayerDef, definition))
             else:
-                res += Domain.__basic_definition_to_string(variable, definition)
+                res += Domain.__basic_definition_to_string(variable, cast(BasicDef, definition))
             if count != len(self.__definitions.items()):
                 res += "\n"
             count += 1
@@ -1122,7 +1122,7 @@ class Domain:
             """
         res = "[" + definition[0] + "] " + variable + " "
         if definition[0] is not CATEGORICAL:
-            num_def = cast(NumericalDef, BasicDef)
+            num_def = cast(NumericalDef, definition)
             res += "{Minimum = " + str(num_def[1]) + ", Maximum = " + str(num_def[2]) + ", Step = " + str(
                 num_def[3]) + "}"
         else:
