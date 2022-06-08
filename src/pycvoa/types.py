@@ -8,8 +8,8 @@ LAYER: Final = "LAYER"
 VECTOR: Final = "VECTOR"
 BASIC: Final = "BASIC"
 NUMERICAL: Final = "NUMERICAL"
-BASIC_PYTYPES: Final = ("INTEGER", "REAL", "CATEGORICAL")
-NUMERICAL_PYTYPES: Final = ("INTEGER", "REAL")
+BASICS: Final = ("INTEGER", "REAL", "CATEGORICAL")
+NUMERICALS: Final = ("INTEGER", "REAL")
 
 # PYCVOA literals
 INTEGER_TYPE = Literal["INTEGER"]
@@ -52,3 +52,4 @@ OptSupportedValues: TypeAlias = Union[BasicValue, LayerValue, VectorValue, None]
 VarStructureType: TypeAlias = Dict[str, SupportedValues]
 LayerVectorValue: TypeAlias = List[LayerValue]
 OptLayerValue: TypeAlias = Union[LayerValue, None]
+
