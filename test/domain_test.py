@@ -4,9 +4,10 @@ domain = Domain()
 # assert type(min_value) is int, "Esto es un error: "+str(min_value)
 
 # print("BASIC TYPES")
-print("define_integer")
+print("[INIT] define_integer")
 domain.define_integer("I", 1, 100, 20)
-#
+
+print("[OK] define_integer")
 # print("define_real")
 # domain.define_real("R", 0.0, 1.0, 0.1)
 # #
@@ -70,5 +71,6 @@ domain.define_integer("I", 1, 100, 20)
 # #
 # print("define_layer_vector_categorical_element")
 # domain.define_layer_vector_categorical_element("V_L", "el-3", [1, 2, 3])
-# print("\n\nDomain:\n\n"+str(domain))
 
+
+print("\n\nDomain:\n\n"+str(domain))
