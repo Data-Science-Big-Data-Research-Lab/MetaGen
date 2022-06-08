@@ -6,10 +6,12 @@ import threading
 from concurrent.futures.thread import ThreadPoolExecutor
 from datetime import timedelta
 from time import time
+from typing import Set, Callable, cast
 
-from pycvoa.problem import INTEGER_TYPE, REAL_TYPE, CATEGORICAL_TYPE, LAYER_TYPE, VECTOR_TYPE
+from pycvoa.problem import Domain
 from pycvoa.problem.solution import Solution
 from pycvoa.problem.support import get_random_value_for_basic_variable, get_number_from_interval, alter_solution
+from pycvoa.types import BASICS, VECTOR, LAYER, LayerDef, ComponentDef, LayerAttributes
 
 logging.basicConfig(level=logging.INFO)
 
@@ -59,23 +61,23 @@ class CVOA:
 
     # ** Global properties to all strains for multi-spreading (multi-threading) execution
     # These stores the recovered, deaths and isolated individuals respectively for all the launched strains.
-    __recovered = None
-    __deaths = None
-    __isolated = None
+    __recovered: Set | None = None
+    __deaths: Set | None = None
+    __isolated: Set | None = None
     # It stores the global best individual found among all the launched strains.
-    __bestIndividual = None
+    __bestIndividual: Solution | None = None
     # If true, a best individual has been found.
-    __bestIndividualFound = None
+    __bestIndividualFound: Solution | None = None
     # Lock fot multi-threading safety access to the shared structures.
     __lock = threading.Lock()
     # Fitness function to apply to the individuals.
-    __fitnessFunction = None
+    __fitnessFunction: Callable[[Solution], float] | None = None
     # Problem definition object.
-    __problemDefinition = None
+    __problemDefinition: Domain | None = None
     # If true, the isolated set is updated.
-    __update_isolated = None
+    __update_isolated: bool | None = None
     # If true show log messages.
-    __verbosity = None
+    __verbosity: Callable[[str], None] | None = None
 
     def __init__(self, strain_id, pandemic_duration=10, spreading_rate=6, min_super_spreading_rate=6,
                  max_super_spreading_rate=15, social_distancing=10, p_isolation=0.7, p_travel=0.1,
@@ -331,7 +333,8 @@ class CVOA:
         self.__infectedStrain.clear()
         self.__infectedStrain.update(new_infected_population)
 
-    def __infect_pz(self):
+    @staticmethod
+    def __infect_pz():
         """ It builds the *patient zero*, **PZ**, for the **CVOA** algorithm.
 
         :returns: The *patient zero*, **PZ**
@@ -349,25 +352,26 @@ class CVOA:
 
             # If the variable is INTEGER, REAL or CATEGORICAL, set it with a random value
             # using the get_random_value_for_simple_variable auxiliary method.
-            if definition[0] is INTEGER_TYPE or definition[0] is REAL_TYPE or definition[0] is CATEGORICAL_TYPE:
+            if definition[0] in BASICS:
                 # logging.debug(">INTEGER")
                 patient_zero.set_basic(variable, get_random_value_for_basic_variable(definition))
 
             # If the variable is LAYER, iterate over its elements and set them with a random value
             # using the get_random_value_for_simple_variable auxiliary method.
-            elif definition[0] == LAYER_TYPE:
+            elif definition[0] is LAYER:
                 # logging.debug(">LAYER")
-                for element_name, element_definition in definition[1].items():
+                ly_def = cast(LayerDef, definition)
+                for element_name, element_definition in ly_def[1].items():
                     patient_zero.set_element(variable, element_name,
                                              get_random_value_for_basic_variable(element_definition))
 
             # If the variable is VECTOR:
-            elif definition[0] == VECTOR_TYPE:
+            elif definition[0] is VECTOR:
                 #  logging.debug(">VECTOR")
 
                 # Get a random size using the get_number_from_interval auxiliary method.
-                vector_size = get_number_from_interval(definition[1], definition[2], definition[3])
-                vector_component_type = definition[4]
+                vector_size = int(get_number_from_interval(definition[1], definition[2], definition[3]))
+                vec_com_def = cast(ComponentDef, definition[4])
 
                 # logging.debug(">VECTOR, vector_component_type: %s", vector_component_type)
 
@@ -377,21 +381,20 @@ class CVOA:
                     # If the vector type is INTEGER, REAL or CATEGORICAL,
                     # add a random value (using the get_random_value_for_simple_variable auxiliary method)
                     # to the current element.
-                    if vector_component_type[0] is INTEGER_TYPE or vector_component_type[0] is REAL_TYPE or \
-                            vector_component_type[0] is CATEGORICAL_TYPE:
-
-                        value = get_random_value_for_basic_variable(vector_component_type)
+                    if vec_com_def[0] in BASICS:
+                        value = get_random_value_for_basic_variable(vec_com_def)
                         patient_zero.add_basic_component(variable, value)
                         # logging.debug(">VECTOR, variable: %s, value = %s", variable, value)
 
                     # If the vector type is LAYER,
                     # build a random value for each element of the layer (using the
                     # get_random_value_for_simple_variable auxiliary method) and add it to the current element.
-                    elif vector_component_type[0] is LAYER_TYPE:
+                    elif vec_com_def[0] is LAYER:
+
                         layer_values = {}
-                        for element_name, element_definition in vector_component_type[1].items():
+                        for element_name, element_definition in cast(LayerAttributes, vec_com_def[1]).items():
                             layer_values[element_name] = get_random_value_for_basic_variable(element_definition)
-                        patient_zero.add_basic_component(variable, layer_values)
+                        patient_zero.add_layer_component(variable, layer_values)
 
         # logging("Individual = %s"+str(patient_zero))
         # Once the individual variables is built, the fitness function is computed.
@@ -399,7 +402,8 @@ class CVOA:
 
         return patient_zero
 
-    def __infect(self, individual, travel_distance):
+    @staticmethod
+    def __infect(individual, travel_distance):
         """ The individual infects another one located at a specific distance from it.
 
         :returns: The newly infected individual.
@@ -587,7 +591,8 @@ class CVOA:
                 CVOA.__recovered.remove(new_infected_individual)
                 CVOA.__lock.release()
 
-    def __update_isolated_population(self, individual):
+    @staticmethod
+    def __update_isolated_population(individual):
         """ It updates the global isolated set with an individual.
 
         :param individual: The individual that will be inserted into the global isolated set.

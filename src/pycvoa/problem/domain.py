@@ -734,7 +734,7 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.WrongItemType`: The variable is not defined as **VECTOR**.
         The component type is not defined as **LAYER**.
         """
-        ctrl_def.is_defined_vector_and_components_as_type(layer_vector_variable, self.__definitions, "LAYER")
+        ctrl_def.is_defined_vector_and_components_as_type(layer_vector_variable, self.__definitions, LAYER)
         return list(cast(LayerDef, cast(VectorDef, self.__definitions[layer_vector_variable])[4])[1].keys())
 
     def get_component_element_definition(self, layer_vector_variable: str, element: str) -> BasicDef:
@@ -1191,7 +1191,7 @@ class Domain:
     @staticmethod
     def __check_basic_value_item(basic_item_definition: BasicDef, value: BasicValue) -> bool:
         r = False
-        if basic_item_definition[0] in NUMERICAL_PYTYPES:
+        if basic_item_definition[0] in NUMERICALS:
             assert type(value) is int | float
             num_def = cast(NumericalDef, basic_item_definition)
             if num_def[1] <= value <= num_def[2]:
