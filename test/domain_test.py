@@ -4,19 +4,18 @@ domain = Domain()
 # assert type(min_value) is int, "Esto es un error: "+str(min_value)
 
 # print("BASIC TYPES")
-print("[INIT] define_integer")
+print("define_integer")
 domain.define_integer("I", 1, 100, 20)
 
-print("[OK] define_integer")
-# print("define_real")
-# domain.define_real("R", 0.0, 1.0, 0.1)
-# #
-# print("define_categorical")
-# domain.define_categorical("C_A", ["C1", "C2", "C3", "C4"])
-# # domain.define_categorical("C_B", [1, 2, 3, 4])
-# # domain.define_categorical("C_C", [0.1, 0.2, 0.3, 0.4])
-# #
-# # print(str(domain))
+print("define_real")
+domain.define_real("R", 0.0, 1.0, 0.1)
+
+print("define_categorical")
+domain.define_categorical("C_A", [1, "C2", "C3", "C4"])
+domain.define_categorical("C_B", [1, 2, 3, 4])
+domain.define_categorical("C_C", [0.1, 0.2, 0.3, 0.4])
+
+# print(str(domain))
 # #
 # print("\nLAYER TYPES")
 # print("define_layer")

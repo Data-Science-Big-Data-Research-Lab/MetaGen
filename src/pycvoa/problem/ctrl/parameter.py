@@ -1,69 +1,5 @@
 import math
-from pycvoa.types import OptInt, OptFloat, BasicValueList
-
-
-# =========================================== NONE TYPES ==============================================================#
-
-
-
-def element_is_none(variable: str, element: str, case: str):
-    if element is not None:
-        msg = ""
-
-        if case == "a":
-            msg = "The type of " + variable + " is BASIC, therefore, the element must not be provided."
-        elif case == "b":
-            msg = "The " + variable + "is LAYER, and the type of the values are <dict>, therefore, the element must not " \
-                                      "be provided. "
-        elif case == "c":
-            msg = "The type of " + variable + "is VECTOR, and the type of the values are <list>, therefore, the element " \
-                                              "must not be provided. "
-        elif case == "d":
-            msg = "The components type of the VECTOR variable " + variable + "are BASIC, therefore, the element must " \
-                                                                             "not be provided. "
-        elif case == "e":
-            msg = "The " + variable + "is LAYER VECTOR, and the type of the values are <dict>, therefore, the element " \
-                                      "must not be provided. "
-        raise ValueError(msg)
-
-
-def element_not_none(variable, element, case: str):
-    if element is None:
-        msg = ""
-
-        if case == "a":
-            msg = "The type of " + variable + "is LAYER and the values are not <dict>, therefore, the element must be " \
-                                              "provided. "
-        elif case == "b":
-            msg = "The " + variable + "is LAYER VECTOR and the values are not <dict>, therefore, the element must be " \
-                                      "provided. "
-
-        raise ValueError(msg)
-
-
-def index_is_none(variable, index):
-    if index is not None:
-        raise ValueError(
-            "The " + variable + "variable is not defined as VECTOR, therefore, an index must not be provided.")
-
-
-def index_not_none(variable, index):
-    if index is None:
-        raise ValueError(
-            "The " + variable + "variable is defined as VECTOR, therefore an index to access a component name "
-                                "must be provided.")
-
-
-def assigned_elements_is_none(variable, assigned_elements):
-    if assigned_elements is None:
-        raise ValueError(
-            "The " + variable + "must not be provided, since the VECTOR components are not defined as LAYER.")
-
-
-def assigned_elements_not_none(variable, assigned_elements):
-    if assigned_elements is None:
-        raise ValueError(
-            "The " + variable + "must be provided, since the VECTOR components are defined as LAYER.")
+from pycvoa.types import OptInt, OptFloat, BasicValueList, CategoryList
 
 
 # =========================================== VALUE CHECKERS ==========================================================#
@@ -149,11 +85,15 @@ def check_float_step(min_value: float, max_value: float, step: OptFloat, case: s
     return r
 
 
-def check_categories(categories: BasicValueList):
+def check_categories(categories: CategoryList):
     if len(categories) < 2:
         raise ValueError("The categories parameter must have al least two elements.")
     i = 0
+    cat_type = type(categories[0])
     while i < len(categories) - 1:
+        if categories[i] is not cat_type:
+            raise TypeError(
+                "The categories must have the same type (int, float or str).")
         j = i + 1
         while j < len(categories):
             if categories[i] == categories[j]:
