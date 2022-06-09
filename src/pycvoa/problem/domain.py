@@ -119,7 +119,7 @@ class Domain:
         ctrl_def.not_defined_variable(variable_name, self.__definitions)
         self.__definitions[variable_name] = (REAL, min_value, max_value, valid_step)
 
-    def define_categorical(self, variable_name: str, categories: BasicValueList):
+    def define_categorical(self, variable_name: str, categories: CategoryList):
         """ It defines a **CATEGORICAL** variable receiving the variable name, and a list with the categories that it
         will be able to have.
 
@@ -220,7 +220,7 @@ class Domain:
         cast(LayerAttributes, self.__definitions[layer_variable][1])[element_name] = \
             (REAL, min_value, max_value, valid_step)
 
-    def define_categorical_element(self, layer_variable: str, element_name: str, categories: BasicValueList):
+    def define_categorical_element(self, layer_variable: str, element_name: str, categories: CategoryList):
         """ It defines a **CATEGORICAL** element into a **LAYER** variable by receiving a list with
         the categories that it will be able to have.
 
@@ -336,8 +336,7 @@ class Domain:
         Domain.__set_components_definition(vector_variable, self.__definitions,
                                            (REAL, min_value, max_value, valid_step))
 
-    def define_components_as_categorical(self, vector_variable: str,
-                                         categories: BasicValueList):
+    def define_components_as_categorical(self, vector_variable: str, categories: CategoryList):
         """ It defines the components of a **VECTOR** variable as **CATEGORICAL** by receiving a list with
         the categories that it will be able to have.
 
@@ -460,7 +459,7 @@ class Domain:
             (REAL, min_value, max_value, valid_step)
 
     def define_layer_vector_categorical_element(self, layer_vector_variable: str, element_name: str,
-                                                categories: BasicValueList):
+                                                categories: CategoryList):
         """ It defines a **CATEGORICAL** element of a **VECTOR** variable where its components are defined as **LAYER**.
         The element is defined by receiving a list with the categories that it will be able to have.
 
@@ -768,7 +767,7 @@ class Domain:
                 cast(NumericalDef, self.__definitions[numerical_variable])[2],
                 cast(NumericalDef, self.__definitions[numerical_variable])[3])
 
-    def get_categorical_variable_attributes(self, categorical_variable: str) -> BasicValueList:
+    def get_categorical_variable_attributes(self, categorical_variable: str) -> CategoryList:
         ctrl_def.is_defined_variable_as_type(categorical_variable, self.__definitions, CATEGORICAL)
         return copy.deepcopy(cast(CategoricalDef, self.__definitions[categorical_variable])[1])
 
@@ -779,7 +778,7 @@ class Domain:
                 cast(NumericalDef, layer_attr[numerical_element])[2],
                 cast(NumericalDef, layer_attr[numerical_element])[3])
 
-    def get_categorical_element_attributes(self, layer_variable: str, categorical_element: str) -> BasicValueList:
+    def get_categorical_element_attributes(self, layer_variable: str, categorical_element: str) -> CategoryList:
         ctrl_def.is_defined_layer_and_element_as_type(layer_variable, categorical_element,
                                                       self.__definitions, CATEGORICAL)
         layer_attr = cast(LayerAttributes, cast(LayerDef, self.__definitions[layer_variable]))
@@ -797,7 +796,7 @@ class Domain:
                 cast(NumericalDef, cast(VectorDef, self.__definitions[numerical_vector_variable])[4])[2],
                 cast(NumericalDef, cast(VectorDef, self.__definitions[numerical_vector_variable])[4])[3])
 
-    def get_categorical_components_attributes(self, categorical_vector_variable: str) -> BasicValueList:
+    def get_categorical_components_attributes(self, categorical_vector_variable: str) -> CategoryList:
         ctrl_def.is_defined_vector_and_components_as_type(categorical_vector_variable, self.__definitions,
                                                           CATEGORICAL)
         return copy.deepcopy(cast(CategoricalDef,
@@ -817,7 +816,7 @@ class Domain:
                 cast(NumericalDef, layer_attributes[numerical_element])[3])
 
     def get_layer_vector_categorical_attributes(self, layer_vector_variable: str,
-                                                categorical_element: str) -> BasicValueList:
+                                                categorical_element: str) -> CategoryList:
         ctrl_def.is_defined_layer_vector_and_component_element_as_type(layer_vector_variable, categorical_element,
                                                                        self.__definitions, CATEGORICAL)
         layer_attributes = cast(LayerDef, cast(VectorDef, self.__definitions[layer_vector_variable])[4])[1]
@@ -848,7 +847,7 @@ class Domain:
         cmp_type = cast(ComponentDef, cast(VectorDef, self.__definitions[vector_variable])[4])[0]
         r: int | Tuple[int, int] = 0
         if cmp_type is BASIC:
-            ctrl_par.assigned_elements_is_none("layer_value", layer_value)
+            assert layer_value is None
             r = Domain.__available_size(vector_variable, current_vector_size, self.__definitions)
         elif cmp_type is LAYER:
             assert layer_value is not None

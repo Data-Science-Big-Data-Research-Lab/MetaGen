@@ -390,13 +390,15 @@ def get_random_value_for_basic_variable(definition: BasicDef) -> BasicValue:
     """
 
     res: BasicValue = 0
-    if definition[0] == REAL:
-        res = get_number_from_interval(definition[1], definition[2], definition[3])
-    elif definition[0] == INTEGER:
-        res = random.randrange(definition[1], definition[2], definition[3])
-    elif definition[0] == CATEGORICAL:
-        res = random.sample(definition[1], 1)[0]
-
+    if definition[0] is REAL:
+        real_def = cast(RealDef, definition)
+        res = get_number_from_interval(real_def[1], real_def[2], real_def[3])
+    elif definition[0] is INTEGER:
+        int_def = cast(IntegerDef, definition)
+        res = random.randrange(int_def[1], int_def[2], int_def[3])
+    elif definition[0] is CATEGORICAL:
+        cat_def = cast(CategoricalDef, definition)
+        res = cast(BasicValue, random.sample(cat_def[1], 1)[0])
     return res
 
 
