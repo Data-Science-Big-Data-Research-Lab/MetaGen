@@ -130,7 +130,6 @@ def are_defined_components(vector_variable: str, vector_definition: VectorDef):
     :param vector_definition: The definitions.
     :type vector_variable: str
     """
-    print(str(vector_definition))
     if vector_definition[4] is None:
         raise DefinitionError(
             "The components of " + vector_variable + " are not defined.")
