@@ -55,7 +55,7 @@ def build_random_solution(domain: Domain, fitness_function: Callable[[Solution],
                 # If the vector type is INTEGER, REAL or CATEGORICAL,
                 # add a random value (using the get_random_value_for_simple_variable auxiliary method)
                 # to the current element.
-                if vector_component_type in BASIC:
+                if vector_component_type in BASICS:
                     new_solution.add_basic_component(variable,
                                                      get_random_value_for_basic_variable(
                                                          cast(BasicDef, vector_component_definition)))

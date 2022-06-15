@@ -846,7 +846,7 @@ class Domain:
         ctrl_def.is_defined_vector_with_components(vector_variable, self.__definitions)
         cmp_type = cast(ComponentDef, cast(VectorDef, self.__definitions[vector_variable])[4])[0]
         r: int | Tuple[int, int] = 0
-        if cmp_type is BASIC:
+        if cmp_type in BASICS:
             assert layer_value is None
             r = Domain.__available_size(vector_variable, current_vector_size, self.__definitions)
         elif cmp_type is LAYER:
@@ -1041,7 +1041,7 @@ class Domain:
         """
         ctrl_def.is_defined_variable(variable, self.__definitions)
         r = False
-        if self.__definitions[variable][0] is BASIC:
+        if self.__definitions[variable][0] in BASICS:
             assert type(values) is BasicValue
             assert element is None
             r = Domain.__check_basic_value_item(cast(BasicDef, self.__definitions[variable]), cast(BasicValue, values))
@@ -1072,7 +1072,7 @@ class Domain:
                     ctrl_def.check_component_type(variable, vector_def, LAYER)
                     r = Domain.__check_vector_layer_element_values(vector_def, cast(LayerVectorValue, values))
             else:
-                if components_type is BASIC:
+                if components_type in BASICS:
                     assert type(values) is BasicValue
                     assert element is None
                     r = Domain.__check_basic_value_item(cast(BasicDef, vector_def[4]), cast(BasicValue, values))
@@ -1168,8 +1168,7 @@ class Domain:
 
         if component_definition is not None:
             res += "  Component definition: [" + component_definition[0] + "] "
-
-            if component_definition[0] in NUMERICAL:
+            if component_definition[0] in NUMERICALS:
                 num_def = cast(NumericalDef, component_definition)
                 res += "{Minimum = " + str(num_def[1]) + ", Maximum = " + str(num_def[2]) \
                        + ", Step = " + str(
