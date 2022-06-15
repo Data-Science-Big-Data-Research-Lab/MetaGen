@@ -1,41 +1,33 @@
 from pycvoa.problem.domain import Domain
 domain = Domain()
 
-# assert type(min_value) is int, "Esto es un error: "+str(min_value)
-
-# print("BASIC TYPES")
+print("BASIC TYPES")
 print("define_integer")
+domain.define_integer("I", 1, 100, 20)
+# These fail
 domain.define_integer("I", 1, 100, 20)
 
 print("define_real")
 domain.define_real("R", 0.0, 1.0, 0.1)
 
 print("define_categorical")
-domain.define_categorical("C_A", [1, "C2", "C3", "C4"])
-domain.define_categorical("C_B", [1, 2, 3, 4])
-domain.define_categorical("C_C", [0.1, 0.2, 0.3, 0.4])
+domain.define_categorical("CA", ["C1", "C2", "C3", "C4"])
+domain.define_categorical("CB", [1, 2, 3, 4])
+domain.define_categorical("CC", [0.1, 0.2, 0.3, 0.4])
 
-# print(str(domain))
-# #
-# print("\nLAYER TYPES")
-# print("define_layer")
-# domain.define_layer("L")
-# #
-# print("define_integer_element")
-# domain.define_integer_element("L", "E_I", 0, 100, 20)
-# #
-# print("define_real_element")
-# domain.define_real_element("L", "E_R", 1.5, 3.0, 0.01)
-# #
-# print("define_categorical_element")
-# domain.define_categorical_element("L", "E_C", ["Lb1", "Lb2", "Lb3"])
-# #
-# # print(str(domain))
-#
-# print("\nBASIC VECTOR TYPES")
-# print("define_vector - V")
-# domain.define_vector("V", 2, 8, 1)
-# #
+
+print("\nLAYER TYPES")
+print("define_layer")
+domain.define_layer("L")
+
+print("define_integer_element")
+domain.define_integer_element("L", "EI", 0, 100, 20)
+domain.define_real_element("L", "ER", 1.5, 3.0, 0.01)
+domain.define_categorical_element("L", "EC", ["Lb1", "Lb2", "Lb3"])
+
+print("\nBASIC VECTOR TYPES")
+domain.define_vector("V", 2, 8, 1)
+
 # print("define_vector - V_I")
 # domain.define_vector("V_I", 4, 10, 1)
 #
@@ -72,4 +64,4 @@ domain.define_categorical("C_C", [0.1, 0.2, 0.3, 0.4])
 # domain.define_layer_vector_categorical_element("V_L", "el-3", [1, 2, 3])
 
 
-print("\n\nDomain:\n\n"+str(domain))
+print("\nDomain:\n\n"+str(domain))

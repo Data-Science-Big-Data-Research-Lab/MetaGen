@@ -169,8 +169,11 @@ def basic_vector_variable(check_vector_variable: str, external_domain: OptDomain
 def __check_variable_type(variable: str, check_type: PYCVOA_TYPE, domain: Domain):
     var_type = domain.get_variable_type(variable)
     if check_type is BASIC:
-        if var_type not in BASIC:
+        if var_type not in BASICS:
             raise ValueError("The " + variable + " variable is not defined as BASIC.")
+    elif check_type is NUMERICAL:
+        if var_type not in NUMERICALS:
+            raise ValueError("The " + variable + " variable is not defined as NUMERICAL.")
     else:
         if var_type is not check_type:
             raise ValueError("The " + variable + " variable is not defined as " + str(check_type) + ".")
@@ -188,8 +191,11 @@ def __check_component_type(check_vector_variable: str, check_type: PYCVOA_TYPE, 
     """
     comp_type = domain.get_vector_components_type(check_vector_variable)
     if check_type is BASIC:
-        if comp_type not in BASIC:
+        if comp_type not in BASICS:
             raise ValueError("The components of " + check_vector_variable + " are not defined as BASIC.")
+    elif check_type is NUMERICAL:
+        if comp_type not in NUMERICALS:
+            raise ValueError("The components of " + check_vector_variable + " are not defined as NUMERICAL.")
     else:
         if comp_type is not check_type:
             raise ValueError("The components of " + check_vector_variable

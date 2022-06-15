@@ -89,9 +89,9 @@ def check_categories(categories: CategoryList):
     if len(categories) < 2:
         raise ValueError("The categories parameter must have al least two elements.")
     i = 0
-    cat_type = type(categories[0])
+    cat_type = type(categories[len(categories) - 1])
     while i < len(categories) - 1:
-        if categories[i] is not cat_type:
+        if type(categories[i]) is not cat_type:
             raise TypeError(
                 "The categories must have the same type (int, float or str).")
         j = i + 1

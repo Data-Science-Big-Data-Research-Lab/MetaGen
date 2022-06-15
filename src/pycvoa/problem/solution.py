@@ -348,7 +348,7 @@ class Solution:
         """
         current_domain = ctrl_dom.get_valid_domain(domain, self.__domain)
         var_type = current_domain.get_variable_type(variable)
-        if var_type in BASIC:
+        if var_type in BASICS:
             assert index is None
             assert element is None
             self.set_basic(variable, cast(BasicValue, value), current_domain)
@@ -363,7 +363,7 @@ class Solution:
                 self.set_layer(variable, cast(LayerValue, value), current_domain)
         elif var_type is VECTOR:
             vector_definition = current_domain.get_vector_component_definition(variable)
-            if vector_definition[0] in BASIC:
+            if vector_definition[0] in BASICS:
                 assert element is None
                 if type(value) is BasicValue:
                     assert index is not None
@@ -460,7 +460,10 @@ class Solution:
         ctrl_sol.is_assigned_variable(variable, self.__variables)
         r = False
         if check_type is BASIC:
-            if variable_type in BASIC:
+            if variable_type in BASICS:
+                r = True
+        elif check_type is NUMERICAL:
+            if check_type in NUMERICALS:
                 r = True
         else:
             if variable_type is check_type:
@@ -490,7 +493,10 @@ class Solution:
         ctrl_sol.is_assigned_variable(vector_variable, self.__variables)
         r = False
         if check_component_type is BASIC:
-            if component_type in BASIC:
+            if component_type in BASICS:
+                r = True
+        elif check_component_type is NUMERICAL:
+            if component_type in NUMERICALS:
                 r = True
         else:
             if component_type is check_component_type:
@@ -719,7 +725,7 @@ class Solution:
         current_domain = ctrl_dom.get_valid_domain(domain, self.__domain)
         var_type = current_domain.get_variable_type(variable)
         r = None
-        if var_type in BASIC:
+        if var_type in BASICS:
             assert index is None
             assert element is None
             r = self.get_basic_value(variable, current_domain)
@@ -730,7 +736,7 @@ class Solution:
         elif var_type is VECTOR_TYPE:
             assert index is not None
             vector_definition = current_domain.get_vector_component_definition(variable)
-            if vector_definition[0] in BASIC:
+            if vector_definition[0] in BASICS:
                 assert element is None
                 r = self.get_basic_component_value(variable, index, current_domain)
             elif vector_definition[0] is LAYER:
