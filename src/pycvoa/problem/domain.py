@@ -603,7 +603,7 @@ class Domain:
         :raise :py:class:`~pycvoa.problem.domain.WrongItemType`: The variable is not defined as **VECTOR**.
         """
         ctrl_def.is_defined_vector_with_components(vector_variable, self.__definitions)
-        return cast(ComponentDef, cast(VectorDef, self.__definitions[vector_variable]))[0]
+        return cast(ComponentDef, cast(VectorDef, self.__definitions[vector_variable])[4])[0]
 
     def get_layer_vector_component_element_type(self, layer_vector_variable: str, element: str) -> PYCVOA_TYPE:
         ctrl_def.is_defined_layer_vector_with_element(layer_vector_variable, element, self.__definitions)
