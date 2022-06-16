@@ -245,21 +245,21 @@ print(str(vector_layer_a) + " => " + str(V_L_layer_a) + "\n" + str(vector_layer_
 # ========================= 8. Checking complete layer values for a LAYER VECTOR ===================================== #
 # ==================================================================================================================== #
 
-vector_layer_values_a = [{"el-1": 15, "el-2": 0.2, "el-3": 2}, {"el-1": 12, "el-2": 0.3, "el-3": 1}]
-vector_layer_values_b = [{"el-1": 25, "el-2": 0.2, "el-3": 2}, {"el-1": 12, "el-2": 0.3, "el-3": 1}]
-vector_layer_values_c = [{"el-1": 25, "el-2": 0.2, "el-3": 2}, {"el-1": 12, "el-2": 0.3, "el-3": "V1"}]
-vector_layer_values_d = [{"el-1": 15, "el-2": 0.2, "el-3": 2}, {"el-1": 12, "el-2": 0.3, "el-3": 1}
-    , {"el-1": 14, "el-2": 0.15, "el-3": 3}, {"el-1": 17, "el-2": 0.25, "el-3": 2}]
-
-V_L_vector_layer_a = domain.check_value("V_L", vector_layer_values_a)
-V_L_vector_layer_b = domain.check_value("V_L", vector_layer_values_b)
-V_L_vector_layer_c = domain.check_value("V_L", vector_layer_values_c)
-V_L_vector_layer_d = domain.check_value("V_L", vector_layer_values_d)
-print("Are these layer values compatible with V_L definition ? ")
-print(str(vector_layer_values_a) + " => " + str(V_L_vector_layer_a) + "\n"
-      + str(vector_layer_values_b) + " => " + str(V_L_vector_layer_b) + "\n"
-      + str(vector_layer_values_c) + " => " + str(V_L_vector_layer_c) + "\n"
-      + str(vector_layer_values_d) + " => " + str(V_L_vector_layer_d) + "\n")
+# vector_layer_values_a = [{"el-1": 15, "el-2": 0.2, "el-3": 2}, {"el-1": 12, "el-2": 0.3, "el-3": 1}]
+# vector_layer_values_b = [{"el-1": 25, "el-2": 0.2, "el-3": 2}, {"el-1": 12, "el-2": 0.3, "el-3": 1}]
+# vector_layer_values_c = [{"el-1": 25, "el-2": 0.2, "el-3": 2}, {"el-1": 12, "el-2": 0.3, "el-3": "V1"}]
+# vector_layer_values_d = [{"el-1": 15, "el-2": 0.2, "el-3": 2}, {"el-1": 12, "el-2": 0.3, "el-3": 1}
+#     , {"el-1": 14, "el-2": 0.15, "el-3": 3}, {"el-1": 17, "el-2": 0.25, "el-3": 2}]
+#
+# V_L_vector_layer_a = domain.check_value("V_L", vector_layer_values_a)
+# V_L_vector_layer_b = domain.check_value("V_L", vector_layer_values_b)
+# V_L_vector_layer_c = domain.check_value("V_L", vector_layer_values_c)
+# V_L_vector_layer_d = domain.check_value("V_L", vector_layer_values_d)
+# print("Are these layer values compatible with V_L definition ? ")
+# print(str(vector_layer_values_a) + " => " + str(V_L_vector_layer_a) + "\n"
+#       + str(vector_layer_values_b) + " => " + str(V_L_vector_layer_b) + "\n"
+#       + str(vector_layer_values_c) + " => " + str(V_L_vector_layer_c) + "\n"
+#       + str(vector_layer_values_d) + " => " + str(V_L_vector_layer_d) + "\n")
 
 # ==================================================================================================================== #
 # ============================================= 9. Possible errors =================================================== #
