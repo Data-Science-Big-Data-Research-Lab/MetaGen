@@ -27,9 +27,7 @@ def check_range(min_value, max_value, case: str):
     :type case: int, float
     """
     if min_value >= max_value:
-
         msg = ""
-
         if case == "a":
             msg = "The minimum value of the variable (" + str(min_value) \
                   + ") must be less than the maximum one (" + str(max_value) + ")."
