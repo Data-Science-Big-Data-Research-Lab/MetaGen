@@ -254,231 +254,221 @@ print("VI definition = " + str(domain.get_variable_definition("VI")))
 
 # If the current size is lower than the minimum size of the vector definition, returns the number of remaining elements
 # to satisfy the size definition multiplying by -1.
-current_size = 10
+current_size = 5
 r_components = domain.get_remaining_available_complete_components("VI", current_size)
 print("Available components with current size (" + str(current_size) + ") = " + str(r_components))
 
 # If the current size is greater or equal than the minimum size and lower than the maximum size, returns
 # the number of remaining available components to complete the vector and satisfy the size definition.
+current_size = 10
+r_components = domain.get_remaining_available_complete_components("VI", current_size)
+print("Available components with current size (" + str(current_size) + ") = " + str(r_components))
+
 current_size = 25
-r_components = domain.get_remaining_available_complete_components("V_I", current_size)
+r_components = domain.get_remaining_available_complete_components("VI", current_size)
 print("Available components with current size (" + str(current_size) + ") = " + str(r_components))
 
 # Otherwise returns 0
 
 current_size = 100
-r_components = domain.get_remaining_available_complete_components("V_I", current_size)
-print("Available components with current size (" + str(current_size) + ") = " + str(r_components))
-
-current_size = 120
-r_components = domain.get_remaining_available_complete_components("V_I", current_size)
+r_components = domain.get_remaining_available_complete_components("VI", current_size)
 print("Available components with current size (" + str(current_size) + ") = " + str(r_components)+"\n")
 
-# ************ Possible errors
-# 1. Argument type errors:
-# 1.1. The variable must be str. The current size must be int.
-# r_components = domain.get_remaining_available_components(1, 4)
-# r_components = domain.get_remaining_available_components("V_L", "current_size")
-# 2. Definition errors:
-# 2.1. The variable is not defined.
-# r_components = domain.get_remaining_available_components("J", 4)
-# 2.2. The variable is not defined as VECTOR type.
-# r_components = domain.get_remaining_available_components("I", 4)
+# **** Argument type errors (static):
+# - The variable must be str.
+# r_components = domain.get_remaining_available_complete_components(1, 4)
+# r_components = domain.get_remaining_available_complete_components("V_L", "current_size")
+# **** Definition errors (raise DefinitionError):
+# - The variable is not defined.
+# r_components = domain.get_remaining_available_complete_components("J", 4)
+# - The variable is not defined as VECTOR type.
+# r_components = domain.get_remaining_available_complete_components("I", 4)
 
 # ==================================================================================================================== #
-# ======================= 11. Getting the attributes of a NUMERICAL variable definition ============================== #
+# ================= 11. Getting the attributes of a INTEGER/REAL (NUMERICAL) variable definition ===================== #
 # ==================================================================================================================== #
 
-# I_attr = domain.get_numerical_variable_attributes("I")
-# R_attr = domain.get_numerical_variable_attributes("R")
-# print("Variable I: Minimum value = " + str(I_attr[0]) + ", Maximum value = " + str(I_attr[1])
-#       + " , Step = " + str(I_attr[2]))
-# print("Variable R: Minimum value = " + str(R_attr[0]) + ", Maximum value = " + str(R_attr[1])
-#       + " , Step = " + str(R_attr[2]) + "\n")
+I_attr = domain.get_numerical_variable_attributes("I")
+R_attr = domain.get_numerical_variable_attributes("R")
+print("Variable I: Minimum value = " + str(I_attr[0]) + ", Maximum value = " + str(I_attr[1])
+      + " , Step = " + str(I_attr[2]))
+print("Variable R: Minimum value = " + str(R_attr[0]) + ", Maximum value = " + str(R_attr[1])
+      + " , Step = " + str(R_attr[2]) + "\n")
 
-# ************ Possible errors
-# 1. Argument type errors:
-# 1.1. The variable must be str.
+# **** Argument type errors (static):
+# - The variable must be str.
 # I_attr = domain.get_numerical_variable_attributes(1)
-# 2. Definition errors:
-# 2.1. The variable is not defined.
+# **** Definition errors (raise DefinitionError):
+# - The variable is not defined.
 # I_attr = domain.get_numerical_variable_attributes("J")
-# 2.2. The variable is not defined as NUMERICAL type.
+# - The variable is not defined as NUMERICAL type.
 # I_attr = domain.get_numerical_variable_attributes("C")
 
 # ==================================================================================================================== #
 # ======================= 12. Getting the attributes of a CATEGORICAL variable definition ============================ #
 # ==================================================================================================================== #
 
-# C_attr = domain.get_categorical_variable_attributes("C")
-# print("Variable C: Available categories = " + str(C_attr) + "\n")
+C_attr = domain.get_categorical_variable_attributes("C")
+print("Variable C: Available categories = " + str(C_attr) + "\n")
 
-# ************ Possible errors
-# 1. Argument type errors:
-# 1.1. The variable must be str.
+# **** Argument type errors (static):
+# - The variable must be str.
 # C_attr = domain.get_categorical_variable_attributes(1)
-# 2. Definition errors:
-# 2.1. The variable is not defined.
+# **** Definition errors (raise DefinitionError):
+# - The variable is not defined.
 # C_attr = domain.get_categorical_variable_attributes("J")
-# 2.2. The variable is not defined as CATEGORICAL type.
+# - The variable is not defined as CATEGORICAL type.
 # C_attr = domain.get_categorical_variable_attributes("I")
 
 # ==================================================================================================================== #
 # ================= 13. Getting the attributes of a NUMERICAL element of a LAYER variable definition ================= #
 # ==================================================================================================================== #
 
-# L_E_I_attr = domain.get_numerical_element_attributes("L", "E_I")
-# L_E_R_attr = domain.get_numerical_element_attributes("L", "E_R")
-# print("Variable L, element E_I: Minimum value = " + str(L_E_I_attr[0]) + ", Maximum value = " + str(L_E_I_attr[1])
-#       + " , Step = " + str(L_E_I_attr[2]))
-# print("Variable L, element E_R: Minimum value = " + str(L_E_R_attr[0]) + ", Maximum value = " + str(L_E_R_attr[1])
-#       + " , Step = " + str(L_E_R_attr[2]) + "\n")
+L_E_I_attr = domain.get_numerical_element_attributes("L", "EI")
+L_E_R_attr = domain.get_numerical_element_attributes("L", "ER")
+print("Variable L, element EI: Minimum value = " + str(L_E_I_attr[0]) + ", Maximum value = " + str(L_E_I_attr[1])
+      + " , Step = " + str(L_E_I_attr[2]))
+print("Variable L, element ER: Minimum value = " + str(L_E_R_attr[0]) + ", Maximum value = " + str(L_E_R_attr[1])
+      + " , Step = " + str(L_E_R_attr[2]) + "\n")
 
-# ************ Possible errors
-# 1. Argument type errors:
-# 1.1. The variable and the element must be str.
-# L_E_I_attr = domain.get_numerical_element_attributes(1, "E_I")
+# **** Argument type errors (static):
+# - The variable must be str.
+# L_E_I_attr = domain.get_numerical_element_attributes(1, "EI")
 # L_E_I_attr = domain.get_numerical_element_attributes("L", 1)
-# 2. Definition errors:
-# 2.1. The variable is not defined.
-# L_E_I_attr = domain.get_numerical_element_attributes("J", "E_I")
-# 2.2. The variable is not defined as LAYER type.
-# L_E_I_attr = domain.get_numerical_element_attributes("I", "E_I")
-# 2.3. The element is not defined.
-# L_E_I_attr = domain.get_numerical_element_attributes("L", "E_I_")
-# 2.3. The element is not defined as NUMERICAL type.
-# L_E_I_attr = domain.get_numerical_element_attributes("L", "E_C")
+# **** Definition errors (raise DefinitionError):
+# - The variable is not defined.
+# L_E_I_attr = domain.get_numerical_element_attributes("J", "EI")
+# - The variable is not defined as LAYER type.
+# L_E_I_attr = domain.get_numerical_element_attributes("I", "EI")
+# - The element is not defined.
+# L_E_I_attr = domain.get_numerical_element_attributes("L", "EI_")
+# - The element is not defined as NUMERICAL type.
+# L_E_I_attr = domain.get_numerical_element_attributes("L", "EC")
 
 # ==================================================================================================================== #
 # ============== 14. Getting the attributes of a CATEGORICAL element of a LAYER variable definition ================== #
 # ==================================================================================================================== #
 
-# L_E_C_attr = domain.get_categorical_element_attributes("L", "E_C")
-# print("Variable L, element E_C: Available categories = " + str(L_E_C_attr) + "\n")
+L_E_C_attr = domain.get_categorical_element_attributes("L", "EC")
+print("Variable L, element EC: Available categories = " + str(L_E_C_attr) + "\n")
 
-# ************ Possible errors
-# 1. Argument type errors:
-# 1.1. The variable and the element must be str.
-# L_E_C_attr = domain.get_categorical_element_attributes(1, "E_C")
+# **** Argument type errors (static):
+# - The variable and the element must be str.
+# L_E_C_attr = domain.get_categorical_element_attributes(1, "EC")
 # L_E_C_attr = domain.get_categorical_element_attributes("L", 1)
-# 2. Definition errors:
-# 2.1. The variable is not defined.
-# L_E_C_attr = domain.get_categorical_element_attributes("J", "E_C")
-# 2.2. The variable is not defined as LAYER type.
-# L_E_C_attr = domain.get_categorical_element_attributes("I", "E_C")
-# 2.3. The element is not defined.
-# L_E_C_attr = domain.get_categorical_element_attributes("L", "E_C_")
-# 2.3. The element is not defined as CATEGORICAL type.
-# L_E_C_attr = domain.get_categorical_element_attributes("L", "E_I")
+# **** Definition errors (raise DefinitionError):
+# - The variable is not defined.
+# L_E_C_attr = domain.get_categorical_element_attributes("J", "EC")
+# - The variable is not defined as LAYER type.
+# L_E_C_attr = domain.get_categorical_element_attributes("I", "EC")
+# - The element is not defined.
+# L_E_C_attr = domain.get_categorical_element_attributes("L", "EC_")
+# - The element is not defined as CATEGORICAL type.
+# L_E_C_attr = domain.get_categorical_element_attributes("L", "EI")
 
 # ==================================================================================================================== #
 # =================== 15. Getting the attributes of a VECTOR variable definition ===================================== #
 # ==================================================================================================================== #
 
-# V_I_attr = domain.get_vector_variable_attributes("V_I")
-# print("Vector variable V_I: Minimum size = " + str(V_I_attr[0]) + ", Maximum size = " + str(V_I_attr[1])
-#       + " , Step size = " + str(V_I_attr[2])+"\n")
+V_I_attr = domain.get_vector_variable_attributes("VN")
+print("Vector variable VI: Minimum size = " + str(V_I_attr[0]) + ", Maximum size = " + str(V_I_attr[1])
+      + " , Step size = " + str(V_I_attr[2])+"\n")
 
-# ************ Possible errors
-# 1. Argument type errors:
-# 1.1. The variable must be str.
+# **** Argument type errors (static):
+# - The variable must be str.
 # V_I_attr = domain.get_vector_variable_attributes(1)
-# 2. Definition errors:
-# 2.1. The variable is not defined.
+# **** Definition errors (raise DefinitionError):
+# - The variable is not defined.
 # V_I_attr = domain.get_vector_variable_attributes("J")
-# 2.2. The variable is not defined as VECTOR type.
+# - The variable is not defined as VECTOR type.
 # V_I_attr = domain.get_vector_variable_attributes("C")
 
 # ==================================================================================================================== #
 # ============== 16. Getting the attributes of the NUMERICAL components of a VECTOR variable  ======================== #
 # ==================================================================================================================== #
 
-# V_I_comp_attr = domain.get_numerical_components_attributes("V_I")
-# V_R_comp_attr = domain.get_numerical_components_attributes("V_R")
-# print("Vector variable V_I components: Minimum value = " + str(V_I_comp_attr[0]) + ", Maximum value = "
-#       + str(V_I_comp_attr[1]) + " , Step = " + str(V_I_comp_attr[2]))
-# print("Vector variable V_R components: Minimum value = " + str(V_R_comp_attr[0]) + ", Maximum value = "
-#       + str(V_R_comp_attr[1]) + " , Step = " + str(V_R_comp_attr[2]) + "\n")
+V_I_comp_attr = domain.get_numerical_components_attributes("VI")
+V_R_comp_attr = domain.get_numerical_components_attributes("VR")
+print("Vector variable VI components: Minimum value = " + str(V_I_comp_attr[0]) + ", Maximum value = "
+      + str(V_I_comp_attr[1]) + " , Step = " + str(V_I_comp_attr[2]))
+print("Vector variable VR components: Minimum value = " + str(V_R_comp_attr[0]) + ", Maximum value = "
+      + str(V_R_comp_attr[1]) + " , Step = " + str(V_R_comp_attr[2]) + "\n")
 
-# ************ Possible errors
-# 1. Argument type errors:
-# 1.1. The variable must be str.
+# **** Argument type errors (static):
+# - The variable must be str.
 # V_I_comp_attr = domain.get_numerical_components_attributes(1)
-# 2. Definition errors:
-# 2.1. The variable is not defined.
+# **** Definition errors (raise DefinitionError):
+# - The variable is not defined.
 # V_I_comp_attr = domain.get_numerical_components_attributes("J")
-# 2.2. The variable is not defined as VECTOR type.
+# - The variable is not defined as VECTOR type.
 # V_I_comp_attr = domain.get_numerical_components_attributes("C")
-# 2.3. The components are not defined as NUMERICAL type.
-# V_I_comp_attr = domain.get_numerical_components_attributes("V_C")
+# - The components are not defined as NUMERICAL type.
+# V_I_comp_attr = domain.get_numerical_components_attributes("VC")
 
 # ==================================================================================================================== #
 # =================== 17. Getting the attributes of the CATEGORICAL components of a VECTOR variable ================== #
 # ==================================================================================================================== #
 
-# V_C_comp_attr = domain.get_categorical_components_attributes("V_C")
-# print("Vector variable V_C components: Available categories = " + str(V_C_comp_attr) + "\n")
+V_C_comp_attr = domain.get_categorical_components_attributes("VC")
+print("Vector variable VC components: Available categories = " + str(V_C_comp_attr) + "\n")
 
-# ************ Possible errors
-# 1. Argument type errors:
-# 1.1. The variable must be str.
+# **** Argument type errors (static):
+# - The variable must be str.
 # V_C_comp_attr = domain.get_categorical_components_attributes(1)
-# 2. Definition errors:
-# 2.1. The variable is not defined.
+# **** Definition errors (raise DefinitionError):
+# - The variable is not defined.
 # V_C_comp_attr = domain.get_categorical_components_attributes("J")
-# 2.2. The variable is not defined as VECTOR type.
+# - The variable is not defined as VECTOR type.
 # V_C_comp_attr = domain.get_categorical_components_attributes("C")
-# 2.3. The components are not defined as CATEGORICAL type.
-# V_C_comp_attr = domain.get_categorical_components_attributes("V_I")
+# - The components are not defined as CATEGORICAL type.
+# V_C_comp_attr = domain.get_categorical_components_attributes("VI")
 
 # ==================================================================================================================== #
 # =================== 18. Getting the attributes of a NUMERICAL element of LAYER VECTOR variable ===================== #
 # ==================================================================================================================== #
 
-# V_L_e_1_attr = domain.get_layer_vector_numerical_element_attributes("V_L", "el-1")
-# V_L_e_2_attr = domain.get_layer_vector_numerical_element_attributes("V_L", "el-2")
-# print("Vector Layer Variable V_L, element el-1: Minimum value = " + str(V_L_e_1_attr[0]) + ", Maximum value = "
-#       + str(V_L_e_1_attr[1]) + " , Step = " + str(V_L_e_1_attr[2]))
-# print("Vector Layer Variable V_L, element el-2: Minimum value = " + str(V_L_e_2_attr[0]) + ", Maximum value = "
-#       + str(V_L_e_2_attr[1]) + " , Step = " + str(V_L_e_2_attr[2]) + "\n")
+V_L_e_1_attr = domain.get_layer_vector_numerical_element_attributes("VL", "el1")
+V_L_e_2_attr = domain.get_layer_vector_numerical_element_attributes("VL", "el2")
+print("Vector Layer Variable VL, element el1: Minimum value = " + str(V_L_e_1_attr[0]) + ", Maximum value = "
+      + str(V_L_e_1_attr[1]) + " , Step = " + str(V_L_e_1_attr[2]))
+print("Vector Layer Variable VL, element el2: Minimum value = " + str(V_L_e_2_attr[0]) + ", Maximum value = "
+      + str(V_L_e_2_attr[1]) + " , Step = " + str(V_L_e_2_attr[2]) + "\n")
 
-# ************ Possible errors
-# 1. Argument type errors:
-# 1.1. The variable and the element must be str.
-# V_L_e_1_attr = domain.get_layer_vector_numerical_element_attributes(1, "el-1")
-# V_L_e_1_attr = domain.get_layer_vector_numerical_element_attributes("V_L", 1)
-# 2. Definition errors:
-# 2.1. The variable is not defined.
-# V_L_e_1_attr = domain.get_layer_vector_numerical_element_attributes("J", "el-1")
-# 2.2. The variable is not defined as VECTOR type.
-# V_L_e_1_attr = domain.get_layer_vector_numerical_element_attributes("I", "el-1")
-# 2.3. The components are not defined as LAYER type.
-# V_L_e_1_attr = domain.get_layer_vector_numerical_element_attributes("V_I", "el-1")
-# 2.4. The element is not defined.
-# V_L_e_1_attr = domain.get_layer_vector_numerical_element_attributes("V_L", "el-4")
-# 2.4. The element is not defined as NUMERICAL type.
-# V_L_e_1_attr = domain.get_layer_vector_numerical_element_attributes("V_L", "el-3")
+# **** Argument type errors (static):
+# - The variable and the element must be str.
+# V_L_e_1_attr = domain.get_layer_vector_numerical_element_attributes(1, "el1")
+# V_L_e_1_attr = domain.get_layer_vector_numerical_element_attributes("VL", 1)
+# **** Definition errors (raise DefinitionError):
+# - The variable is not defined.
+# V_L_e_1_attr = domain.get_layer_vector_numerical_element_attributes("J", "el1")
+# - The variable is not defined as VECTOR type.
+# V_L_e_1_attr = domain.get_layer_vector_numerical_element_attributes("I", "el1")
+# - The components are not defined as LAYER type.
+# V_L_e_1_attr = domain.get_layer_vector_numerical_element_attributes("VI", "el1")
+# - The element is not defined.
+# V_L_e_1_attr = domain.get_layer_vector_numerical_element_attributes("VL", "el4")
+# - The element is not defined as NUMERICAL type.
+# V_L_e_1_attr = domain.get_layer_vector_numerical_element_attributes("VL", "el3")
 
 # ==================================================================================================================== #
 # ================== 19. Getting the attributes of a CATEGORICAL element of a LAYER VECTOR variable ================== #
 # ==================================================================================================================== #
 
-# V_L_e_3_attr = domain.get_layer_vector_categorical_attributes("V_L", "el-3")
-# print("Variable L, element E_C: Available categories = " + str(V_L_e_3_attr) + "\n")
+V_L_e_3_attr = domain.get_layer_vector_categorical_attributes("VL", "el3")
+print("Variable L, element EC: Available categories = " + str(V_L_e_3_attr) + "\n")
 
-# ************ Possible errors
-# 1. Argument type errors:
-# 1.1. The variable and the element must be str.
-# V_L_e_1_attr = domain.get_layer_vector_categorical_attributes(1, "el-3")
-# V_L_e_1_attr = domain.get_layer_vector_categorical_attributes("V_L", 1)
-# 2. Definition errors:
-# 2.1. The variable is not defined.
-# V_L_e_1_attr = domain.get_layer_vector_categorical_attributes("J", "el-3")
-# 2.2. The variable is not defined as VECTOR type.
-# V_L_e_1_attr = domain.get_layer_vector_categorical_attributes("I", "el-3")
-# 2.3. The components are not defined as LAYER type.
-# V_L_e_1_attr = domain.get_layer_vector_categorical_attributes("V_I", "el-3")
-# 2.4. The element is not defined.
-# V_L_e_1_attr = domain.get_layer_vector_categorical_attributes("V_L", "el-4")
-# 2.4. The element is not defined as CATEGORICAL type.
-# V_L_e_1_attr = domain.get_layer_vector_categorical_attributes("V_L", "el-1")
+# **** Argument type errors (static):
+# - The variable and the element must be str.
+# V_L_e_1_attr = domain.get_layer_vector_categorical_attributes(1, "el3")
+# V_L_e_1_attr = domain.get_layer_vector_categorical_attributes("VL", 1)
+# **** Definition errors (raise DefinitionError):
+# - The variable is not defined.
+# V_L_e_1_attr = domain.get_layer_vector_categorical_attributes("J", "el3")
+# - The variable is not defined as VECTOR type.
+# V_L_e_1_attr = domain.get_layer_vector_categorical_attributes("I", "el3")
+# - The components are not defined as LAYER type.
+# V_L_e_1_attr = domain.get_layer_vector_categorical_attributes("VI", "el3")
+# - The element is not defined.
+# V_L_e_1_attr = domain.get_layer_vector_categorical_attributes("VL", "el4")
+# - The element is not defined as CATEGORICAL type.
+# V_L_e_1_attr = domain.get_layer_vector_categorical_attributes("VL", "el1")

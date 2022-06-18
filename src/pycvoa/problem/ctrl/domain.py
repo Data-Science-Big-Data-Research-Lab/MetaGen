@@ -1,7 +1,7 @@
 from pycvoa.problem.ctrl import DefinitionError, DomainError
 from pycvoa.problem.domain import Domain
 from pycvoa.types import *
-
+import pycvoa.problem.ctrl.common as cmn
 OptDomain: TypeAlias = Union[Domain, None]
 
 
@@ -145,15 +145,17 @@ def check_layer_vector_element(layer_vector_variable: str, element: str, value: 
 
 def basic_variable(check_basic_variable: str, external_domain: OptDomain, internal_domain: OptDomain):
     valid_domain = get_valid_domain(external_domain, internal_domain)
-    __check_variable_type(check_basic_variable, BASIC, valid_domain)
+    if cmn.check_item_type(BASIC, valid_domain.get_variable_type(check_basic_variable)) is False:
+        raise DefinitionError("The variable " + check_basic_variable + " is not defined as BASIC.")
     return valid_domain
 
 
 def layer_variable_element(check_layer_variable: str, element: str, external_domain: OptDomain,
                            internal_domain: OptDomain):
     valid_domain = get_valid_domain(external_domain, internal_domain)
-    __check_variable_type(check_layer_variable, LAYER, valid_domain)
-    if valid_domain.is_defined_element(check_layer_variable, element) is not True:
+    if cmn.check_item_type(LAYER, valid_domain.get_variable_type(check_layer_variable)) is False:
+        raise DefinitionError("The variable " + check_layer_variable + " is not defined as LAYER.")
+    if valid_domain.is_defined_element(check_layer_variable, element) is False:
         raise DefinitionError(
             "The element " + element + " of the " + check_layer_variable +
             " LAYER variable is not defined in this domain.")
@@ -164,19 +166,6 @@ def basic_vector_variable(check_vector_variable: str, external_domain: OptDomain
     valid_domain = get_valid_domain(external_domain, internal_domain)
     __check_component_type(check_vector_variable, BASIC, valid_domain)
     return valid_domain
-
-
-def __check_variable_type(variable: str, check_type: PYCVOA_TYPE, domain: Domain):
-    var_type = domain.get_variable_type(variable)
-    if check_type is BASIC:
-        if var_type not in BASICS:
-            raise ValueError("The " + variable + " variable is not defined as BASIC.")
-    elif check_type is NUMERICAL:
-        if var_type not in NUMERICALS:
-            raise ValueError("The " + variable + " variable is not defined as NUMERICAL.")
-    else:
-        if var_type is not check_type:
-            raise ValueError("The " + variable + " variable is not defined as " + str(check_type) + ".")
 
 
 def __check_component_type(check_vector_variable: str, check_type: PYCVOA_TYPE, domain: Domain):
