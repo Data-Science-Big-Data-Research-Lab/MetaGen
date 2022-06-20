@@ -400,41 +400,40 @@ print(str(vector_layer_a) + " => " + str(V_L_layer_a) + "\n" + str(vector_layer_
 # ========================= 9. Checking complete layer values for a LAYER VECTOR ===================================== #
 # ==================================================================================================================== #
 
-vector_layer_values_a = [{"el-1": 15, "el-2": 0.2, "el-3": 2}, {"el-1": 12, "el-2": 0.3, "el-3": 1}]
-vector_layer_values_b = [{"el-1": 25, "el-2": 0.2, "el-3": 2}, {"el-1": 12, "el-2": 0.3, "el-3": 1}]
-vector_layer_values_c = [{"el-1": 25, "el-2": 0.2, "el-3": 2}, {"el-1": 12, "el-2": 0.3, "el-3": "V1"}]
-vector_layer_values_d = [{"el-1": 15, "el-2": 0.2, "el-3": 2}, {"el-1": 12, "el-2": 0.3, "el-3": 1}
-                         , {"el-1": 14, "el-2": 0.15, "el-3": 3}, {"el-1": 17, "el-2": 0.25, "el-3": 2}]
+vector_layer_values_a = [{"el1": 15, "el2": 0.2, "el3": 2}, {"el1": 12, "el2": 0.3, "el3": 1}]
+vector_layer_values_b = [{"el1": 25, "el2": 0.2, "el3": 2}, {"el1": 12, "el2": 0.3, "el3": 1}]
+vector_layer_values_c = [{"el1": 25, "el2": 0.2, "el3": 2}, {"el1": 12, "el2": 0.3, "el3": "V1"}]
+vector_layer_values_d = [{"el1": 15, "el2": 0.2, "el3": 2}, {"el1": 12, "el2": 0.3, "el3": 1}
+    , {"el1": 14, "el2": 0.15, "el3": 3}, {"el1": 17, "el2": 0.25, "el3": 2}]
 
-V_L_vector_layer_a = domain.check_vector_layer_values("V_L", vector_layer_values_a)
-V_L_vector_layer_b = domain.check_vector_layer_values("V_L", vector_layer_values_b)
-V_L_vector_layer_c = domain.check_vector_layer_values("V_L", vector_layer_values_c)
-V_L_vector_layer_d = domain.check_vector_layer_values("V_L", vector_layer_values_d)
-print("Are these layer values compatible with V_L definition ? ")
+V_L_vector_layer_a = domain.check_vector_layer_values("VL", vector_layer_values_a)
+V_L_vector_layer_b = domain.check_vector_layer_values("VL", vector_layer_values_b)
+V_L_vector_layer_c = domain.check_vector_layer_values("VL", vector_layer_values_c)
+V_L_vector_layer_d = domain.check_vector_layer_values("VL", vector_layer_values_d)
+print("Are these layer values compatible with VL definition ? ")
 print(str(vector_layer_values_a) + " => " + str(V_L_vector_layer_a) + "\n"
       + str(vector_layer_values_b) + " => " + str(V_L_vector_layer_b) + "\n"
       + str(vector_layer_values_c) + " => " + str(V_L_vector_layer_c) + "\n"
       + str(vector_layer_values_d) + " => " + str(V_L_vector_layer_d) + "\n")
 
-# ************ Possible errors
-# 1. Argument type errors:
-# 1.1. The variable name must be str. The values must be list.
+# **** Argument type errors (static):
+# - The variable name must be str. The values must be list of dict.
 # V_L_vector_layer_a = domain.check_vector_layer_values(1, vector_layer_values_a)
-# V_L_vector_layer_a = domain.check_vector_layer_values("V_L", 1)
-# 2. Definition errors:
-# 2.1. The variable is not defined.
+# V_L_vector_layer_a = domain.check_vector_layer_values("VL", [1, 2])
+# **** Definition errors (raise DefinitionError):
+# - The variable is not defined.
 # V_L_vector_layer_a = domain.check_vector_layer_values("J", vector_layer_values_a)
-# 2.2. The variable is not defined as VECTOR type.
+# - The variable is not defined as VECTOR type.
 # V_L_vector_layer_a = domain.check_vector_layer_values("I", vector_layer_values_a)
-# 2.3. The components of the VECTOR variable are not defined.
-# V_L_vector_layer_a = domain.check_vector_layer_values("V_N", vector_layer_values_a)
-# 2.4. The components of the VECTOR variable are not defined as LAYER.
-# V_L_vector_layer_a = domain.check_vector_layer_values("V_I", vector_layer_values_a)
-# 2.5. The size of the values is not compatible with the vector definition.
-# V_L_vector_layer_a = domain.check_vector_layer_values("V_L", [{"el-1": 15, "el-2": 0.2, "el-3": 2}])
-# 2.6. The element a component of the values not defined in the VECTOR LAYER variable.
-# V_L_vector_layer_a = domain.check_vector_layer_values("V_L", [{"el-1": 15, "el-2": 0.2, "el-3": 2},
-#                                                               {"el-1": 12, "el-2": 0.3, "el-5": 1}])
-# 2.7. A layer of the components of the VECTOR LAYER variable is not complete.
-# V_L_vector_layer_a = domain.check_vector_layer_values("V_L", [{"el-1": 15, "el-2": 0.2, "el-3": 2},
-#                                                               {"el-1": 12, "el-2": 0.3}])
+# - The components of the VECTOR variable are not defined.
+# V_L_vector_layer_a = domain.check_vector_layer_values("VN", vector_layer_values_a)
+# - The components of the VECTOR variable are not defined as LAYER.
+# V_L_vector_layer_a = domain.check_vector_layer_values("VI", vector_layer_values_a)
+# - The size of the values is not compatible with the vector definition.
+# V_L_vector_layer_a = domain.check_vector_layer_values("VL", [{"el1": 15, "el2": 0.2, "el3": 2}])
+# - The element a component of the values not defined in the VECTOR LAYER variable.
+# V_L_vector_layer_a = domain.check_vector_layer_values("VL", [{"el1": 15, "el2": 0.2, "el3": 2},
+#                                                              {"el1": 12, "el2": 0.3, "el5": 1}])
+# - A layer of the components of the VECTOR LAYER variable is not complete.
+# V_L_vector_layer_a = domain.check_vector_layer_values("VL", [{"el1": 15, "el2": 0.2, "el3": 2},
+#                                                             {"el1": 12, "el2": 0.3}])

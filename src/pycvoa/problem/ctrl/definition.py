@@ -284,6 +284,8 @@ def is_defined_element_item_definition(layer_variable: str, element: str, layer_
 
 
 def is_a_complete_layer(layer_definition: LayerDef, layer_values: LayerValue):
+    # print("layer_definition[1] = " + str(layer_definition[1]))
+    # print("len = " + str(len(layer_definition[1])))
     if len(layer_values) < len(layer_definition[1]):
         raise DefinitionError(
             "The layer " + str(layer_values) + " is not complete.")

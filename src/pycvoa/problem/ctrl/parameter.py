@@ -1,5 +1,7 @@
 import math
-from pycvoa.types import OptInt, OptFloat, BasicValueList, CategoryList
+from typing import Any, Union
+
+from pycvoa.types import OptInt, OptFloat, BasicValueList, CategoryList, BasicValue, LayerValue, VectorValue
 
 
 # =========================================== VALUE CHECKERS ==========================================================#
@@ -100,3 +102,30 @@ def check_categories(categories: CategoryList):
             else:
                 j += 1
         i += 1
+
+
+# ========================================== ARGUMENT CHECKERS ========================================================#
+
+def is_none(parameter: str, value: Any):
+    if value is not None:
+        raise ValueError(parameter + "must be None.")
+
+
+def not_none(parameter: str, value: Any):
+    if value is None:
+        raise ValueError(parameter + "must not be None.")
+
+
+def is_basic_value(parameter: str, value: Any):
+    if not isinstance(value, BasicValue):
+        raise ValueError(parameter + "must be int, float or str.")
+
+
+def is_basic_or_layer_value(parameter: str, value: Any):
+    if not isinstance(value, Union[BasicValue, LayerValue]):
+        raise ValueError(parameter + "must be int, float, str or dict.")
+
+
+def is_basic_or_layer_or_vector_value(parameter: str, value: Any):
+    if not isinstance(value, Union[BasicValue, LayerValue, VectorValue]):
+        raise ValueError(parameter + "must be int, float, str, dict or list.")
