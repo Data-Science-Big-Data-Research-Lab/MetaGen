@@ -847,10 +847,10 @@ class Domain:
         cmp_type = cast(ComponentDef, cast(VectorDef, self.__definitions[vector_variable])[4])[0]
         r: int | Tuple[int, int] = 0
         if cmp_type in BASICS:
-            assert layer_value is None
+            ctrl_par.is_none("layer_value",layer_value)
             r = Domain.__available_size(vector_variable, current_vector_size, self.__definitions)
         elif cmp_type is LAYER:
-            assert layer_value is not None
+            ctrl_par.not_none("layer_value",layer_value)
             if not Domain.__check_layer_element_values(vector_variable,
                                                        cast(LayerDef,
                                                             cast(VectorDef, self.__definitions[vector_variable])[4]),
@@ -1042,26 +1042,26 @@ class Domain:
         ctrl_def.is_defined_variable(variable, self.__definitions)
         r = False
         if self.__definitions[variable][0] in BASICS:
-            assert type(values) is BasicValue
-            assert element is None
+            ctrl_par.is_basic_value("values", values)
+            ctrl_par.is_none("element", element)
             r = Domain.__check_basic_value_item(cast(BasicDef, self.__definitions[variable]), cast(BasicValue, values))
         elif self.__definitions[variable][0] is LAYER:
-            assert type(values) is LayerValue | BasicValue
+            ctrl_par.is_basic_or_layer_value("values", values)
             layer_def = cast(LayerDef, self.__definitions[variable])
             if type(values) is BasicValue:
-                assert element is not None
+                ctrl_par.not_none("element", element)
                 ctrl_def.is_defined_element(variable, element, layer_def)
                 r = Domain.__check_basic_value_item(cast(BasicDef, layer_def[1][element]), cast(BasicValue, values))
             else:
-                assert element is None
+                ctrl_par.is_none("element", element)
                 r = Domain.__check_layer_element_values(variable, layer_def, cast(LayerValue, values))
         elif self.__definitions[variable][0] is VECTOR:
-            assert type(values) is Union[VectorValue, LayerValue, BasicValue]
+            ctrl_par.is_basic_or_layer_or_vector_value("values", values)
             vector_def = cast(VectorDef, self.__definitions[variable])
             ctrl_def.are_defined_components(variable, vector_def)
             components_type = cast(ComponentDef, vector_def[4])[0]
             if type(values) == VectorValue:
-                assert element is None
+                ctrl_par.is_none("element", element)
                 valid_values = cast(VectorValue, values)
                 cmp_tpy = type(valid_values[0])
                 ctrl_def.check_vector_values_size(variable, vector_def, valid_values)
@@ -1073,17 +1073,17 @@ class Domain:
                     r = Domain.__check_vector_layer_element_values(vector_def, cast(LayerVectorValue, values))
             else:
                 if components_type in BASICS:
-                    assert type(values) is BasicValue
-                    assert element is None
+                    ctrl_par.is_basic_value("values", values)
+                    ctrl_par.is_none("element", element)
                     r = Domain.__check_basic_value_item(cast(BasicDef, vector_def[4]), cast(BasicValue, values))
                 elif components_type is LAYER:
-                    assert type(values) is LayerValue | BasicValue
+                    ctrl_par.is_basic_or_layer_value("values", values)
                     if type(values) == LayerValue:
-                        assert element is None
+                        ctrl_par.is_none("element", element)
                         r = Domain.__check_layer_element_values(variable, cast(LayerDef, vector_def[4]),
                                                                 cast(LayerValue, values))
                     else:
-                        assert element is not None
+                        ctrl_par.not_none("element", element)
                         ctrl_def.is_defined_component_element(variable, element, vector_def)
                         layer_vector_attributes = cast(LayerDef, vector_def[4])[1]
                         r = Domain.__check_basic_value_item(layer_vector_attributes[element],
@@ -1218,7 +1218,8 @@ class Domain:
         while r and i < len(key_list):
             element = key_list[i]
             value = values.get(element)
-            assert value is not None
+            if value is None:
+                raise ValueError("value must not be None.")
             ctrl_def.is_defined_element_item_definition(layer_variable, element, layer_definition)
             if not Domain.__check_basic_value_item(layer_definition[1][element], value):
                 r = False
@@ -1239,13 +1240,13 @@ class Domain:
 
     @staticmethod
     def __check_vector_layer_element_values(vector_layer_definition: VectorDef, values: LayerVectorValue,
-                                            complete: bool = True) \
-            -> bool:
+                                            complete: bool = True) -> bool:
         r = True
         i = 0
+        layer_def = cast(LayerDef, vector_layer_definition[4])
         while r and i < len(values):
             layer = values[i]
-            if not Domain.__check_layer_element_values("-", cast(LayerDef, vector_layer_definition), layer, complete):
+            if not Domain.__check_layer_element_values("-", layer_def, layer, complete):
                 r = False
             else:
                 i += 1
