@@ -118,14 +118,16 @@ def not_none(parameter: str, value: Any):
 
 def is_basic_value(parameter: str, value: Any):
     if not isinstance(value, BasicValue):
-        raise ValueError(parameter + "must be int, float or str.")
+        raise ValueError(parameter + " must be int, float or str.")
 
 
 def is_basic_or_layer_value(parameter: str, value: Any):
-    if not isinstance(value, Union[BasicValue, LayerValue]):
-        raise ValueError(parameter + "must be int, float, str or dict.")
+    if type(value) != BasicValue and type(value) != LayerValue:
+        raise ValueError(parameter + " must be int, float, str or dict.")
+    # if not isinstance(value, BasicValue) and not isinstance(value, LayerValue):
+    #     raise ValueError(parameter + "must be int, float, str or dict.")
 
 
 def is_basic_or_layer_or_vector_value(parameter: str, value: Any):
     if not isinstance(value, Union[BasicValue, LayerValue, VectorValue]):
-        raise ValueError(parameter + "must be int, float, str, dict or list.")
+        raise ValueError(parameter + " must be int, float, str, dict or list.")

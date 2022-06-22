@@ -55,29 +55,29 @@ element_e = "Lb1"
 element_f = "C1"
 
 # Value compatibility of the E_I element of L
-L_E_I_comp_A = domain.check_value("L", element_a, "E_I")
-L_E_I_comp_B = domain.check_value("L", element_b, "E_I")
-L_E_I_comp_C = domain.check_value("L", element_c, "E_I")
-L_E_I_comp_E = domain.check_value("L", element_e, "E_I")
-print("Are these values compatible with the definition of E_I of L in this domain ? ")
+L_E_I_comp_A = domain.check_value("L", element_a, "EI")
+L_E_I_comp_B = domain.check_value("L", element_b, "EI")
+L_E_I_comp_C = domain.check_value("L", element_c, "EI")
+L_E_I_comp_E = domain.check_value("L", element_e, "EI")
+print("Are these values compatible with the definition of EI of L in this domain ? ")
 print(str(element_a) + " => " + str(L_E_I_comp_A) + " , " + str(element_b) + " => " + str(L_E_I_comp_B) + " , "
       + str(element_c) + " => " + str(L_E_I_comp_C) + " , " + str(element_e) + " => " + str(L_E_I_comp_E) + "\n")
 
 # Value compatibility of the E_R element of L
-L_E_R_comp_C = domain.check_value("L", element_c, "E_R")
-L_E_R_comp_D = domain.check_value("L", element_d, "E_R")
-L_E_R_comp_A = domain.check_value("L", element_a, "E_R")
-L_E_R_comp_E = domain.check_value("L", element_e, "E_R")
-print("Are these values compatible with the definition of E_R of L in this domain ? ")
+L_E_R_comp_C = domain.check_value("L", element_c, "ER")
+L_E_R_comp_D = domain.check_value("L", element_d, "ER")
+L_E_R_comp_A = domain.check_value("L", element_a, "ER")
+L_E_R_comp_E = domain.check_value("L", element_e, "ER")
+print("Are these values compatible with the definition of ER of L in this domain ? ")
 print(str(element_c) + " => " + str(L_E_R_comp_C) + " , " + str(element_d) + " => " + str(L_E_R_comp_D) + " , "
       + str(element_a) + " => " + str(L_E_R_comp_A) + " , " + str(element_e) + " => " + str(L_E_R_comp_E) + "\n")
 
 # Value compatibility of the E_C element of L
-L_E_C_comp_E = domain.check_value("L", element_e, "E_C")
-L_E_C_comp_F = domain.check_value("L", element_f, "E_C")
-L_E_C_comp_A = domain.check_value("L", element_a, "E_C")
-L_E_C_comp_C = domain.check_value("L", element_c, "E_C")
-print("Are these values compatible with the definition of E_C of L in this domain ? ")
+L_E_C_comp_E = domain.check_value("L", element_e, "EC")
+L_E_C_comp_F = domain.check_value("L", element_f, "EC")
+L_E_C_comp_A = domain.check_value("L", element_a, "EC")
+L_E_C_comp_C = domain.check_value("L", element_c, "EC")
+print("Are these values compatible with the definition of EC of L in this domain ? ")
 print(str(element_e) + " => " + str(L_E_C_comp_E) + " , " + str(element_f) + " => " + str(L_E_C_comp_F) + " , "
       + str(element_a) + " => " + str(L_E_C_comp_A) + " , " + str(element_c) + " => " + str(L_E_C_comp_C) + "\n")
 
@@ -85,27 +85,27 @@ print(str(element_e) + " => " + str(L_E_C_comp_E) + " , " + str(element_f) + " =
 # ============================= 3. Checking complete LAYER values ==================================================== #
 # ==================================================================================================================== #
 
-# # Layers to check
-# layer_a = {"E_I": 20, "E_R": 1.8, "E_C": "Lb2"}
-# layer_b = {"E_I": -1, "E_R": 1.8, "E_C": "Lb2"}
-# layer_c = {"E_I": 20, "E_R": 1.0, "E_C": "Lb2"}
-# layer_d = {"E_I": 20, "E_R": 1.8, "E_C": "Lb4"}
-# layer_e = {"E_I": "1", "E_R": 1.8, "E_C": "Lb2"}
-# layer_f = {"E_I": 20, "E_R": 2, "E_C": "Lb2"}
-# layer_g = {"E_I": 20, "E_R": 1.8, "E_C": 1.2}
-#
-# L_layer_a = domain.check_value("L", layer_a)
-# L_layer_b = domain.check_value("L", layer_b)
-# L_layer_c = domain.check_value("L", layer_c)
-# L_layer_d = domain.check_value("L", layer_d)
-# L_layer_e = domain.check_value("L", layer_e)
-# L_layer_f = domain.check_value("L", layer_f)
-# L_layer_g = domain.check_value("L", layer_g)
-# print("Are these layers compatible with L ? ")
-# print(str(layer_a) + " => " + str(L_layer_a) + "\n" + str(layer_b) + " => " + str(L_layer_b) + "\n"
-#       + str(layer_c) + " => " + str(L_layer_c) + "\n" + str(layer_d) + " => " + str(L_layer_d) + "\n"
-#       + str(layer_e) + " => " + str(L_layer_e) + "\n" + str(layer_f) + " => " + str(L_layer_f) + "\n"
-#       + str(layer_g) + " => " + str(L_layer_g) + "\n")
+# Layers to check
+layer_a = {"EI": 20, "ER": 1.8, "EC": "Lb2"}
+layer_b = {"EI": -1, "ER": 1.8, "EC": "Lb2"}
+layer_c = {"EI": 20, "ER": 1.0, "EC": "Lb2"}
+layer_d = {"EI": 20, "ER": 1.8, "EC": "Lb4"}
+layer_e = {"EI": "1", "ER": 1.8, "EC": "Lb2"}
+layer_f = {"EI": 20, "ER": 2, "EC": "Lb2"}
+layer_g = {"EI": 20, "ER": 1.8, "EC": 1.2}
+
+L_layer_a = domain.check_value("L", layer_a)
+L_layer_b = domain.check_value("L", layer_b)
+L_layer_c = domain.check_value("L", layer_c)
+L_layer_d = domain.check_value("L", layer_d)
+L_layer_e = domain.check_value("L", layer_e)
+L_layer_f = domain.check_value("L", layer_f)
+L_layer_g = domain.check_value("L", layer_g)
+print("Are these layers compatible with L ? ")
+print(str(layer_a) + " => " + str(L_layer_a) + "\n" + str(layer_b) + " => " + str(L_layer_b) + "\n"
+       + str(layer_c) + " => " + str(L_layer_c) + "\n" + str(layer_d) + " => " + str(L_layer_d) + "\n"
+       + str(layer_e) + " => " + str(L_layer_e) + "\n" + str(layer_f) + " => " + str(L_layer_f) + "\n"
+       + str(layer_g) + " => " + str(L_layer_g) + "\n")
 
 # ==================================================================================================================== #
 # ======================== 4. Checking BASIC component values of a VECTOR variable =================================== #
