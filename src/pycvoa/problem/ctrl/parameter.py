@@ -122,12 +122,10 @@ def is_basic_value(parameter: str, value: Any):
 
 
 def is_basic_or_layer_value(parameter: str, value: Any):
-    if type(value) != BasicValue and type(value) != LayerValue:
+    if type(value) not in [int, float, str, dict]:
         raise ValueError(parameter + " must be int, float, str or dict.")
-    # if not isinstance(value, BasicValue) and not isinstance(value, LayerValue):
-    #     raise ValueError(parameter + "must be int, float, str or dict.")
 
 
 def is_basic_or_layer_or_vector_value(parameter: str, value: Any):
-    if not isinstance(value, Union[BasicValue, LayerValue, VectorValue]):
+    if type(value) not in [int, float, str, dict, list]:
         raise ValueError(parameter + " must be int, float, str, dict or list.")

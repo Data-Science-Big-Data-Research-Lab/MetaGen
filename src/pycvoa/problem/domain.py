@@ -1059,7 +1059,7 @@ class Domain:
             vector_def = cast(VectorDef, self.__definitions[variable])
             ctrl_def.are_defined_components(variable, vector_def)
             components_type = cast(ComponentDef, vector_def[4])[0]
-            if isinstance(values, VectorValue):
+            if type(values) is list:
                 valid_values = cast(VectorValue, values)
                 cmp_tpy = type(valid_values[0])
                 ctrl_def.check_vector_values_size(variable, vector_def, valid_values)
@@ -1075,7 +1075,7 @@ class Domain:
                     r = Domain.__check_basic_value_item(cast(BasicDef, vector_def[4]), cast(BasicValue, values))
                 elif components_type is LAYER:
                     ctrl_par.is_basic_or_layer_value("values", values)
-                    if type(values) == LayerValue:
+                    if type(values) is dict:
                         r = Domain.__check_layer_element_values(variable, cast(LayerDef, vector_def[4]),
                                                                 cast(LayerValue, values))
                     else:
