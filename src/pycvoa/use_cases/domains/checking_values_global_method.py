@@ -265,9 +265,20 @@ print(str(vector_layer_values_a) + " => " + str(V_L_vector_layer_a) + "\n"
 # ============================================= 9. Possible errors =================================================== #
 # ==================================================================================================================== #
 
-# If the checked variable is not str:
-# [Argument type] The variable must be str.
+
+# **** Argument type errors (static):
+# - The variable and must be str.
 # V_L_layer_a = domain.check_value(1, vector_layer_a)
+
+# **** Definition errors (raise DefinitionError):
+# - The  variable is not defined.
+# V_L_layer_a = domain.check_value("J", vector_layer_a)
+# - The variable is not defined as LAYER type.
+# L_layer_a = domain.check_layer("I", layer_a)
+# - The layer is not complete.
+# L_layer_a = domain.check_layer("L",  {"EI": 20, "ER": 1.8})
+
+
 # [Definition] The variable is not defined.
 # V_L_layer_a = domain.check_value("J", vector_layer_a)
 
