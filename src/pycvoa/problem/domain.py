@@ -1063,7 +1063,7 @@ class Domain:
                 valid_values = cast(VectorValue, values)
                 cmp_tpy = type(valid_values[0])
                 ctrl_def.check_vector_values_size(variable, vector_def, valid_values)
-                if cmp_tpy != LayerValue:
+                if cmp_tpy is not dict:
                     ctrl_def.check_component_type(variable, vector_def, BASIC)
                     r = Domain.__check_vector_basic_values(vector_def, cast(BasicValueList, values))
                 else:
@@ -1242,6 +1242,7 @@ class Domain:
         layer_def = cast(LayerDef, vector_layer_definition[4])
         while r and i < len(values):
             layer = values[i]
+            # Falla la variable en la llamada "-"
             if not Domain.__check_layer_element_values("-", layer_def, layer, complete):
                 r = False
             else:
