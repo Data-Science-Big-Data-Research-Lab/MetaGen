@@ -245,11 +245,11 @@ print(str(vector_layer_a) + " => " + str(V_L_layer_a) + "\n" + str(vector_layer_
 # ========================= 8. Checking complete layer values for a LAYER VECTOR ===================================== #
 # ==================================================================================================================== #
 
-vector_layer_values_a = [{"el-1": 15, "el-2": 0.2, "el-3": 2}, {"el-1": 12, "el-2": 0.3, "el-3": 1}]
-vector_layer_values_b = [{"el-1": 25, "el-2": 0.2, "el-3": 2}, {"el-1": 12, "el-2": 0.3, "el-3": 1}]
-vector_layer_values_c = [{"el-1": 25, "el-2": 0.2, "el-3": 2}, {"el-1": 12, "el-2": 0.3, "el-3": "V1"}]
-vector_layer_values_d = [{"el-1": 15, "el-2": 0.2, "el-3": 2}, {"el-1": 12, "el-2": 0.3, "el-3": 1}
-    , {"el-1": 14, "el-2": 0.15, "el-3": 3}, {"el-1": 17, "el-2": 0.25, "el-3": 2}]
+vector_layer_values_a = [{"el1": 15, "el2": 0.2, "el3": 2}, {"el1": 12, "el2": 0.3, "el3": 1}]
+vector_layer_values_b = [{"el1": 25, "el2": 0.2, "el3": 2}, {"el1": 12, "el2": 0.3, "el3": 1}]
+vector_layer_values_c = [{"el1": 25, "el2": 0.2, "el3": 2}, {"el1": 12, "el2": 0.3, "el3": "V1"}]
+vector_layer_values_d = [{"el1": 15, "el2": 0.2, "el3": 2}, {"el1": 12, "el2": 0.3, "el3": 1}
+    , {"el1": 14, "el2": 0.15, "el3": 3}, {"el1": 17, "el2": 0.25, "el3": 2}]
 
 V_L_vector_layer_a = domain.check_value("VL", vector_layer_values_a)
 V_L_vector_layer_b = domain.check_value("VL", vector_layer_values_b)
@@ -268,13 +268,13 @@ print(str(vector_layer_values_a) + " => " + str(V_L_vector_layer_a) + "\n"
 
 # **** Argument type errors (static):
 # - The variable and must be str.
-# V_L_layer_a = domain.check_value(1, vector_layer_a)
+# domain.check_value(1, vector_layer_a)
 
 # **** Definition errors (raise DefinitionError):
 # - The  variable is not defined.
-# V_L_layer_a = domain.check_value("J", vector_layer_a)
+# domain.check_value("J", vector_layer_a)
 # - The variable is not defined as LAYER type.
-# L_layer_a = domain.check_layer("I", layer_a)
+domain.check_value("I", layer_a)
 # - The layer is not complete.
 # L_layer_a = domain.check_layer("L",  {"EI": 20, "ER": 1.8})
 
