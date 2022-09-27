@@ -1,7 +1,8 @@
 import math
-from typing import Any, Union
+from typing import Any
 
-from pycvoa.types import OptInt, OptFloat, BasicValueList, CategoryList, BasicValue, LayerValue, VectorValue
+from pycvoa.types import OptInt, OptFloat, CategoryList, BasicValue, SupportedValues, OptStr, PYCVOA_TYPE, BASICS, \
+    VectorValue, LayerValue, VECTOR, LAYER, BASIC
 
 
 # =========================================== VALUE CHECKERS ==========================================================#
