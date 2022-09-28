@@ -44,10 +44,14 @@ C_comp_C = domain.check_basic("C", basic_c)
 
 # **** Argument type errors (static):
 # - The variable must be str.
-# I_comp_A = domain.check_basic(1, 2)
+# res = domain.check_basic(1, 2)
+# - The value must be int, float or str.
+# res = domain.check_basic("C", {"EI": 20, "ER": 1.8, "EC": "Lb2"})
 # **** Definition errors (raise DefinitionError):
 # - The  variable is not defined.
 # I_comp_A = domain.check_basic("J", 2)
+
+
 
 # ==================================================================================================================== #
 # ============================== 2. Checking element values of a LAYER VARIABLE ====================================== #

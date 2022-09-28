@@ -42,6 +42,16 @@ print("Are these values compatible with the definition of C in this domain ? ")
 print(str(basic_e) + " => " + str(C_comp_E) + " , " + str(basic_f) + " => " + str(C_comp_F) + " , "
       + str(basic_a) + " => " + str(C_comp_A) + " , " + str(basic_c) + " => " + str(C_comp_C) + "\n")
 
+# **** Argument type errors (static):
+# - The variable must be str.
+# res = domain.check_value(1, 2)
+# **** Argument type errors (dynamic, raise ValueError):
+# - The value must be int, float or str.
+# res = domain.check_value("C", {"EI": 20, "ER": 1.8, "EC": "Lb2"})
+# **** Definition errors (raise DefinitionError):
+# - The  variable is not defined.
+# res = domain.check_value("J", 2)
+
 # ==================================================================================================================== #
 # ============================== 2. Checking element values of a LAYER VARIABLE ====================================== #
 # ==================================================================================================================== #
@@ -80,6 +90,19 @@ L_E_C_comp_C = domain.check_value("L", element_c, "EC")
 print("Are these values compatible with the definition of EC of L in this domain ? ")
 print(str(element_e) + " => " + str(L_E_C_comp_E) + " , " + str(element_f) + " => " + str(L_E_C_comp_F) + " , "
       + str(element_a) + " => " + str(L_E_C_comp_A) + " , " + str(element_c) + " => " + str(L_E_C_comp_C) + "\n")
+
+# **** Argument type errors (static):
+# - The variable and the element must be str. The value must be int, float or str.
+# res = domain.check_value(1, element_a, "EI")
+# res = domain.check_value("L", element_a, 2)
+
+# **** Definition errors (raise DefinitionError):
+# - The  variable is not defined.
+# res = domain.check_value("J", element_a, "EI")
+# - The variable is not defined as LAYER type.
+res = domain.check_value("I", element_a, "EI")
+# - The element is not defined in the LAYER variable
+# res = domain.check_value("L", "EF", element_a)
 
 # ==================================================================================================================== #
 # ============================= 3. Checking complete LAYER values ==================================================== #
@@ -262,19 +285,24 @@ print(str(vector_layer_values_a) + " => " + str(V_L_vector_layer_a) + "\n"
       + str(vector_layer_values_d) + " => " + str(V_L_vector_layer_d) + "\n")
 
 # ==================================================================================================================== #
-# ============================================= 9. Possible errors =================================================== #
+# ============================================= 9. General errors ==================================================== #
 # ==================================================================================================================== #
 
-
 # **** Argument type errors (static):
-# - The variable and must be str.
-# domain.check_value(1, vector_layer_a)
+# - The variable name must be str.
+# res = domain.check_value(1, vector_layer_a)
+
+# **** Argument type errors (dynamic, raise ValueError):
+# - Values must be int, float or str when BASIC variable is checked
+# res = domain.check_value("I", layer_a)
+# - Element must not be None when an int, float or str value is checked with a LAYER variable
+# res = domain.check_value("L", basic_a)
+
 
 # **** Definition errors (raise DefinitionError):
 # - The  variable is not defined.
 # domain.check_value("J", vector_layer_a)
-# - The variable is not defined as LAYER type.
-domain.check_value("I", layer_a)
+
 # - The layer is not complete.
 # L_layer_a = domain.check_layer("L",  {"EI": 20, "ER": 1.8})
 
