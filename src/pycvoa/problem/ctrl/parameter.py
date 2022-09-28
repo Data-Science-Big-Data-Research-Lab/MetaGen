@@ -109,12 +109,12 @@ def check_categories(categories: CategoryList):
 
 def is_none(parameter: str, value: Any):
     if value is not None:
-        raise ValueError(parameter + "must be None.")
+        raise ValueError(parameter + " must be None.")
 
 
 def not_none(parameter: str, value: Any):
     if value is None:
-        raise ValueError(parameter + "must not be None.")
+        raise ValueError(parameter + " must not be None.")
 
 
 def is_basic_value(parameter: str, value: Any):
