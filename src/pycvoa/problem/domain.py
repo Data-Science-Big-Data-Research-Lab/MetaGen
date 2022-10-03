@@ -847,10 +847,10 @@ class Domain:
         cmp_type = cast(ComponentDef, cast(VectorDef, self.__definitions[vector_variable])[4])[0]
         r: int | Tuple[int, int] = 0
         if cmp_type in BASICS:
-            ctrl_par.is_none("layer_value",layer_value)
+            ctrl_par.is_none("layer_value", layer_value)
             r = Domain.__available_size(vector_variable, current_vector_size, self.__definitions)
         elif cmp_type is LAYER:
-            ctrl_par.not_none("layer_value",layer_value)
+            ctrl_par.not_none("layer_value", layer_value)
             if not Domain.__check_layer_element_values(vector_variable,
                                                        cast(LayerDef,
                                                             cast(VectorDef, self.__definitions[vector_variable])[4]),
@@ -1042,48 +1042,42 @@ class Domain:
         ctrl_def.is_defined_variable(variable, self.__definitions)
         var_type = self.__definitions[variable][0]
         r = False
-        if var_type in BASICS:
-            ctrl_par.is_basic_value("values", values)
+        if var_type in BASICS:  # Basic variable, Basic value, None element
+            ctrl_par.basic_pycvoatype(variable, values, element)
             r = Domain.__check_basic_value_item(cast(BasicDef, self.__definitions[variable]), cast(BasicValue, values))
         elif var_type is LAYER:
-            ctrl_par.is_basic_or_layer_value("values", values)
+            case = ctrl_par.layer_pycvoatype(variable, values, element)
             layer_def = cast(LayerDef, self.__definitions[variable])
-            if isinstance(values, BasicValue):
-                ctrl_par.not_none("element", element)
+            if case == "a":  # LAYER variable, BASIC value, NOT NONE element
                 ctrl_def.is_defined_element(variable, element, layer_def)
                 r = Domain.__check_basic_value_item(cast(BasicDef, layer_def[1][element]), cast(BasicValue, values))
-            else:
+            else:  # LAYER variable, LAYER value, NONE element
                 r = Domain.__check_layer_element_values(variable, layer_def, cast(LayerValue, values))
         elif var_type is VECTOR:
-            ctrl_par.is_basic_or_layer_or_vector_value("values", values)
             vector_def = cast(VectorDef, self.__definitions[variable])
             ctrl_def.are_defined_components(variable, vector_def)
-            components_type = cast(ComponentDef, vector_def[4])[0]
-            if type(values) is list:
-                valid_values = cast(VectorValue, values)
-                cmp_tpy = type(valid_values[0])
-                ctrl_def.check_vector_values_size(variable, vector_def, valid_values)
-                if cmp_tpy is not dict:
-                    ctrl_def.check_component_type(variable, vector_def, BASIC)
+            comp_type = cast(ComponentDef, vector_def[4])[0]
+            if comp_type in BASICS:
+                case = ctrl_par.basic_vector_pycvoatype(variable, values, element)
+                if case == "a":  # BASIC-VECTOR variable, BASIC value, NONE element
+                    r = Domain.__check_basic_value_item(cast(BasicDef, vector_def[4]), cast(BasicValue, values))
+                else:  # BASIC-VECTOR variable, BASIC-VECTOR value, NONE element
+                    valid_values = cast(VectorValue, values)
+                    ctrl_def.check_vector_values_size(variable, vector_def, valid_values)
                     r = Domain.__check_vector_basic_values(vector_def, cast(BasicValueList, values))
-                else:
+            elif comp_type is LAYER:
+                case = ctrl_par.layer_vector_pycvoatype(variable, values, element)
+                if case == "a":  # LAYER-VECTOR variable, BASIC value, NOT NONE element
+                    ctrl_def.is_defined_component_element(variable, element, vector_def)
+                    layer_vector_attributes = cast(LayerDef, vector_def[4])[1]
+                    r = Domain.__check_basic_value_item(layer_vector_attributes[element],
+                                                        cast(BasicValue, values))
+                elif case == "b":  # LAYER-VECTOR variable, LAYER value, NONE element
+                    r = Domain.__check_layer_element_values(variable, cast(LayerDef, vector_def[4]),
+                                                            cast(LayerValue, values))
+                else:  # LAYER-VECTOR variable, LAYER-VECTOR value, NONE element
                     ctrl_def.check_component_type(variable, vector_def, LAYER)
                     r = Domain.__check_vector_layer_element_values(vector_def, cast(LayerVectorValue, values))
-            else:
-                if components_type in BASICS:
-                    ctrl_par.is_basic_value("values", values)
-                    r = Domain.__check_basic_value_item(cast(BasicDef, vector_def[4]), cast(BasicValue, values))
-                elif components_type is LAYER:
-                    ctrl_par.is_basic_or_layer_value("values", values)
-                    if type(values) is dict:
-                        r = Domain.__check_layer_element_values(variable, cast(LayerDef, vector_def[4]),
-                                                                cast(LayerValue, values))
-                    else:
-                        ctrl_par.not_none("element", element)
-                        ctrl_def.is_defined_component_element(variable, element, vector_def)
-                        layer_vector_attributes = cast(LayerDef, vector_def[4])[1]
-                        r = Domain.__check_basic_value_item(layer_vector_attributes[element],
-                                                            cast(BasicValue, values))
         return r
 
     def __str__(self):
