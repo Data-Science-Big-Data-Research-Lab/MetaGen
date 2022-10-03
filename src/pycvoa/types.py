@@ -1,4 +1,4 @@
-from typing import TypeAlias, Tuple, Literal, Union, List, Dict, Final
+from typing import TypeAlias, Tuple, Literal, Union, List, Dict, Final, Any
 
 # PYCVOA literals
 INTEGER: Final = "INTEGER"
@@ -20,7 +20,9 @@ VECTOR_TYPE = Literal["VECTOR"]
 PYCVOA_TYPE = Literal["INTEGER", "REAL", "CATEGORICAL", "LAYER", "VECTOR", "BASIC", "NUMERICAL"]
 
 BasicValue: TypeAlias = int | float | str
+LayerValue: TypeAlias = Dict[str, BasicValue]
 BasicValueList: TypeAlias = List[BasicValue]
+LayerValueList: TypeAlias = List[LayerValue]
 CategoryList: TypeAlias = Union[List[int], List[float], List[str]]
 
 IntegerDef: TypeAlias = Tuple[INTEGER_TYPE, int, int, int]
@@ -46,11 +48,49 @@ NumericaVectorValues: TypeAlias = List[int] | List[float]
 IntOrIntList: TypeAlias = int | List[int]
 
 NumericalValue: TypeAlias = int | float
-LayerValue: TypeAlias = Dict[str, BasicValue]
 VectorValue: TypeAlias = Union[BasicValueList, List[LayerValue]]
 SupportedValues: TypeAlias = Union[BasicValue, LayerValue, VectorValue]
 OptSupportedValues: TypeAlias = Union[BasicValue, LayerValue, VectorValue, None]
 VarStructureType: TypeAlias = Dict[str, SupportedValues]
 LayerVectorValue: TypeAlias = List[LayerValue]
 OptLayerValue: TypeAlias = Union[LayerValue, None]
+
+
+def is_layer_value(value: Any) -> bool:
+    r = True
+    if type(value) is dict:
+        i = 0
+        while r & i < len(value.keys()):
+            if type(value.keys()[i]) != str:
+                r = False
+            i += 1
+        if r:
+            i = 0
+            while r & i < len(value.values()):
+                if type(value.values()[i]) not in [int, float, str]:
+                    r = False
+                i += 1
+    return r
+
+
+def is_layer_vector_value(value: Any) -> bool:
+    r = True
+    if type(value) is list:
+        i = 0
+        while r & i < len(value):
+            if not is_layer_value(value[1]):
+                r = False
+            i += 1
+    return r
+
+
+# def is_basic_vector_value(value:Any) -> bool:
+#     r = True
+#     if type(value) is list:
+#         i = 1
+#         while r & i < len(value):
+#
+#                 r = False
+#             i += 1
+#     return r
 

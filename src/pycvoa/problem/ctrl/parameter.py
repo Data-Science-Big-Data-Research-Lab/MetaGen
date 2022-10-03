@@ -1,8 +1,8 @@
 import math
 from typing import Any
 
-from pycvoa.types import OptInt, OptFloat, CategoryList, BasicValue, SupportedValues, OptStr, PYCVOA_TYPE, BASICS, \
-    VectorValue, LayerValue, VECTOR, LAYER, BASIC
+from pycvoa.types import OptInt, OptFloat, CategoryList, BasicValue, OptStr, LayerValue, BasicValueList, LayerValueList, \
+    is_layer_value, is_layer_vector_value
 
 
 # =========================================== VALUE CHECKERS ==========================================================#
@@ -130,3 +130,79 @@ def is_basic_or_layer_value(parameter: str, value: Any):
 def is_basic_or_layer_or_vector_value(parameter: str, value: Any):
     if type(value) not in [int, float, str, dict, list]:
         raise ValueError(parameter + " must be int, float, str, dict or list.")
+
+
+# =================================== DOMAIN GENERAL CHECK VALUE METHOD ===============================================#
+
+
+def basic_pycvoatype(variable: str, value: Any, element: OptStr):
+    if isinstance(value, BasicValue):
+        if element is not None:
+            raise ValueError("You are trying to check a value of an element of a variable that is not LAYER or LAYER "
+                             "VECTOR.")
+    else:
+        raise ValueError("For the " + variable + " BASIC variable, the values must be int, float, or str.")
+
+
+def layer_pycvoatype(variable: str, value: Any, element: OptStr) -> str:
+    if isinstance(value, BasicValue):
+        if element is None:
+            raise ValueError("You are trying to check an element's value without specifying the element name.")
+        else:
+            res = "a"
+    elif type(value) is dict:
+        if element is not None:
+            raise ValueError(
+                "You are trying to check an element's value with a value different from int, float, or str.")
+        else:
+            res = "b"
+    else:
+        raise ValueError(
+            "For the " + variable + " LAYER variable, the values must be dict or int, float, or str specifying the "
+                                    "element name.")
+    return res
+
+
+def basic_vector_pycvoatype(variable: str, value: Any, element: OptStr) -> str:
+    if isinstance(value, BasicValue):
+        if element is not None:
+            raise ValueError(
+                "You are trying to check a value of an element of a variable that is not LAYER or LAYER VECTOR.")
+        else:
+            res = "a"
+    elif isinstance(value, BasicValueList):
+        if element is not None:
+            raise ValueError(
+                "You are trying to check a value of an element of a variable that is not LAYER or LAYER VECTOR.")
+        else:
+            res = "b"
+    else:
+        raise ValueError(
+            "For the " + variable + "BASIC VECTOR variable, the values must be a a vector of int, float, or str or a "
+                                    "single int, float, or str.")
+    return res
+
+
+def layer_vector_pycvoatype(variable: str, value: Any, element: OptStr) -> str:
+    if isinstance(value, BasicValue):
+        if element is None:
+            raise ValueError("You are trying to check an element's value without specifying the element name.")
+        else:
+            res = "a"
+    elif is_layer_value(value):
+        if element is not None:
+            raise ValueError("You are trying to check an element's value with a value different from int, float, "
+                             "or str.")
+        else:
+            res = "b"
+    elif is_layer_vector_value(value):
+        if element is not None:
+            raise ValueError("You are trying to check an element's value with a value different from int, float, "
+                             "or str.")
+        else:
+            res = "c"
+    else:
+        raise ValueError(
+            "For the " + variable + "VECTOR LAYER variable, the values must be a vector of dict, a dict, or  a single "
+                                    "int, float, or str specifying the element name.")
+    return res

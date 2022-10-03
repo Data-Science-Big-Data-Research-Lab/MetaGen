@@ -8,166 +8,223 @@ from pycvoa.use_cases.domains.support_domain import example_domain as domain
 # ==================================================================================================================== #
 
 # Values to check
-basic_a = 2
-basic_b = -1
-basic_c = 0.001
-basic_d = 1.2
-basic_e = "C1"
-basic_f = "V1"
+basic_value_a = 2
+basic_value_b = -1
+basic_value_c = 0.001
+basic_value_d = 1.2
+basic_value_e = "C1"
+basic_value_f = "V1"
 
 # Value compatibility of the definition of I
-I_comp_A = domain.check_value("I", basic_a)
-I_comp_B = domain.check_value("I", basic_b)
-I_comp_C = domain.check_value("I", basic_c)
-I_comp_E = domain.check_value("I", basic_e)
+I_comp_A = domain.check_value("I", basic_value_a)
+I_comp_B = domain.check_value("I", basic_value_b)
+I_comp_C = domain.check_value("I", basic_value_c)
+I_comp_E = domain.check_value("I", basic_value_e)
 print("Are these values compatible with the definition of I in this domain ? ")
-print(str(basic_a) + " => " + str(I_comp_A) + " , " + str(basic_b) + " => " + str(I_comp_B) + " , "
-      + str(basic_c) + " => " + str(I_comp_C) + " , " + str(basic_e) + " => " + str(I_comp_E) + "\n")
+print(str(basic_value_a) + " => " + str(I_comp_A) + " , " + str(basic_value_b) + " => " + str(I_comp_B) + " , "
+      + str(basic_value_c) + " => " + str(I_comp_C) + " , " + str(basic_value_e) + " => " + str(I_comp_E) + "\n")
 
 # Value compatibility of the definition of R
-R_comp_C = domain.check_value("R", basic_c)
-R_comp_D = domain.check_value("R", basic_d)
-R_comp_A = domain.check_value("R", basic_a)
-R_comp_E = domain.check_value("R", basic_e)
+R_comp_C = domain.check_value("R", basic_value_c)
+R_comp_D = domain.check_value("R", basic_value_d)
+R_comp_A = domain.check_value("R", basic_value_a)
+R_comp_E = domain.check_value("R", basic_value_e)
 print("Are these values compatible with the definition of R in this domain ? ")
-print(str(basic_c) + " => " + str(R_comp_C) + " , " + str(basic_d) + " => " + str(R_comp_D) + " , "
-      + str(basic_a) + " => " + str(R_comp_A) + " , " + str(basic_e) + " => " + str(R_comp_E) + "\n")
+print(str(basic_value_c) + " => " + str(R_comp_C) + " , " + str(basic_value_d) + " => " + str(R_comp_D) + " , "
+      + str(basic_value_a) + " => " + str(R_comp_A) + " , " + str(basic_value_e) + " => " + str(R_comp_E) + "\n")
 
 # Value compatibility of the definition of C
-C_comp_E = domain.check_value("C", basic_e)
-C_comp_F = domain.check_value("C", basic_f)
-C_comp_A = domain.check_value("C", basic_a)
-C_comp_C = domain.check_value("C", basic_c)
+C_comp_E = domain.check_value("C", basic_value_e)
+C_comp_F = domain.check_value("C", basic_value_f)
+C_comp_A = domain.check_value("C", basic_value_a)
+C_comp_C = domain.check_value("C", basic_value_c)
 print("Are these values compatible with the definition of C in this domain ? ")
-print(str(basic_e) + " => " + str(C_comp_E) + " , " + str(basic_f) + " => " + str(C_comp_F) + " , "
-      + str(basic_a) + " => " + str(C_comp_A) + " , " + str(basic_c) + " => " + str(C_comp_C) + "\n")
+print(str(basic_value_e) + " => " + str(C_comp_E) + " , " + str(basic_value_f) + " => " + str(C_comp_F) + " , "
+      + str(basic_value_a) + " => " + str(C_comp_A) + " , " + str(basic_value_c) + " => " + str(C_comp_C) + "\n")
 
 # **** Argument type errors (static):
 # - The variable must be str.
 # res = domain.check_value(1, 2)
+
 # **** Argument type errors (dynamic, raise ValueError):
+# - Element checking does not apply.
+# res = domain.check_value("C", 1, "el-1")
 # - The value must be int, float or str.
 # res = domain.check_value("C", {"EI": 20, "ER": 1.8, "EC": "Lb2"})
+
 # **** Definition errors (raise DefinitionError):
 # - The  variable is not defined.
 # res = domain.check_value("J", 2)
 
 # ==================================================================================================================== #
-# ============================== 2. Checking element values of a LAYER VARIABLE ====================================== #
+# ===================== 2. Checking layer or element values of a LAYER VARIABLE ====================================== #
 # ==================================================================================================================== #
 
 # Values to check
-element_a = 20
-element_b = 200
-element_c = 1.8
-element_d = 3.5
-element_e = "Lb1"
-element_f = "C1"
+element_value_a = 20
+element_value_b = 200
+element_value_c = 1.8
+element_value_d = 3.5
+element_value_e = "Lb1"
+element_value_f = "C1"
+layer_value_a = {"EI": 20, "ER": 1.8, "EC": "Lb2"}
+layer_value_b = {"EI": -1, "ER": 1.8, "EC": "Lb2"}
+layer_value_c = {"EI": 20, "ER": 1.0, "EC": "Lb2"}
+layer_value_d = {"EI": 20, "ER": 1.8, "EC": "Lb4"}
+layer_value_e = {"EI": "1", "ER": 1.8, "EC": "Lb2"}
+layer_value_f = {"EI": 20, "ER": 2, "EC": "Lb2"}
+layer_value_g = {"EI": 20, "ER": 1.8, "EC": 1.2}
+basic_vector_values_a = [1, 2, 3, 4, 5, 1, 2, 3, 4, 5]
 
 # Value compatibility of the E_I element of L
-L_E_I_comp_A = domain.check_value("L", element_a, "EI")
-L_E_I_comp_B = domain.check_value("L", element_b, "EI")
-L_E_I_comp_C = domain.check_value("L", element_c, "EI")
-L_E_I_comp_E = domain.check_value("L", element_e, "EI")
+L_E_I_comp_A = domain.check_value("L", element_value_a, "EI")
+L_E_I_comp_B = domain.check_value("L", element_value_b, "EI")
+L_E_I_comp_C = domain.check_value("L", element_value_c, "EI")
+L_E_I_comp_E = domain.check_value("L", element_value_e, "EI")
 print("Are these values compatible with the definition of EI of L in this domain ? ")
-print(str(element_a) + " => " + str(L_E_I_comp_A) + " , " + str(element_b) + " => " + str(L_E_I_comp_B) + " , "
-      + str(element_c) + " => " + str(L_E_I_comp_C) + " , " + str(element_e) + " => " + str(L_E_I_comp_E) + "\n")
+print(str(element_value_a) + " => " + str(L_E_I_comp_A) + " , " + str(element_value_b) + " => " + str(
+    L_E_I_comp_B) + " , "
+      + str(element_value_c) + " => " + str(L_E_I_comp_C) + " , " + str(element_value_e) + " => " + str(
+    L_E_I_comp_E) + "\n")
 
 # Value compatibility of the E_R element of L
-L_E_R_comp_C = domain.check_value("L", element_c, "ER")
-L_E_R_comp_D = domain.check_value("L", element_d, "ER")
-L_E_R_comp_A = domain.check_value("L", element_a, "ER")
-L_E_R_comp_E = domain.check_value("L", element_e, "ER")
+L_E_R_comp_C = domain.check_value("L", element_value_c, "ER")
+L_E_R_comp_D = domain.check_value("L", element_value_d, "ER")
+L_E_R_comp_A = domain.check_value("L", element_value_a, "ER")
+L_E_R_comp_E = domain.check_value("L", element_value_e, "ER")
 print("Are these values compatible with the definition of ER of L in this domain ? ")
-print(str(element_c) + " => " + str(L_E_R_comp_C) + " , " + str(element_d) + " => " + str(L_E_R_comp_D) + " , "
-      + str(element_a) + " => " + str(L_E_R_comp_A) + " , " + str(element_e) + " => " + str(L_E_R_comp_E) + "\n")
+print(str(element_value_c) + " => " + str(L_E_R_comp_C) + " , " + str(element_value_d) + " => " + str(
+    L_E_R_comp_D) + " , "
+      + str(element_value_a) + " => " + str(L_E_R_comp_A) + " , " + str(element_value_e) + " => " + str(
+    L_E_R_comp_E) + "\n")
 
 # Value compatibility of the E_C element of L
-L_E_C_comp_E = domain.check_value("L", element_e, "EC")
-L_E_C_comp_F = domain.check_value("L", element_f, "EC")
-L_E_C_comp_A = domain.check_value("L", element_a, "EC")
-L_E_C_comp_C = domain.check_value("L", element_c, "EC")
+L_E_C_comp_E = domain.check_value("L", element_value_e, "EC")
+L_E_C_comp_F = domain.check_value("L", element_value_f, "EC")
+L_E_C_comp_A = domain.check_value("L", element_value_a, "EC")
+L_E_C_comp_C = domain.check_value("L", element_value_c, "EC")
 print("Are these values compatible with the definition of EC of L in this domain ? ")
-print(str(element_e) + " => " + str(L_E_C_comp_E) + " , " + str(element_f) + " => " + str(L_E_C_comp_F) + " , "
-      + str(element_a) + " => " + str(L_E_C_comp_A) + " , " + str(element_c) + " => " + str(L_E_C_comp_C) + "\n")
+print(str(element_value_e) + " => " + str(L_E_C_comp_E) + " , " + str(element_value_f) + " => " + str(
+    L_E_C_comp_F) + " , "
+      + str(element_value_a) + " => " + str(L_E_C_comp_A) + " , " + str(element_value_c) + " => " + str(
+    L_E_C_comp_C) + "\n")
+
+L_layer_a = domain.check_value("L", layer_value_a)
+L_layer_b = domain.check_value("L", layer_value_b)
+L_layer_c = domain.check_value("L", layer_value_c)
+L_layer_d = domain.check_value("L", layer_value_d)
+L_layer_e = domain.check_value("L", layer_value_e)
+L_layer_f = domain.check_value("L", layer_value_f)
+L_layer_g = domain.check_value("L", layer_value_g)
+print("Are these layers compatible with L ? ")
+print(str(layer_value_a) + " => " + str(L_layer_a) + "\n" + str(layer_value_b) + " => " + str(L_layer_b) + "\n"
+      + str(layer_value_c) + " => " + str(L_layer_c) + "\n" + str(layer_value_d) + " => " + str(L_layer_d) + "\n"
+      + str(layer_value_e) + " => " + str(L_layer_e) + "\n" + str(layer_value_f) + " => " + str(L_layer_f) + "\n"
+      + str(layer_value_g) + " => " + str(L_layer_g) + "\n")
 
 # **** Argument type errors (static):
 # - The variable and the element must be str. The value must be int, float or str.
 # res = domain.check_value(1, element_a, "EI")
 # res = domain.check_value("L", element_a, 2)
 
+# **** Argument type errors (dynamic, raise ValueError):
+# - The element is not provided.
+# res = domain.check_value("L", element_c)
+# - Trying to check an element's value with a value different from int, float, or str.
+# res = domain.check_value("L", layer_value_a, "EC")
+# - For LAYER variables, the values must be dict or int, float, or str specifying the element name.
+# res = domain.check_value("L", basic_vector_values_a)
+# - Trying to check a value of an element of a variable that is not LAYER or LAYER VECTOR.
+# res = domain.check_value("I", element_value_a, "EI")
+
 # **** Definition errors (raise DefinitionError):
 # - The  variable is not defined.
-# res = domain.check_value("J", element_a, "EI")
-# - The variable is not defined as LAYER type.
-res = domain.check_value("I", element_a, "EI")
+# res = domain.check_value("J", element_value_a, "EI")
 # - The element is not defined in the LAYER variable
-# res = domain.check_value("L", "EF", element_a)
+# res = domain.check_value("L", element_value_a, "EF")
+
 
 # ==================================================================================================================== #
-# ============================= 3. Checking complete LAYER values ==================================================== #
-# ==================================================================================================================== #
-
-# Layers to check
-layer_a = {"EI": 20, "ER": 1.8, "EC": "Lb2"}
-layer_b = {"EI": -1, "ER": 1.8, "EC": "Lb2"}
-layer_c = {"EI": 20, "ER": 1.0, "EC": "Lb2"}
-layer_d = {"EI": 20, "ER": 1.8, "EC": "Lb4"}
-layer_e = {"EI": "1", "ER": 1.8, "EC": "Lb2"}
-layer_f = {"EI": 20, "ER": 2, "EC": "Lb2"}
-layer_g = {"EI": 20, "ER": 1.8, "EC": 1.2}
-
-L_layer_a = domain.check_value("L", layer_a)
-L_layer_b = domain.check_value("L", layer_b)
-L_layer_c = domain.check_value("L", layer_c)
-L_layer_d = domain.check_value("L", layer_d)
-L_layer_e = domain.check_value("L", layer_e)
-L_layer_f = domain.check_value("L", layer_f)
-L_layer_g = domain.check_value("L", layer_g)
-print("Are these layers compatible with L ? ")
-print(str(layer_a) + " => " + str(L_layer_a) + "\n" + str(layer_b) + " => " + str(L_layer_b) + "\n"
-       + str(layer_c) + " => " + str(L_layer_c) + "\n" + str(layer_d) + " => " + str(L_layer_d) + "\n"
-       + str(layer_e) + " => " + str(L_layer_e) + "\n" + str(layer_f) + " => " + str(L_layer_f) + "\n"
-       + str(layer_g) + " => " + str(L_layer_g) + "\n")
-
-# ==================================================================================================================== #
-# ======================== 4. Checking BASIC component values of a VECTOR variable =================================== #
+# =============================== 3. Checking values of a BASIC VECTOR variable ====================================== #
 # ==================================================================================================================== #
 
 # Values to check
-component_a = 5
-component_b = 11
-component_c = 0.0001
-component_d = 0.2
-component_e = "V1"
-component_f = "Lb1"
+basic_component_value_a = 5
+basic_component_value_b = 11
+basic_component_value_c = 0.0001
+basic_component_value_d = 0.2
+basic_component_value_e = "V1"
+basic_component_value_f = "Lb1"
+vector_values_a = [1, 2, 3, 4, 5, 1, 2, 3, 4, 5]
+vector_values_b = [1, 20, 3, 4, 5, 1, 20, 3, 4, 5]
+vector_values_c = [0.001, 0.002, 0.003, 0.004, 0.005, 0.001, 0.002, 0.003, 0.004, 0.005]
+vector_values_d = [0.001, 0.002, 0.003, 0.004, 5, 0.001, 0.002, 0.003, 0.004, 5]
+vector_values_e = ["V1", "V2", "V3", "V1", "V2", "V3", "V1", "V2", "V3", "V1"]
+vector_values_f = ["V1", "V2", 1, "V1", "V2", "V3", "V1", "V2", "V3", "V1"]
 
 # Value compatibility of the V_I components
-V_I_comp_A = domain.check_value("VI", component_a)
-V_I_comp_B = domain.check_value("VI", component_b)
-V_I_comp_C = domain.check_value("VI", component_c)
-V_I_comp_E = domain.check_value("VI", component_e)
+V_I_comp_A = domain.check_value("VI", basic_component_value_a)
+V_I_comp_B = domain.check_value("VI", basic_component_value_b)
+V_I_comp_C = domain.check_value("VI", basic_component_value_c)
+V_I_comp_E = domain.check_value("VI", basic_component_value_e)
 print("Are these values compatible with the components definition of VI in this domain ? ")
-print(str(component_a) + " => " + str(V_I_comp_A) + " , " + str(component_b) + " => " + str(V_I_comp_B) + " , "
-      + str(component_c) + " => " + str(V_I_comp_C) + " , " + str(component_e) + " => " + str(V_I_comp_E) + "\n")
+print(str(basic_component_value_a) + " => " + str(V_I_comp_A) + " , " + str(basic_component_value_b) + " => "
+      + str(V_I_comp_B) + " , " + str(basic_component_value_c) + " => " + str(V_I_comp_C) + " , "
+      + str(basic_component_value_e) + " => " + str(V_I_comp_E) + "\n")
 
 # Value compatibility of the V_R components
-V_R_comp_C = domain.check_value("VR", component_c)
-V_R_comp_D = domain.check_value("VR", component_d)
-V_R_comp_A = domain.check_value("VR", component_a)
-V_R_comp_E = domain.check_value("VR", component_e)
+V_R_comp_C = domain.check_value("VR", basic_component_value_c)
+V_R_comp_D = domain.check_value("VR", basic_component_value_d)
+V_R_comp_A = domain.check_value("VR", basic_component_value_a)
+V_R_comp_E = domain.check_value("VR", basic_component_value_e)
 print("Are these values compatible with the components definition of VR in this domain ? ")
-print(str(component_c) + " => " + str(V_R_comp_C) + " , " + str(component_d) + " => " + str(V_R_comp_D) + " , "
-      + str(component_a) + " => " + str(V_R_comp_A) + " , " + str(component_e) + " => " + str(V_R_comp_E) + "\n")
+print(str(basic_component_value_c) + " => " + str(V_R_comp_C) + " , " + str(basic_component_value_d) + " => "
+      + str(V_R_comp_D) + " , " + str(basic_component_value_a) + " => " + str(V_R_comp_A) + " , "
+      + str(basic_component_value_e) + " => " + str(V_R_comp_E) + "\n")
 
 # Value compatibility of the V_C components
-V_C_comp_E = domain.check_value("VC", component_e)
-V_C_comp_F = domain.check_value("VC", component_f)
-V_C_comp_A = domain.check_value("VC", component_a)
-V_C_comp_C = domain.check_value("VC", component_c)
+V_C_comp_E = domain.check_value("VC", basic_component_value_e)
+V_C_comp_F = domain.check_value("VC", basic_component_value_f)
+V_C_comp_A = domain.check_value("VC", basic_component_value_a)
+V_C_comp_C = domain.check_value("VC", basic_component_value_c)
 print("Are these values compatible with the components definition of VC in this domain ? ")
-print(str(component_e) + " => " + str(V_C_comp_E) + " , " + str(component_f) + " => " + str(V_C_comp_F) + " , "
-      + str(component_a) + " => " + str(V_C_comp_A) + " , " + str(component_c) + " => " + str(V_C_comp_C) + "\n")
+print(str(basic_component_value_e) + " => " + str(V_C_comp_E) + " , " + str(basic_component_value_f) + " => "
+      + str(V_C_comp_F) + " , " + str(basic_component_value_a) + " => " + str(V_C_comp_A) + " , "
+      + str(basic_component_value_c) + " => " + str(V_C_comp_C) + "\n")
+
+V_I_val_a = domain.check_value("VI", vector_values_a)
+V_I_val_b = domain.check_value("VI", vector_values_b)
+V_I_val_c = domain.check_value("VI", vector_values_c)
+print("Are these values compatible with VI definition ? ")
+print(str(vector_values_a) + " => " + str(V_I_val_a) + "\n" + str(vector_values_b) + " => " + str(V_I_val_b) + "\n"
+      + str(vector_values_c) + " => " + str(V_I_val_c) + "\n")
+
+V_R_val_c = domain.check_value("VR", vector_values_c)
+V_R_val_d = domain.check_value("VR", vector_values_d)
+V_R_val_a = domain.check_value("VR", vector_values_a)
+V_R_val_e = domain.check_value("VR", vector_values_e)
+print("Are these values compatible with VR definition ? ")
+print(str(vector_values_c) + " => " + str(V_R_val_c) + "\n" + str(vector_values_d) + " => " + str(V_R_val_d) + "\n"
+      + str(vector_values_a) + " => " + str(V_R_val_a) + "\n" + str(vector_values_e) + " => " + str(V_R_val_e) + "\n")
+
+V_C_val_e = domain.check_value("VC", vector_values_e)
+V_C_val_f = domain.check_value("VC", vector_values_f)
+print("Are these values compatible with VC definition ? ")
+print(str(vector_values_e) + " => " + str(V_C_val_e) + "\n" + str(vector_values_f) + " => " + str(V_C_val_f) + "\n")
+
+
+# **** Argument type errors (dynamic, raise ValueError):
+# - Trying to check a value of an element of a variable that is not LAYER or LAYER VECTOR.
+res = domain.check_value("VI", basic_component_value_a, "EI")
+
+
+
+
+
+
+
+
+
 
 # ==================================================================================================================== #
 # ======================== 5. Checking elements values of a LAYER VECTOR variable ==================================== #
@@ -215,37 +272,7 @@ print(str(component_element_e) + " => " + str(V_L_el_3_comp_E) + " , "
       + str(component_element_c) + " => " + str(V_L_el_3_comp_C) + " , "
       + str(component_element_g) + " => " + str(V_L_el_3_comp_G) + "\n")
 
-# ==================================================================================================================== #
-# ============================= 6. Checking complete values of BASIC VECTOR ========================================== #
-# ==================================================================================================================== #
 
-# Values to check
-values_a = [1, 2, 3, 4, 5, 1, 2, 3, 4, 5]
-values_b = [1, 20, 3, 4, 5, 1, 20, 3, 4, 5]
-values_c = [0.001, 0.002, 0.003, 0.004, 0.005, 0.001, 0.002, 0.003, 0.004, 0.005]
-values_d = [0.001, 0.002, 0.003, 0.004, 5, 0.001, 0.002, 0.003, 0.004, 5]
-values_e = ["V1", "V2", "V3", "V1", "V2", "V3", "V1", "V2", "V3", "V1"]
-values_f = ["V1", "V2", 1, "V1", "V2", "V3", "V1", "V2", "V3", "V1"]
-
-V_I_val_a = domain.check_value("VI", values_a)
-V_I_val_b = domain.check_value("VI", values_b)
-V_I_val_c = domain.check_value("VI", values_c)
-print("Are these values compatible with VI definition ? ")
-print(str(values_a) + " => " + str(V_I_val_a) + "\n" + str(values_b) + " => " + str(V_I_val_b) + "\n"
-      + str(values_c) + " => " + str(V_I_val_c) + "\n")
-
-V_R_val_c = domain.check_value("VR", values_c)
-V_R_val_d = domain.check_value("VR", values_d)
-V_R_val_a = domain.check_value("VR", values_a)
-V_R_val_e = domain.check_value("VR", values_e)
-print("Are these values compatible with VR definition ? ")
-print(str(values_c) + " => " + str(V_R_val_c) + "\n" + str(values_d) + " => " + str(V_R_val_d) + "\n"
-      + str(values_a) + " => " + str(V_R_val_a) + "\n" + str(values_e) + " => " + str(V_R_val_e) + "\n")
-
-V_C_val_e = domain.check_value("VC", values_e)
-V_C_val_f = domain.check_value("VC", values_f)
-print("Are these values compatible with VC definition ? ")
-print(str(values_e) + " => " + str(V_C_val_e) + "\n" + str(values_f) + " => " + str(V_C_val_f) + "\n")
 
 # ==================================================================================================================== #
 # ============================= 7. Checking layers for a LAYER VECTOR ================================================ #
