@@ -1,4 +1,4 @@
-from pycvoa.use_cases.domains.support_domain import example_domain as domain
+from utils import domain
 
 # print("The example domain:\n")
 # print(str(domain) + "\n\n")
@@ -20,9 +20,9 @@ I_comp_A = domain.check_basic("I", basic_a)
 I_comp_B = domain.check_basic("I", basic_b)
 I_comp_C = domain.check_basic("I", basic_c)
 I_comp_E = domain.check_basic("I", basic_e)
-# print("Are these values compatible with the definition of I in this domain ? ")
-# print(str(basic_a) + " => " + str(I_comp_A) + " , " + str(basic_b) + " => " + str(I_comp_B) + " , "
-#       + str(basic_c) + " => " + str(I_comp_C) + " , " + str(basic_e) + " => " + str(I_comp_E) + "\n")
+print("Are these values compatible with the definition of I in this domain ? ")
+print(str(basic_a) + " => " + str(I_comp_A) + " , " + str(basic_b) + " => " + str(I_comp_B) + " , "
+      + str(basic_c) + " => " + str(I_comp_C) + " , " + str(basic_e) + " => " + str(I_comp_E) + "\n")
 
 # Value compatibility of the definition of R
 R_comp_C = domain.check_basic("R", basic_c)

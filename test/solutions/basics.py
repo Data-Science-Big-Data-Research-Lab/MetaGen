@@ -5,7 +5,7 @@
 # The Solution class is in the pycvoa.problem.solution module:
 from pycvoa.problem.solution import Solution
 # The Domain class is also necessary to boost the Solution functionalities
-from pycvoa.use_cases.domains.support_domain import example_domain as domain
+from domains.support_domain import example_domain as domain
 
 print("The example domain:\n")
 print(str(domain) + "\n\n")
