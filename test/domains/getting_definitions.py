@@ -1,4 +1,4 @@
-from pycvoa.use_cases.domains.support_domain import example_domain as domain
+from utils import domain
 
 # print("The example domain:\n")
 # print(str(domain) + "\n\n")

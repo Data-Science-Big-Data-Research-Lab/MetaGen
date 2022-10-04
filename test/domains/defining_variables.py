@@ -111,7 +111,7 @@ domain.define_categorical("CC", [0.1, 0.2, 0.3, 0.4])
 
 # A LAYER is a special type of variable. It represents a set of closed related set of variables that are called elements
 # defined as BASICS (INTEGER, REAL or CATEGORICAL).
-# The LAYER type is specially useful to optimize neural network hyper-parameters where each layer has its
+# The LAYER type is specially useful to optimize neural network hyperparameters where each layer has its
 # own set of variables.
 
 # To define a LAYER variable, just a variable name must be provided to the "define_layer" function:
@@ -210,7 +210,7 @@ domain.define_real_element("L", "ER", 1.5, 3.0)
 # ============================ 7. Defining CATEGORICAL elements of a LAYER variable ================================== #
 # ==================================================================================================================== #
 
-# To define a CATEGORICAL element "EC" for the "L" variable,, two parameters must be provided to the
+# To define a CATEGORICAL element "EC" for the "L" variable, two parameters must be provided to the
 # "define_categorical_element" function:
 #       - A variable name.
 #       - A list with the categories; these values must have the same Python type, i.e., int, float or str.
@@ -347,7 +347,7 @@ domain.define_components_as_real("VR", 0.0, 0.1, 0.0001)
 # domain.define_components_as_real("V_R", 0.0, 0.1)
 
 # **** Argument type errors (static):
-# - The variable name a and the element name must be str. The minimum, maximum and step values must be float.
+# - The variable name a and the element name must be str. The minimum, maximum and step values must be a float.
 # domain.define_components_as_real(1, 0.0, 0.1, 0.0001)
 # domain.define_components_as_real("VR", "min", 0.1, 0.0001)
 # domain.define_components_as_real("VR", 0.0, "max", 0.0001)

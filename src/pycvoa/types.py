@@ -60,13 +60,13 @@ def is_layer_value(value: Any) -> bool:
     r = True
     if type(value) is dict:
         i = 0
-        while r & i < len(value.keys()):
+        while r and i < len(value.keys()):
             if type(value.keys()[i]) != str:
                 r = False
             i += 1
         if r:
             i = 0
-            while r & i < len(value.values()):
+            while r and i < len(value.values()):
                 if type(value.values()[i]) not in [int, float, str]:
                     r = False
                 i += 1
@@ -77,20 +77,22 @@ def is_layer_vector_value(value: Any) -> bool:
     r = True
     if type(value) is list:
         i = 0
-        while r & i < len(value):
-            if not is_layer_value(value[1]):
+        while r and i < len(value):
+            if not is_layer_value(value[i]):
                 r = False
             i += 1
     return r
 
 
-# def is_basic_vector_value(value:Any) -> bool:
-#     r = True
-#     if type(value) is list:
-#         i = 1
-#         while r & i < len(value):
-#
-#                 r = False
-#             i += 1
-#     return r
+def is_basic_vector_value(value: Any) -> bool:
+    r = False
+    if isinstance(value, list):
+        if isinstance(value[0], Union[int, float, str]):
+            i = 1
+            r = True
+            while r and i < len(value):
+                if not isinstance(value[i], type(value[0])):
+                    r = False
+                i += 1
 
+    return r

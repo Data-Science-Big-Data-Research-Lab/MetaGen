@@ -23,5 +23,5 @@ from pycvoa.problem.domain import Domain
 # ======================================== 3. Building a new domain ================================================== #
 # ==================================================================================================================== #
 
-# To build a new domain, the default an unique constructor of the Domain class must be used
+# To build a new domain, the default a unique constructor of the Domain class must be used
 domain = Domain()
