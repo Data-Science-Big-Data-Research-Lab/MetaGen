@@ -94,12 +94,12 @@ class Solution:
         :raise :py:class:`~pycvoa.problem.solution.WrongValue: The value is not valid.
         """
         ctrl_dom.check_basic_value(basic_variable, value, domain, self.__domain)
-        self.__variables[basic_variable] = copy.deepcopy(value)
+        self.__variables[basic_variable] = value
 
     # ** LAYER TYPE METHODS ***
     def set_layer(self, layer_variable: str, layer_value: LayerValue, domain: Union[Domain, None] = None):
         ctrl_dom.check_layer_value(layer_variable, layer_value, domain, self.__domain)
-        self.__variables[layer_variable] = layer_value
+        self.__variables[layer_variable] = copy.deepcopy(layer_value)
 
     def set_element(self, layer_variable: str, element: str, value: BasicValue, domain: Union[Domain, None] = None):
         """ It sets the element value of a **LAYER** variable. If the **LAYER** variable does not exist,
@@ -124,8 +124,8 @@ class Solution:
             self.__variables[layer_variable] = {element: value}
         else:
             layer_value = cast(LayerValue, self.__variables.get(layer_variable))
-            assert layer_value is not None
-            layer_value[element] = value
+            if layer_value is not None:
+                layer_value[element] = value
 
     # ** BASIC VECTOR METHODS ***
     def set_basic_vector(self, vector_variable: str, values: BasicValueList, domain: Union[Domain, None] = None):
@@ -804,7 +804,7 @@ class Solution:
             if index is None:
                 variables[layer_vector_variable].append(copy.deepcopy(layer_values))
             else:
-                variables[layer_vector_variable].insert(index, layer_values)
+                variables[layer_vector_variable].insert(index, copy.deepcopy(layer_values))
             r -= 1
         return r
 
