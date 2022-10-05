@@ -1071,7 +1071,7 @@ class Domain:
                     r = Domain.__check_vector_basic_values(vector_def, cast(BasicValueList, values))
 
             elif comp_type is LAYER:
-                case = ctrl_par.layer_vector_pycvoatype(variable, values, element)
+                case = ctrl_par.layer_vector_pycvoatype(values, element)
                 if case == "a":  # LAYER-VECTOR variable, BASIC value, NOT NONE element
                     ctrl_def.is_defined_component_element(variable, element, vector_def)
                     layer_vector_attributes = cast(LayerDef, vector_def[4])[1]
@@ -1100,6 +1100,13 @@ class Domain:
         ctrl_def.is_defined_layer_with_element(layer_variable, element, self.__definitions)
         return Domain.__basic_definition_to_string(element,
                                                    cast(LayerDef, self.__definitions[layer_variable])[1][element])
+
+    def str_layer_vector_element_definition(self, layer_vector_variable: str, element: str) -> str:
+        ctrl_def.is_defined_layer_vector_and_component_element(layer_vector_variable, element, self.__definitions)
+        return Domain.__basic_definition_to_string(element,
+                                                   cast(LayerDef,
+                                                        cast(VectorDef,
+                                                             self.__definitions[layer_vector_variable])[4])[1][element])
 
     def __str__(self):
         """ String representation of a py:class:`~pycvoa.problem.domain.Domain` object

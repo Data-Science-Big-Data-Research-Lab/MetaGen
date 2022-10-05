@@ -5,7 +5,7 @@
 # The Solution class is in the pycvoa.problem.solution module:
 from pycvoa.problem.solution import Solution
 # The Domain class is also necessary to boost the Solution functionalities
-from domains.support_domain import example_domain as domain
+from utils import domain
 
 print("The example domain:\n")
 print(str(domain) + "\n\n")
@@ -34,14 +34,14 @@ external_best = Solution(True)
 external_worst = Solution()
 
 # The Solution objects can be printed with str() method
-# print("Internal best: " + str(internal_best) + "\nInternal worst: " + str(internal_worst) + "\nExternal best: "
-#      + str(external_best) + "\nInternal worst: " + str(external_worst)+"\n")
+print("Internal best: " + str(internal_best) + "\nInternal worst: " + str(internal_worst) + "\nExternal best: "
+      + str(external_best) + "\nInternal worst: " + str(external_worst) + "\n")
 
 # The Solution objects have two accessible member variables: the fitness function value and the discovery iteration.
 # PyCVOA users can use these attributes to develop their algorithms.
 fitness = internal_worst.fitness
 iteration = internal_worst.discovery_iteration
-# print("Solution current fitness value: "+str(fitness)+"\nSolution current discovery iteration: "+str(iteration)+"\n")
+print("Solution current fitness value: "+str(fitness)+"\nSolution current discovery iteration: "+str(iteration)+"\n")
 
 # A solution without internal domain is built to illustrate the remaining examples
 solution = Solution()
@@ -66,7 +66,7 @@ external_worst.set_basic("I", 4)
 # as parameter in the member operations.
 internal_worst.set_basic("I", 3)
 
-# print("External Worst:\n"+str(external_worst)+"\nInternal Worst:\n"+str(internal_worst)+"\n")
+print("External Worst:\n"+str(external_worst)+"\nInternal Worst:\n"+str(internal_worst)+"\n")
 
 
 # ======================================== 4. Setting variables ========================================================

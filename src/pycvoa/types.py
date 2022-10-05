@@ -1,4 +1,7 @@
+from itertools import pairwise
 from typing import TypeAlias, Tuple, Literal, Union, List, Dict, Final, Any
+
+
 
 # PYCVOA literals
 INTEGER: Final = "INTEGER"
@@ -57,42 +60,23 @@ OptLayerValue: TypeAlias = Union[LayerValue, None]
 
 
 def is_layer_value(value: Any) -> bool:
-    r = True
-    if type(value) is dict:
-        i = 0
-        while r and i < len(value.keys()):
-            if type(value.keys()[i]) != str:
-                r = False
-            i += 1
-        if r:
-            i = 0
-            while r and i < len(value.values()):
-                if type(value.values()[i]) not in [int, float, str]:
-                    r = False
-                i += 1
+    r = False
+    if isinstance(value, dict):
+        r = all(isinstance(k, str) and isinstance(v, BasicValue)
+                for k, v in list(value.items()))
     return r
 
 
 def is_layer_vector_value(value: Any) -> bool:
-    r = True
-    if type(value) is list:
-        i = 0
-        while r and i < len(value):
-            if not is_layer_value(value[i]):
-                r = False
-            i += 1
+    r = False
+    if isinstance(value, list):
+        r = all(is_layer_value(x) for x in value)
     return r
 
 
 def is_basic_vector_value(value: Any) -> bool:
     r = False
     if isinstance(value, list):
-        if isinstance(value[0], Union[int, float, str]):
-            i = 1
-            r = True
-            while r and i < len(value):
-                if not isinstance(value[i], type(value[0])):
-                    r = False
-                i += 1
-
+        r = all(type(x) == type(y) and isinstance(x, BasicValue)
+                for x, y in pairwise(value))
     return r
