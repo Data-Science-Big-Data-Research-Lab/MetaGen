@@ -149,7 +149,7 @@ def layer_pycvoatype(value: Any, element: OptStr) -> str:
             raise ValueError("You are trying to check an element's value without specifying the element name.")
         else:
             res = "a"
-    elif isinstance(value, dict):
+    elif is_layer_value(value):
         if element is not None:
             raise ValueError(
                 "You are trying to check an element's value with a value different from int, float, or str.")
@@ -175,20 +175,20 @@ def basic_vector_pycvoatype(value: Any, element: OptStr) -> str:
     return res
 
 
-def layer_vector_pycvoatype(variable: str, value: Any, element: OptStr) -> str:
+def layer_vector_pycvoatype(value: Any, element: OptStr) -> str:
     res = "f"
     if isinstance(value, BasicValue):
         if element is None:
             raise ValueError("You are trying to check an element's value without specifying the element name.")
         else:
             res = "a"
-    elif isinstance(value, dict):
+    elif is_layer_value(value):
         if element is not None:
             raise ValueError("You are trying to check an element's value with a value different from int, float, "
                              "or str.")
         else:
             res = "b"
-    elif isinstance(value, list):
+    elif is_layer_vector_value(value):
         if element is not None:
             raise ValueError("You are trying to check an element's value with a value different from int, float, "
                              "or str.")
