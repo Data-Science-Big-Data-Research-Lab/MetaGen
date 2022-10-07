@@ -59,7 +59,7 @@ def is_defined_variable_as_type(variable: str, definitions: DefStructure, variab
 # ============================================= LAYER LEVEL ========================================================== #
 # ==================================================================================================================== #
 
-def is_defined_element(layer_variable: str, element: str, layer_definition: LayerDef):
+def is_defined_element(layer_variable: str, element: OptStr, layer_definition: LayerDef):
     """ It checks if an element is defined in a **LAYER** variable, if not, raise
     py:class:`~pycvoa.problem.domain.NotDefinedItem`.
 
@@ -71,7 +71,7 @@ def is_defined_element(layer_variable: str, element: str, layer_definition: Laye
     """
     if element not in layer_definition[1].keys():
         raise DefinitionError(
-            "The element " + element + " is not defined in the LAYER variable " + layer_variable + ".")
+            "The element " + str(element) + " is not defined in the LAYER variable " + layer_variable + ".")
 
 
 def not_defined_element(layer_variable: str, element_name: str, layer_definition: LayerDef):
@@ -247,7 +247,7 @@ def is_defined_layer_vector_with_element(layer_vector_variable: str, element: st
 
 
 def is_defined_component_element_as_type(layer_vector_variable: str, element: str,
-                                         layer_vector_definition: VectorDef, check_type: str):
+                                         layer_vector_definition: VectorDef, check_type: PYCVOA_TYPE):
     is_defined_component_element(layer_vector_variable, element, layer_vector_definition)
     check_component_element_type(layer_vector_variable, element, layer_vector_definition, check_type)
 
@@ -258,7 +258,7 @@ def is_defined_layer_vector_and_component_element(layer_vector_variable: str, el
 
 
 def is_defined_layer_vector_and_component_element_as_type(layer_vector_variable: str, element: str,
-                                                          definitions: DefStructure, check_type: str):
+                                                          definitions: DefStructure, check_type: PYCVOA_TYPE):
     is_defined_vector_and_components_as_type(layer_vector_variable, definitions, LAYER)
     is_defined_component_element_as_type(layer_vector_variable, element,
                                          cast(VectorDef, definitions[layer_vector_variable]), check_type)

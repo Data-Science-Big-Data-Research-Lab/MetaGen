@@ -1,8 +1,6 @@
 from itertools import pairwise
 from typing import TypeAlias, Tuple, Literal, Union, List, Dict, Final, Any
 
-
-
 # PYCVOA literals
 INTEGER: Final = "INTEGER"
 REAL: Final = "REAL"
@@ -22,7 +20,7 @@ LAYER_TYPE = Literal["LAYER"]
 VECTOR_TYPE = Literal["VECTOR"]
 PYCVOA_TYPE = Literal["INTEGER", "REAL", "CATEGORICAL", "LAYER", "VECTOR", "BASIC", "NUMERICAL"]
 
-BasicValue: TypeAlias = int | float | str
+BasicValue: TypeAlias = Union[int, float, str]
 LayerValue: TypeAlias = Dict[str, BasicValue]
 BasicValueList: TypeAlias = List[BasicValue]
 LayerValueList: TypeAlias = List[LayerValue]
@@ -62,7 +60,7 @@ OptLayerValue: TypeAlias = Union[LayerValue, None]
 def is_layer_value(value: Any) -> bool:
     r = False
     if isinstance(value, dict):
-        r = all(isinstance(k, str) and isinstance(v, BasicValue)
+        r = all(isinstance(k, str) and isinstance(v, (int, float, str))
                 for k, v in list(value.items()))
     return r
 
@@ -77,6 +75,6 @@ def is_layer_vector_value(value: Any) -> bool:
 def is_basic_vector_value(value: Any) -> bool:
     r = False
     if isinstance(value, list):
-        r = all(type(x) == type(y) and isinstance(x, BasicValue)
+        r = all(type(x) == type(y) and isinstance(x, (int, float, str))
                 for x, y in pairwise(value))
     return r
