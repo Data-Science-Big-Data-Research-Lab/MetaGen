@@ -1,8 +1,8 @@
 import copy
 from typing import cast
-from pycvoa.problem.ctrl import parameter as ctrl_par
-from pycvoa.problem.ctrl import definition as ctrl_def
-from pycvoa.types import *
+from pycvoa.control import parameter as ctrl_par
+from pycvoa.control import definition as ctrl_def
+from pycvoa.control.types import *
 
 
 class Domain:

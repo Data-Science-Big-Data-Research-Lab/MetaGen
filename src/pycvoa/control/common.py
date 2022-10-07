@@ -1,4 +1,4 @@
-from pycvoa.types import PYCVOA_TYPE, BASIC, BASICS, NUMERICAL, NUMERICALS
+from pycvoa.control.types import PYCVOA_TYPE, BASIC, BASICS, NUMERICAL, NUMERICALS
 
 
 # def check_variable_type(variable: str, check_type: PYCVOA_TYPE, actual_type: PYCVOA_TYPE) -> bool:

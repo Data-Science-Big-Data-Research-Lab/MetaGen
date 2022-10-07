@@ -1,7 +1,7 @@
-from pycvoa.problem.ctrl import DefinitionError, DomainError
+from pycvoa.control import DefinitionError, DomainError
 from pycvoa.problem.domain import Domain
-from pycvoa.types import *
-import pycvoa.problem.ctrl.common as cmn
+from pycvoa.control.types import *
+import pycvoa.control.common as cmn
 OptDomain: TypeAlias = Union[Domain, None]
 
 

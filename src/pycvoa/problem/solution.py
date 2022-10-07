@@ -1,7 +1,7 @@
 import sys
-from pycvoa.problem.ctrl import parameter as ctrl_par
-from pycvoa.problem.ctrl import solution as ctrl_sol
-from pycvoa.problem.ctrl import domain as ctrl_dom
+
+from pycvoa.control import domain as ctrl_dom
+from pycvoa.control import solution as ctrl_sol
 from pycvoa.problem.domain import *
 
 
@@ -363,18 +363,17 @@ class Solution:
             if comp_type in BASICS:
                 case = ctrl_par.set_basic_vector_pycvoatype(value, element, index)
                 if case == "a":
-                    self.set_basic_component(variable, index, cast(BasicValue, value), current_domain)
+                    self.set_basic_component(variable, cast(int, index), cast(BasicValue, value), current_domain)
                 elif case == "b":
                     self.set_basic_vector(variable, cast(BasicValueList, value), current_domain)
             elif comp_type is LAYER:
-                if type(value) is BasicValue:
-                    assert element is not None
-                    assert index is not None
-                    self.set_element_of_layer_component(variable, index, element, cast(BasicValue, value),
-                                                        current_domain)
-                else:
-                    assert element is None
-                    assert index is None
+                case = ctrl_par.set_layer_vector_pycvoatype(value, element, index)
+                if case == "a":
+                    self.set_element_of_layer_component(variable, cast(int, index), cast(str, element),
+                                                        cast(BasicValue, value), current_domain)
+                elif case == "b":
+                    self.set_layer_component(variable, cast(int, index), cast(LayerValue, value), current_domain)
+                elif case == "c":
                     self.set_layer_vector(variable, cast(LayerVectorValue, value), current_domain)
 
     # ** VECTOR REMOVES ***

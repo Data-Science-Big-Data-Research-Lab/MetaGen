@@ -1,7 +1,7 @@
-from pycvoa.use_cases.dummy import *
-from pycvoa.use_cases.ml import *
-from pycvoa.use_cases.simple import *
-from pycvoa.cvoa import CVOA, cvoa_launcher
+from pycvoa.entrypoints.dummy import *
+from pycvoa.entrypoints.ml import *
+from pycvoa.entrypoints.simple import *
+from pycvoa.metaheuristics.cvoa import CVOA, cvoa_launcher
 
 def example_dispacher(example):
     definition_fitness = problem_dispatcher(example)
