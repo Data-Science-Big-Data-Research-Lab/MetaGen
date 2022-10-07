@@ -1,4 +1,5 @@
 import sys
+from pycvoa.problem.ctrl import parameter as ctrl_par
 from pycvoa.problem.ctrl import solution as ctrl_sol
 from pycvoa.problem.ctrl import domain as ctrl_dom
 from pycvoa.problem.domain import *
@@ -349,29 +350,23 @@ class Solution:
         current_domain = ctrl_dom.get_valid_domain(domain, self.__domain)
         var_type = current_domain.get_variable_type(variable)
         if var_type in BASICS:
-            assert index is None
-            assert element is None
+            ctrl_par.set_basic_pycvoatype(value, element, index)
             self.set_basic(variable, cast(BasicValue, value), current_domain)
         elif var_type is LAYER:
-            if type(value) is BasicValue:
-                assert index is None
-                assert element is not None
-                self.set_element(variable, element, cast(BasicValue, value), current_domain)
-            else:
-                assert index is None
-                assert element is None
+            case = ctrl_par.set_layer_pycvoatype(value, element, index)
+            if case == "a":
+                self.set_element(variable, cast(str, element), cast(BasicValue, value), current_domain)
+            elif case == "b":
                 self.set_layer(variable, cast(LayerValue, value), current_domain)
         elif var_type is VECTOR:
-            vector_definition = current_domain.get_vector_component_definition(variable)
-            if vector_definition[0] in BASICS:
-                assert element is None
-                if type(value) is BasicValue:
-                    assert index is not None
+            comp_type = current_domain.get_vector_components_type(variable)
+            if comp_type in BASICS:
+                case = ctrl_par.set_basic_vector_pycvoatype(value, element, index)
+                if case == "a":
                     self.set_basic_component(variable, index, cast(BasicValue, value), current_domain)
-                else:
-                    assert index is None
+                elif case == "b":
                     self.set_basic_vector(variable, cast(BasicValueList, value), current_domain)
-            elif vector_definition[0] is LAYER:
+            elif comp_type is LAYER:
                 if type(value) is BasicValue:
                     assert element is not None
                     assert index is not None

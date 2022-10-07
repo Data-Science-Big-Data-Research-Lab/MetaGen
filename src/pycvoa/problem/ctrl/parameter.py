@@ -1,8 +1,8 @@
 import math
 from typing import Any
 
-from pycvoa.types import OptInt, OptFloat, CategoryList, BasicValue, OptStr, LayerValue, BasicValueList, LayerValueList, \
-    is_layer_value, is_layer_vector_value, is_basic_vector_value
+from pycvoa.types import OptInt, OptFloat, CategoryList, OptStr, is_layer_value, is_layer_vector_value, \
+    is_basic_vector_value
 
 
 # =========================================== VALUE CHECKERS ==========================================================#
@@ -118,7 +118,7 @@ def not_none(parameter: str, value: Any):
 
 
 def is_basic_value(parameter: str, value: Any):
-    if not isinstance(value, BasicValue):
+    if not isinstance(value, (int, float, str)):
         raise ValueError(parameter + " must be int, float or str.")
 
 
@@ -135,16 +135,14 @@ def is_basic_or_layer_or_vector_value(parameter: str, value: Any):
 # =================================== DOMAIN GENERAL CHECK VALUE METHOD ===============================================#
 
 
-def basic_pycvoatype(value: Any, element: OptStr):
-    if isinstance(value, BasicValue):
-        if element is not None:
-            raise ValueError("You are trying to check a value of an element of a variable that is not LAYER or LAYER "
-                             "VECTOR.")
+def check_basic_pycvoatype(element: OptStr):
+    if element is not None:
+        raise ValueError("You are trying to check a value of an element of a variable that is not LAYER or LAYER.")
 
 
-def layer_pycvoatype(value: Any, element: OptStr) -> str:
+def check_layer_pycvoatype(value: Any, element: OptStr) -> str:
     res = "f"
-    if isinstance(value, BasicValue):
+    if isinstance(value, (int, float, str)):
         if element is None:
             raise ValueError("You are trying to check an element's value without specifying the element name.")
         else:
@@ -158,9 +156,9 @@ def layer_pycvoatype(value: Any, element: OptStr) -> str:
     return res
 
 
-def basic_vector_pycvoatype(value: Any, element: OptStr) -> str:
+def check_basic_vector_pycvoatype(value: Any, element: OptStr) -> str:
     res = "f"
-    if isinstance(value, BasicValue):
+    if isinstance(value, (int, float, str)):
         if element is not None:
             raise ValueError(
                 "You are trying to check a value of an element of a variable that is not LAYER or LAYER VECTOR.")
@@ -175,9 +173,9 @@ def basic_vector_pycvoatype(value: Any, element: OptStr) -> str:
     return res
 
 
-def layer_vector_pycvoatype(value: Any, element: OptStr) -> str:
+def check_layer_vector_pycvoatype(value: Any, element: OptStr) -> str:
     res = "f"
-    if isinstance(value, BasicValue):
+    if isinstance(value, (int, float, str)):
         if element is None:
             raise ValueError("You are trying to check an element's value without specifying the element name.")
         else:
@@ -194,4 +192,111 @@ def layer_vector_pycvoatype(value: Any, element: OptStr) -> str:
                              "or str.")
         else:
             res = "c"
+    return res
+
+
+# =================================== SOLUTION GENERAL SET VALUE METHOD ===============================================#
+
+def set_basic_pycvoatype(value: Any, element: OptStr, index: OptInt):
+    if isinstance(value, (int, float, str)):
+        if element is None and index is not None:
+            raise ValueError("You are trying to set a value of a component of a variable that is not BASIC VECTOR.")
+        elif element is not None and index is None:
+            raise ValueError("You are trying to set a value of an element of a variable that is not LAYER.")
+        elif element is not None and index is not None:
+            raise ValueError("You are trying to set a value of an element of a variable that is not LAYER VECTOR.")
+    else:
+        raise ValueError("The value must a BASIC value (int, float or str).")
+
+
+def set_layer_pycvoatype(value: Any, element: OptStr, index: OptInt) -> str:
+    if isinstance(value, (int, float, str)):
+        if element is None and index is None:
+            raise ValueError("You are trying to set an element's value without specifying the element name.")
+        if element is None and index is not None:
+            raise ValueError("You are trying to set a value of a component of a variable that is not BASIC VECTOR")
+        elif element is not None and index is not None:
+            raise ValueError("You are trying to set a value of an element of a variable that is not LAYER VECTOR.")
+        else:
+            res = "a"
+    elif is_layer_value(value):
+        if element is None and index is not None:
+            raise ValueError("You are trying to set a value of a component of a variable that is not LAYER VECTOR")
+        elif element is not None and index is None:
+            raise ValueError("You are trying to set an element's value with a value different from int, float, "
+                             "or str.")
+        elif element is not None and index is not None:
+            raise ValueError("You are trying to set a value of an element of a component of a variable that is not "
+                             "LAYER VECTOR.")
+        else:
+            res = "b"
+    else:
+        raise ValueError("The value must be a BASIC value (int, float, or str) or a well-formed LAYER value.")
+    return res
+
+
+def set_basic_vector_pycvoatype(value: Any, element: OptStr, index: OptInt) -> str:
+    if isinstance(value, (int, float, str)):
+        if element is None and index is None:
+            raise ValueError("You are trying to set a component's value without specifying the target index.")
+        if element is not None and index is None:
+            raise ValueError("You are trying to set a value of an element of a variable that is not LAYER.")
+        elif element is not None and index is not None:
+            raise ValueError("You are trying to set a value of an element of a variable that is not LAYER VECTOR.")
+        else:
+            res = "a"
+    elif is_basic_vector_value(value):
+        if element is None and index is not None:
+            raise ValueError("You are trying to set a value of a component of a BASIC VECTOR variable with a complete "
+                             "BASIC VECTOR value.")
+        elif element is not None and index is None:
+            raise ValueError("You are trying to set an element's value with a value different from int, float, "
+                             "or str of a variable that is not LAYER.")
+        elif element is not None and index is not None:
+            raise ValueError("You are trying to set a value of an element of a component of a variable that is not "
+                             "LAYER VECTOR.")
+        else:
+            res = "b"
+    else:
+        raise ValueError("The value must be a BASIC value (int, float, or str) or a well-formed BASIC VECTOR value.")
+    return res
+
+
+def set_layer_vector_pycvoatype(value: Any, element: OptStr, index: OptInt) -> str:
+    if isinstance(value, (int, float, str)):
+        if element is None and index is None:
+            raise ValueError("You are trying to set a LAYER VECTOR variable with a BASIC value.")
+        elif element is None and index is not None:
+            raise ValueError("You are trying to set a value of a component of a variable that is not BASIC VECTOR")
+        elif element is not None and index is None:
+            raise ValueError("You are trying to set a value of an element of a variable that is not LAYER.")
+        else:
+            res = "a"
+    elif is_layer_value(value):
+        if element is None and index is None:
+            raise ValueError("You are trying to set a LAYER VECTOR variable with a LAYER value without specifying "
+                             "the component index.")
+        elif element is not None and index is None:
+            raise ValueError("You are trying to set an element's value with a value different from int, float, "
+                             "or str and without specifying the component index.")
+        elif element is not None and index is not None:
+            raise ValueError("You are trying to set a value of an element of a component with a value that is not "
+                             "BASIC.")
+        else:
+            res = "b"
+    elif is_layer_vector_value(value):
+        if element is None and index is not None:
+            raise ValueError("You are trying to set a value of a component of a BASIC VECTOR variable with a complete "
+                             "BASIC VECTOR value.")
+        elif element is not None and index is None:
+            raise ValueError("You are trying to set an element's value with a value different from int, float, "
+                             "or str of a variable that is not LAYER.")
+        elif element is not None and index is not None:
+            raise ValueError("You are trying to set a value of an element of a component of a variable that is not "
+                             "LAYER VECTOR.")
+        else:
+            res = "c"
+    else:
+        raise ValueError("The value must be a BASIC value (int, float, or str) a well-formed LAYER value or a "
+                         "well-formed LAYER VECTOR value.")
     return res

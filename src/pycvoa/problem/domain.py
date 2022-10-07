@@ -854,14 +854,14 @@ class Domain:
             if not Domain.__check_layer_element_values(vector_variable,
                                                        cast(LayerDef,
                                                             cast(VectorDef, self.__definitions[vector_variable])[4]),
-                                                       layer_value,
+                                                       cast(dict, layer_value),
                                                        False):
                 raise ValueError("The layer values are not compatible with the LAYER VECTOR component definition")
             else:
                 layer_attributes: LayerAttributes = cast(LayerDef,
                                                          cast(VectorDef,
                                                               self.__definitions[vector_variable])[4])[1]
-                e_s = len(layer_value.keys() & layer_attributes.keys())
+                e_s = len(cast(dict, layer_value).keys() & layer_attributes.keys())
                 if e_s == 0:
                     valid_vector_size = current_vector_size
                 else:
@@ -1044,15 +1044,16 @@ class Domain:
         r = False
 
         if var_type in BASICS:  # Basic variable, Basic value, None element
-            ctrl_par.basic_pycvoatype(values, element)
+            ctrl_par.check_basic_pycvoatype(element)
             r = Domain.__check_basic_value_item(cast(BasicDef, self.__definitions[variable]),
                                                 cast(BasicValue, values))
         elif var_type is LAYER:
-            case = ctrl_par.layer_pycvoatype(values, element)
+            case = ctrl_par.check_layer_pycvoatype(values, element)
             layer_def = cast(LayerDef, self.__definitions[variable])
             if case == "a":  # LAYER variable, BASIC value, NOT NONE element
                 ctrl_def.is_defined_element(variable, element, layer_def)
-                r = Domain.__check_basic_value_item(cast(BasicDef, layer_def[1][element]), cast(BasicValue, values))
+                r = Domain.__check_basic_value_item(cast(BasicDef,
+                                                         layer_def[1][cast(str, element)]), cast(BasicValue, values))
             elif case == "b":  # LAYER variable, LAYER value, NONE element
                 r = Domain.__check_layer_element_values(variable, layer_def, cast(LayerValue, values))
 
@@ -1062,7 +1063,7 @@ class Domain:
             comp_type = cast(ComponentDef, vector_def[4])[0]
 
             if comp_type in BASICS:
-                case = ctrl_par.basic_vector_pycvoatype(values, element)
+                case = ctrl_par.check_basic_vector_pycvoatype(values, element)
                 if case == "a":  # BASIC-VECTOR variable, BASIC value, NONE element
                     r = Domain.__check_basic_value_item(cast(BasicDef, vector_def[4]), cast(BasicValue, values))
                 elif case == "b":  # BASIC-VECTOR variable, BASIC-VECTOR value, NONE element
@@ -1071,11 +1072,11 @@ class Domain:
                     r = Domain.__check_vector_basic_values(vector_def, cast(BasicValueList, values))
 
             elif comp_type is LAYER:
-                case = ctrl_par.layer_vector_pycvoatype(values, element)
+                case = ctrl_par.check_layer_vector_pycvoatype(values, element)
                 if case == "a":  # LAYER-VECTOR variable, BASIC value, NOT NONE element
-                    ctrl_def.is_defined_component_element(variable, element, vector_def)
+                    ctrl_def.is_defined_component_element(variable, cast(str, element), vector_def)
                     layer_vector_attributes = cast(LayerDef, vector_def[4])[1]
-                    r = Domain.__check_basic_value_item(layer_vector_attributes[element],
+                    r = Domain.__check_basic_value_item(layer_vector_attributes[cast(str, element)],
                                                         cast(BasicValue, values))
                 elif case == "b":  # LAYER-VECTOR variable, LAYER value, NONE element
                     r = Domain.__check_layer_element_values(variable, cast(LayerDef, vector_def[4]),
