@@ -1,5 +1,5 @@
-# from pycvoa.use_cases.solutions.support_variables import example_solution as solution
-# from pycvoa.use_cases.domains.support_domain import example_domain as domain
+# from pycvoa.entrypoints.solutions.support_variables import example_solution as solution
+# from pycvoa.entrypoints.domains.support_domain import example_domain as domain
 #
 # # print("The example domain:\n")
 # # print(str(domain) + "\n\n")

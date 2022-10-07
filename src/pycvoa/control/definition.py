@@ -1,8 +1,8 @@
 from typing import cast
 
-from pycvoa.problem.ctrl import DefinitionError
-from pycvoa.types import *
-import pycvoa.problem.ctrl.common as cmn
+from pycvoa.control import DefinitionError
+from pycvoa.control.types import *
+import pycvoa.control.common as cmn
 
 
 # ========== VARIABLE LEVEL ========== #

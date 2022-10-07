@@ -1,7 +1,7 @@
 import math
 from typing import Any
 
-from pycvoa.types import OptInt, OptFloat, CategoryList, OptStr, is_layer_value, is_layer_vector_value, \
+from pycvoa.control.types import OptInt, OptFloat, CategoryList, OptStr, is_layer_value, is_layer_vector_value, \
     is_basic_vector_value
 
 
@@ -286,14 +286,13 @@ def set_layer_vector_pycvoatype(value: Any, element: OptStr, index: OptInt) -> s
             res = "b"
     elif is_layer_vector_value(value):
         if element is None and index is not None:
-            raise ValueError("You are trying to set a value of a component of a BASIC VECTOR variable with a complete "
-                             "BASIC VECTOR value.")
+            raise ValueError("You are trying to set a value of a component of a variable that is not BASIC VECTOR")
         elif element is not None and index is None:
             raise ValueError("You are trying to set an element's value with a value different from int, float, "
-                             "or str of a variable that is not LAYER.")
+                             "or str and without specifying the component index.")
         elif element is not None and index is not None:
-            raise ValueError("You are trying to set a value of an element of a component of a variable that is not "
-                             "LAYER VECTOR.")
+            raise ValueError("You are trying to set a value of an element of a component with a value that is not "
+                             "BASIC.")
         else:
             res = "c"
     else:

@@ -11,7 +11,7 @@ from typing import Set, Callable, cast
 from pycvoa.problem import Domain
 from pycvoa.problem.solution import Solution
 from pycvoa.problem.support import get_random_value_for_basic_variable, get_number_from_interval, alter_solution
-from pycvoa.types import BASICS, VECTOR, LAYER, LayerDef, ComponentDef, LayerAttributes
+from pycvoa.control.types import BASICS, VECTOR, LAYER, LayerDef, ComponentDef, LayerAttributes
 
 logging.basicConfig(level=logging.INFO)
 

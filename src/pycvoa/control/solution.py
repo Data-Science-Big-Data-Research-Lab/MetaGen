@@ -1,6 +1,6 @@
 from pycvoa.problem import Domain
-from pycvoa.problem.ctrl import SolutionError
-from pycvoa.types import VarStructureType, OptSupportedValues, VectorValue, LayerVectorValue
+from pycvoa.control import SolutionError
+from pycvoa.control.types import VarStructureType, OptSupportedValues, VectorValue, LayerVectorValue
 
 
 def is_assigned_layer_element(layer_variable: str, element: str, solution_structure: VarStructureType):

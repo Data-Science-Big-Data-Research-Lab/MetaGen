@@ -1,9 +1,9 @@
 import copy
 import math
 import random
-from typing import Callable, Any, cast
+from typing import Callable, cast
 from pycvoa.problem import Domain, Solution
-from pycvoa.types import *
+from pycvoa.control.types import *
 
 
 def build_random_solution(domain: Domain, fitness_function: Callable[[Solution], float] = None) -> Solution:
