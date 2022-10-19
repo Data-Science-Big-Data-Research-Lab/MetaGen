@@ -299,3 +299,52 @@ def set_layer_vector_pycvoatype(value: Any, element: OptStr, index: OptInt) -> s
         raise ValueError("The value must be a BASIC value (int, float, or str) a well-formed LAYER value or a "
                          "well-formed LAYER VECTOR value.")
     return res
+
+
+# =================================== SOLUTION GENERAL GET VALUE METHOD ===============================================#
+
+def get_basic_pycvoatype(element: OptStr, index: OptInt):
+    if element is None and index is not None:
+        raise ValueError("You are trying to get a value of a component of a variable that is not BASIC VECTOR.")
+    elif element is not None and index is None:
+        raise ValueError("You are trying to get a value of an element of a variable that is not LAYER.")
+    elif element is not None and index is not None:
+        raise ValueError("You are trying to get a value of an element of a variable that is not LAYER VECTOR.")
+
+
+def get_layer_pycvoatype(element: OptStr, index: OptInt) -> str:
+    if element is None and index is None:
+        r = "a"
+    elif element is None and index is not None:
+        raise ValueError("You are trying to get a value of a component of a variable that is not BASIC VECTOR")
+    elif element is not None and index is None:
+        r = "b"
+    else:
+        raise ValueError(
+            "You are trying to get an element value of a component of a variable that is not LAYER VECTOR.")
+    return r
+
+
+def get_basic_vector_pycvoatype(element: OptStr, index: OptInt) -> str:
+    if element is None and index is None:
+        r = "a"
+    elif element is None and index is not None:
+        r = "b"
+    elif element is not None and index is None:
+        raise ValueError("You are trying to get a value of an element of a variable that is not LAYER.")
+    else:
+        raise ValueError(
+            "You are trying to get an element value of a component of a variable that is not LAYER VECTOR.")
+    return r
+
+
+def get_layer_vector_pycvoatype(element: OptStr, index: OptInt) -> str:
+    if element is None and index is None:
+        r = "a"
+    elif element is None and index is not None:
+        r = "b"
+    elif element is not None and index is None:
+        raise ValueError("You are trying to get a value of an element of a variable that is not LAYER.")
+    else:
+        r = "c"
+    return r

@@ -2,6 +2,7 @@ from pycvoa.control import DefinitionError, DomainError
 from pycvoa.problem.domain import Domain
 from pycvoa.control.types import *
 import pycvoa.control.common as cmn
+
 OptDomain: TypeAlias = Union[Domain, None]
 
 
@@ -147,6 +148,13 @@ def basic_variable(check_basic_variable: str, external_domain: OptDomain, intern
     valid_domain = get_valid_domain(external_domain, internal_domain)
     if cmn.check_item_type(BASIC, valid_domain.get_variable_type(check_basic_variable)) is False:
         raise DefinitionError("The variable " + check_basic_variable + " is not defined as BASIC.")
+    return valid_domain
+
+
+def layer_variable(check_layer_variable: str, external_domain: OptDomain, internal_domain: OptDomain):
+    valid_domain = get_valid_domain(external_domain, internal_domain)
+    if cmn.check_item_type(LAYER, valid_domain.get_variable_type(check_layer_variable)) is False:
+        raise DefinitionError("The variable " + check_layer_variable + " is not defined as LAYER.")
     return valid_domain
 
 
