@@ -1,6 +1,21 @@
 from pycvoa.problem import Domain
 from pycvoa.control import SolutionError
-from pycvoa.control.types import VarStructureType, OptSupportedValues, VectorValue, LayerVectorValue
+from pycvoa.control.types import VarStructureType, OptSupportedValues, VectorValue, LayerVectorValue, PYCVOA_TYPE, \
+    BASIC, BASICS, NUMERICAL, NUMERICALS
+
+
+def check_item_type(check_type: PYCVOA_TYPE, item_type: PYCVOA_TYPE):
+    r = False
+    if check_type is BASIC:
+        if item_type in BASICS:
+            r = True
+    elif check_type is NUMERICAL:
+        if check_type in NUMERICALS:
+            r = True
+    else:
+        if item_type is check_type:
+            r = True
+    return r
 
 
 def is_assigned_layer_element(layer_variable: str, element: str, solution_structure: VarStructureType):
@@ -25,7 +40,7 @@ def is_assigned_component(vector_variable: str, index: int, vector_values_size: 
                 index) + "-nh component of " + vector_variable + " VECTOR variable is not assigned in this solution.")
 
 
-def is_assigned_component_element(layer_vector_variable: str, index: int, element:str,
+def is_assigned_component_element(layer_vector_variable: str, index: int, element: str,
                                   layer_vector_value: LayerVectorValue):
     if element not in layer_vector_value[index].keys():
         raise SolutionError("The element " + str(element) + " in not assigned in the " + str(index)

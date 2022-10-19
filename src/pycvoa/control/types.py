@@ -20,6 +20,7 @@ LAYER_TYPE = Literal["LAYER"]
 VECTOR_TYPE = Literal["VECTOR"]
 PYCVOA_TYPE = Literal["INTEGER", "REAL", "CATEGORICAL", "LAYER", "VECTOR", "BASIC", "NUMERICAL"]
 
+# PYCVOA variable values
 BasicValue: TypeAlias = Union[int, float, str]
 LayerValue: TypeAlias = Dict[str, BasicValue]
 BasicValueList: TypeAlias = List[BasicValue]
