@@ -1,3 +1,5 @@
+from typing import Tuple
+
 from pycvoa.problem import Domain
 
 domain: Domain = Domain()
@@ -22,28 +24,28 @@ domain.define_layer_vector_real_element("VL", "el2", 0.1, 0.5)
 domain.define_layer_vector_categorical_element("VL", "el3", [1, 2, 3])
 
 
-def str_test(test: (str, dict)):
+def str_test(test: Tuple[str, dict]):
     print("\n" + test[0] + " test ==> "
           + domain.str_variable_definition(test[0]))
     for t, v in test[1].items():
         print(str(t) + " => " + str(v))
 
 
-def str_element_test(test: (str, str, dict)):
+def str_element_test(test: Tuple[str, str, dict]):
     print("\n" + test[0] + "." + test[1] + " test ==> "
           + domain.str_element_definition(test[0], test[1]))
     for t, v in test[2].items():
         print(str(t) + " => " + str(v))
 
 
-def str_vector_element_test(test: (str, str, dict)):
+def str_vector_element_test(test: Tuple[str, str, dict]):
     print("\n" + test[0] + "." + test[1] + " test ==> "
           + domain.str_layer_vector_element_definition(test[0], test[1]))
     for t, v in test[2].items():
         print(str(t) + " => " + str(v))
 
 
-def get_basic_test(variable: str) -> (str, dict):
+def get_basic_test(variable: str) -> Tuple[str, dict]:
     runs = {
         "2": domain.check_value(variable, 2),
         "-1": domain.check_value(variable, -1),
@@ -63,7 +65,7 @@ def run_basic_test(variable: str):
     str_test(get_basic_test(variable))
 
 
-def get_layer_test(variable: str) -> (str, dict):
+def get_layer_test(variable: str) -> Tuple[str, dict]:
     runs = {
         "{\"EI\": 20, \"ER\": 1.8, \"EC\": \"Lb2\"}": domain.check_value(variable, {"EI": 20, "ER": 1.8, "EC": "Lb2"}),
         "{\"EI\": -1, \"ER\": 1.8, \"EC\": \"Lb2\"}": domain.check_value(variable, {"EI": -1, "ER": 1.8, "EC": "Lb2"}),
@@ -85,7 +87,7 @@ def run_layer_test(variable: str):
     str_test(get_layer_test(variable))
 
 
-def get_layer_element_test(variable: str, element: str) -> (str, dict):
+def get_layer_element_test(variable: str, element: str) -> Tuple[str, str, dict]:
     runs = {
         "20": domain.check_value(variable, 2, element),
         "200": domain.check_value(variable, 200, element),
@@ -106,7 +108,7 @@ def run_layer_element_test(variable: str, element: str):
     str_element_test(get_layer_element_test(variable, element))
 
 
-def get_basic_vector_test(variable: str) -> (str, dict):
+def get_basic_vector_test(variable: str) -> Tuple[str, dict]:
     runs = {
         "[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]": domain.check_value(variable, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
         "[1, 20, 3, 4, 5, 1, 20, 3, 4, 5]": domain.check_value(variable, [1, 20, 3, 4, 5, 1, 20, 3, 4, 5]),
@@ -135,7 +137,7 @@ def run_basic_vector_test(variable: str):
     str_test(get_basic_vector_test(variable))
 
 
-def get_vector_layer_element_test(variable: str, element: str) -> (str, dict):
+def get_vector_layer_element_test(variable: str, element: str) -> Tuple[str, str, dict]:
     runs = {
         "20": domain.check_value(variable, 20, element),
         "25": domain.check_value(variable, 25, element),
@@ -152,7 +154,7 @@ def run_vector_layer_element_test(variable: str, element: str):
     str_vector_element_test(get_vector_layer_element_test(variable, element))
 
 
-def get_vector_layer_test(variable: str) -> (str, dict):
+def get_vector_layer_test(variable: str) -> Tuple[str, dict]:
     runs = {
         "{\"el1\": 15, \"el2\": 0.2, \"el3\": 2}":
             domain.check_value(variable, {"el1": 15, "el2": 0.2, "el3": 2}),

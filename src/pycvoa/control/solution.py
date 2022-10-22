@@ -1,7 +1,9 @@
-from pycvoa.problem import Domain
+from typing import cast
+
 from pycvoa.control import SolutionError
-from pycvoa.control.types import VarStructureType, OptSupportedValues, VectorValue, LayerVectorValue, PYCVOA_TYPE, \
-    BASIC, BASICS, NUMERICAL, NUMERICALS
+from pycvoa.control.types import VarStructureType, VectorValue, LayerVectorValue, PYCVOA_TYPE, \
+    BASIC, BASICS, NUMERICAL, NUMERICALS, LayerValue
+from pycvoa.problem import Domain
 
 
 def check_item_type(check_type: PYCVOA_TYPE, item_type: PYCVOA_TYPE):
@@ -20,8 +22,15 @@ def check_item_type(check_type: PYCVOA_TYPE, item_type: PYCVOA_TYPE):
 
 def is_assigned_layer_element(layer_variable: str, element: str, solution_structure: VarStructureType):
     is_assigned_variable(layer_variable, solution_structure)
-    layer: OptSupportedValues = solution_structure.get(layer_variable)
-    assert type(layer) is dict
+    layer: LayerValue = cast(LayerValue, solution_structure.get(layer_variable))
+    if element not in layer.keys():
+        raise SolutionError(
+            "The element " + str(element) + " is not assigned in the " + str(layer_variable) + "variable of this "
+                                                                                               "solution.")
+
+
+def is_assigned_element(layer_variable: str, element: str, solution_structure: VarStructureType):
+    layer: LayerValue = cast(LayerValue, solution_structure.get(layer_variable))
     if element not in layer.keys():
         raise SolutionError(
             "The element " + str(element) + " is not assigned in the " + str(layer_variable) + "variable of this "

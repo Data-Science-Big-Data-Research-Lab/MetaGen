@@ -1,3 +1,6 @@
+from typing import List
+
+from pycvoa.control.types import LayerValue, BasicValueList, LayerValueList
 from utils import domain
 
 # print("The example domain:\n")
@@ -109,13 +112,13 @@ L_E_C_comp_C = domain.check_element("L", "EC", element_c)
 # ==================================================================================================================== #
 
 # Layers to check
-layer_a = {"EI": 20, "ER": 1.8, "EC": "Lb2"}
-layer_b = {"EI": -1, "ER": 1.8, "EC": "Lb2"}
-layer_c = {"EI": 20, "ER": 1.0, "EC": "Lb2"}
-layer_d = {"EI": 20, "ER": 1.8, "EC": "Lb4"}
-layer_e = {"EI": "1", "ER": 1.8, "EC": "Lb2"}
-layer_f = {"EI": 20, "ER": 2, "EC": "Lb2"}
-layer_g = {"EI": 20, "ER": 1.8, "EC": 1.2}
+layer_a: LayerValue = {"EI": 20, "ER": 1.8, "EC": "Lb2"}
+layer_b: LayerValue = {"EI": -1, "ER": 1.8, "EC": "Lb2"}
+layer_c: LayerValue = {"EI": 20, "ER": 1.0, "EC": "Lb2"}
+layer_d: LayerValue = {"EI": 20, "ER": 1.8, "EC": "Lb4"}
+layer_e: LayerValue = {"EI": "1", "ER": 1.8, "EC": "Lb2"}
+layer_f: LayerValue = {"EI": 20, "ER": 2, "EC": "Lb2"}
+layer_g: LayerValue = {"EI": 20, "ER": 1.8, "EC": 1.2}
 
 L_layer_a = domain.check_layer("L", layer_a)
 L_layer_b = domain.check_layer("L", layer_b)
@@ -266,7 +269,7 @@ print(str(component_element_e) + " => " + str(V_L_el_3_comp_E) + " , "
 
 # Values to check
 integer_values_a = [1, 2, 3, 4, 5]
-integer_values_b = []
+integer_values_b: List = []
 integer_values_c = [1, 2, 3, 4, 5, 6, 7, 8]
 real_values_a = [0.001, 0.002, 0.003, 0.004, 0.005]
 real_values_b = [0.001]
@@ -321,12 +324,12 @@ print(str(layer_values_a) + " => " + str(V_L_size_l_a) + "\n"
 # ==================================================================================================================== #
 
 # Values to check
-values_a = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-values_b = [1, 20, 3, 4, 5, 6, 7, 8, 9, 10]
-values_c = [0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009, 0.010]
-values_d = [0.001, 0.002, 0.003, 0.004, 5]
-values_e = ["V1", "V2", "V3", "V1", "V2", "V3", "V1", "V2", "V3", "V1"]
-values_f = ["V1", "V2", 1, "V1", "V2", "V3", "V1", "V2", "V3", "V1"]
+values_a: BasicValueList = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+values_b: BasicValueList = [1, 20, 3, 4, 5, 6, 7, 8, 9, 10]
+values_c: BasicValueList = [0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009, 0.010]
+values_d: BasicValueList = [0.001, 0.002, 0.003, 0.004, 5]
+values_e: BasicValueList = ["V1", "V2", "V3", "V1", "V2", "V3", "V1", "V2", "V3", "V1"]
+values_f: BasicValueList = ["V1", "V2", 1, "V1", "V2", "V3", "V1", "V2", "V3", "V1"]
 
 V_I_val_a = domain.check_vector_basic_values("VI", values_a)
 V_I_val_b = domain.check_vector_basic_values("VI", values_b)
@@ -368,10 +371,10 @@ print(str(values_e) + " => " + str(V_C_val_e) + "\n" + str(values_f) + " => " + 
 # ============================= 8. Checking layers for a LAYER VECTOR ================================================ #
 # ==================================================================================================================== #
 
-vector_layer_a = {"el1": 15, "el2": 0.2, "el3": 2}
-vector_layer_b = {"el1": 8, "el2": 0.3, "el3": 1}
-vector_layer_c = {"el1": 17, "el2": 0.05, "el3": 2}
-vector_layer_d = {"el1": 14, "el2": 0.15, "el3": 4}
+vector_layer_a: LayerValue = {"el1": 15, "el2": 0.2, "el3": 2}
+vector_layer_b: LayerValue = {"el1": 8, "el2": 0.3, "el3": 1}
+vector_layer_c: LayerValue = {"el1": 17, "el2": 0.05, "el3": 2}
+vector_layer_d: LayerValue = {"el1": 14, "el2": 0.15, "el3": 4}
 
 V_L_layer_a = domain.check_vector_layer_elements_values("VL", vector_layer_a)
 V_L_layer_b = domain.check_vector_layer_elements_values("VL", vector_layer_b)
@@ -403,11 +406,11 @@ print(str(vector_layer_a) + " => " + str(V_L_layer_a) + "\n" + str(vector_layer_
 # ========================= 9. Checking complete layer values for a LAYER VECTOR ===================================== #
 # ==================================================================================================================== #
 
-vector_layer_values_a = [{"el1": 15, "el2": 0.2, "el3": 2}, {"el1": 12, "el2": 0.3, "el3": 1}]
-vector_layer_values_b = [{"el1": 25, "el2": 0.2, "el3": 2}, {"el1": 12, "el2": 0.3, "el3": 1}]
-vector_layer_values_c = [{"el1": 25, "el2": 0.2, "el3": 2}, {"el1": 12, "el2": 0.3, "el3": "V1"}]
-vector_layer_values_d = [{"el1": 15, "el2": 0.2, "el3": 2}, {"el1": 12, "el2": 0.3, "el3": 1}
-    , {"el1": 14, "el2": 0.15, "el3": 3}, {"el1": 17, "el2": 0.25, "el3": 2}]
+vector_layer_values_a: LayerValueList = [{"el1": 15, "el2": 0.2, "el3": 2}, {"el1": 12, "el2": 0.3, "el3": 1}]
+vector_layer_values_b: LayerValueList = [{"el1": 25, "el2": 0.2, "el3": 2}, {"el1": 12, "el2": 0.3, "el3": 1}]
+vector_layer_values_c: LayerValueList = [{"el1": 25, "el2": 0.2, "el3": 2}, {"el1": 12, "el2": 0.3, "el3": "V1"}]
+vector_layer_values_d: LayerValueList = [{"el1": 15, "el2": 0.2, "el3": 2}, {"el1": 12, "el2": 0.3, "el3": 1},
+                         {"el1": 14, "el2": 0.15, "el3": 3}, {"el1": 17, "el2": 0.25, "el3": 2}]
 
 V_L_vector_layer_a = domain.check_vector_layer_values("VL", vector_layer_values_a)
 V_L_vector_layer_b = domain.check_vector_layer_values("VL", vector_layer_values_b)

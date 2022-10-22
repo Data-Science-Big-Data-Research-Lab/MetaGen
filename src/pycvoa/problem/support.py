@@ -235,14 +235,14 @@ def alter_vector_variable(solution: Solution, variable: str, definition: VectorD
                     ly_el_num = cast(NumericalDef, layer_element_definition)
                     solution.set_element_of_layer_component(variable, i, element_name,
                                                             modify_number_from_interval_random_way(
-                                                                cast(NumericalValue, solution.get_layer_component_value(
+                                                                cast(NumericalValue, solution.get_layer_component_element(
                                                                     variable, i,
                                                                     element_name)),
                                                                 ly_el_num[1], ly_el_num[2], ly_el_num[3]))
 
                 # If that element is a categorical one modify its value with a new label randomly selected
                 elif layer_element_definition[0] is CATEGORICAL:
-                    current_category = solution.get_layer_component_value(variable, i, element_name)
+                    current_category = solution.get_layer_component_element(variable, i, element_name)
                     new_category = get_random_element_from_list_excluding_one(current_category,
                                                                               cast(CategoricalDef,
                                                                                    layer_element_definition)[1])
