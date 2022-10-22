@@ -1,5 +1,5 @@
 from itertools import pairwise
-from typing import TypeAlias, Tuple, Literal, Union, List, Dict, Final, Any
+from typing import TypeAlias, Tuple, Literal, Union, List, Dict, Final, Any, Mapping, Sequence
 
 # PYCVOA literals
 INTEGER: Final = "INTEGER"
@@ -22,10 +22,13 @@ PYCVOA_TYPE = Literal["INTEGER", "REAL", "CATEGORICAL", "LAYER", "VECTOR", "BASI
 
 # PYCVOA variable values
 BasicValue: TypeAlias = Union[int, float, str]
+CategoryList: TypeAlias = Union[List[int], List[float], List[str]]
+# CategoryList: TypeAlias = Sequence[BasicValue]
+
+
 LayerValue: TypeAlias = Dict[str, BasicValue]
 BasicValueList: TypeAlias = List[BasicValue]
 LayerValueList: TypeAlias = List[LayerValue]
-CategoryList: TypeAlias = Union[List[int], List[float], List[str]]
 
 IntegerDef: TypeAlias = Tuple[INTEGER_TYPE, int, int, int]
 RealDef: TypeAlias = Tuple[REAL_TYPE, float, float, float]
@@ -50,12 +53,18 @@ NumericaVectorValues: TypeAlias = List[int] | List[float]
 IntOrIntList: TypeAlias = int | List[int]
 
 NumericalValue: TypeAlias = int | float
-VectorValue: TypeAlias = Union[BasicValueList, List[LayerValue]]
+VectorValue: TypeAlias = Union[BasicValueList, LayerValueList]
 SupportedValues: TypeAlias = Union[BasicValue, LayerValue, VectorValue]
 OptSupportedValues: TypeAlias = Union[BasicValue, LayerValue, VectorValue, None]
 VarStructureType: TypeAlias = Dict[str, SupportedValues]
 LayerVectorValue: TypeAlias = List[LayerValue]
 OptLayerValue: TypeAlias = Union[LayerValue, None]
+
+LayerInput: TypeAlias = Mapping[str, BasicValue]
+VectorInput: TypeAlias = Union[Sequence[int], Sequence[float], Sequence[str], Sequence[LayerInput]]
+BasicVectorInput: TypeAlias = Union[Sequence[int], Sequence[float], Sequence[str]]
+LayerVectorInput: TypeAlias = Sequence[LayerInput]
+SupportedInput: TypeAlias = Union[BasicValue, LayerInput, VectorInput]
 
 
 def is_layer_value(value: Any) -> bool:

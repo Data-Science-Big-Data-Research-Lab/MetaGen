@@ -147,7 +147,8 @@ def not_defined_components(vector_variable: str, vector_definition: VectorDef):
             "The " + vector_variable + " components are already defined as " + vector_definition[4][0] + ".")
 
 
-def check_vector_values_size(vector_variable: str, vector_definition: VectorDef, values: VectorValue):
+def check_vector_values_size(vector_variable: str, vector_definition: VectorDef,
+                             values: Union[VectorValue, VectorInput]):
     if len(values) < vector_definition[1] or len(values) > vector_definition[2]:
         raise DefinitionError(
             "The size of the values (" + str(len(values)) + ") is not compatible with the " + str(
@@ -283,7 +284,7 @@ def is_defined_element_item_definition(layer_variable: str, element: str, layer_
             "The element " + element + " is not defined in the " + layer_variable + " LAYER variable.")
 
 
-def is_a_complete_layer(layer_definition: LayerDef, layer_values: LayerValue):
+def is_a_complete_layer(layer_definition: LayerDef, layer_values: LayerInput):
     # print("layer_definition[1] = " + str(layer_definition[1]))
     # print("len = " + str(len(layer_definition[1])))
     if len(layer_values) < len(layer_definition[1]):

@@ -57,7 +57,7 @@ def check_layer_element_value(layer_variable: str, element: str, value: BasicVal
 
 # =============================================== BASIC VECTOR ======================================================= #
 
-def check_basic_vector_values(check_basic_vector_variable: str, value_list: BasicValueList, external_domain: OptDomain,
+def check_basic_vector_values(check_basic_vector_variable: str, value_list: Union[BasicValueList, BasicVectorInput], external_domain: OptDomain,
                               internal_domain: OptDomain):
     valid_domain = get_valid_domain(external_domain, internal_domain)
     if not valid_domain.check_vector_basic_values(check_basic_vector_variable, value_list):
@@ -173,6 +173,12 @@ def layer_variable_element(check_layer_variable: str, element: str, external_dom
 def basic_vector_variable(check_vector_variable: str, external_domain: OptDomain, internal_domain: OptDomain):
     valid_domain = get_valid_domain(external_domain, internal_domain)
     __check_component_type(check_vector_variable, BASIC, valid_domain)
+    return valid_domain
+
+
+def layer_vector_variable(check_vector_variable: str, external_domain: OptDomain, internal_domain: OptDomain):
+    valid_domain = get_valid_domain(external_domain, internal_domain)
+    __check_component_type(check_vector_variable, LAYER, valid_domain)
     return valid_domain
 
 

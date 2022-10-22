@@ -72,7 +72,7 @@ def all_types_fitness(individual):
     vc_size = individual.get_vector_size("VC")
     vc0 = individual.get_basic_component_value("VC", 0)
     vl_size = individual.get_vector_size("VL")
-    vl0_vl1 = individual.get_layer_component_value("VL", 0, "vl1")
-    vl0_vl2 = individual.get_layer_component_value("VL", 0, "vl2")
-    vl0_vl3 = individual.get_layer_component_value("VL", 0, "vl3")
+    vl0_vl1 = individual.get_layer_component_element("VL", 0, "vl1")
+    vl0_vl2 = individual.get_layer_component_element("VL", 0, "vl2")
+    vl0_vl3 = individual.get_layer_component_element("VL", 0, "vl3")
     return r + 2
