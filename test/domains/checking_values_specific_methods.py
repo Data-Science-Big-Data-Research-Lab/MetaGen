@@ -268,7 +268,7 @@ print(str(component_element_e) + " => " + str(V_L_el_3_comp_E) + " , "
 # ==================================================================================================================== #
 
 # Values to check
-integer_values_a = [1, 2, 3, 4, 5]
+integer_values_a = [1, 2, 3, 4, ""]
 integer_values_b: List = []
 integer_values_c = [1, 2, 3, 4, 5, 6, 7, 8]
 real_values_a = [0.001, 0.002, 0.003, 0.004, 0.005]
@@ -410,7 +410,7 @@ vector_layer_values_a: LayerValueList = [{"el1": 15, "el2": 0.2, "el3": 2}, {"el
 vector_layer_values_b: LayerValueList = [{"el1": 25, "el2": 0.2, "el3": 2}, {"el1": 12, "el2": 0.3, "el3": 1}]
 vector_layer_values_c: LayerValueList = [{"el1": 25, "el2": 0.2, "el3": 2}, {"el1": 12, "el2": 0.3, "el3": "V1"}]
 vector_layer_values_d: LayerValueList = [{"el1": 15, "el2": 0.2, "el3": 2}, {"el1": 12, "el2": 0.3, "el3": 1},
-                         {"el1": 14, "el2": 0.15, "el3": 3}, {"el1": 17, "el2": 0.25, "el3": 2}]
+                                         {"el1": 14, "el2": 0.15, "el3": 3}, {"el1": 17, "el2": 0.25, "el3": 2}]
 
 V_L_vector_layer_a = domain.check_vector_layer_values("VL", vector_layer_values_a)
 V_L_vector_layer_b = domain.check_vector_layer_values("VL", vector_layer_values_b)

@@ -22,17 +22,20 @@ PYCVOA_TYPE = Literal["INTEGER", "REAL", "CATEGORICAL", "LAYER", "VECTOR", "BASI
 
 # PYCVOA variable values
 BasicValue: TypeAlias = Union[int, float, str]
-CategoryList: TypeAlias = Union[List[int], List[float], List[str]]
+Categories: TypeAlias = Union[List[int], List[float], List[str]]
+LayerValue: TypeAlias = Dict[str, BasicValue]
+VectorValueI: TypeAlias = Union[List[int], List[float], List[str], List[LayerValue]]
+BasicVectorValue: TypeAlias = Union[List[int], List[float], List[str]]
+
 # CategoryList: TypeAlias = Sequence[BasicValue]
 
 
-LayerValue: TypeAlias = Dict[str, BasicValue]
 BasicValueList: TypeAlias = List[BasicValue]
 LayerValueList: TypeAlias = List[LayerValue]
 
 IntegerDef: TypeAlias = Tuple[INTEGER_TYPE, int, int, int]
 RealDef: TypeAlias = Tuple[REAL_TYPE, float, float, float]
-CategoricalDef: TypeAlias = Tuple[CATEGORICAL_TYPE, CategoryList]
+CategoricalDef: TypeAlias = Tuple[CATEGORICAL_TYPE, Categories]
 BasicDef: TypeAlias = Union[IntegerDef, RealDef, CategoricalDef]
 NumericalDef: TypeAlias = Union[IntegerDef, RealDef]
 NumericalAttributes: TypeAlias = Union[Tuple[int, int, int], Tuple[float, float, float]]
@@ -67,11 +70,33 @@ LayerVectorInput: TypeAlias = Sequence[LayerInput]
 SupportedInput: TypeAlias = Union[BasicValue, LayerInput, VectorInput]
 
 
+def is_basic_value(value: Any) -> bool:
+    r = False
+    if isinstance(value, (int, float, str)):
+        r = True
+    return r
+
+
+def is_categories_value(value: Any):
+    r = False
+    if is_basic_vector_value(value) and len(value) >= 2:
+        r = True
+    return r
+
+
 def is_layer_value(value: Any) -> bool:
     r = False
     if isinstance(value, dict):
-        r = all(isinstance(k, str) and isinstance(v, (int, float, str))
+        r = all(isinstance(k, str) and is_basic_value(v)
                 for k, v in list(value.items()))
+    return r
+
+
+def is_basic_vector_value(value: Any) -> bool:
+    r = False
+    if isinstance(value, list):
+        r = all(type(x) == type(y) and is_basic_value(x)
+                for x, y in pairwise(value))
     return r
 
 
@@ -79,12 +104,4 @@ def is_layer_vector_value(value: Any) -> bool:
     r = False
     if isinstance(value, list):
         r = all(is_layer_value(x) for x in value)
-    return r
-
-
-def is_basic_vector_value(value: Any) -> bool:
-    r = False
-    if isinstance(value, list):
-        r = all(type(x) == type(y) and isinstance(x, (int, float, str))
-                for x, y in pairwise(value))
     return r
