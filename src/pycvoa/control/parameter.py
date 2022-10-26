@@ -1,18 +1,84 @@
 import math
-from typing import Any
+from types import NoneType, UnionType
+from typing import Any, Tuple, Type, Optional
 
-from pycvoa.control.types import OptInt, OptFloat, CategoryList, OptStr, is_layer_value, is_layer_vector_value, \
-    is_basic_vector_value
+from pycvoa.control.types import OptInt, OptFloat, OptStr, is_layer_value, is_layer_vector_value, \
+    is_basic_vector_value, is_basic_value, Categories, LayerValue, BasicValue, BasicVectorValue, VectorValue
+
+
+def check_basic_arguments(parameters: list[Tuple[Any, Type[int] | Type[float] | Type[str] | UnionType]]):
+    fails = list()
+    for e in parameters:
+        if not isinstance(e[0], e[1]):
+            fails.append(str(e[0]) + " must be " + str(e[1]))
+    if len(fails) != 0:
+        raise TypeError("Argument type errors: " + " , ".join(fails))
+
+
+def check_basic_value(value: BasicValue):
+    if not is_basic_value(value):
+        raise TypeError("The parameter must be a BASIC value (int, float, str).")
+
+
+def check_categories(categories: Categories):
+    if not isinstance(categories, list):
+        raise TypeError("The categories parameter must be a list.")
+    if len(categories) < 2:
+        raise ValueError("The categories parameter must have al least two elements.")
+    i = 0
+    cat_type = type(categories[len(categories) - 1])
+    while i < len(categories) - 1:
+        if type(categories[i]) is not cat_type:
+            raise TypeError(
+                "The categories must have the same type (int, float or str).")
+        j = i + 1
+        while j < len(categories):
+            if categories[i] == categories[j]:
+                raise ValueError(
+                    "The categories list can not contain repeated values.")
+            else:
+                j += 1
+        i += 1
+
+
+def check_layer(layer: LayerValue | None):
+    if layer is not None:
+        if not isinstance(layer, dict):
+            raise TypeError("The layer parameter must be a dict.")
+        for k, v in layer.items():
+            if not isinstance(k, str):
+                raise ValueError(
+                    "The element " + str(k) + " must be str.")
+            if not is_basic_value(v):
+                raise ValueError(
+                    "The value " + str(v) + " of the element" + str(k) + " must be int, float or str.")
+
+
+def check_basic_vector(basic_vector: VectorValueI):
+    if not isinstance(basic_vector, list):
+        raise TypeError("The BASIC VECTOR parameter must be a list.")
+    first = basic_vector[0]
+    if not is_basic_value(first):
+        raise ValueError("The 0-nh component of the BASIC VECTOR parameter must be a BASIC value (int, float, str)")
+    i = 1
+    while i < len(basic_vector):
+        if not is_basic_value(basic_vector[i]):
+            raise ValueError("The  " + str(i) + "-nh component of the BASIC VECTOR parameter must be a BASIC value ("
+                                                "int, float, str)")
+        if type(basic_vector[i]) != type(first):
+            raise ValueError("The  " + str(i) + "-nh component  of the BASIC VECTOR parameter type differs from the "
+                                                "rest")
+        i += 1
 
 
 # =========================================== VALUE CHECKERS ==========================================================#
 
-def check_integer_range_step(min_value, max_value, step: OptInt, case: str):
+def check_integer_range_step(min_value: int, max_value: int, step: int | None, case: str):
     check_range(min_value, max_value, case)
     return check_int_step(min_value, max_value, step, case)
 
 
-def check_real_range_step(min_value, max_value, step: OptFloat, case: str):
+def check_real_range_step(min_value: float, max_value: float, step: float | None, case: str):
     check_range(min_value, max_value, case)
     return check_float_step(min_value, max_value, step, case)
 
@@ -40,7 +106,6 @@ def check_range(min_value, max_value, case: str):
         elif case == "c":
             msg = "The minimum size of the VECTOR variable (" + str(min_value) \
                   + ") must be less than the maximum one (" + str(max_value) + ")."
-
         raise ValueError(msg)
 
 
@@ -86,25 +151,6 @@ def check_float_step(min_value: float, max_value: float, step: OptFloat, case: s
     return r
 
 
-def check_categories(categories: CategoryList):
-    if len(categories) < 2:
-        raise ValueError("The categories parameter must have al least two elements.")
-    i = 0
-    cat_type = type(categories[len(categories) - 1])
-    while i < len(categories) - 1:
-        if type(categories[i]) is not cat_type:
-            raise TypeError(
-                "The categories must have the same type (int, float or str).")
-        j = i + 1
-        while j < len(categories):
-            if categories[i] == categories[j]:
-                raise ValueError(
-                    "The categories list can not contain repeated values.")
-            else:
-                j += 1
-        i += 1
-
-
 # ========================================== ARGUMENT CHECKERS ========================================================#
 
 def is_none(parameter: str, value: Any):
@@ -115,11 +161,6 @@ def is_none(parameter: str, value: Any):
 def not_none(parameter: str, value: Any):
     if value is None:
         raise ValueError(parameter + " must not be None.")
-
-
-def is_basic_value(parameter: str, value: Any):
-    if not isinstance(value, (int, float, str)):
-        raise ValueError(parameter + " must be int, float or str.")
 
 
 def is_basic_or_layer_value(parameter: str, value: Any):
