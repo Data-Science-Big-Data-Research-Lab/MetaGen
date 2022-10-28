@@ -93,7 +93,7 @@ domain.define_categorical("CC", [0.1, 0.2, 0.3, 0.4])
 # - The variable name a and the element name must be str. The categories must be a list.
 # domain.define_categorical(1, ["C1", "C2", "C3", "C4"])
 # domain.define_categorical("CD", 1)
-domain.define_categorical("CD", [1, 2, 3, "4"])
+# domain.define_categorical("CD", [1, 2, 3, "4"])
 # **** Argument type errors (raise TypeError):
 # - The categories of the list must be the same type
 # domain.define_categorical("CD", [1, "C2", "C3", "C4"])
