@@ -1,9 +1,10 @@
 import math
 from types import NoneType, UnionType
-from typing import Any, Tuple, Type, Optional
+from typing import Any, Tuple, Type, Optional, cast
 
 from pycvoa.control.types import OptInt, OptFloat, OptStr, is_layer_value, is_layer_vector_value, \
-    is_basic_vector_value, is_basic_value, Categories, LayerValue, BasicValue, BasicVectorValue, VectorValue
+    is_basic_vector_value, is_basic_value, Categories, LayerValue, BasicValue, BasicVectorValue, VectorValue, \
+    VectorValueI
 
 
 def check_basic_arguments(parameters: list[Tuple[Any, Type[int] | Type[float] | Type[str] | UnionType]]):
@@ -54,21 +55,55 @@ def check_layer(layer: LayerValue | None):
                     "The value " + str(v) + " of the element" + str(k) + " must be int, float or str.")
 
 
-def check_basic_vector(basic_vector: VectorValueI):
-    if not isinstance(basic_vector, list):
-        raise TypeError("The BASIC VECTOR parameter must be a list.")
-    first = basic_vector[0]
-    if not is_basic_value(first):
-        raise ValueError("The 0-nh component of the BASIC VECTOR parameter must be a BASIC value (int, float, str)")
+def __first_componet_type(vector: Any):
+    if not isinstance(vector, list):
+        raise TypeError("The VECTOR parameter must be a list.")
+    if is_basic_value(vector[0]):
+        r = "b"
+    elif is_layer_vector_value(vector[0]):
+        r = "l"
+    else:
+        raise ValueError("The 0-nh component of the VECTOR parameter must be a BASIC (int, float, str) or LAYER value")
+    return r
+
+
+def __process_remaining_components(vector: list, first_type: str):
     i = 1
-    while i < len(basic_vector):
-        if not is_basic_value(basic_vector[i]):
-            raise ValueError("The  " + str(i) + "-nh component of the BASIC VECTOR parameter must be a BASIC value ("
-                                                "int, float, str)")
-        if type(basic_vector[i]) != type(first):
-            raise ValueError("The  " + str(i) + "-nh component  of the BASIC VECTOR parameter type differs from the "
-                                                "rest")
-        i += 1
+    if first_type == "b":
+        while i < len(vector):
+            if not is_basic_value(vector[i]):
+                raise ValueError(
+                    "The  " + str(i) + "-nh component of the BASIC VECTOR parameter must be a BASIC value ("
+                                       "int, float, str)")
+            if type(vector[i]) != type(vector[0]):
+                raise ValueError(
+                    "The  " + str(i) + "-nh component  of the BASIC VECTOR parameter type differs from the "
+                                       "rest")
+            i += 1
+    elif first_type == "l":
+        while i < len(vector):
+            if not is_layer_value(vector[i]):
+                raise ValueError(
+                    "The  " + str(i) + "-nh component of the LAYER VECTOR parameter must be a LAYER value")
+            i += 1
+
+
+def check_vector(vector: VectorValueI):
+    __process_remaining_components(cast(list, vector), __first_componet_type(vector[0]))
+
+
+def check_basic_vector(basic_vector: VectorValueI):
+    ft = __first_componet_type(basic_vector[0])
+    if ft != "b":
+        raise ValueError("The 0-nh component of the BASIC VECTOR parameter must be a BASIC value (int, float, str)")
+    __process_remaining_components(cast(list, basic_vector), ft)
+
+
+def check_layer_vector(layer_vector: VectorValueI):
+    ft = __first_componet_type(layer_vector[0])
+    if ft != "l":
+        raise ValueError("The 0-nh component of the LAYER VECTOR parameter must be a LAYER")
+    __process_remaining_components(cast(list, layer_vector), ft)
 
 
 # =========================================== VALUE CHECKERS ==========================================================#

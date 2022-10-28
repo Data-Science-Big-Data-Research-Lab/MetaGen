@@ -268,7 +268,7 @@ print(str(component_element_e) + " => " + str(V_L_el_3_comp_E) + " , "
 # ==================================================================================================================== #
 
 # Values to check
-integer_values_a = [1, 2, 3, 4, ""]
+integer_values_a = [1, 2, 3, 4, 5]
 integer_values_b: List = []
 integer_values_c = [1, 2, 3, 4, 5, 6, 7, 8]
 real_values_a = [0.001, 0.002, 0.003, 0.004, 0.005]
@@ -324,12 +324,12 @@ print(str(layer_values_a) + " => " + str(V_L_size_l_a) + "\n"
 # ==================================================================================================================== #
 
 # Values to check
-values_a: BasicValueList = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-values_b: BasicValueList = [1, 20, 3, 4, 5, 6, 7, 8, 9, 10]
-values_c: BasicValueList = [0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009, 0.010]
-values_d: BasicValueList = [0.001, 0.002, 0.003, 0.004, 5]
-values_e: BasicValueList = ["V1", "V2", "V3", "V1", "V2", "V3", "V1", "V2", "V3", "V1"]
-values_f: BasicValueList = ["V1", "V2", 1, "V1", "V2", "V3", "V1", "V2", "V3", "V1"]
+values_a = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+values_b = [1, 20, 3, 4, 5, 6, 7, 8, 9, 10]
+values_c = [0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009, 0.010]
+values_d = [0.001, 0.002, 0.003, 0.004, 5]
+values_e = ["V1", "V2", "V3", "V1", "V2", "V3", "V1", "V2", "V3", "V1"]
+values_f = ["V1", "V2", "V3", "V1", "V2", "V3", "V1", "V2", "V3", "V1"]
 
 V_I_val_a = domain.check_vector_basic_values("VI", values_a)
 V_I_val_b = domain.check_vector_basic_values("VI", values_b)

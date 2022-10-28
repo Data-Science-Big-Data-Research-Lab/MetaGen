@@ -24,10 +24,11 @@ PYCVOA_TYPE = Literal["INTEGER", "REAL", "CATEGORICAL", "LAYER", "VECTOR", "BASI
 BasicValue: TypeAlias = Union[int, float, str]
 Categories: TypeAlias = Union[List[int], List[float], List[str]]
 LayerValue: TypeAlias = Dict[str, BasicValue]
-VectorValueI: TypeAlias = Union[List[int], List[float], List[str], List[LayerValue]]
+VectorValueI: TypeAlias = Union[List[int], List[float], List[str], Sequence[Mapping[str, BasicValue]]]
 BasicVectorValue: TypeAlias = Union[List[int], List[float], List[str]]
 
-# CategoryList: TypeAlias = Sequence[BasicValue]
+
+
 
 
 BasicValueList: TypeAlias = List[BasicValue]

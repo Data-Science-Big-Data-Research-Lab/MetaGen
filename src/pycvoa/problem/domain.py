@@ -1028,7 +1028,8 @@ class Domain:
             r = True
         return r
 
-    def check_vector_basic_values(self, basic_vector_variable: str, values: Union[BasicValueList, BasicVectorInput]) -> bool:
+    def check_vector_basic_values(self, basic_vector_variable: str, values: BasicVectorValue) -> bool:
+        ctrl_par.check_basic_arguments([(basic_vector_variable, str)])
         ctrl_def.is_defined_vector_and_components_as_type(basic_vector_variable, self.__definitions, BASIC)
         ctrl_def.check_vector_values_size(basic_vector_variable, cast(VectorDef,
                                                                       self.__definitions[basic_vector_variable]),
