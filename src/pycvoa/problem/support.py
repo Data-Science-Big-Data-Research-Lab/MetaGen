@@ -380,7 +380,7 @@ def modify_number_from_interval_random_way(value: NumericalValue, left: Numerica
     return res
 
 
-def get_random_value_for_basic_variable(definition: BasicDef) -> BasicValue:
+def get_random_value_for_basic_variable(definition: BasicDef) -> Basic:
     """ Get a random value from a variable of type **REAL**, **INTEGER** or **CATEGORICAL**.
 
     :param definition: Definition of the variable
@@ -389,7 +389,7 @@ def get_random_value_for_basic_variable(definition: BasicDef) -> BasicValue:
     :rtype: int, float, str
     """
 
-    res: BasicValue = 0
+    res: Basic = 0
     if definition[0] is REAL:
         real_def = cast(RealDef, definition)
         res = get_number_from_interval(real_def[1], real_def[2], real_def[3])
@@ -398,7 +398,7 @@ def get_random_value_for_basic_variable(definition: BasicDef) -> BasicValue:
         res = random.randrange(int_def[1], int_def[2], int_def[3])
     elif definition[0] is CATEGORICAL:
         cat_def = cast(CategoricalDef, definition)
-        res = cast(BasicValue, random.sample(cat_def[1], 1)[0])
+        res = cast(Basic, random.sample(cat_def[1], 1)[0])
     return res
 
 

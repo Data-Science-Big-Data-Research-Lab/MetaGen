@@ -26,7 +26,7 @@ def __list_size(vector_variable: str, values: list, domain: Domain):
 
 # ================================================== BASIC =========================================================== #
 
-def check_basic_value(check_basic_variable: str, value: BasicValue, external_domain: OptDomain,
+def check_basic_value(check_basic_variable: str, value: Basic, external_domain: OptDomain,
                       internal_domain: OptDomain):
     valid_domain = get_valid_domain(external_domain, internal_domain)
     if not valid_domain.check_basic(check_basic_variable, value):
@@ -36,7 +36,7 @@ def check_basic_value(check_basic_variable: str, value: BasicValue, external_dom
 
 # ================================================== LAYER =========================================================== #
 
-def check_layer_value(layer_variable: str, layer_value: LayerValue, external_domain: OptDomain,
+def check_layer_value(layer_variable: str, layer_value: SolLayer, external_domain: OptDomain,
                       internal_domain: OptDomain):
     valid_domain = get_valid_domain(external_domain, internal_domain)
     for element, value in layer_value.items():
@@ -46,7 +46,7 @@ def check_layer_value(layer_variable: str, layer_value: LayerValue, external_dom
                 + layer_variable + " variable.")
 
 
-def check_layer_element_value(layer_variable: str, element: str, value: BasicValue, external_domain: OptDomain,
+def check_layer_element_value(layer_variable: str, element: str, value: Basic, external_domain: OptDomain,
                               internal_domain: OptDomain):
     valid_domain = get_valid_domain(external_domain, internal_domain)
     if not valid_domain.check_element(layer_variable, element, value):
@@ -65,7 +65,7 @@ def check_basic_vector_values(check_basic_vector_variable: str, value_list: Unio
             "The values are not compatible with the " + check_basic_vector_variable + " variable definition")
 
 
-def check_basic_vector_value(check_basic_vector_variable: str, value: BasicValue, external_domain: OptDomain,
+def check_basic_vector_value(check_basic_vector_variable: str, value: Basic, external_domain: OptDomain,
                              internal_domain: OptDomain) -> Domain:
     valid_domain = get_valid_domain(external_domain, internal_domain)
     if not valid_domain.check_vector_basic_value(check_basic_vector_variable, value):
@@ -82,7 +82,7 @@ def check_layer_vector_values(layer_vector_variable: str, value_list: LayerVecto
     valid_domain = get_valid_domain(external_domain, internal_domain)
     __list_size(layer_vector_variable, value_list, valid_domain)
     for layer in value_list:
-        assert type(layer) is LayerValue
+        assert type(layer) is SolLayer
         for element, value in layer.items():
             if not valid_domain.check_vector_layer_element_value(layer_vector_variable, element, value):
                 raise DomainError(
@@ -90,7 +90,7 @@ def check_layer_vector_values(layer_vector_variable: str, value_list: LayerVecto
                     + "-nh component is not compatible with its definition.")
 
 
-def check_layer_vector_component(layer_vector_variable: str, layer_values: LayerValue, external_domain: OptDomain,
+def check_layer_vector_component(layer_vector_variable: str, layer_values: SolLayer, external_domain: OptDomain,
                                  internal_domain: OptDomain):
     valid_domain = get_valid_domain(external_domain, internal_domain)
     for element, value in layer_values.items():
@@ -134,7 +134,7 @@ def is_defined_as_layer_vector_variable(variable: str, external_domain: OptDomai
 
 # =============================================== GENERAL =========================================================== #
 
-def check_layer_vector_element(layer_vector_variable: str, element: str, value: BasicValue, external_domain: OptDomain,
+def check_layer_vector_element(layer_vector_variable: str, element: str, value: Basic, external_domain: OptDomain,
                                internal_domain: OptDomain):
     valid_domain = get_valid_domain(external_domain, internal_domain)
     if not valid_domain.check_vector_layer_element_value(layer_vector_variable, element, value):

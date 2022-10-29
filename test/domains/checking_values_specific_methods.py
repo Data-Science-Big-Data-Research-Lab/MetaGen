@@ -1,6 +1,6 @@
 from typing import List
 
-from pycvoa.control.types import LayerValue, BasicValueList, LayerValueList
+from pycvoa.control.types import SolLayer, BasicValueList, LayerValueList
 from utils import domain
 
 # print("The example domain:\n")
@@ -112,13 +112,13 @@ L_E_C_comp_C = domain.check_element("L", "EC", element_c)
 # ==================================================================================================================== #
 
 # Layers to check
-layer_a: LayerValue = {"EI": 20, "ER": 1.8, "EC": "Lb2"}
-layer_b: LayerValue = {"EI": -1, "ER": 1.8, "EC": "Lb2"}
-layer_c: LayerValue = {"EI": 20, "ER": 1.0, "EC": "Lb2"}
-layer_d: LayerValue = {"EI": 20, "ER": 1.8, "EC": "Lb4"}
-layer_e: LayerValue = {"EI": "1", "ER": 1.8, "EC": "Lb2"}
-layer_f: LayerValue = {"EI": 20, "ER": 2, "EC": "Lb2"}
-layer_g: LayerValue = {"EI": 20, "ER": 1.8, "EC": 1.2}
+layer_a: SolLayer = {"EI": 20, "ER": 1.8, "EC": "Lb2"}
+layer_b: SolLayer = {"EI": -1, "ER": 1.8, "EC": "Lb2"}
+layer_c: SolLayer = {"EI": 20, "ER": 1.0, "EC": "Lb2"}
+layer_d: SolLayer = {"EI": 20, "ER": 1.8, "EC": "Lb4"}
+layer_e: SolLayer = {"EI": "1", "ER": 1.8, "EC": "Lb2"}
+layer_f: SolLayer = {"EI": 20, "ER": 2, "EC": "Lb2"}
+layer_g: SolLayer = {"EI": 20, "ER": 1.8, "EC": 1.2}
 
 L_layer_a = domain.check_layer("L", layer_a)
 L_layer_b = domain.check_layer("L", layer_b)
@@ -371,12 +371,16 @@ print(str(values_e) + " => " + str(V_C_val_e) + "\n" + str(values_f) + " => " + 
 # ============================= 8. Checking layers for a LAYER VECTOR ================================================ #
 # ==================================================================================================================== #
 
-vector_layer_a: LayerValue = {"el1": 15, "el2": 0.2, "el3": 2}
-vector_layer_b: LayerValue = {"el1": 8, "el2": 0.3, "el3": 1}
-vector_layer_c: LayerValue = {"el1": 17, "el2": 0.05, "el3": 2}
-vector_layer_d: LayerValue = {"el1": 14, "el2": 0.15, "el3": 4}
+vector_layer_a = {"el1": 15, "el2": 0.2, "el3": 2}
+vector_layer_b: SolLayer = {"el1": 8, "el2": 0.3, "el3": 1}
+vector_layer_c: SolLayer = {"el1": 17, "el2": 0.05, "el3": 2}
+vector_layer_d: SolLayer = {"el1": 14, "el2": 0.15, "el3": 4}
 
 V_L_layer_a = domain.check_vector_layer_elements_values("VL", vector_layer_a)
+V_L_layer_a = domain.check_vector_layer_elements_values("VL", {"el1": 15, "el2": 0.2, "el3": 2})
+
+
+
 V_L_layer_b = domain.check_vector_layer_elements_values("VL", vector_layer_b)
 V_L_layer_c = domain.check_vector_layer_elements_values("VL", vector_layer_c)
 V_L_layer_d = domain.check_vector_layer_elements_values("VL", vector_layer_d)

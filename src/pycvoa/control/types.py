@@ -20,19 +20,35 @@ LAYER_TYPE = Literal["LAYER"]
 VECTOR_TYPE = Literal["VECTOR"]
 PYCVOA_TYPE = Literal["INTEGER", "REAL", "CATEGORICAL", "LAYER", "VECTOR", "BASIC", "NUMERICAL"]
 
-# PYCVOA variable values
-BasicValue: TypeAlias = Union[int, float, str]
+
+# PYCVOA BASICS
+Basic: TypeAlias = Union[int, float, str]
 Categories: TypeAlias = Union[List[int], List[float], List[str]]
-LayerValue: TypeAlias = Dict[str, BasicValue]
-VectorValueI: TypeAlias = Union[List[int], List[float], List[str], Sequence[Mapping[str, BasicValue]]]
-BasicVectorValue: TypeAlias = Union[List[int], List[float], List[str]]
+BasicVector: TypeAlias = Union[List[int], List[float], List[str]]
+
+# PYCVOA DOMAIN
+DomLayer: TypeAlias = Mapping[str, Basic]
+DomLayerVector: TypeAlias = Sequence[DomLayer]
+DomVector: TypeAlias = Union[BasicVector, DomLayerVector]
+DomInput: TypeAlias = Union[Basic, DomLayer, DomVector]
+
+# PYCVOA SOLUTION
+SolLayer: TypeAlias = Dict[str, Basic]
+SolLayerVector: TypeAlias = List[SolLayer]
+SolVector: TypeAlias = Union[BasicVector, SolLayerVector]
+SolInput: TypeAlias = Union[Basic, SolLayer, SolVector]
+
+# PYCVOA GLOBAL
+Layer: TypeAlias = Union[DomLayer, SolLayer]
+LayerVector: TypeAlias = Union[DomLayerVector, SolLayerVector]
+Vector: TypeAlias = Union[DomVector, SolVector]
 
 
 
+#####
 
-
-BasicValueList: TypeAlias = List[BasicValue]
-LayerValueList: TypeAlias = List[LayerValue]
+BasicValueList: TypeAlias = List[Basic]
+LayerValueList: TypeAlias = List[SolLayer]
 
 IntegerDef: TypeAlias = Tuple[INTEGER_TYPE, int, int, int]
 RealDef: TypeAlias = Tuple[REAL_TYPE, float, float, float]
@@ -58,17 +74,17 @@ IntOrIntList: TypeAlias = int | List[int]
 
 NumericalValue: TypeAlias = int | float
 VectorValue: TypeAlias = Union[BasicValueList, LayerValueList]
-SupportedValues: TypeAlias = Union[BasicValue, LayerValue, VectorValue]
-OptSupportedValues: TypeAlias = Union[BasicValue, LayerValue, VectorValue, None]
+SupportedValues: TypeAlias = Union[Basic, SolLayer, VectorValue]
+OptSupportedValues: TypeAlias = Union[Basic, SolLayer, VectorValue, None]
 VarStructureType: TypeAlias = Dict[str, SupportedValues]
-LayerVectorValue: TypeAlias = List[LayerValue]
-OptLayerValue: TypeAlias = Union[LayerValue, None]
+LayerVectorValue: TypeAlias = List[SolLayer]
+OptLayerValue: TypeAlias = Union[SolLayer, None]
 
-LayerInput: TypeAlias = Mapping[str, BasicValue]
+LayerInput: TypeAlias = Mapping[str, Basic]
 VectorInput: TypeAlias = Union[Sequence[int], Sequence[float], Sequence[str], Sequence[LayerInput]]
 BasicVectorInput: TypeAlias = Union[Sequence[int], Sequence[float], Sequence[str]]
 LayerVectorInput: TypeAlias = Sequence[LayerInput]
-SupportedInput: TypeAlias = Union[BasicValue, LayerInput, VectorInput]
+SupportedInput: TypeAlias = Union[Basic, LayerInput, VectorInput]
 
 
 def is_basic_value(value: Any) -> bool:
