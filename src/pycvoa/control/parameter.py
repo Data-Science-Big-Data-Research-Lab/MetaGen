@@ -3,10 +3,11 @@ from types import NoneType, UnionType
 from typing import Any, Tuple, Type, Optional, cast
 
 from pycvoa.control.types import OptInt, OptFloat, OptStr, is_layer_value, is_layer_vector_value, \
-    is_basic_vector_value, is_basic_value, Categories, LayerValue, BasicValue, BasicVectorValue, VectorValue, \
-    VectorValueI
+    is_basic_vector_value, is_basic_value, Categories, SolLayer, Basic, BasicVector, VectorValue, \
+    DomVector, Layer, Vector, LayerVector
 
 
+# **** ARGUMENTS
 def check_basic_arguments(parameters: list[Tuple[Any, Type[int] | Type[float] | Type[str] | UnionType]]):
     fails = list()
     for e in parameters:
@@ -16,7 +17,8 @@ def check_basic_arguments(parameters: list[Tuple[Any, Type[int] | Type[float] | 
         raise TypeError("Argument type errors: " + " , ".join(fails))
 
 
-def check_basic_value(value: BasicValue):
+# **** PYCVOA TYPES
+def check_basic_value(value: Basic):
     if not is_basic_value(value):
         raise TypeError("The parameter must be a BASIC value (int, float, str).")
 
@@ -42,7 +44,7 @@ def check_categories(categories: Categories):
         i += 1
 
 
-def check_layer(layer: LayerValue | None):
+def check_layer(layer: Layer | None):
     if layer is not None:
         if not isinstance(layer, dict):
             raise TypeError("The layer parameter must be a dict.")
@@ -88,18 +90,18 @@ def __process_remaining_components(vector: list, first_type: str):
             i += 1
 
 
-def check_vector(vector: VectorValueI):
+def check_vector(vector: Vector):
     __process_remaining_components(cast(list, vector), __first_componet_type(vector[0]))
 
 
-def check_basic_vector(basic_vector: VectorValueI):
+def check_basic_vector(basic_vector: BasicVector):
     ft = __first_componet_type(basic_vector[0])
     if ft != "b":
         raise ValueError("The 0-nh component of the BASIC VECTOR parameter must be a BASIC value (int, float, str)")
     __process_remaining_components(cast(list, basic_vector), ft)
 
 
-def check_layer_vector(layer_vector: VectorValueI):
+def check_layer_vector(layer_vector: LayerVector):
     ft = __first_componet_type(layer_vector[0])
     if ft != "l":
         raise ValueError("The 0-nh component of the LAYER VECTOR parameter must be a LAYER")
@@ -211,12 +213,12 @@ def is_basic_or_layer_or_vector_value(parameter: str, value: Any):
 # =================================== DOMAIN GENERAL CHECK VALUE METHOD ===============================================#
 
 
-def check_basic_pycvoatype(element: OptStr):
+def check_basic_pycvoatype(element: str | None):
     if element is not None:
         raise ValueError("You are trying to check a value of an element of a variable that is not LAYER or LAYER.")
 
 
-def check_layer_pycvoatype(value: Any, element: OptStr) -> str:
+def check_layer_pycvoatype(value: Any, element: str | None) -> str:
     res = "f"
     if isinstance(value, (int, float, str)):
         if element is None:
@@ -232,7 +234,7 @@ def check_layer_pycvoatype(value: Any, element: OptStr) -> str:
     return res
 
 
-def check_basic_vector_pycvoatype(value: Any, element: OptStr) -> str:
+def check_basic_vector_pycvoatype(value: Any, element: str | None) -> str:
     res = "f"
     if isinstance(value, (int, float, str)):
         if element is not None:
@@ -249,7 +251,7 @@ def check_basic_vector_pycvoatype(value: Any, element: OptStr) -> str:
     return res
 
 
-def check_layer_vector_pycvoatype(value: Any, element: OptStr) -> str:
+def check_layer_vector_pycvoatype(value: Any, element: str | None) -> str:
     res = "f"
     if isinstance(value, (int, float, str)):
         if element is None:
