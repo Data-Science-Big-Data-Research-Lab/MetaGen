@@ -1,6 +1,6 @@
 import sys
 
-from pycvoa.control import domain as ctrl_dom
+from pycvoa.control import solution as ctrl_dom
 from pycvoa.control import solution as ctrl_sol
 from pycvoa.problem.domain import *
 

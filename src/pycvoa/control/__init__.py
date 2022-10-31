@@ -1,4 +1,4 @@
-__all__ = ["parameter", "definition", "domain", "solution",
+__all__ = ["parameter", "domain", "solution",
            "DefinitionError", "DomainError", "SolutionError"]
 
 
