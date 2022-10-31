@@ -1,7 +1,7 @@
 import copy
 from typing import cast
 
-from pycvoa.control import definition as ctrl_def
+from pycvoa.control import domain as ctrl_def
 from pycvoa.control import parameter as ctrl_par
 from pycvoa.control.types import *
 
@@ -899,13 +899,13 @@ class Domain:
             r = self.__available_size(vector_variable, current_vector_size)
         elif cmp_type is LAYER:
             ctrl_par.not_none("layer_value", layer_value)
-            if not self.__chk_lvc_val(vector_variable, cast(DomLayer, layer_value), False):
+            if not self.__chk_lvc_lay(vector_variable, cast(DomLayer, layer_value), False):
                 raise ValueError("The layer values are not compatible with the LAYER VECTOR component definition")
             else:
                 layer_attributes: LayerAttributes = cast(LayerDef,
                                                          cast(VectorDef,
                                                               self.__definitions[vector_variable])[4])[1]
-                e_s = len(cast(dict, layer_value).keys() & layer_attributes.keys())
+                e_s = len(cast(DomLayer, layer_value).keys() & layer_attributes.keys())
                 if e_s == 0:
                     valid_vector_size = current_vector_size
                 else:
@@ -1296,6 +1296,11 @@ class Domain:
         while r and i < len(lvval):
             r = self.__chk_ele_val(lvvar, layer_definition, lvval[i], cmp)
             i += 1
+        return r
+
+    def __chk_lvc_lay(self, lvvar: str, lval: DomLayer, cmp: bool = True) -> bool:
+        layer_definition: LayerDef = self.__layer_def_from(lvvar, "v")
+        r = self.__chk_ele_val(lvvar, layer_definition, lval, cmp)
         return r
 
     def __available_size(self, vector_variable: str, current_size: int) -> int:
