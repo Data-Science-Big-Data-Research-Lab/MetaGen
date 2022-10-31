@@ -281,7 +281,7 @@ def is_defined_element_item_definition(layer_variable: str, element: str, layer_
     """
     if element not in layer_definition[1].keys():
         raise DefinitionError(
-            "The element " + element + " is not defined in the " + layer_variable + " LAYER variable.")
+            "The element " + element + " is not defined in the " + layer_variable + " LAYER or LAYER VECTOR variable.")
 
 
 def is_a_complete_layer(layer_definition: LayerDef, layer_values: LayerInput):
