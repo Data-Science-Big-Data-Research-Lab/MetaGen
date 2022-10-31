@@ -1141,139 +1141,100 @@ class Domain:
         ctrl_par.check_basic_arguments([(variable, str)])
         ctrl_def.is_defined_variable(variable, self.__definitions)
         if self.__definitions[variable][0] is VECTOR:
-            res = Domain.__vector_definition_to_string(variable, cast(VectorDef, self.__definitions[variable]))
+            res = self.__str_vec(variable)
         elif self.__definitions[variable][0] is LAYER:
-            res = Domain.__layer_definition_to_string(variable, cast(LayerDef, self.__definitions[variable]))
+            res = self.__str_lay(variable)
         else:
-            res = Domain.__basic_definition_to_string(variable, cast(BasicDef, self.__definitions[variable]))
+            res = self.__str_bsc(variable)
         return res
 
     def str_element_definition(self, layer_variable: str, element: str) -> str:
         ctrl_par.check_basic_arguments([(layer_variable, str), (element, str)])
         ctrl_def.is_defined_layer_with_element(layer_variable, element, self.__definitions)
-        return Domain.__basic_definition_to_string(element,
-                                                   cast(LayerDef, self.__definitions[layer_variable])[1][element])
+        return self.__str_bsc(layer_variable, "e", element)
 
     def str_layer_vector_element_definition(self, layer_vector_variable: str, element: str) -> str:
         ctrl_par.check_basic_arguments([(layer_vector_variable, str), (element, str)])
         ctrl_def.is_defined_layer_vector_and_component_element(layer_vector_variable, element, self.__definitions)
-        return Domain.__basic_definition_to_string(element,
-                                                   cast(LayerDef,
-                                                        cast(VectorDef,
-                                                             self.__definitions[layer_vector_variable])[4])[1][element])
+        return self.__str_bsc(layer_vector_variable, "l", element)
 
     def __str__(self):
         """ String representation of a py:class:`~pycvoa.problem.domain.Domain` object
         """
         res = ""
         count = 1
-        for variable, definition in self.__definitions.items():
-            if definition[0] is VECTOR:
-                res += Domain.__vector_definition_to_string(variable, cast(VectorDef, definition))
-            elif definition[0] is LAYER:
-                res += Domain.__layer_definition_to_string(variable, cast(LayerDef, definition))
+        for vname, vdef in self.__definitions.items():
+            if vdef[0] is VECTOR:
+                res += self.__str_vec(vname)
+            elif vdef[0] is LAYER:
+                res += self.__str_lay(vname)
             else:
-                res += Domain.__basic_definition_to_string(variable, cast(BasicDef, definition))
+                res += self.__str_bsc(vname)
             if count != len(self.__definitions.items()):
                 res += "\n"
             count += 1
 
         return res
 
-    @staticmethod
-    def __basic_definition_to_string(variable: str, definition: BasicDef):
-        """ Get a string representation of the definition of a **REAL**, **INTEGER** or **CATEGORICAL** variable.
-
-            :param variable: Variable name.
-            :param definition: Definition of the variable.
-            :type variable: str
-            :type definition: list
-            :returns: A string representation of the input REAL, INTEGER or CATEGORICAL variable.
-            :rtype: str
-            """
-        res = "[" + definition[0] + "] " + variable + " "
-        if definition[0] is not CATEGORICAL:
-            num_def = cast(NumericalDef, definition)
+    def __str_bsc(self, var: str, mod: str = "", ele: str = "") -> str:
+        itemdef: BasicDef = self.__basic_def_from(var, mod, ele)
+        res = "[" + itemdef[0] + "] " + var + " "
+        if itemdef[0] is not CATEGORICAL:
+            num_def = cast(NumericalDef, itemdef)
             res += "{Minimum = " + str(num_def[1]) + ", Maximum = " + str(num_def[2]) + ", Step = " + str(
                 num_def[3]) + "}"
         else:
-            res += "{Values = " + str(definition[1]) + "}"
+            res += "{Values = " + str(itemdef[1]) + "}"
         return res
 
-    @staticmethod
-    def __layer_definition_to_string(variable: str, definition: LayerDef):
-        """ Get a string representation of the definition of a **LAYER** variable.
-
-            :param variable: Variable name.
-            :param definition: Definition of the variable.
-            :type variable: str
-            :type definition: list
-            :returns: A string representation of the input LAYER variable.
-            :rtype: str
-            """
-        res = "[" + definition[0] + "] " + variable + " "
+    def __str_lay(self, lvar: str, mod: str = "") -> str:
+        lydef: LayerDef = self.__layer_def_from(lvar, mod)
+        res = "[" + lydef[0] + "] " + lvar + " "
         res += "\n"
         cnt = 1
-        for element, element_definition in definition[1].items():
-            res += "\t" + Domain.__basic_definition_to_string(element, element_definition)
-            if cnt != len(definition[1].items()):
+        for element in lydef[1].keys():
+            res += "\t" + self.__str_bsc(lvar, "e", element)
+            if cnt != len(lydef[1].items()):
                 res += "\n"
             cnt += 1
         return res
 
-    @staticmethod
-    def __vector_definition_to_string(variable: str, definition: VectorDef):
-        """ Get a string representation of the definition of a **VECTOR** variable.
+    def __str_vec(self, vvar: str) -> str:
+        vdef: VectorDef = cast(VectorDef, self.__definitions[vvar])
+        cmpdef: ComponentDef = cast(ComponentDef, vdef[4])
+        res = "[" + vdef[0] + "] " + vvar + " {Minimum size = " + str(vdef[1]) + \
+              ", Maximum size = " + str(vdef[2]) + ", Step size = " \
+              + str(vdef[3]) + "}"
+        if cmpdef is not None:
+            res += "  Component definition: [" + cmpdef[0] + "] "
+            if cmpdef[0] is LAYER:
+                res += self.__str_lay(vvar, "v")
+            else:
+                res += self.__str_bsc(vvar, "b")
+        return  res
 
-        :param variable: Variable name.
-        :param definition: Definition of the variable.
-        :type variable: str
-        :type definition: list
-        :returns: A string representation of the input VECTOR variable.
-        :rtype: str
-        """
-        res = "[" + definition[0] + "] " + variable + " {Minimum size = " + str(definition[1]) + \
-              ", Maximum size = " + str(definition[2]) + ", Step size = " \
-              + str(definition[3]) + "}"
-
-        component_definition = definition[4]
-
-        if component_definition is not None:
-            res += "  Component definition: [" + component_definition[0] + "] "
-            if component_definition[0] in NUMERICALS:
-                num_def = cast(NumericalDef, component_definition)
-                res += "{Minimum = " + str(num_def[1]) + ", Maximum = " + str(num_def[2]) \
-                       + ", Step = " + str(
-                    num_def[3]) + "}"
-            elif component_definition[0] is CATEGORICAL:
-                res += "{Values = " + str(component_definition[1]) + "}"
-            elif component_definition[0] is LAYER:
-                layer_definition = cast(LayerAttributes, component_definition[1])
-                res += "\n"
-                cnt = 1
-                for k, v in layer_definition.items():
-                    res += "\t" + Domain.__basic_definition_to_string(k, v)
-                    if cnt != len(layer_definition.items()):
-                        res += "\n"
-                    cnt += 1
-        return res
-
-    def __def_from(self, var: str, mod: str = "", ele: str = "") -> ComponentDef:
-        item_definition: ComponentDef
+    def __basic_def_from(self, var: str, mod: str = "", ele: str = "") -> BasicDef:
+        item_definition: BasicDef
         if mod == "e":  # Element of a layer
             item_definition = cast(LayerDef, self.__definitions[var])[1][ele]
-        elif mod == "b":  # Components of a vector
+        elif mod == "b":  # Basic vector
             item_definition = cast(BasicDef, cast(VectorDef, self.__definitions[var])[4])
         elif mod == "l":  # Elements of layer vector
             item_definition = cast(LayerDef, cast(VectorDef, self.__definitions[var])[4])[1][ele]
-        elif mod == "w":  # Layer of layer vector
-            item_definition = cast(LayerDef, cast(VectorDef, self.__definitions[var])[4])
-        else:  # Basic variable
+        else:  # Basic variable (default)
             item_definition = cast(BasicDef, self.__definitions[var])
         return item_definition
 
+    def __layer_def_from(self, var: str, mod: str = "") -> LayerDef:
+        item_definition: LayerDef
+        if mod == "v":  # Layer vector
+            item_definition = cast(LayerDef, cast(VectorDef, self.__definitions[var])[4])
+        else:  # Layer variable (default)
+            item_definition = cast(LayerDef, self.__definitions[var])
+        return item_definition
+
     def __chk_bsc_val(self, var: str, val: Basic, mod: str = "", ele: str = "") -> bool:
-        item_definition: BasicDef = cast(BasicDef, self.__def_from(var, mod, ele))
+        item_definition: BasicDef = self.__basic_def_from(var, mod, ele)
         r = False
         if item_definition[0] in NUMERICALS:
             if not isinstance(val, str):
@@ -1296,10 +1257,9 @@ class Domain:
                 r = True
         return r
 
-    def __chk_lay_val(self, lvar: str, lval: DomLayer, mod: str = "", cmp: bool = True) -> bool:
-        layer_definition: LayerDef = cast(LayerDef, self.__def_from(lvar, mod))
+    def __chk_ele_val(self, lvar: str, ldef: LayerDef, lval: DomLayer, cmp: bool) -> bool:
         if cmp:
-            ctrl_def.is_a_complete_layer(layer_definition, lval)
+            ctrl_def.is_a_complete_layer(ldef, lval)
         r = True
         i = 0
         key_list = list(lval.keys())
@@ -1307,11 +1267,16 @@ class Domain:
             ele = key_list[i]
             val = lval.get(ele)
             ctrl_par.not_none("value", val)
-            ctrl_def.is_defined_element_item_definition(lvar, ele, layer_definition)
+            ctrl_def.is_defined_element_item_definition(lvar, ele, ldef)
             if not self.__chk_bsc_val(lvar, cast(Basic, val), "e", cast(str, ele)):
                 r = False
             else:
                 i += 1
+        return r
+
+    def __chk_lay_val(self, lvar: str, lval: DomLayer, mod: str = "", cmp: bool = True) -> bool:
+        layer_definition: LayerDef = self.__layer_def_from(lvar, mod)
+        r = self.__chk_ele_val(lvar, layer_definition, lval, cmp)
         return r
 
     def __chk_bvc_val(self, vbvar: str, vbval: BasicVector) -> bool:
@@ -1325,25 +1290,12 @@ class Domain:
         return r
 
     def __chk_lvc_val(self, lvvar: str, lvval: DomLayerVector, cmp: bool = True) -> bool:
-        layer_definition: LayerDef = cast(LayerDef, self.__def_from(lvvar, "w"))
+        layer_definition: LayerDef = self.__layer_def_from(lvvar, "v")
         r = True
         i = 0
         while r and i < len(lvval):
-            layer = lvval[i]
-            if cmp:
-                ctrl_def.is_a_complete_layer(layer_definition, layer)
-            r = True
-            i = 0
-            key_list = list(layer.keys())
-            while r and i < len(key_list):
-                ele = key_list[i]
-                val = layer.get(ele)
-                ctrl_par.not_none("value", val)
-                ctrl_def.is_defined_element_item_definition(lvvar, ele, layer_definition)
-                if not self.__chk_bsc_val(lvvar, cast(Basic, val), "l", ele):
-                    r = False
-                else:
-                    i += 1
+            r = self.__chk_ele_val(lvvar, layer_definition, lvval[i], cmp)
+            i += 1
         return r
 
     def __available_size(self, vector_variable: str, current_size: int) -> int:
