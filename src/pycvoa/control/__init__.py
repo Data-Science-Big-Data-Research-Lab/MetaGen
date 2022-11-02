@@ -1,5 +1,4 @@
-__all__ = ["parameter", "domain", "solution",
-           "DefinitionError", "DomainError", "SolutionError"]
+__all__ = ["domain", "solution", "DefinitionError", "DomainError", "SolutionError"]
 
 
 class DefinitionError(Exception):
