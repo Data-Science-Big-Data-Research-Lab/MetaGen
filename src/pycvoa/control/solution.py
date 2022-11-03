@@ -1,17 +1,9 @@
-from typing import cast
-
 from pycvoa.control import DefinitionError, DomainError, SolutionError
 from pycvoa.problem.domain import Domain
 from pycvoa.control.types import *
-import pycvoa.control.common as cmn
-
-OptDomain: TypeAlias = Union[Domain, None]
 
 
-# ================================================== AUXILIARY ======================================================= #
-
-
-def get_valid_domain(external_domain: OptDomain, internal_domain: OptDomain) -> Domain:
+def get_valid_domain(external_domain: Union[Domain, None], internal_domain: Union[Domain, None]) -> Domain:
     current_domain = external_domain
     if current_domain is None:
         current_domain = internal_domain
@@ -20,421 +12,404 @@ def get_valid_domain(external_domain: OptDomain, internal_domain: OptDomain) -> 
     return current_domain
 
 
-def __list_size(vector_variable: str, values: list, domain: Domain):
-    if not domain.check_vector_values_size(vector_variable, values):
-        raise DomainError("The size of " + str(values) + " is not compatible with the " + vector_variable
-                          + " definition.")
+@final
+class SolValChk:
+    @staticmethod
+    def check_basic_value(bvar: str, bval: Basic, edom: Union[Domain, None], idom: Union[Domain, None]):
+        vdom = get_valid_domain(edom, idom)
+        if not vdom.check_basic(bvar, bval):
+            raise DomainError("The value " + str(bval) + " is not compatible with the "
+                              + bvar + " variable definition.")
 
-
-# ================================================== BASIC =========================================================== #
-
-def check_basic_value(check_basic_variable: str, value: Basic, external_domain: OptDomain,
-                      internal_domain: OptDomain):
-    valid_domain = get_valid_domain(external_domain, internal_domain)
-    if not valid_domain.check_basic(check_basic_variable, value):
-        raise DomainError("The value " + str(value) + " is not compatible with the "
-                          + check_basic_variable + " variable definition.")
-
-
-# ================================================== LAYER =========================================================== #
-
-def check_layer_value(layer_variable: str, layer_value: SolLayer, external_domain: OptDomain,
-                      internal_domain: OptDomain):
-    valid_domain = get_valid_domain(external_domain, internal_domain)
-    for element, value in layer_value.items():
-        if not valid_domain.check_element(layer_variable, element, value):
-            raise DomainError(
-                "The value " + str(value) + " is not compatible for the " + element + " element in the "
-                + layer_variable + " variable.")
-
-
-def check_layer_element_value(layer_variable: str, element: str, value: Basic, external_domain: OptDomain,
-                              internal_domain: OptDomain):
-    valid_domain = get_valid_domain(external_domain, internal_domain)
-    if not valid_domain.check_element(layer_variable, element, value):
-        raise DomainError(
-            "The value " + str(value) + " is not compatible for the " + element + " element in the "
-            + layer_variable + " variable.")
-
-
-# =============================================== BASIC VECTOR ======================================================= #
-
-def check_basic_vector_values(check_basic_vector_variable: str, value_list: Union[BasicValueList, BasicVectorInput], external_domain: OptDomain,
-                              internal_domain: OptDomain):
-    valid_domain = get_valid_domain(external_domain, internal_domain)
-    if not valid_domain.check_vector_basic_values(check_basic_vector_variable, value_list):
-        raise DomainError(
-            "The values are not compatible with the " + check_basic_vector_variable + " variable definition")
-
-
-def check_basic_vector_value(check_basic_vector_variable: str, value: Basic, external_domain: OptDomain,
-                             internal_domain: OptDomain) -> Domain:
-    valid_domain = get_valid_domain(external_domain, internal_domain)
-    if not valid_domain.check_vector_basic_value(check_basic_vector_variable, value):
-        raise DomainError(
-            "The value " + str(value) + " is not valid for the " + str(check_basic_vector_variable) + " variable.")
-    return valid_domain
-
-
-# =============================================== LAYER VECTOR ======================================================= #
-
-
-def check_layer_vector_values(layer_vector_variable: str, value_list: LayerVectorValue, external_domain: OptDomain,
-                              internal_domain: OptDomain):
-    valid_domain = get_valid_domain(external_domain, internal_domain)
-    __list_size(layer_vector_variable, value_list, valid_domain)
-    for layer in value_list:
-        assert type(layer) is SolLayer
-        for element, value in layer.items():
-            if not valid_domain.check_vector_layer_element_value(layer_vector_variable, element, value):
+    @staticmethod
+    def check_layer_value(lvar: str, lval: SolLayer, edom: Union[Domain, None], idom: Union[Domain, None]):
+        vdom = get_valid_domain(edom, idom)
+        for element, value in lval.items():
+            if not vdom.check_element(lvar, element, value):
                 raise DomainError(
-                    "The " + element + " element of the " + str(value_list.index(layer))
-                    + "-nh component is not compatible with its definition.")
+                    "The value " + str(value) + " is not compatible for the " + element + " element in the "
+                    + lvar + " variable.")
 
-
-def check_layer_vector_component(layer_vector_variable: str, layer_values: SolLayer, external_domain: OptDomain,
-                                 internal_domain: OptDomain):
-    valid_domain = get_valid_domain(external_domain, internal_domain)
-    for element, value in layer_values.items():
-        if not valid_domain.check_vector_layer_element_value(layer_vector_variable, element, value):
+    @staticmethod
+    def check_layer_element_value(lval: str, ele: str, bval: Basic,
+                                  edom: Union[Domain, None], idom: Union[Domain, None]):
+        vdom = get_valid_domain(edom, idom)
+        if not vdom.check_element(lval, ele, bval):
             raise DomainError(
-                "The " + element + " element of the is not compatible with its definition.")
-    return valid_domain
+                "The value " + str(bval) + " is not compatible for the " + ele + " element in the "
+                + lval + " variable.")
+
+    @staticmethod
+    def check_basic_vector_values(bvvar: str, bvval: BasicVector, edom: Union[Domain, None], idom: Union[Domain, None]):
+        vdom = get_valid_domain(edom, idom)
+        if not vdom.check_vector_basic_values(bvvar, bvval):
+            raise DomainError(
+                "The values are not compatible with the " + bvvar + " variable definition")
+
+    @staticmethod
+    def check_basic_vector_value(bvvar: str, bval: Basic,
+                                 edom: Union[Domain, None], idom: Union[Domain, None]) -> Domain:
+        vdom = get_valid_domain(edom, idom)
+        if not vdom.check_vector_basic_value(bvvar, bval):
+            raise DomainError(
+                "The value " + str(bval) + " is not valid for the " + str(bvvar) + " variable.")
+        return vdom
+
+    @staticmethod
+    def check_layer_vector_values(lvvar: str, lvval: SolLayerVector, edom: Union[Domain, None],
+                                  idom: Union[Domain, None]):
+        vdom = get_valid_domain(edom, idom)
+        if not vdom.check_vector_values_size(lvvar, lvval):
+            raise DomainError("The size of " + str(lvval) + " is not compatible with the " + lvvar
+                              + " definition.")
+        for layer in lvval:
+            assert type(layer) is SolLayer
+            for element, value in layer.items():
+                if not vdom.check_vector_layer_element_value(lvvar, element, value):
+                    raise DomainError(
+                        "The " + element + " element of the " + str(lvval.index(layer))
+                        + "-nh component is not compatible with its definition.")
+
+    @staticmethod
+    def check_layer_vector_component(lvvar: str, lval: SolLayer, edom: Union[Domain, None], idom: Union[Domain, None]):
+        vodm = get_valid_domain(edom, idom)
+        for element, value in lval.items():
+            if not vodm.check_vector_layer_element_value(lvvar, element, value):
+                raise DomainError(
+                    "The " + element + " element of the is not compatible with its definition.")
+        return vodm
+
+    @staticmethod
+    def check_layer_vector_element(lvvar: str, ele: str, value: Basic,
+                                   edom: Union[Domain, None], idom: Union[Domain, None]):
+        vdom = get_valid_domain(edom, idom)
+        if not vdom.check_vector_layer_element_value(lvvar, ele, value):
+            raise ValueError(
+                "The value " + str(value) + " is not valid for the " + str(ele) + " element in the "
+                + str(lvvar) + " variable.")
+        return vdom
 
 
-# =============================================== DEF. CHECKING ====================================================== #
+@final
+class SolDefChk:
+    @staticmethod
+    def is_defined_variable(var: str, edom: Union[Domain, None], idom: Union[Domain, None]) -> Domain:
+        vdom = get_valid_domain(edom, idom)
+        if vdom.is_defined_variable(var) is not True:
+            raise DomainError(
+                "The variable " + var + " is not defined in this solution's domain.")
+        return vdom
 
-def is_defined_variable(variable: str, external_domain: OptDomain, internal_domain: OptDomain) -> Domain:
-    valid_domain = get_valid_domain(external_domain, internal_domain)
-    if valid_domain.is_defined_variable(variable) is not True:
-        raise DomainError(
-            "The variable " + variable + " is not defined in this domain.")
-    return valid_domain
+    @staticmethod
+    def var_defined_as(var: str, tpy: PYCVOA_TYPE, edom: Union[Domain, None], idom: Union[Domain, None]):
+        vdom = SolDefChk.is_defined_variable(var, edom, idom)
+        if ArgChk.check_item_type(tpy, vdom.get_variable_type(var)) is False:
+            raise DefinitionError("The variable " + var + " is not defined as "+str(tpy)+" in this solution's domain.")
+        return vdom
 
+    @staticmethod
+    def is_defined_as_basic(var: str, edom: Union[Domain, None], idom: Union[Domain, None]) -> Domain:
+        vdom = SolDefChk.is_defined_variable(var, edom, idom)
+        if ArgChk.check_item_type(BASIC, vdom.get_variable_type(var)) is False:
+            raise DefinitionError("The variable " + var + " is not defined as BASIC in this solution's domain.")
+        return vdom
 
-def is_defined_as_layer(variable: str, external_domain: OptDomain, internal_domain: OptDomain):
-    valid_domain = is_defined_variable(variable, external_domain, internal_domain)
-    if valid_domain.get_variable_type(variable) is not LAYER:
-        raise DomainError("The variable " + variable + " is not defined as LAYER.")
+    @staticmethod
+    def is_defined_as_layer(var: str, edom: Union[Domain, None], idom: Union[Domain, None]) -> Domain:
+        vdom = SolDefChk.is_defined_variable(var, edom, idom)
+        if ArgChk.check_item_type(LAYER, vdom.get_variable_type(var)) is False:
+            raise DefinitionError("The variable " + var + " is not defined as LAYER.")
+        return vdom
 
+    @staticmethod
+    def is_defined_as_vector_variable(var: str, edom: Union[Domain, None], idom: Union[Domain, None]):
+        vdom = SolDefChk.is_defined_variable(var, edom, idom)
+        if vdom.get_variable_type(var) is not VECTOR:
+            raise DomainError("The variable " + var + " is not defined as LAYER.")
+        if not vdom.are_defined_components(var):
+            raise DomainError("The components of the " + var + " VECTOR variable have not defined.")
 
-def is_defined_as_vector_variable(variable: str, external_domain: OptDomain, internal_domain: OptDomain):
-    valid_domain = is_defined_variable(variable, external_domain, internal_domain)
-    if valid_domain.get_variable_type(variable) is not VECTOR:
-        raise DomainError("The variable " + variable + " is not defined as LAYER.")
-    if not valid_domain.are_defined_components(variable):
-        raise DomainError("The components of the " + variable + " VECTOR variable have not defined.")
+    @staticmethod
+    def is_defined_as_layer_vector_variable(var: str, edom: Union[Domain, None], idom: Union[Domain, None]):
+        vdom = SolDefChk.is_defined_variable(var, edom, idom)
+        if vdom.get_variable_type(var) is not VECTOR:
+            raise DomainError("The variable " + var + " is not defined as LAYER.")
+        if not vdom.get_vector_components_type(var) is not LAYER:
+            raise DomainError("The components of the " + var + " VECTOR variable have not defined as LAYER.")
 
+    @staticmethod
+    def is_defined_as_layer_element(var: str, ele: str, edom: Union[Domain, None], idom: Union[Domain, None]) -> Domain:
+        vdom = get_valid_domain(edom, idom)
+        if ArgChk.check_item_type(LAYER, vdom.get_variable_type(var)) is False:
+            raise DefinitionError("The variable " + var + " is not defined as LAYER.")
+        if vdom.is_defined_element(var, ele) is False:
+            raise DefinitionError(
+                "The element " + ele + " of the " + var +
+                " LAYER variable is not defined in this domain.")
+        return vdom
 
-def is_defined_as_layer_vector_variable(variable: str, external_domain: OptDomain, internal_domain: OptDomain):
-    valid_domain = is_defined_variable(variable, external_domain, internal_domain)
-    if valid_domain.get_variable_type(variable) is not VECTOR:
-        raise DomainError("The variable " + variable + " is not defined as LAYER.")
-    if not valid_domain.get_vector_components_type(variable) is not LAYER:
-        raise DomainError("The components of the " + variable + " VECTOR variable have not defined as LAYER.")
+    @staticmethod
+    def is_defined_as_basic_vector(var: str, edom: Union[Domain, None], idom: Union[Domain, None]) -> Domain:
+        vdom = get_valid_domain(edom, idom)
+        SolDefChk.__check_component_type(var, BASIC, vdom)
+        return vdom
 
+    @staticmethod
+    def is_defined_as_layer_vector(var: str, edom: Union[Domain, None], idom: Union[Domain, None]) -> Domain:
+        vdom = get_valid_domain(edom, idom)
+        SolDefChk.__check_component_type(var, LAYER, vdom)
+        return vdom
 
-# =============================================== GENERAL =========================================================== #
+    @staticmethod
+    def __check_component_type(var: str, chk_typ: PYCVOA_TYPE, dom: Domain):
+        """ It checks if the components of a **VECTOR** variable are defined as a concrete type, if not, raise
+        py:class:`~pycvoa.problem.domain.WrongItemType`.
 
-def check_layer_vector_element(layer_vector_variable: str, element: str, value: Basic, external_domain: OptDomain,
-                               internal_domain: OptDomain):
-    valid_domain = get_valid_domain(external_domain, internal_domain)
-    if not valid_domain.check_vector_layer_element_value(layer_vector_variable, element, value):
-        raise ValueError(
-            "The value " + str(value) + " is not valid for the " + str(element) + " element in the "
-            + str(layer_vector_variable) + " variable.")
-    return valid_domain
-
-
-def basic_variable(check_basic_variable: str, external_domain: OptDomain, internal_domain: OptDomain):
-    valid_domain = get_valid_domain(external_domain, internal_domain)
-    if cmn.check_item_type(BASIC, valid_domain.get_variable_type(check_basic_variable)) is False:
-        raise DefinitionError("The variable " + check_basic_variable + " is not defined as BASIC.")
-    return valid_domain
-
-
-def layer_variable(check_layer_variable: str, external_domain: OptDomain, internal_domain: OptDomain):
-    valid_domain = get_valid_domain(external_domain, internal_domain)
-    if cmn.check_item_type(LAYER, valid_domain.get_variable_type(check_layer_variable)) is False:
-        raise DefinitionError("The variable " + check_layer_variable + " is not defined as LAYER.")
-    return valid_domain
-
-
-def layer_variable_element(check_layer_variable: str, element: str, external_domain: OptDomain,
-                           internal_domain: OptDomain):
-    valid_domain = get_valid_domain(external_domain, internal_domain)
-    if cmn.check_item_type(LAYER, valid_domain.get_variable_type(check_layer_variable)) is False:
-        raise DefinitionError("The variable " + check_layer_variable + " is not defined as LAYER.")
-    if valid_domain.is_defined_element(check_layer_variable, element) is False:
-        raise DefinitionError(
-            "The element " + element + " of the " + check_layer_variable +
-            " LAYER variable is not defined in this domain.")
-    return valid_domain
-
-
-def basic_vector_variable(check_vector_variable: str, external_domain: OptDomain, internal_domain: OptDomain):
-    valid_domain = get_valid_domain(external_domain, internal_domain)
-    __check_component_type(check_vector_variable, BASIC, valid_domain)
-    return valid_domain
-
-
-def layer_vector_variable(check_vector_variable: str, external_domain: OptDomain, internal_domain: OptDomain):
-    valid_domain = get_valid_domain(external_domain, internal_domain)
-    __check_component_type(check_vector_variable, LAYER, valid_domain)
-    return valid_domain
-
-
-def __check_component_type(check_vector_variable: str, check_type: PYCVOA_TYPE, domain: Domain):
-    """ It checks if the components of a **VECTOR** variable are defined as a concrete type, if not, raise
-    py:class:`~pycvoa.problem.domain.WrongItemType`.
-
-    :param check_vector_variable: The **VECTOR** variable.
-    :param check_type: The component type.
-    :param domain: The domain
-    :type check_vector_variable: str
-    :type check_type: **INTEGER**, **REAL**, **CATEGORICAL**, **BASIC**, **LAYER**, **VECTOR**
-    """
-    comp_type = domain.get_vector_components_type(check_vector_variable)
-    if check_type is BASIC:
-        if comp_type not in BASICS:
-            raise ValueError("The components of " + check_vector_variable + " are not defined as BASIC.")
-    elif check_type is NUMERICAL:
-        if comp_type not in NUMERICALS:
-            raise ValueError("The components of " + check_vector_variable + " are not defined as NUMERICAL.")
-    else:
-        if comp_type is not check_type:
-            raise ValueError("The components of " + check_vector_variable
-                             + " are not defined as " + str(check_type) + ".")
+        :param var: The **VECTOR** variable.
+        :param chk_typ: The component type.
+        :param dom: The domain
+        :type var: str
+        :type chk_typ: **INTEGER**, **REAL**, **CATEGORICAL**, **BASIC**, **LAYER**, **VECTOR**
+        """
+        cmp_typ = dom.get_vector_components_type(var)
+        if chk_typ is BASIC:
+            if cmp_typ not in BASICS:
+                raise ValueError("The components of " + var + " are not defined as BASIC.")
+        elif chk_typ is NUMERICAL:
+            if cmp_typ not in NUMERICALS:
+                raise ValueError("The components of " + var + " are not defined as NUMERICAL.")
+        else:
+            if cmp_typ is not chk_typ:
+                raise ValueError("The components of " + var
+                                 + " are not defined as " + str(chk_typ) + ".")
 
 
 
-def check_item_type(check_type: PYCVOA_TYPE, item_type: PYCVOA_TYPE):
-    r = False
-    if check_type is BASIC:
-        if item_type in BASICS:
-            r = True
-    elif check_type is NUMERICAL:
-        if check_type in NUMERICALS:
-            r = True
-    else:
-        if item_type is check_type:
-            r = True
-    return r
+@final
+class AsgChk:
+
+    @staticmethod
+    def is_assigned_variable(var: str, sol: SolStructure):
+        if var not in sol.keys():
+            raise SolutionError("The " + str(var) + " variable is not assigned in this solution.")
+
+    @staticmethod
+    def is_assigned_layer_element(lvar: str, ele: str, sol: SolStructure):
+        AsgChk.is_assigned_variable(lvar, sol)
+        layer: SolLayer = cast(SolLayer, sol.get(lvar))
+        if ele not in layer.keys():
+            raise SolutionError(
+                "The element " + str(ele) + " is not assigned in the " + str(lvar) + "variable of this "
+                                                                                     "solution.")
+
+    @staticmethod
+    def is_assigned_element(lvar: str, ele: str, sol: SolStructure):
+        layer: SolLayer = cast(SolLayer, sol.get(lvar))
+        if ele not in layer.keys():
+            raise SolutionError(
+                "The element " + str(ele) + " is not assigned in the " + str(lvar) + "variable of this "
+                                                                                     "solution.")
+
+    @staticmethod
+    def is_assigned_component(vvar: str, index: int, vval_size: int):
+        if index < 0 or index >= vval_size:
+            raise SolutionError(
+                "The " + str(
+                    index) + "-nh component of " + vvar + " VECTOR variable is not assigned in this solution.")
+
+    @staticmethod
+    def is_assigned_component_element(lvvar: str, index: int, ele: str, lvval: SolLayerVector):
+        if ele not in lvval[index].keys():
+            raise SolutionError("The element " + str(ele) + " in not assigned in the " + str(index)
+                                + "-nh component of the " + str(lvvar) + " variable in this solution.")
 
 
-def is_assigned_layer_element(layer_variable: str, element: str, solution_structure: VarStructureType):
-    is_assigned_variable(layer_variable, solution_structure)
-    layer: SolLayer = cast(SolLayer, solution_structure.get(layer_variable))
-    if element not in layer.keys():
-        raise SolutionError(
-            "The element " + str(element) + " is not assigned in the " + str(layer_variable) + "variable of this "
-                                                                                               "solution.")
+
+@final
+class ModChk:
+    @staticmethod
+    def vector_insertion_available(vvar: str, dom: Domain, vval: SolVector):
+        if dom.get_remaining_available_complete_components(vvar, len(vval)) == 0:
+            raise SolutionError("The " + str(vvar) + " is complete.")
+
+    @staticmethod
+    def vector_adding_available(vvar: str, rem: int):
+        if rem == 0:
+            raise SolutionError("The " + str(vvar) + " is complete.")
+
+    @staticmethod
+    def vector_element_adding_available(lvvar: str, lvval: SolLayerVector, dom: Domain):
+        key_sizes = len(lvval[-1].keys()
+                        & dom.get_layer_components_attributes(lvvar).keys())
+        if key_sizes == 0:
+            v_size = len(lvval)
+        else:
+            v_size = len(lvval) - 1
+        if dom.get_remaining_available_complete_components(lvvar, v_size) == 0:
+            raise SolutionError("The " + str(lvvar) + " is complete.")
+
+    @staticmethod
+    def assigned_vector_removal_available(vvar:str, vval_size: int, dom: Domain):
+        r = dom.get_remaining_available_complete_components(vvar, vval_size - 1)
+        if r < 0:
+            raise SolutionError("The " + str(vvar) + " can not deleting.")
+        return vval_size - r
 
 
-def is_assigned_element(layer_variable: str, element: str, solution_structure: VarStructureType):
-    layer: SolLayer = cast(SolLayer, solution_structure.get(layer_variable))
-    if element not in layer.keys():
-        raise SolutionError(
-            "The element " + str(element) + " is not assigned in the " + str(layer_variable) + "variable of this "
-                                                                                               "solution.")
+@final
+class SetMet:
+    @staticmethod
+    def set_basic_pycvoatype(value: Any, element: str | None, index: int | None):
+        if isinstance(value, (int, float, str)):
+            if element is None and index is not None:
+                raise ValueError("You are trying to set a value of a component of a variable that is not BASIC VECTOR.")
+            elif element is not None and index is None:
+                raise ValueError("You are trying to set a value of an element of a variable that is not LAYER.")
+            elif element is not None and index is not None:
+                raise ValueError("You are trying to set a value of an element of a variable that is not LAYER VECTOR.")
+        else:
+            raise ValueError("The value must a BASIC value (int, float or str).")
+
+    @staticmethod
+    def set_layer_pycvoatype(value: Any, element: str | None, index: int | None) -> str:
+        if isinstance(value, (int, float, str)):
+            if element is None and index is None:
+                raise ValueError("You are trying to set an element's value without specifying the element name.")
+            if element is None and index is not None:
+                raise ValueError("You are trying to set a value of a component of a variable that is not BASIC VECTOR")
+            elif element is not None and index is not None:
+                raise ValueError("You are trying to set a value of an element of a variable that is not LAYER VECTOR.")
+            else:
+                res = "a"
+        elif Primitives.is_layer_value(value):
+            if element is None and index is not None:
+                raise ValueError("You are trying to set a value of a component of a variable that is not LAYER VECTOR")
+            elif element is not None and index is None:
+                raise ValueError("You are trying to set an element's value with a value different from int, float, "
+                                 "or str.")
+            elif element is not None and index is not None:
+                raise ValueError("You are trying to set a value of an element of a component of a variable that is not "
+                                 "LAYER VECTOR.")
+            else:
+                res = "b"
+        else:
+            raise ValueError("The value must be a BASIC value (int, float, or str) or a well-formed LAYER value.")
+        return res
+
+    @staticmethod
+    def set_basic_vector_pycvoatype(value: Any, element: str | None, index: int | None) -> str:
+        if isinstance(value, (int, float, str)):
+            if element is None and index is None:
+                raise ValueError("You are trying to set a component's value without specifying the target index.")
+            if element is not None and index is None:
+                raise ValueError("You are trying to set a value of an element of a variable that is not LAYER.")
+            elif element is not None and index is not None:
+                raise ValueError("You are trying to set a value of an element of a variable that is not LAYER VECTOR.")
+            else:
+                res = "a"
+        elif Primitives.is_basic_vector_value(value):
+            if element is None and index is not None:
+                raise ValueError(
+                    "You are trying to set a value of a component of a BASIC VECTOR variable with a complete "
+                    "BASIC VECTOR value.")
+            elif element is not None and index is None:
+                raise ValueError("You are trying to set an element's value with a value different from int, float, "
+                                 "or str of a variable that is not LAYER.")
+            elif element is not None and index is not None:
+                raise ValueError("You are trying to set a value of an element of a component of a variable that is not "
+                                 "LAYER VECTOR.")
+            else:
+                res = "b"
+        else:
+            raise ValueError(
+                "The value must be a BASIC value (int, float, or str) or a well-formed BASIC VECTOR value.")
+        return res
+
+    @staticmethod
+    def set_layer_vector_pycvoatype(value: Any, element: str | None, index: int | None) -> str:
+        if isinstance(value, (int, float, str)):
+            if element is None and index is None:
+                raise ValueError("You are trying to set a LAYER VECTOR variable with a BASIC value.")
+            elif element is None and index is not None:
+                raise ValueError("You are trying to set a value of a component of a variable that is not BASIC VECTOR")
+            elif element is not None and index is None:
+                raise ValueError("You are trying to set a value of an element of a variable that is not LAYER.")
+            else:
+                res = "a"
+        elif Primitives.is_layer_value(value):
+            if element is None and index is None:
+                raise ValueError("You are trying to set a LAYER VECTOR variable with a LAYER value without specifying "
+                                 "the component index.")
+            elif element is not None and index is None:
+                raise ValueError("You are trying to set an element's value with a value different from int, float, "
+                                 "or str and without specifying the component index.")
+            elif element is not None and index is not None:
+                raise ValueError("You are trying to set a value of an element of a component with a value that is not "
+                                 "BASIC.")
+            else:
+                res = "b"
+        elif Primitives.is_layer_vector_value(value):
+            if element is None and index is not None:
+                raise ValueError("You are trying to set a value of a component of a variable that is not BASIC VECTOR")
+            elif element is not None and index is None:
+                raise ValueError("You are trying to set an element's value with a value different from int, float, "
+                                 "or str and without specifying the component index.")
+            elif element is not None and index is not None:
+                raise ValueError("You are trying to set a value of an element of a component with a value that is not "
+                                 "BASIC.")
+            else:
+                res = "c"
+        else:
+            raise ValueError("The value must be a BASIC value (int, float, or str) a well-formed LAYER value or a "
+                             "well-formed LAYER VECTOR value.")
+        return res
 
 
-def is_assigned_variable(variable: str, solution_structure: VarStructureType):
-    if variable not in solution_structure.keys():
-        raise SolutionError("The " + str(variable) + " variable is not assigned in this solution.")
-
-
-def is_assigned_component(vector_variable: str, index: int, vector_values_size: int):
-    if index < 0 or index >= vector_values_size:
-        raise SolutionError(
-            "The " + str(
-                index) + "-nh component of " + vector_variable + " VECTOR variable is not assigned in this solution.")
-
-
-def is_assigned_component_element(layer_vector_variable: str, index: int, element: str,
-                                  layer_vector_value: LayerVectorValue):
-    if element not in layer_vector_value[index].keys():
-        raise SolutionError("The element " + str(element) + " in not assigned in the " + str(index)
-                            + "-nh component of the " + str(layer_vector_variable) + " variable in this solution.")
-
-
-def vector_insertion_available(vector_variable: str, domain: Domain, vector_value: VectorValue):
-    if domain.get_remaining_available_complete_components(vector_variable, len(vector_value)) == 0:
-        raise SolutionError("The " + str(vector_variable) + " is complete.")
-
-
-def vector_adding_available(vector_variable: str, remaining: int):
-    if remaining == 0:
-        raise SolutionError("The " + str(vector_variable) + " is complete.")
-
-
-def vector_element_adding_available(layer_vector_variable: str, layer_vector_value: LayerVectorValue, domain: Domain):
-    key_sizes = len(layer_vector_value[-1].keys()
-                    & domain.get_layer_components_attributes(layer_vector_variable).keys())
-    if key_sizes == 0:
-        v_size = len(layer_vector_value)
-    else:
-        v_size = len(layer_vector_value) - 1
-    if domain.get_remaining_available_complete_components(layer_vector_variable, v_size) == 0:
-        raise SolutionError("The " + str(layer_vector_variable) + " is complete.")
-
-
-def assigned_vector_removal_available(vector_variable, vector_value_size: int, domain: Domain):
-    r = domain.get_remaining_available_complete_components(vector_variable, vector_value_size - 1)
-    if r < 0:
-        raise SolutionError("The " + str(vector_variable) + " can not deleting.")
-    return vector_value_size - r
-
-# =================================== SOLUTION GENERAL SET VALUE METHOD ===============================================#
-
-def set_basic_pycvoatype(value: Any, element: str | None, index: int | None):
-    if isinstance(value, (int, float, str)):
+@final
+class GetMet:
+    @staticmethod
+    def get_basic_pycvoatype(element: str | None, index: int | None):
         if element is None and index is not None:
-            raise ValueError("You are trying to set a value of a component of a variable that is not BASIC VECTOR.")
+            raise ValueError("You are trying to get a value of a component of a variable that is not BASIC VECTOR.")
         elif element is not None and index is None:
-            raise ValueError("You are trying to set a value of an element of a variable that is not LAYER.")
+            raise ValueError("You are trying to get a value of an element of a variable that is not LAYER.")
         elif element is not None and index is not None:
-            raise ValueError("You are trying to set a value of an element of a variable that is not LAYER VECTOR.")
-    else:
-        raise ValueError("The value must a BASIC value (int, float or str).")
+            raise ValueError("You are trying to get a value of an element of a variable that is not LAYER VECTOR.")
 
-
-def set_layer_pycvoatype(value: Any, element: str | None, index: int | None) -> str:
-    if isinstance(value, (int, float, str)):
+    @staticmethod
+    def get_layer_pycvoatype(element: str | None, index: int | None) -> str:
         if element is None and index is None:
-            raise ValueError("You are trying to set an element's value without specifying the element name.")
-        if element is None and index is not None:
-            raise ValueError("You are trying to set a value of a component of a variable that is not BASIC VECTOR")
-        elif element is not None and index is not None:
-            raise ValueError("You are trying to set a value of an element of a variable that is not LAYER VECTOR.")
-        else:
-            res = "a"
-    elif is_layer_value(value):
-        if element is None and index is not None:
-            raise ValueError("You are trying to set a value of a component of a variable that is not LAYER VECTOR")
-        elif element is not None and index is None:
-            raise ValueError("You are trying to set an element's value with a value different from int, float, "
-                             "or str.")
-        elif element is not None and index is not None:
-            raise ValueError("You are trying to set a value of an element of a component of a variable that is not "
-                             "LAYER VECTOR.")
-        else:
-            res = "b"
-    else:
-        raise ValueError("The value must be a BASIC value (int, float, or str) or a well-formed LAYER value.")
-    return res
-
-
-def set_basic_vector_pycvoatype(value: Any, element: str | None, index: int | None) -> str:
-    if isinstance(value, (int, float, str)):
-        if element is None and index is None:
-            raise ValueError("You are trying to set a component's value without specifying the target index.")
-        if element is not None and index is None:
-            raise ValueError("You are trying to set a value of an element of a variable that is not LAYER.")
-        elif element is not None and index is not None:
-            raise ValueError("You are trying to set a value of an element of a variable that is not LAYER VECTOR.")
-        else:
-            res = "a"
-    elif is_basic_vector_value(value):
-        if element is None and index is not None:
-            raise ValueError("You are trying to set a value of a component of a BASIC VECTOR variable with a complete "
-                             "BASIC VECTOR value.")
-        elif element is not None and index is None:
-            raise ValueError("You are trying to set an element's value with a value different from int, float, "
-                             "or str of a variable that is not LAYER.")
-        elif element is not None and index is not None:
-            raise ValueError("You are trying to set a value of an element of a component of a variable that is not "
-                             "LAYER VECTOR.")
-        else:
-            res = "b"
-    else:
-        raise ValueError("The value must be a BASIC value (int, float, or str) or a well-formed BASIC VECTOR value.")
-    return res
-
-
-def set_layer_vector_pycvoatype(value: Any, element: str | None, index: int | None) -> str:
-    if isinstance(value, (int, float, str)):
-        if element is None and index is None:
-            raise ValueError("You are trying to set a LAYER VECTOR variable with a BASIC value.")
+            r = "a"
         elif element is None and index is not None:
-            raise ValueError("You are trying to set a value of a component of a variable that is not BASIC VECTOR")
+            raise ValueError("You are trying to get a value of a component of a variable that is not BASIC VECTOR")
         elif element is not None and index is None:
-            raise ValueError("You are trying to set a value of an element of a variable that is not LAYER.")
+            r = "b"
         else:
-            res = "a"
-    elif is_layer_value(value):
+            raise ValueError(
+                "You are trying to get an element value of a component of a variable that is not LAYER VECTOR.")
+        return r
+
+    @staticmethod
+    def get_basic_vector_pycvoatype(element: str | None, index: int | None) -> str:
         if element is None and index is None:
-            raise ValueError("You are trying to set a LAYER VECTOR variable with a LAYER value without specifying "
-                             "the component index.")
+            r = "a"
+        elif element is None and index is not None:
+            r = "b"
         elif element is not None and index is None:
-            raise ValueError("You are trying to set an element's value with a value different from int, float, "
-                             "or str and without specifying the component index.")
-        elif element is not None and index is not None:
-            raise ValueError("You are trying to set a value of an element of a component with a value that is not "
-                             "BASIC.")
+            raise ValueError("You are trying to get a value of an element of a variable that is not LAYER.")
         else:
-            res = "b"
-    elif is_layer_vector_value(value):
-        if element is None and index is not None:
-            raise ValueError("You are trying to set a value of a component of a variable that is not BASIC VECTOR")
+            raise ValueError(
+                "You are trying to get an element value of a component of a variable that is not LAYER VECTOR.")
+        return r
+
+    @staticmethod
+    def get_layer_vector_pycvoatype(element: str | None, index: int | None) -> str:
+        if element is None and index is None:
+            r = "a"
+        elif element is None and index is not None:
+            r = "b"
         elif element is not None and index is None:
-            raise ValueError("You are trying to set an element's value with a value different from int, float, "
-                             "or str and without specifying the component index.")
-        elif element is not None and index is not None:
-            raise ValueError("You are trying to set a value of an element of a component with a value that is not "
-                             "BASIC.")
+            raise ValueError("You are trying to get a value of an element of a variable that is not LAYER.")
         else:
-            res = "c"
-    else:
-        raise ValueError("The value must be a BASIC value (int, float, or str) a well-formed LAYER value or a "
-                         "well-formed LAYER VECTOR value.")
-    return res
-
-
-# =================================== SOLUTION GENERAL GET VALUE METHOD ===============================================#
-
-def get_basic_pycvoatype(element: str | None, index: int | None):
-    if element is None and index is not None:
-        raise ValueError("You are trying to get a value of a component of a variable that is not BASIC VECTOR.")
-    elif element is not None and index is None:
-        raise ValueError("You are trying to get a value of an element of a variable that is not LAYER.")
-    elif element is not None and index is not None:
-        raise ValueError("You are trying to get a value of an element of a variable that is not LAYER VECTOR.")
-
-
-def get_layer_pycvoatype(element: str | None, index: int | None) -> str:
-    if element is None and index is None:
-        r = "a"
-    elif element is None and index is not None:
-        raise ValueError("You are trying to get a value of a component of a variable that is not BASIC VECTOR")
-    elif element is not None and index is None:
-        r = "b"
-    else:
-        raise ValueError(
-            "You are trying to get an element value of a component of a variable that is not LAYER VECTOR.")
-    return r
-
-
-def get_basic_vector_pycvoatype(element: str | None, index: int | None) -> str:
-    if element is None and index is None:
-        r = "a"
-    elif element is None and index is not None:
-        r = "b"
-    elif element is not None and index is None:
-        raise ValueError("You are trying to get a value of an element of a variable that is not LAYER.")
-    else:
-        raise ValueError(
-            "You are trying to get an element value of a component of a variable that is not LAYER VECTOR.")
-    return r
-
-
-def get_layer_vector_pycvoatype(element: str | None, index: int | None) -> str:
-    if element is None and index is None:
-        r = "a"
-    elif element is None and index is not None:
-        r = "b"
-    elif element is not None and index is None:
-        raise ValueError("You are trying to get a value of an element of a variable that is not LAYER.")
-    else:
-        r = "c"
-    return r
+            r = "c"
+        return r

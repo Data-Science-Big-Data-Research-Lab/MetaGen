@@ -3,7 +3,7 @@ from typing import final, cast, Union, Any
 
 from pycvoa.control import DefinitionError
 from pycvoa.control.types import LayerDef, DefStructure, LAYER, PYCVOA_TYPE, ArgChk, LayerAttributes, VectorDef, \
-    VectorValue, VectorInput, VECTOR, Primitives
+    VECTOR, Primitives, Vector
 
 
 @final
@@ -193,7 +193,7 @@ class VecDef:
 
     @staticmethod
     def check_vector_values_size(vector_variable: str, vector_definition: VectorDef,
-                                 values: Union[VectorValue, VectorInput]):
+                                 values: Vector):
         if len(values) < vector_definition[1] or len(values) > vector_definition[2]:
             raise DefinitionError(
                 "The size of the values (" + str(len(values)) + ") is not compatible with the " + str(
