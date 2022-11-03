@@ -34,37 +34,15 @@ DomInput: TypeAlias = Union[Basic, DomLayer, DomVector]
 SolLayer: TypeAlias = Dict[str, Basic]
 SolLayerVector: TypeAlias = List[SolLayer]
 SolVector: TypeAlias = Union[BasicVector, SolLayerVector]
-SolInput: TypeAlias = Union[Basic, SolLayer, SolVector]
+Value: TypeAlias = Union[Basic, SolLayer, SolVector]
 
 # PYCVOA GLOBAL
 Layer: TypeAlias = Union[DomLayer, SolLayer]
 LayerVector: TypeAlias = Union[DomLayerVector, SolLayerVector]
 Vector: TypeAlias = Union[DomVector, SolVector]
 
-#####
-
-BasicValueList: TypeAlias = List[Basic]
-LayerValueList: TypeAlias = List[SolLayer]
-
-# VALUES types
-NumericaVectorValues: TypeAlias = List[int] | List[float]
-IntOrIntList: TypeAlias = int | List[int]
-
-NumericalValue: TypeAlias = int | float
-VectorValue: TypeAlias = Union[BasicValueList, LayerValueList]
-SupportedValues: TypeAlias = Union[Basic, SolLayer, VectorValue]
-OptSupportedValues: TypeAlias = Union[Basic, SolLayer, VectorValue, None]
-VarStructureType: TypeAlias = Dict[str, SupportedValues]
-LayerVectorValue: TypeAlias = List[SolLayer]
-OptLayerValue: TypeAlias = Union[SolLayer, None]
-
-LayerInput: TypeAlias = Mapping[str, Basic]
-VectorInput: TypeAlias = Union[Sequence[int], Sequence[float], Sequence[str], Sequence[LayerInput]]
-BasicVectorInput: TypeAlias = Union[Sequence[int], Sequence[float], Sequence[str]]
-LayerVectorInput: TypeAlias = Sequence[LayerInput]
-SupportedInput: TypeAlias = Union[Basic, LayerInput, VectorInput]
-
-# DEFINITION TYPES
+# STRUCTURES
+SolStructure: TypeAlias = Dict[str, Value]
 IntegerDef: TypeAlias = Tuple[INTEGER_TYPE, int, int, int]
 RealDef: TypeAlias = Tuple[REAL_TYPE, float, float, float]
 CategoricalDef: TypeAlias = Tuple[CATEGORICAL_TYPE, Categories]
@@ -79,6 +57,7 @@ VectorAttributes: TypeAlias = Tuple[int, int, int]
 VarDefinition: TypeAlias = Union[IntegerDef, RealDef, CategoricalDef, LayerDef, VectorDef]
 DefStructure: TypeAlias = Dict[str, VarDefinition]
 
+# METHODS
 
 @final
 class Primitives:
