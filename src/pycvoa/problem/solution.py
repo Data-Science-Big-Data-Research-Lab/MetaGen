@@ -1,8 +1,8 @@
 import sys
 
 from pycvoa.control.solution import *
-from pycvoa.control.types import *
 from pycvoa.problem.domain import *
+from pycvoa.control.types import OutputValue
 
 
 class Solution:
@@ -95,12 +95,12 @@ class Solution:
         :raise :py:class:`~pycvoa.problem.solution.WrongValue: The value is not valid.
         """
         SolValChk.check_basic_value(basic_variable, value, domain, self.__domain)
-        self.__set_basic(basic_variable, value)
+        _Internals.set_basic(self.__variables, basic_variable, value)
 
     # ** LAYER TYPE METHODS ***
     def set_layer(self, layer_variable: str, layer_value: SolLayer, domain: Union[Domain, None] = None):
         SolValChk.check_layer_value(layer_variable, layer_value, domain, self.__domain)
-        self.__set_layer(layer_variable, layer_value)
+        _Internals.set_layer(self.__variables, layer_variable, layer_value)
 
     def set_element(self, layer_variable: str, element: str, value: Basic, domain: Union[Domain, None] = None):
         """ It sets the element value of a **LAYER** variable. If the **LAYER** variable does not exist,
@@ -121,12 +121,12 @@ class Solution:
         :raise :py:class:`~pycvoa.problem.solution.WrongValue: The value is not valid.
         """
         SolValChk.check_layer_element_value(layer_variable, element, value, domain, self.__domain)
-        self.__set_element(layer_variable, element, value)
+        _Internals.set_element(self.__variables, layer_variable, element, value)
 
     # ** BASIC VECTOR METHODS ***
     def set_basic_vector(self, vector_variable: str, values: BasicVector, domain: Union[Domain, None] = None):
         SolValChk.check_basic_vector_values(vector_variable, values, domain, self.__domain)
-        self.__set_basic_vector(vector_variable, values)
+        _Internals.set_basic_vector(self.__variables, vector_variable, values)
 
     def add_basic_component(self, basic_vector_variable: str, value: Basic,
                             domain: Union[Domain, None] = None) -> int:
@@ -146,7 +146,7 @@ class Solution:
         defined as a **BASIC** type.
         """
         valid_domain = SolValChk.check_basic_vector_value(basic_vector_variable, value, domain, self.__domain)
-        return self.__put_basic(basic_vector_variable, value, valid_domain)
+        return _Internals.put_basic(self.__variables, basic_vector_variable, value, valid_domain)
 
     def insert_basic_component(self, basic_vector_variable: str, index: int, value: Basic,
                                domain: Union[Domain, None] = None) -> int:
@@ -168,7 +168,7 @@ class Solution:
         defined as a **BASIC** type.
         """
         valid_domain = SolValChk.check_basic_vector_value(basic_vector_variable, value, domain, self.__domain)
-        return self.__put_basic(basic_vector_variable, value, valid_domain, index)
+        return _Internals.put_basic(self.__variables, basic_vector_variable, value, valid_domain, index)
 
     def set_basic_component(self, basic_vector_variable: str, index: int, value: Basic,
                             domain: Union[Domain, None] = None):
@@ -199,32 +199,32 @@ class Solution:
         :raise :py:class:`~pycvoa.problem.solution.WrongValue: The value is not valid.
         """
         SolValChk.check_basic_vector_value(basic_vector_variable, value, domain, self.__domain)
-        self.__set_basic_component(basic_vector_variable, index, value)
+        _Internals.set_basic_component(self.__variables, basic_vector_variable, index, value)
 
     # ** LAYER VECTOR METHODS ***
 
     def set_layer_vector(self, layer_vector_variable: str, values: SolLayerVector,
                          domain: Union[Domain, None] = None):
         SolValChk.check_layer_vector_values(layer_vector_variable, values, domain, self.__domain)
-        self.__set_layer_vector(layer_vector_variable, values)
+        _Internals.set_layer_vector(self.__variables, layer_vector_variable, values)
 
     # ++ COMPONENT LEVEL
     def add_layer_component(self, layer_vector_variable: str, layer_values: SolLayer,
                             domain: Union[Domain, None] = None) -> int:
         current_domain = SolValChk.check_layer_vector_component(layer_vector_variable, layer_values,
                                                                 domain, self.__domain)
-        return self.__put_layer(layer_vector_variable, layer_values, current_domain)
+        return _Internals.put_layer(self.__variables, layer_vector_variable, layer_values, current_domain)
 
     def insert_layer_component(self, layer_vector_variable: str, index: int, layer_values: SolLayer,
                                domain: Union[Domain, None] = None) -> int:
         current_domain = SolValChk.check_layer_vector_component(layer_vector_variable, layer_values,
                                                                 domain, self.__domain)
-        return self.__put_layer(layer_vector_variable, layer_values, current_domain, index)
+        return _Internals.put_layer(self.__variables, layer_vector_variable, layer_values, current_domain, index)
 
     def set_layer_component(self, layer_vector_variable: str, index: int, layer_values: SolLayer,
                             domain: Union[Domain, None] = None):
         SolValChk.check_layer_vector_component(layer_vector_variable, layer_values, domain, self.__domain)
-        self.__set_layer_component(layer_vector_variable, index, layer_values)
+        _Internals.set_layer_component(self.__variables, layer_vector_variable, index, layer_values)
 
     # ++ COMPONENT ELEMENT LEVEL
     def add_element_to_layer_component(self, layer_vector_variable: str, element: str, value: Basic,
@@ -247,7 +247,7 @@ class Solution:
         """
         valid_domain = SolValChk.check_layer_vector_element(layer_vector_variable, element, value, domain,
                                                             self.__domain)
-        return self.__put_element(layer_vector_variable, element, value, valid_domain)
+        return _Internals.put_element(self.__variables, layer_vector_variable, element, value, valid_domain)
 
     def insert_element_to_layer_component(self, layer_vector_variable: str, index: int, element: str, value: Basic,
                                           domain: Union[Domain, None] = None) -> Tuple[int, int]:
@@ -270,8 +270,8 @@ class Solution:
         defined as a **BASIC** type.
         """
         valid_domain = SolValChk.check_layer_vector_element(layer_vector_variable, element, value, domain,
-                                                           self.__domain)
-        return self.__put_element(layer_vector_variable, element, value, valid_domain, index)
+                                                            self.__domain)
+        return _Internals.put_element(self.__variables, layer_vector_variable, element, value, valid_domain, index)
 
     def set_element_of_layer_component(self, layer_vector_variable: str, index: int, element: str, value: Basic,
                                        domain: Union[Domain, None] = None):
@@ -298,11 +298,11 @@ class Solution:
         :raise :py:class:`~pycvoa.problem.solution.WrongValue: The value is not valid.
         """
         SolValChk.check_layer_vector_element(layer_vector_variable, element, value, domain, self.__domain)
-        self.__set_element_of_layer_component(layer_vector_variable, index, element, value)
+        _Internals.set_element_of_layer_component(self.__variables, layer_vector_variable, index, element, value)
 
     # ** SET VALUE METHOD
 
-    def set_value(self, variable: str, value: Value, index: int | None = None, element: str | None = None,
+    def set_value(self, variable: str, value: InputValue, index: int | None = None, element: str | None = None,
                   domain: Union[Domain, None] = None):
         """ It sets a value of a variable.
 
@@ -339,30 +339,31 @@ class Solution:
         var_type = current_domain.get_variable_type(variable)
         if var_type in BASICS:
             SetMet.set_basic_pycvoatype(value, element, index)
-            self.__set_basic(variable, cast(Basic, value))
+            _Internals.set_basic(self.__variables, variable, cast(Basic, value))
         elif var_type is LAYER:
             case = SetMet.set_layer_pycvoatype(value, element, index)
             if case == "a":
-                self.__set_element(variable, cast(str, element), cast(Basic, value))
+                _Internals.set_element(self.__variables, variable, cast(str, element), cast(Basic, value))
             elif case == "b":
-                self.__set_layer(variable, cast(SolLayer, value))
+                _Internals.set_layer(self.__variables, variable, cast(SolLayer, value))
         elif var_type is VECTOR:
             comp_type = current_domain.get_vector_components_type(variable)
             if comp_type in BASICS:
                 case = SetMet.set_basic_vector_pycvoatype(value, element, index)
                 if case == "a":
-                    self.__set_basic_component(variable, cast(int, index), cast(Basic, value))
+                    _Internals.set_basic_component(self.__variables, variable, cast(int, index), cast(Basic, value))
                 elif case == "b":
-                    self.__set_basic_vector(variable, cast(BasicVector, value))
+                    _Internals.set_basic_vector(self.__variables, variable, cast(BasicVector, value))
             elif comp_type is LAYER:
                 case = SetMet.set_layer_vector_pycvoatype(value, element, index)
                 if case == "a":
-                    self.__set_element_of_layer_component(variable, cast(int, index), cast(str, element),
-                                                          cast(Basic, value))
+                    _Internals.set_element_of_layer_component(self.__variables, variable, cast(int, index),
+                                                              cast(str, element),
+                                                              cast(Basic, value))
                 elif case == "b":
-                    self.__set_layer_component(variable, cast(int, index), cast(SolLayer, value))
+                    _Internals.set_layer_component(self.__variables, variable, cast(int, index), cast(SolLayer, value))
                 elif case == "c":
-                    self.__set_layer_vector(variable, cast(SolLayerVector, value))
+                    _Internals.set_layer_vector(self.__variables, variable, cast(SolLayerVector, value))
 
     # ** VECTOR REMOVES ***
 
@@ -537,7 +538,7 @@ class Solution:
         SolDefChk.is_defined_as_layer_vector_variable(layer_vector_variable, domain, self.__domain)
         AsgChk.is_assigned_variable(layer_vector_variable, self.__variables)
         AsgChk.is_assigned_component(layer_vector_variable, index,
-                                       len(cast(SolVector, self.__variables.get(layer_vector_variable))))
+                                     len(cast(SolVector, self.__variables.get(layer_vector_variable))))
         r = False
         if element in cast(SolLayerVector, self.__variables.get(layer_vector_variable))[index].keys():
             r = True
@@ -567,14 +568,14 @@ class Solution:
         :raise :py:class:`~pycvoa.problem.solution.NotInSolutionError: The variable is not in this solution.
         :raise :py:class:`~pycvoa.problem.solution.WrongType: The variable is not defined as BASIC.
         """
-        SolDefChkR.is_defined_as_basic(basic_variable, domain, self.__domain)
+        SolDefChk.is_defined_as_basic(basic_variable, domain, self.__domain)
         AsgChk.is_assigned_variable(basic_variable, self.__variables)
-        return self.__get_basic_value(basic_variable)
+        return _Internals.get_basic_value(self.__variables, basic_variable)
 
     def get_layer_value(self, layer_variable: str, domain: Union[Domain, None] = None) -> SolLayer:
-        SolDefChkR.is_defined_as_layer(layer_variable, domain, self.__domain)
+        SolDefChk.is_defined_as_layer(layer_variable, domain, self.__domain)
         AsgChk.is_assigned_variable(layer_variable, self.__variables)
-        return self.__get_layer_value(layer_variable)
+        return _Internals.get_layer_value(self.__variables, layer_variable)
 
     def get_element_value(self, layer_variable: str, element: str, domain: Union[Domain, None] = None) -> Basic:
         """ It returns an element value of a **LAYER** variable of the solution.
@@ -593,15 +594,15 @@ class Solution:
         :raise :py:class:`~pycvoa.problem.solution.NotDefinedLayerElementError: The element is not defined in the
         **LAYER** variable.
         """
-        ctrl_dom.layer_variable_element(layer_variable, element, domain, self.__domain)
-        ctrl_sol.is_assigned_layer_element(layer_variable, element, self.__variables)
-        return self.__get_element_value(layer_variable, element)
+        SolDefChk.is_defined_as_layer_element(layer_variable, element, domain, self.__domain)
+        AsgChk.is_assigned_layer_element(layer_variable, element, self.__variables)
+        return _Internals.get_element_value(self.__variables, layer_variable, element)
 
     def get_basic_vector(self, basic_vector_variable: str, domain: Union[Domain, None] = None) \
             -> SolVector:
-        ctrl_dom.basic_vector_variable(basic_vector_variable, domain, self.__domain)
-        ctrl_sol.is_assigned_variable(basic_vector_variable, self.__variables)
-        return self.__get_basic_vector(basic_vector_variable)
+        SolDefChk.is_defined_as_basic_vector(basic_vector_variable, domain, self.__domain)
+        AsgChk.is_assigned_variable(basic_vector_variable, self.__variables)
+        return _Internals.get_basic_vector(self.__variables, basic_vector_variable)
 
     def get_basic_component_value(self, basic_vector_variable: str, index: int, domain: Union[Domain, None] = None) \
             -> Basic:
@@ -624,16 +625,16 @@ class Solution:
         :raise :py:class:`~pycvoa.problem.solution.NotDefinedVectorComponentError: The **index**-nh component of the
         **VECTOR** variable is not available.
         """
-        ctrl_dom.basic_vector_variable(basic_vector_variable, domain, self.__domain)
-        ctrl_sol.is_assigned_component(basic_vector_variable, index,
-                                       len(cast(SolVector, self.__variables.get(basic_vector_variable))))
-        return self.__get_basic_component_value(basic_vector_variable, index)
+        SolDefChk.is_defined_as_basic_vector(basic_vector_variable, domain, self.__domain)
+        AsgChk.is_assigned_component(basic_vector_variable, index,
+                                     len(cast(SolVector, self.__variables.get(basic_vector_variable))))
+        return _Internals.get_basic_component_value(self.__variables, basic_vector_variable, index)
 
     def get_layer_vector(self, layer_vector_variable: str, domain: Union[Domain, None] = None) \
             -> SolLayerVector:
-        ctrl_dom.layer_vector_variable(layer_vector_variable, domain, self.__domain)
-        ctrl_sol.is_assigned_variable(layer_vector_variable, self.__variables)
-        return self.__get_layer_vector(layer_vector_variable)
+        SolDefChk.is_defined_as_layer_vector_variable(layer_vector_variable, domain, self.__domain)
+        AsgChk.is_assigned_variable(layer_vector_variable, self.__variables)
+        return _Internals.get_layer_vector(self.__variables, layer_vector_variable)
 
     def get_layer_component(self, layer_vector_variable: str, index: int,
                             domain: Union[Domain, None] = None) -> SolLayer:
@@ -656,10 +657,10 @@ class Solution:
         :raise :py:class:`~pycvoa.problem.solution.NotDefinedComponentElementError: The element of the **index**-nh
         component of the **VECTOR** variable is not available.
         """
-        ctrl_dom.is_defined_as_layer_vector_variable(layer_vector_variable, domain, self.__domain)
-        ctrl_sol.is_assigned_component(layer_vector_variable, index,
-                                       len(cast(SolVector, self.__variables.get(layer_vector_variable))))
-        return self.__get_layer_component(layer_vector_variable, index)
+        SolDefChk.is_defined_as_layer_vector_variable(layer_vector_variable, domain, self.__domain)
+        AsgChk.is_assigned_component(layer_vector_variable, index,
+                                     len(cast(SolVector, self.__variables.get(layer_vector_variable))))
+        return _Internals.get_layer_component(self.__variables, layer_vector_variable, index)
 
     def get_layer_component_element(self, layer_vector_variable: str, index: int, element: str,
                                     domain: Union[Domain, None] = None) -> Basic:
@@ -683,13 +684,13 @@ class Solution:
         :raise :py:class:`~pycvoa.problem.solution.NotDefinedComponentElementError: The element of the **index**-nh
         component of the **VECTOR** variable is not available.
         """
-        ctrl_dom.is_defined_as_layer_vector_variable(layer_vector_variable, domain, self.__domain)
+        SolDefChk.is_defined_as_layer_vector_variable(layer_vector_variable, domain, self.__domain)
         lv_val = cast(SolLayerVector, self.__variables[layer_vector_variable])
-        ctrl_sol.is_assigned_component_element(layer_vector_variable, index, element, lv_val)
-        return self.__get_layer_component_element(layer_vector_variable, index, element)
+        AsgChk.is_assigned_component_element(layer_vector_variable, index, element, lv_val)
+        return _Internals.get_layer_component_element(self.__variables, layer_vector_variable, index, element)
 
     def get_value(self, variable: str, index: int | None = None, element: str | None = None,
-                  domain: Union[Domain, None] = None) -> Value:
+                  domain: Union[Domain, None] = None) -> OutputValue:
         """ It returns a value of a variable.
 
         This member has three use cases:
@@ -726,38 +727,39 @@ class Solution:
         :raise :py:class:`~pycvoa.problem.solution.NotDefinedVectorComponentError: The **index**-nh component of the
         **VECTOR** variable is not available.
         """
-        valid_domain = ctrl_dom.get_valid_domain(domain, self.__domain)
-        ctrl_sol.is_assigned_variable(variable, self.__variables)
+        valid_domain = get_valid_domain(domain, self.__domain)
+        AsgChk.is_assigned_variable(variable, self.__variables)
         var_type = valid_domain.get_variable_type(variable)
-        r = None
+        r: OutputValue = None
         if var_type in BASICS:  # BASIC variable, BASIC value
-            ctrl_par.get_basic_pycvoatype(element, index)
-            r = self.__get_basic_value(variable)
+            GetMet.get_basic_pycvoatype(element, index)
+            r = _Internals.get_basic_value(self.__variables, variable)
         elif var_type is LAYER:  # LAYER variable, BASIC value
-            case = ctrl_par.get_layer_pycvoatype(element, index)
+            case = GetMet.get_layer_pycvoatype(element, index)
             if case == "a":  # LAYER variable, LAYER value
-                r = self.__get_layer_value(variable)
+                r = _Internals.get_layer_value(self.__variables, variable)
             else:  # LAYER variable, BASIC value
-                ctrl_sol.is_assigned_element(variable, cast(str, element), self.__variables)
-                r = self.__get_element_value(variable, cast(str, element))
+                AsgChk.is_assigned_element(variable, cast(str, element), self.__variables)
+                r = _Internals.get_element_value(self.__variables, variable, cast(str, element))
         elif var_type is VECTOR_TYPE:
             comp_type = valid_domain.get_vector_component_definition(variable)[0]
             if comp_type in BASICS:
-                case = ctrl_par.get_basic_vector_pycvoatype(element, index)
+                case = GetMet.get_basic_vector_pycvoatype(element, index)
                 if case == "a":  # BASIC VECTOR variable, BASIC VECTOR value
-                    r = self.__get_basic_vector(variable)
+                    r = _Internals.get_basic_vector(self.__variables, variable)
                 else:  # BASIC VECTOR variable, BASIC value
-                    ctrl_sol.is_assigned_component(variable, cast(int, index),
-                                                   len(cast(SolVector, self.__variables.get(variable))))
-                    r = self.__get_basic_component_value(variable, cast(int, index))
+                    AsgChk.is_assigned_component(variable, cast(int, index),
+                                                 len(cast(SolVector, self.__variables.get(variable))))
+                    r = _Internals.get_basic_component_value(self.__variables, variable, cast(int, index))
             elif comp_type is LAYER:
-                case = ctrl_par.get_layer_vector_pycvoatype(element, index)
+                case = GetMet.get_layer_vector_pycvoatype(element, index)
                 if case == "a":  # LAYER VECTOR variable, LAYER VECTOR value
-                    r = self.__get_layer_vector(variable)
+                    r = _Internals.get_layer_vector(self.__variables, variable)
                 elif case == "b":  # LAYER VECTOR variable, LAYER value
-                    r = self.__get_layer_component(variable, cast(int, index))
+                    r = _Internals.get_layer_component(self.__variables, variable, cast(int, index))
                 else:  # LAYER VECTOR variable, BASIC value
-                    r = self.__get_layer_component_element(variable, cast(int, index), cast(str, element))
+                    r = _Internals.get_layer_component_element(self.__variables, variable, cast(int, index),
+                                                               cast(str, element))
 
         return r
 
@@ -775,167 +777,11 @@ class Solution:
         :raise :py:class:`~pycvoa.problem.solution.WrongType: The variable is not defined as **VECTOR**.
         :raise :py:class:`~pycvoa.problem.solution.NotInSolutionError: The variable is not in this solution.
         """
-        ctrl_dom.is_defined_as_vector_variable(vector_variable, domain, self.__domain)
-        ctrl_sol.is_assigned_variable(vector_variable, self.__variables)
+        SolDefChk.is_defined_as_vector_variable(vector_variable, domain, self.__domain)
+        AsgChk.is_assigned_variable(vector_variable, self.__variables)
         return len(cast(SolVector, self.__variables.get(vector_variable)))
 
     # ** PRIVATE METHODS **
-
-    def __set_basic(self, basic_variable: str, value: Basic):
-        self.__variables[basic_variable] = value
-
-    def __set_layer(self, layer_variable: str, layer_value: SolLayer):
-        self.__variables[layer_variable] = copy.deepcopy(layer_value)
-
-    def __set_element(self, layer_variable: str, element: str, value: Basic):
-        if layer_variable not in self.__variables.keys():
-            self.__variables[layer_variable] = {element: value}
-        else:
-            layer_value = cast(SolLayer, self.__variables.get(layer_variable))
-            if layer_value is not None:
-                layer_value[element] = value
-
-    def __set_basic_vector(self, vector_variable: str, values: BasicVector):
-        self.__variables[vector_variable] = copy.deepcopy(values)
-
-    def __put_basic(self, basic_vector_variable: str, value: Basic, domain: Domain, index: int | None = None) -> int:
-        if basic_vector_variable not in self.__variables:
-            self.__variables[basic_vector_variable] = [value]
-            r = domain.get_remaining_available_complete_components(basic_vector_variable,
-                                                                   len(cast(BasicVector,
-                                                                            self.__variables[basic_vector_variable])))
-        else:
-            ctrl_sol.vector_insertion_available(basic_vector_variable, domain,
-                                                cast(SolVector, self.__variables[basic_vector_variable]))
-            r = domain.get_remaining_available_complete_components(basic_vector_variable,
-                                                                   len(cast(BasicVector,
-                                                                            self.__variables[basic_vector_variable])))
-            ctrl_sol.vector_adding_available(basic_vector_variable, r)
-            if index is None:
-                cast(BasicVector, self.__variables[basic_vector_variable]).append(value)
-            else:
-                cast(BasicVector, self.__variables[basic_vector_variable]).insert(index, value)
-            r -= 1
-        return r
-
-    def __set_basic_component(self, basic_vector_variable: str, index: int, value: Basic):
-        if basic_vector_variable not in self.__variables.keys():
-            self.__variables[basic_vector_variable] = [value]
-        else:
-            ctrl_sol.is_assigned_component(basic_vector_variable, index,
-                                           len(cast(BasicVector, self.__variables[basic_vector_variable])))
-            cast(BasicVector, self.__variables[basic_vector_variable])[index] = value
-
-    def __set_layer_vector(self, layer_vector_variable: str, values: SolLayerVector):
-        self.__variables[layer_vector_variable] = copy.deepcopy(values)
-
-    def __put_layer(self, layer_vector_variable: str, layer_value: SolLayer,
-                    domain: Domain, index: int | None = None) -> int:
-        if layer_vector_variable not in self.__variables.keys():
-            self.__variables[layer_vector_variable] = [copy.deepcopy(layer_value)]
-            r = domain.get_remaining_available_complete_components(
-                layer_vector_variable,
-                len(cast(SolLayerVector, self.__variables[layer_vector_variable])))
-        else:
-            r = domain.get_remaining_available_complete_components(
-                layer_vector_variable,
-                len(cast(SolLayerVector, self.__variables[layer_vector_variable])))
-            ctrl_sol.vector_adding_available(layer_vector_variable, r)
-            if index is None:
-                cast(SolLayerVector, self.__variables[layer_vector_variable]) \
-                    .append(copy.deepcopy(layer_value))
-            else:
-                cast(SolLayerVector, self.__variables[layer_vector_variable]) \
-                    .insert(index, copy.deepcopy(layer_value))
-            r -= 1
-        return r
-
-    def __set_layer_component(self, layer_vector_variable: str, index: int, layer_values: SolLayer):
-        if layer_vector_variable not in self.__variables.keys():
-            self.__variables[layer_vector_variable] = [copy.deepcopy(layer_values)]
-        else:
-            ctrl_sol.is_assigned_component(layer_vector_variable, index,
-                                           len(cast(SolLayerVector, self.__variables[layer_vector_variable])))
-            cast(SolLayerVector, self.__variables[layer_vector_variable])[index] = copy.deepcopy(layer_values)
-
-    def __put_element(self, layer_vector_variable: str, element: str, value: Basic,
-                      domain: Domain, index: int | None = None) -> Tuple[int, int]:
-        valid_index = 0
-        if layer_vector_variable not in self.__variables.keys():
-            self.__variables[layer_vector_variable] = [{element: value}]
-        else:
-            ctrl_sol.vector_element_adding_available(layer_vector_variable,
-                                                     cast(SolLayerVector, self.__variables[layer_vector_variable]),
-                                                     domain)
-            if index is None:
-                valid_index = -1
-            else:
-                valid_index = index
-
-            if element in cast(SolLayerVector, self.__variables[layer_vector_variable])[valid_index].keys():
-                if index is None:
-                    cast(SolLayerVector, self.__variables[layer_vector_variable]).append({element: value})
-                else:
-                    cast(SolLayerVector, self.__variables[layer_vector_variable]).insert(index, {element: value})
-            else:
-                cast(SolLayerVector, self.__variables[layer_vector_variable])[valid_index][element] = value
-
-        return domain.get_remaining_available_layer_components(
-            layer_vector_variable,
-            len(cast(SolLayerVector, self.__variables[layer_vector_variable])),
-            cast(SolLayerVector, self.__variables[layer_vector_variable])[valid_index])
-
-    def __set_element_of_layer_component(self, layer_vector_variable: str, index: int, element: str, value: Basic):
-        """ It sets an element of a **LAYER** in the **index**-nh position of a **VECTOR** variable.
-
-        :param layer_vector_variable: The name of the variable to set.
-        :param index: The position to set.
-        :param element: The layer element name.
-        :param value: The new value of the layer element.
-        :type layer_vector_variable: str
-        :type index: int
-        :type element: str
-        :type value: int, float, str
-        :raise :py:class:`~pycvoa.problem.solution.NotSpecifiedDomain: The domain is not set.
-        :raise :py:class:`~pycvoa.problem.solution.NotInSolutionError: The variable is not in this solution.
-        :raise :py:class:`~pycvoa.problem.solution.WrongType: The variable is not defined as **VECTOR**.
-        :raise :py:class:`~pycvoa.problem.domain.NotDefinedVariable: The variable is not defined in this domain.
-        :raise :py:class:`~pycvoa.problem.domain.WrongComponentType: The components of the VECTOR variable are not
-        defined as LAYER.
-        :raise :py:class:`~pycvoa.problem.solution.NotDefinedVectorComponentError: The **index**-nh component of the
-        **VECTOR** variable is not available.
-        :raise :py:class:`~pycvoa.problem.solution.WrongValue: The value is not valid.
-        """
-        if layer_vector_variable not in self.__variables.keys():
-            self.__variables[layer_vector_variable] = [{element: value}]
-        else:
-            ctrl_sol.is_assigned_component(layer_vector_variable, index,
-                                           len(cast(SolLayerVector, self.__variables[layer_vector_variable])))
-            cast(SolLayerVector, self.__variables[layer_vector_variable])[index][element] = value
-
-    def __get_basic_value(self, basic_variable: str) -> Basic:
-        return cast(Basic, self.__variables.get(basic_variable))
-
-    def __get_layer_value(self, layer_variable: str) -> SolLayer:
-        return cast(SolLayer, self.__variables.get(layer_variable))
-
-    def __get_element_value(self, layer_variable: str, element: str) -> Basic:
-        return cast(Basic, cast(SolLayer, self.__variables.get(layer_variable)).get(element))
-
-    def __get_basic_vector(self, basic_vector_variable: str) -> SolVector:
-        return cast(SolVector, self.__variables.get(basic_vector_variable))
-
-    def __get_basic_component_value(self, basic_vector_variable: str, index: int) -> Basic:
-        return cast(Basic, cast(SolVector, self.__variables.get(basic_vector_variable))[index])
-
-    def __get_layer_vector(self, layer_vector_variable: str) -> SolLayerVector:
-        return cast(SolLayerVector, self.__variables.get(layer_vector_variable))
-
-    def __get_layer_component(self, layer_vector_variable: str, index: int) -> SolLayer:
-        return cast(SolLayer, cast(SolVector, self.__variables.get(layer_vector_variable))[index])
-
-    def __get_layer_component_element(self, layer_vector_variable: str, index: int, element: str) -> Basic:
-        return cast(SolLayerVector, self.__variables[layer_vector_variable])[index][element]
 
     # ** TO STRING **
 
@@ -1015,3 +861,183 @@ class Solution:
         fitness value of **B**. It is necessary for set structure management.
         """
         return self.fitness >= other.fitness
+
+
+@final
+class _Internals:
+    @staticmethod
+    def set_basic(sol: SolStructure, basic_variable: str, value: Basic):
+        sol[basic_variable] = value
+
+    @staticmethod
+    def set_layer(sol: SolStructure, layer_variable: str, layer_value: SolLayer):
+        sol[layer_variable] = copy.deepcopy(layer_value)
+
+    @staticmethod
+    def set_element(sol: SolStructure, layer_variable: str, element: str, value: Basic):
+        if layer_variable not in sol.keys():
+            sol[layer_variable] = {element: value}
+        else:
+            layer_value = cast(SolLayer, sol.get(layer_variable))
+            if layer_value is not None:
+                layer_value[element] = value
+
+    @staticmethod
+    def set_basic_vector(sol: SolStructure, vector_variable: str, values: BasicVector):
+        sol[vector_variable] = copy.deepcopy(values)
+
+    @staticmethod
+    def put_basic(sol: SolStructure, basic_vector_variable: str, value: Basic, domain: Domain,
+                  index: int | None = None) -> int:
+        if basic_vector_variable not in sol:
+            sol[basic_vector_variable] = cast(BasicVector, [value])
+            r = domain.get_remaining_available_complete_components(basic_vector_variable,
+                                                                   len(cast(BasicVector,
+                                                                            sol[basic_vector_variable])))
+        else:
+            ModChk.vector_insertion_available(basic_vector_variable, domain,
+                                              cast(SolVector, sol[basic_vector_variable]))
+            r = domain.get_remaining_available_complete_components(basic_vector_variable,
+                                                                   len(cast(BasicVector,
+                                                                            sol[basic_vector_variable])))
+            ModChk.vector_adding_available(basic_vector_variable, r)
+            if index is None:
+                cast(List, sol[basic_vector_variable]).append(value)
+            else:
+                cast(List, sol[basic_vector_variable]).insert(index, value)
+            r -= 1
+        return r
+
+    @staticmethod
+    def set_basic_component(sol: SolStructure, basic_vector_variable: str, index: int, value: Basic):
+        if basic_vector_variable not in sol.keys():
+            sol[basic_vector_variable] = cast(BasicVector, [value])
+        else:
+            AsgChk.is_assigned_component(basic_vector_variable, index,
+                                         len(cast(BasicVector, sol[basic_vector_variable])))
+            cast(List, sol[basic_vector_variable])[index] = value
+
+    @staticmethod
+    def set_layer_vector(sol: SolStructure, layer_vector_variable: str, values: SolLayerVector):
+        sol[layer_vector_variable] = copy.deepcopy(values)
+
+    @staticmethod
+    def put_layer(sol: SolStructure, layer_vector_variable: str, layer_value: SolLayer,
+                  domain: Domain, index: int | None = None) -> int:
+        if layer_vector_variable not in sol.keys():
+            sol[layer_vector_variable] = [copy.deepcopy(layer_value)]
+            r = domain.get_remaining_available_complete_components(
+                layer_vector_variable,
+                len(cast(SolLayerVector, sol[layer_vector_variable])))
+        else:
+            r = domain.get_remaining_available_complete_components(
+                layer_vector_variable,
+                len(cast(SolLayerVector, sol[layer_vector_variable])))
+            ModChk.vector_adding_available(layer_vector_variable, r)
+            if index is None:
+                cast(SolLayerVector, sol[layer_vector_variable]) \
+                    .append(copy.deepcopy(layer_value))
+            else:
+                cast(SolLayerVector, sol[layer_vector_variable]) \
+                    .insert(index, copy.deepcopy(layer_value))
+            r -= 1
+        return r
+
+    @staticmethod
+    def set_layer_component(sol: SolStructure, layer_vector_variable: str, index: int, layer_values: SolLayer):
+        if layer_vector_variable not in sol.keys():
+            sol[layer_vector_variable] = [copy.deepcopy(layer_values)]
+        else:
+            AsgChk.is_assigned_component(layer_vector_variable, index,
+                                         len(cast(SolLayerVector, sol[layer_vector_variable])))
+            cast(SolLayerVector, sol[layer_vector_variable])[index] = copy.deepcopy(layer_values)
+
+    @staticmethod
+    def put_element(sol: SolStructure, layer_vector_variable: str, element: str, value: Basic,
+                    domain: Domain, index: int | None = None) -> Tuple[int, int]:
+        valid_index = 0
+        if layer_vector_variable not in sol.keys():
+            sol[layer_vector_variable] = [{element: value}]
+        else:
+            ModChk.vector_element_adding_available(layer_vector_variable,
+                                                   cast(SolLayerVector, sol[layer_vector_variable]),
+                                                   domain)
+            if index is None:
+                valid_index = -1
+            else:
+                valid_index = index
+
+            if element in cast(SolLayerVector, sol[layer_vector_variable])[valid_index].keys():
+                if index is None:
+                    cast(SolLayerVector, sol[layer_vector_variable]).append({element: value})
+                else:
+                    cast(SolLayerVector, sol[layer_vector_variable]).insert(index, {element: value})
+            else:
+                cast(SolLayerVector, sol[layer_vector_variable])[valid_index][element] = value
+
+        return domain.get_remaining_available_layer_components(
+            layer_vector_variable,
+            len(cast(SolLayerVector, sol[layer_vector_variable])),
+            cast(SolLayerVector, sol[layer_vector_variable])[valid_index])
+
+    @staticmethod
+    def set_element_of_layer_component(sol: SolStructure, layer_vector_variable: str, index: int, element: str,
+                                       value: Basic):
+        """ It sets an element of a **LAYER** in the **index**-nh position of a **VECTOR** variable.
+
+        :param layer_vector_variable: The name of the variable to set.
+        :param index: The position to set.
+        :param element: The layer element name.
+        :param value: The new value of the layer element.
+        :type layer_vector_variable: str
+        :type index: int
+        :type element: str
+        :type value: int, float, str
+        :raise :py:class:`~pycvoa.problem.solution.NotSpecifiedDomain: The domain is not set.
+        :raise :py:class:`~pycvoa.problem.solution.NotInSolutionError: The variable is not in this solution.
+        :raise :py:class:`~pycvoa.problem.solution.WrongType: The variable is not defined as **VECTOR**.
+        :raise :py:class:`~pycvoa.problem.domain.NotDefinedVariable: The variable is not defined in this domain.
+        :raise :py:class:`~pycvoa.problem.domain.WrongComponentType: The components of the VECTOR variable are not
+        defined as LAYER.
+        :raise :py:class:`~pycvoa.problem.solution.NotDefinedVectorComponentError: The **index**-nh component of the
+        **VECTOR** variable is not available.
+        :raise :py:class:`~pycvoa.problem.solution.WrongValue: The value is not valid.
+        """
+        if layer_vector_variable not in sol.keys():
+            sol[layer_vector_variable] = [{element: value}]
+        else:
+            AsgChk.is_assigned_component(layer_vector_variable, index,
+                                         len(cast(SolLayerVector, sol[layer_vector_variable])))
+            cast(SolLayerVector, sol[layer_vector_variable])[index][element] = value
+
+    @staticmethod
+    def get_basic_value(sol: SolStructure, basic_variable: str) -> Basic:
+        return cast(Basic, sol.get(basic_variable))
+
+    @staticmethod
+    def get_layer_value(sol: SolStructure, layer_variable: str) -> SolLayer:
+        return cast(SolLayer, sol.get(layer_variable))
+
+    @staticmethod
+    def get_element_value(sol: SolStructure, layer_variable: str, element: str) -> Basic:
+        return cast(Basic, cast(SolLayer, sol.get(layer_variable)).get(element))
+
+    @staticmethod
+    def get_basic_vector(sol: SolStructure, basic_vector_variable: str) -> SolVector:
+        return cast(SolVector, sol.get(basic_vector_variable))
+
+    @staticmethod
+    def get_basic_component_value(sol: SolStructure, basic_vector_variable: str, index: int) -> Basic:
+        return cast(Basic, cast(SolVector, sol.get(basic_vector_variable))[index])
+
+    @staticmethod
+    def get_layer_vector(sol: SolStructure, layer_vector_variable: str) -> SolLayerVector:
+        return cast(SolLayerVector, sol.get(layer_vector_variable))
+
+    @staticmethod
+    def get_layer_component(sol: SolStructure, layer_vector_variable: str, index: int) -> SolLayer:
+        return cast(SolLayer, cast(SolVector, sol.get(layer_vector_variable))[index])
+
+    @staticmethod
+    def get_layer_component_element(sol: SolStructure, layer_vector_variable: str, index: int, element: str) -> Basic:
+        return cast(SolLayerVector, sol[layer_vector_variable])[index][element]

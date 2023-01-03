@@ -34,7 +34,8 @@ DomInput: TypeAlias = Union[Basic, DomLayer, DomVector]
 SolLayer: TypeAlias = Dict[str, Basic]
 SolLayerVector: TypeAlias = List[SolLayer]
 SolVector: TypeAlias = Union[BasicVector, SolLayerVector]
-Value: TypeAlias = Union[Basic, SolLayer, SolVector]
+InputValue: TypeAlias = Union[Basic, SolLayer, SolVector]
+OutputValue: TypeAlias = Union[None, Basic, SolLayer, SolVector]
 
 # PYCVOA GLOBAL
 Layer: TypeAlias = Union[DomLayer, SolLayer]
@@ -42,7 +43,7 @@ LayerVector: TypeAlias = Union[DomLayerVector, SolLayerVector]
 Vector: TypeAlias = Union[DomVector, SolVector]
 
 # STRUCTURES
-SolStructure: TypeAlias = Dict[str, Value]
+SolStructure: TypeAlias = Dict[str, InputValue]
 IntegerDef: TypeAlias = Tuple[INTEGER_TYPE, int, int, int]
 RealDef: TypeAlias = Tuple[REAL_TYPE, float, float, float]
 CategoricalDef: TypeAlias = Tuple[CATEGORICAL_TYPE, Categories]

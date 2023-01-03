@@ -265,6 +265,7 @@ class CVOA:
         # must be obtained by the get_best_solution method.
         return self.__bestStrainIndividual
 
+
     def __propagate_disease(self):
         """ It spreads the disease through the individuals of the population.
         """
