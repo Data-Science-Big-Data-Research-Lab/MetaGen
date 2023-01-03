@@ -1125,7 +1125,7 @@ class Domain:
                 if case == "a":  # BASIC-VECTOR variable, BASIC value, NONE element
                     r = _Internals.chk_bsc_val(self.__definitions, variable, cast(Basic, values), "b")
                 elif case == "b":  # BASIC-VECTOR variable, BASIC-VECTOR value, NONE element
-                    valid_values = cast(VectorInput, values)
+                    valid_values = cast(DomVector, values)
                     VecDef.check_vector_values_size(variable, vector_def, valid_values)
                     r = _Internals.chk_bvc_val(self.__definitions, variable, cast(BasicVector, values))
 
