@@ -77,6 +77,14 @@ def build_random_solution(domain: Domain, fitness_function: Callable[[Solution],
     return new_solution
 
 
+def alter_potential_solution(solution: Solution, domain: Domain):
+    variables = domain.get_variable_list()
+    alterations_number = random.randint(1, len(variables))
+    altered_variables = set(random.sample(variables, alterations_number))
+    for variable in altered_variables:
+        alter_solution(solution, variable, domain.get_variable_definition(variable))
+
+
 def alter_solution(solution: Solution, variable: str, definition: VarDefinition):
     """ It yields a change into a solution variable value.
 
@@ -235,9 +243,10 @@ def alter_vector_variable(solution: Solution, variable: str, definition: VectorD
                     ly_el_num = cast(NumericalDef, layer_element_definition)
                     solution.set_element_of_layer_component(variable, i, element_name,
                                                             modify_number_from_interval_random_way(
-                                                                cast(NumericalValue, solution.get_layer_component_element(
-                                                                    variable, i,
-                                                                    element_name)),
+                                                                cast(NumericalValue,
+                                                                     solution.get_layer_component_element(
+                                                                         variable, i,
+                                                                         element_name)),
                                                                 ly_el_num[1], ly_el_num[2], ly_el_num[3]))
 
                 # If that element is a categorical one modify its value with a new label randomly selected
