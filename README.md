@@ -1,4 +1,4 @@
-![](https://img.shields.io/badge/python-3.12-orange) 
+![https://pypi.org/project/pymetagen-datalabupo/](https://img.shields.io/badge/python-3.12-orange) 
 # Metagen 
 
 ## Introduction
@@ -21,19 +21,19 @@ For the instalation, the easiest way is to use pip:
 
 ## Tutorial
 
-In orfer to work metagen we first need to import the [Domain]() definition and an available [metaheuristic]().  
+In orfer to work metagen we first need to import the [Domain](https://pymetagen.readthedocs.io/en/latest/domain/domain.html#metagen.framework.Domain) definition and an available [metaheuristic](https://pymetagen.readthedocs.io/en/latest/metaheuristics/index.html).  
 
     from metagen.framework import Domain, Solution
     from metagen.metaheuristics import RandomSearch
 
 Every problem in metagen is defined by two elements: a **domain** and a **fitness**.
 
-The **domain** of the problem is constructed by using the [Domain]() imported previously . In this case we defined a simple domain with one integer variable in range [-10, 10].
+The **domain** of the problem is constructed by using the [Domain](https://pymetagen.readthedocs.io/en/latest/domain/domain.html#metagen.framework.Domain) imported previously . In this case we defined a simple domain with one integer variable in range [-10, 10].
 
     domain: Domain = Domain()
     domain.define_integer("x", -10, 10)
 
-The fitness is a callable which receives a [Solution]() as parameter and returns a float value.
+The fitness is a callable which receives a [Solution](https://pymetagen.readthedocs.io/en/latest/solution/solution.html) as parameter and returns a float value.
 
     def p1_fitness(solution: Solution) -> float:
         x = solution["x"] # The variable represents a potential solution instance which can be used as an map returning the builtin value.
@@ -55,7 +55,7 @@ For testing the repository you just need to execute the following command:
 
 ## API reference
 
-The official documentation is available in: https://metagen.readthedocs.com.
+The official documentation is available in: https://pymetagen.readthedocs.io.
 
 ## References
 
