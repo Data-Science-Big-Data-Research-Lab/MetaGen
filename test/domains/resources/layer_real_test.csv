@@ -1,0 +1,9 @@
+ID#,variable,layer_variable,minimum,maximum,step
+1,R,LV,0,100,
+2,R,LV,-100,100,
+3,R,LV,-99999999999999,99999999999999,
+4,R,LV,0,1,
+5,R,LV,-1,0,
+6,R,LV,-10,10,2
+7,R,LV,-12,12,3
+8,R,LV,-12,12,4
