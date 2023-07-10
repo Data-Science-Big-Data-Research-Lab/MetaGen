@@ -1,0 +1,7 @@
+*.pyc
+.vscode
+.idea
+docs/intro.rst
+build/
+src/MetaGen_datalabupo.egg-info/
+.idea/
