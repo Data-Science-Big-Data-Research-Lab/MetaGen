@@ -19,8 +19,8 @@ import sys
 
 print(sys.version)
 project = 'MetaGen'
-copyright = '2022, David Gutiérrez Avilés, José Francisco Torres, Manuel Jesús Jiménez-Navarro, Gualberto Asencio-Cortés, Alicia Troncoso and Francisco Martínez-Álvarez'
-author = 'David Gutiérrez Avilés, José Francisco Torres, Manuel Jesús Jiménez-Navarro, Gualberto Asencio-Cortés, Alicia Troncoso and Francisco Martínez-Álvarez'
+copyright = '2023, David Gutiérrez Avilés, José Francisco Torres, Manuel Jesús Jiménez-Navarro, and Francisco Martínez-Álvarez'
+author = 'David Gutiérrez Avilés, José Francisco Torres, Manuel Jesús Jiménez-Navarro, and Francisco Martínez-Álvarez'
 
 # The full version, including alpha/beta/rc tags
 release = '1.0.0'
