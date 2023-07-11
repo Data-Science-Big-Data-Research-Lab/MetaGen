@@ -7,7 +7,7 @@ using pip:
 
 .. code-block:: console
 
-   (.venv) $ pip install metagen
+   (.venv) $ pip install metagen-datalabupo==0.0.3
 
 .. toctree::
 
