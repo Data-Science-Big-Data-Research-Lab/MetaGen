@@ -12,7 +12,7 @@ Link to the original paper: [Metagen](https://example.com)
 
 ## Instalation
 
-Metagen only requires python (>=3.12) as the library has been built completely on python.
+Metagen only requires python (>=3.10) as the library has been built completely on python.
 
 For the instalation, the easiest way is to use pip:
 
