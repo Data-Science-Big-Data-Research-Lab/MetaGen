@@ -15,6 +15,7 @@ from metagen.framework.domain import (BaseDefinition, CategoricalDefinition,
 class GAStructure(types.Structure):
     """
     Represents the custom Structure type for the Genetic Algorithm (GA).
+    
     Methods:
         mutate(): Modify the Structure by performing an action selected randomly from three options. Inherited from :py:class:`~metagen.framework.solution.Structure`.
         _resize(): Resizes the vector based on the definition provided at initialization. Inherited from :py:class:`~metagen.framework.solution.Structure`.
