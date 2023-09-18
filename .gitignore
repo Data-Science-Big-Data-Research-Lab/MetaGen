@@ -6,3 +6,4 @@ build/
 src/MetaGen_datalabupo.egg-info/
 .idea/
 dist/
+src/pymetagen_datalabupo.egg-info/
