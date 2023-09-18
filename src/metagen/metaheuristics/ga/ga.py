@@ -9,6 +9,7 @@ from metagen.framework.solution.devsolution import Solution
 class GA:
     """
     Genetic Algorithm (GA) class for optimization problems.
+    
     :param domain: The domain representing the problem space.
     :type domain: Domain
     :param fitness_func: The fitness function used to evaluate solutions.
