@@ -16,7 +16,7 @@ Metagen only requires python (>=3.12) as the library has been built completely o
 
 For the instalation, the easiest way is to use pip:
 
-    pip install metagen
+    pip install pymetagen-datalabupo
 
 
 ## Tutorial
