@@ -4,7 +4,7 @@
 ## Introduction
 Metagen is a simple python library for solving optimization problems by metaheuristics algorithms. The project provides a set of already defined metaheristics and provide the basic tools to allow the user redefine/build its own algorithms in a simple way.
 
-This project is currently maintained by the David Gutierrez Áviles and Manuel Jesús Jiménez Navarro.
+This project is currently maintained by David Gutierrez Áviles and Manuel Jesús Jiménez Navarro.
 
 https://datalab.upo.es/
 
