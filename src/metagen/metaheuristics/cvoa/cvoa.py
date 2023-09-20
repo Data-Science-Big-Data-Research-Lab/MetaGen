@@ -14,7 +14,9 @@ from metagen.framework.solution.bounds import SolutionClass
 
 
 class CVOA:
-    """ This class implements the *CVOA* algorithm. It uses the :py:class:`~metagen.framework.Solution` class as an
+    """ 
+    
+    This class implements the *CVOA* algorithm. It uses the :py:class:`~metagen.framework.Solution` class as an
     abstraction of an individual for the meta-heuristic.
 
     It solves an optimization problem defined by a :py:class:`~metagen.framework.Domain` object and an
@@ -35,7 +37,7 @@ class CVOA:
     :param spreading_rate: The spreading rate, defaults to 6
     :param min_super_spreading_rate: The minimum super spreading rate, defaults to 6
     :param max_super_spreading_rate: The maximum super spreading rate, defaults to 15
-    :param social_distancing: , defaults to 10
+    :param social_distancing: The distancing stablished between the individuals, defaults to 10
     :param p_isolation: The probability of an individual being isolated, defaults to 0.7
     :param p_travel: The probability that an individual will travel, defaults to 0.1
     :param p_re_infection: The probability of an individual being re-infected, defaults to 0.0014
@@ -54,6 +56,35 @@ class CVOA:
     :type p_superspreader: float
     :type p_die: float
     :type verbose: bool
+
+
+    **Code example**
+
+    .. code-block:: python
+
+        from metagen.framework import Domain, Solution
+        from metagen.metaheuristics import CVOA, cvoa_launcher
+        domain = Domain()
+        multithread = True
+
+        domain.defineInteger(0, 1)
+
+        fitness_function = ...
+
+        if multithread: # For multiple thread excecution
+            
+            CVOA.initialize_pandemic(domain, fitness_function)
+            strain1 = CVOA("Strain1", pandemic_duration=100)
+            strain2 = CVOA("Strain2",  pandemic_duration=100)
+            ...
+
+            strains = [strain1, strain2, ...]
+            optimal_solution = cvoa_launcher(strains)
+        else: # For individual thread excecution
+
+            CVOA.initialize_pandemic(domain, fitness_function)
+            search = CVOA(pandemic_duration=100) 
+            optimal_solution = search.run()            
     """
 
     # ** Global properties to all strains for multi-spreading (multi-threading) execution
@@ -76,7 +107,7 @@ class CVOA:
     # If true show log messages.
     __verbosity: Callable[[str], None] | None = None
 
-    def __init__(self, strain_id, pandemic_duration=10, spreading_rate=5, min_super_spreading_rate=6,
+    def __init__(self, strain_id="Strain 1", pandemic_duration=10, spreading_rate=5, min_super_spreading_rate=6,
                  max_super_spreading_rate=15, social_distancing=7, p_isolation=0.5, p_travel=0.1,
                  p_re_infection=0.001, p_superspreader=0.1, p_die=0.05, verbose=True):
         """ The constructor of the :py:class:`~metagen.metaheuristics.CVOA` class. It set the specific properties
@@ -193,7 +224,7 @@ class CVOA:
         """
         return self.__strainID
 
-    def cvoa(self):
+    def run(self):
         """ This function runs the **CVOA** algorithm. Before run the algorithm, two taks must be accomplished:
 
         #. Initialize the pandemic (:py:meth:`~metagen.metaheuristics.CVOA.initialize_pandemic` method)
@@ -640,7 +671,7 @@ def cvoa_launcher(strains, verbose=True):
 
     t1 = time()
     with ThreadPoolExecutor(max_workers=len(strains)) as executor:
-        futures = {strain.get_strain_id(): executor.submit(strain.cvoa)
+        futures = {strain.get_strain_id(): executor.submit(strain.run)
                    for strain in strains}
     t2 = time()
 
