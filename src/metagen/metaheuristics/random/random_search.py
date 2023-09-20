@@ -6,6 +6,38 @@ from metagen.framework import Domain, Solution
 
 class RandomSearch:
 
+    """
+    RandomSearch is a class for performing a random search optimization algorithm.
+
+    It generates and evaluates random solutions in a search space to find an optimal solution.
+
+    :param domain: The search domain that defines the solution space.
+    :type domain: Domain
+    :param fitness: The fitness function used to evaluate solutions.
+    :type fitness: Callable[[Solution], float]
+    :param search_space_size: The size of the search space. Default is 30.
+    :type search_space_size: int, optional
+    :param iterations: The number of optimization iterations. Default is 20.
+    :type iterations: int, optional
+
+    **Code example**
+
+    .. code-block:: python
+
+        from metagen.framework import Domain
+        from metagen.metaheuristics import RandomSearch
+        
+        domain = Domain()
+
+        domain.defineInteger(0, 1)
+
+        fitness_function = ...
+
+        search = RandomSearch(domain, fitness_function, search_space_size=50, iterations=100)
+        optimal_solution = search.run()
+
+    """
+
     def __init__(self, domain: Domain, fitness: Callable[[Solution], float], search_space_size: int = 30,
                  iterations: int = 20) -> None:
 
@@ -15,6 +47,14 @@ class RandomSearch:
         self.iterations = iterations
 
     def run(self) -> Solution:
+        """
+        Run the random search optimization algorithm.
+
+        This method generates and evaluates random solutions in the search space to find an optimal solution.
+
+        :return: The optimal solution found.
+        :rtype: Solution
+        """
 
         potential_solutions: List[Solution] = list()
         solution_type: type[Solution] = self.domain.get_connector().get_type(
