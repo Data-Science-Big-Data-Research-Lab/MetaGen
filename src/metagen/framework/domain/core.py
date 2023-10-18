@@ -37,7 +37,7 @@ class Base(ABC):
         """
         pass
 
-    def get_type(self) -> METAGEN_TYPE:  # TODO: Revisar esto
+    def get_type(self) -> METAGEN_TYPE:
         """
         Return the internal type of the definition which can be one of: I, R, C, D or S.
         """
@@ -256,9 +256,6 @@ class CategoricalDefinition(Base):
         return "[" + super().get_type() + "] " + "{Values = " + str(self.__categories) + "}"
 
 
-# TODO: Este nombre me lia porque al ponerle Base parece que es padre de todas las definiciones. Mejor poner Definition.
-
-
 class BaseDefinition(Base):
     """
     The BaseDefinition class represents a definition of a set of variables.
@@ -315,7 +312,6 @@ class BaseDefinition(Base):
             attr[k] = v.get_attributes()
         return DF, attr
 
-    # CREATE, UPDATE
     def define(self, name: str, definition: Base):
         """
         Defines a new variable and its definition.
@@ -327,7 +323,6 @@ class BaseDefinition(Base):
         self.__var_list.append(name)
         self.__value[name] = definition
 
-    # DELETE
     def delete(self, name: str):
         """
         Deletes a variable from the current definition.
@@ -368,7 +363,6 @@ class BaseDefinition(Base):
         """
         return self.__value[name].check_value(value)
 
-    # TODO: Cambiar el nombre si puede ser, no se entiende bien de primeras. Añadir que name no sea nulo?
     def is_variable(self, name: str) -> bool:
         """
         Check if a variable with the given name exists in the definition.
@@ -426,9 +420,6 @@ class BaseDefinition(Base):
         return res
 
 
-# TODO: Esto creo que no se usa
-
-
 class Definition(BaseDefinition):
     """
     A Definition is a named collection of variables with their respective definitions.
@@ -479,8 +470,6 @@ class BaseStructureDefinition(ABC):
 
     :param base: An instance of a base type.
     """
-
-    # TODO: Si las clases hijas van a tener contructor, pon este codigo en estas. Así no se puede instanciar una clase abstracta.
 
     def __init__(self, base: Base | None):
         self.__base: Base | None = base

@@ -9,7 +9,6 @@ from metagen.framework.domain.bounds import BaseDefinitionClass, IntegerDefiniti
 from metagen.framework.domain.preconditions import Messages
 
 
-# TODO: Creo que es mejor meter estas funciones dentro de Domain.
 def _get_base_type(core: BaseDefinition, var: str | None, remember: bool = False) -> Base | None:
     res: Base | None = None
     if var is not None:
@@ -26,9 +25,6 @@ def _check_base_type(core: BaseDefinition, var: str, remember: bool = False) -> 
     if res is None:
         raise ValueError(Messages.definition(var, "d_n"))
     return cast(Base, res)
-
-# TODO: Tampoco tengo claro que estas comprobaciones sean necesarias. Alguna vez va a devolver el core algo diferente a un BaseDefinition?
-
 
 def _get_group_definition(name: str, variable: Base) -> BaseDefinition:
     if not isinstance(variable, BaseDefinition):
@@ -123,7 +119,6 @@ class Domain:
 
         self._core.define(name, base_definition())
 
-    # TODO: Podemos ahorrarnos esto si añadimos el grupo como parámetro opcional en Integer, Real...
     def define_integer_in_group(self, group: str, name: str, min_value: int, max_value: int,
                                 step: int | None = None):
         """ It defines an **INTEGER** variable in an already defined group, receiving a name as its identifier, the minimum and maximum values that it will
@@ -196,7 +191,6 @@ class Domain:
         """
         group_def: BaseDefinition = _get_group_definition(
             group, self._core.get(group))
-        # TODO: Comprobar que var no sea None en todos los casos?
         base_type: Base = _check_base_type(self._core, var, remember)
         group_def.define(var, base_type)
 

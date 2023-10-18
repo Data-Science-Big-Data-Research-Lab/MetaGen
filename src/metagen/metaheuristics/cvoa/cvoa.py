@@ -214,7 +214,7 @@ class CVOA:
         :type verbose: bool
         """
         CVOA.__verbosity = \
-            print if verbose else lambda *a, **k: None  # Cabrón esto hay que pasarlo al paquete logging o algo así
+            print if verbose else lambda *a, **k: None 
 
     def get_strain_id(self):
         """ It returns the identification of the strain.
@@ -285,14 +285,6 @@ class CVOA:
                 CVOA.__verbosity(
                     "No new infected individuals in " + self.__strainID)
 
-            # Legacy:
-            # elif self.__bestSolutionStrain.fitness == 0.0:
-            #     # Stop if best known fitness is found ( or fitness satisfying your requirements)
-            #     CVOA.__lock.acquire()
-            #     CVOA.__bestSolutionFound = True
-            #     CVOA.__lock.release()
-            #     CVOA.__verbose print("Best individual (by fitness) found by " + self.__strainID)
-
             # Update the elapsed pandemic time.
             self.__time += 1
 
@@ -340,7 +332,6 @@ class CVOA:
             if random.random() < self.__P_TRAVEL:
                 travel_distance = random.randint(
                     0, len(CVOA.__problemDefinition.get_core().variable_list()))
-                # travel_distance = randint(1, ceil(len(CVOA.__individualDefinition.keys())*self.__P_TRAVEL))
 
             # ** 3. Infect the new individuals. **
             # For each n_infected new individuals:
@@ -418,21 +409,9 @@ class CVOA:
         :returns: The newly infected individual.
         :rtype: :py:class:`~metagen.framework.Solution`
         """
-        # logging.debug("Infect")
-        # Initially, the infected individual will be a copy of the original one.
-        # definition = CVOA.__problemDefinition.get_definitions()
         infected = copy.deepcopy(individual)
 
-        # TODO: Añadir entrada travel_distance
         infected.mutate(travel_distance)
-
-        # Select a random set of variables that will be altered based on the travel distance.
-        # infected_variables = random.sample(list(definition.keys()), travel_distance)
-        # infected_variables_set = set(infected_variables)
-
-        # For each selected variables, inoculate the disease with the inoculate_individual auxiliary function.
-        # for variable in infected_variables_set:
-        # alter_solution(infected, variable, definition[variable])
 
         # Compute the fitness function of the new individual.
         infected.fitness = CVOA.__fitnessFunction(infected)
