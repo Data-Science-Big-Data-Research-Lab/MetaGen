@@ -105,7 +105,10 @@ class Structure(BaseType):
             self._resize()
             self._alterate()
 
-    def get(self, index=None) -> Any:  # TODO: Documentar esto
+    def get(self, index=None) -> Any:
+        """
+        Obtains the builtin value of the Structure or an specific index builtin value.
+        """
 
         if index is not None:
             return super().get()[index]

@@ -21,7 +21,7 @@ ID#,example,expected_fitness,iterations,seed
 20,simple-1,0.1,4,0
 21,simple-1,0.1,4,1
 22,simple-1,0.1,5,2
-23,simple-1,0.1,5,3
+23,simple-1,0.5,5,3
 24,simple-1,0.1,6,4
 25,simple-2,0.1,4,123
 26,simple-2,0.1,4,0

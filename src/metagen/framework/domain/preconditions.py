@@ -109,7 +109,6 @@ class Preconditions:
         if value <= 0:
             raise ValueError(Messages.step_zero(mode))
 
-    # TODO: Yo lo convertiría a métodos sin crear una clase con un solo método dentro. Definir clases dentro de clases creo que no es lo suyo.
     @final
     class Integer:
         @staticmethod

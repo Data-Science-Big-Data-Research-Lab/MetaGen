@@ -114,7 +114,7 @@ class BaseConnector:
                 solution_type) or isinstance(solution_type, tuple) else solution_type.__class__
 
             if isinstance(solution_type, tuple) or issubclass(solution_type, types.BaseType) or issubclass(
-                    solution_type, types.Solution):  # TODO: Repasar esto
+                    solution_type, types.Solution): 
                 return self._solution_to_domain[solution_type]
             else:
                 raise ValueError(

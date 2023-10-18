@@ -1,4 +1,5 @@
-![https://pypi.org/project/pymetagen-datalabupo/](https://img.shields.io/badge/python-3.12-orange) 
+![https://pypi.org/project/pymetagen-datalabupo/](https://img.shields.io/badge/python->=3.12-orange) ![https://img.shields.io/github/v/release/DataLabUPO/MetaGen](https://img.shields.io/github/v/release/DataLabUPO/MetaGen) [![view - Documentation](https://img.shields.io/badge/view-Documentation-blue)](https://pymetagen.readthedocs.io)
+
 # Metagen 
 
 ## Introduction
