@@ -104,8 +104,7 @@ Finally, the `global_solution` is returned.
 ### See also
 - [Solution API](https://pymetagen.readthedocs.io/en/latest/solution/solution.html)
 - [Domain API](https://pymetagen.readthedocs.io/en/latest/domain/domain.html#metagen.framework.Domain)
-- [Google Colab Notebook of _Implementing Random Search metaheuristic with MetaGen_](https://colab.research.google.com/github/DataLabUPO/MetaGen/blob/master/notebooks/duc_rs.ipynb)
-
+- [Google Colab Notebook of _Implementing Random Search metaheuristic_](https://colab.research.google.com/github/DataLabUPO/MetaGen/blob/master/notebooks/duc_rs.ipynb)
 
 ## How to perform a hyperparameter optimization with **MetaGen**
 
@@ -116,7 +115,7 @@ In order to work metagen we first need to import the [Domain](https://pymetagen.
 
 Every problem in metagen is defined by two elements: a **domain** and a **fitness**.
 
-The **domain** of the problem is constructed by using the [Domain](https://pymetagen.readthedocs.io/en/latest/domain/domain.html#metagen.framework.Domain) imported previously . In this case we defined a simple domain with one integer variable in range [-10, 10].
+The **domain** of the problem is constructed by using the [Domain](https://pymetagen.readthedocs.io/en/latest/domain/domain.html#metagen.framework.Domain) imported previously . In this case we defined a simple domain with one integer variable in range `[-10, 10]`.
 
     domain: Domain = Domain()
     domain.define_integer("x", -10, 10)
@@ -132,11 +131,17 @@ Finally, we only need to instantiate our metaherustic (in this case a simple ran
     random_search: RandomSearch = RandomSearch(domain, fitness)
     solution: Solution = random_search.run()
 
-$f(x)=x+5$ function.
+### See also
+- [Solution API](https://pymetagen.readthedocs.io/en/latest/solution/solution.html)
+- [Domain API](https://pymetagen.readthedocs.io/en/latest/domain/domain.html#metagen.framework.Domain)
+- [Google Colab Notebook of _Optimizing f(x) = x+5_](https://colab.research.google.com/github/DataLabUPO/MetaGen/blob/master/notebooks/duc_rs.ipynb)
 
 ## Resources
 
 - Google Colab Notebooks:
-  - [Implementing Random Search metaheuristic with MetaGen](https://colab.research.google.com/github/DataLabUPO/MetaGen/blob/master/notebooks/duc_rs.ipynb)
-  - [Optimizing $f(x)=x+5$ function](https://colab.research.google.com/github/DataLabUPO/MetaGen/blob/master/notebooks/suc_p1.ipynb)
+  - [Implementing Random Search metaheuristic](https://colab.research.google.com/github/DataLabUPO/MetaGen/blob/master/notebooks/duc_rs.ipynb)
+  - [Optimizing f(x) = x+5](https://colab.research.google.com/github/DataLabUPO/MetaGen/blob/master/notebooks/suc_p1.ipynb)
+  - [Optimizing f(x) = x<sup>2</sup>](https://colab.research.google.com/github/DataLabUPO/MetaGen/blob/master/notebooks/suc_p2.ipynb)
+  - [Optimizing the hyperparameters of a classification model](https://colab.research.google.com/github/DataLabUPO/MetaGen/blob/master/notebooks/suc_p3.ipynb)
+  - [Optimizing a Deep Learning model](https://colab.research.google.com/github/DataLabUPO/MetaGen/blob/master/notebooks/suc_p4.ipynb)
 - [CoronaVirus Optimization Algorithm paper](https://www.liebertpub.com/doi/10.1089/big.2020.0051)
