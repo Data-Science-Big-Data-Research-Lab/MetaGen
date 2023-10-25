@@ -1,28 +1,45 @@
 ![https://pypi.org/project/pymetagen-datalabupo/](https://img.shields.io/badge/python->=3.12-orange) ![https://img.shields.io/github/v/release/DataLabUPO/MetaGen](https://img.shields.io/github/v/release/DataLabUPO/MetaGen) [![view - Documentation](https://img.shields.io/badge/view-Documentation-blue)](https://pymetagen.readthedocs.io)
 
-# Metagen 
+# MetaGen: A framework for metaheuristic development and hyperparameter optimization in machine and deep learning 
 
-## Introduction
-Metagen is a simple python library for solving optimization problems by metaheuristics algorithms. The project provides a set of already defined metaheristics and provide the basic tools to allow the user redefine/build its own algorithms in a simple way.
+Machine and deep learning have transformed the field of computing in recent decades, delivering impressive accuracy results when processing large datasets. However, a common challenge arises when implementing these algorithms: setting the hyperparameters. Many algorithms are sensitive to these adjustments, and the quality of the results heavily depends on the choices made. Metaheuristics are a widely used strategy for finding optimal hyperparameter settings for a specific algorithm.
 
-This project is currently maintained by David Gutierrez Áviles and Manuel Jesús Jiménez Navarro.
+**MetaGen** is a comprehensive and user-friendly metaheuristic development framework that provides tools to define and solve hyperparameter optimization in machine and deep learning. 
 
-https://datalab.upo.es/
-
-Link to the original paper: [Metagen](https://example.com)
-
-## Instalation
-
-Metagen only requires python (>=3.10) as the library has been built completely on python.
+### Instalation 
+**MetaGen** only requires python (>=3.10) as the library has been built completely on Python.
 
 For the instalation, the easiest way is to use pip:
 
     pip install pymetagen-datalabupo
 
+### API reference
 
-## Tutorial
+The official documentation is available in: https://pymetagen.readthedocs.io.
 
-In orfer to work metagen we first need to import the [Domain](https://pymetagen.readthedocs.io/en/latest/domain/domain.html#metagen.framework.Domain) definition and an available [metaheuristic](https://pymetagen.readthedocs.io/en/latest/metaheuristics/index.html).  
+### Development
+
+New contributors from all experience levels are welcomed. To contribute, you can open an issue or sending a pull request.
+
+For testing the repository you just need to execute the following command:
+
+    pytest test
+
+## In this document:
+
+1. [**MetaGen** Features](#metagen-features)
+2. [How to implement a metaheuristic with **MetaGen**](#how-to-implement-a-metaheuristic-with-metagen)
+3. [How to perform a hyperparameter optimization with **MetaGen**](#how-to-perform-a-hyperparameter-optimization-with-metagen)
+4. [Resources](#resources)
+
+
+## **MetaGen** features
+
+## How to implement a metaheuristic with **MetaGen**
+
+## How to perform a hyperparameter optimization with **MetaGen**
+
+In order to work metagen we first need to import the [Domain](https://pymetagen.readthedocs.io/en/latest/domain/domain.html#metagen.framework.Domain) definition and an available [metaheuristic](https://pymetagen.readthedocs.io/en/latest/metaheuristics/index.html).  
 
     from metagen.framework import Domain, Solution
     from metagen.metaheuristics import RandomSearch
@@ -45,19 +62,6 @@ Finally, we only need to instantiate our metaherustic (in this case a simple ran
     random_search: RandomSearch = RandomSearch(domain, fitness)
     solution: Solution = random_search.run()
 
+## Resources
 
-## Development
-
-New contributors from all experience levels are welcomed. To contribute, you can open an issue or sending a pull request.
-
-For testing the repository you just need to execute the following command:
-
-    pytest test
-
-## API reference
-
-The official documentation is available in: https://pymetagen.readthedocs.io.
-
-## References
-
-* cvoa: https://www.liebertpub.com/doi/10.1089/big.2020.0051
+* CoronaVirus Optimization Algorithm paper: https://www.liebertpub.com/doi/10.1089/big.2020.0051
