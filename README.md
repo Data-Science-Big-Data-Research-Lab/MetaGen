@@ -132,6 +132,8 @@ Finally, we only need to instantiate our metaherustic (in this case a simple ran
     random_search: RandomSearch = RandomSearch(domain, fitness)
     solution: Solution = random_search.run()
 
+$f(x)=x+5$ function.
+
 ## Resources
 
 - Google Colab Notebooks:
