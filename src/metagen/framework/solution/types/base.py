@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from metagen.framework.domain import Base
 
 
+
 class BaseType(ABC):
 
     def __init__(self, definition: Base, connector: BaseConnector = None) -> None:
@@ -16,7 +17,7 @@ class BaseType(ABC):
         This class represents an abstraction of the types included in a Solution. Note that the class support a Domain or a Base definition and the type is initialized in the constructor.
 
         Attributes:
-        __definition (Base|Domain): A definition or domain used to define the variable.
+        __definition (Base): A definition or domain used to define the variable.
         value (Any): The value of the variable.
 
         """
@@ -66,6 +67,7 @@ class BaseType(ABC):
         """
         Sets the value of the variable.
         """
+
         self.value = value
 
     def __str__(self):
@@ -73,7 +75,7 @@ class BaseType(ABC):
         Returns a string representation of the value of the variable.
         """
         return str(self.value)
-    
+
     def __repr__(self):
         """
         Returns a string representation of the value of the variable.
@@ -113,7 +115,8 @@ class BaseType(ABC):
 
         new_value = random.uniform(left, right)
         if step_size is not None:
-            new_value = max(min(self._closest_number(new_value, step_size), right), left)
+            new_value = max(min(self._closest_number(
+                new_value, step_size), right), left)
 
         return new_value
 
@@ -202,7 +205,7 @@ class BaseType(ABC):
             The product of the two values.
         """
         return other * self.value
-    
+
     def __pow__(self, other):
         """
         Exponential operation of the value of this `BaseType` object by another object.

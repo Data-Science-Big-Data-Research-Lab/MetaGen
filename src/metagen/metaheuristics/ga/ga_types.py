@@ -52,7 +52,7 @@ class GASolution(Solution):
     Represents a Solution type for the Genetic Algorithm (GA).
 
     Methods:
-        mutate(alterations_number: int = None): Modify a random subset of the solution's variables calling its mutate method. Inherited from :py:class:`~metagen.framework.solution.Structure`.
+        mutate(alterations_number: int = None): Modify a random subset of the solution's variables calling its mutate method. Inherited from :py:class:`~metagen.framework.solution.Solution`.
         crossover(other: GASolution) -> Tuple[GASolution, GASolution]: Performs crossover operation with another GASolution instance.
     """
 

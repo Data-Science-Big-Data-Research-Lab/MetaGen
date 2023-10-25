@@ -55,7 +55,8 @@ class Solution:
         :vartype fitness: float
         """
         self.connector = connector or definition.get_connector()
-        self.__definition: BaseDefinition = definition.get_core() if definition.__class__.__name__ == 'Domain' else definition
+        self.__definition: BaseDefinition = definition.get_core(
+        ) if definition.__class__.__name__ == 'Domain' else definition
 
         self.value: Dict[str, types.BaseType] = {}
         self.fitness: float = sys.float_info.min if best else sys.float_info.max
@@ -97,8 +98,12 @@ class Solution:
         """
 
         if isinstance(value, (int, float, str, list)):
-            base_type_class: type[BaseTypeClass] = self.get_connector().get_type(value)
+            base_type_class: type[BaseTypeClass] = self.get_connector().get_type(
+                value)
             variable_definition: Base = self.get_definition().get(variable)
+
+            variable_definition.check_value(value)
+
             type_value: types.BaseType = base_type_class(
                 variable_definition, self.get_connector())
             type_value.set(value)
@@ -186,7 +191,7 @@ class Solution:
         """
 
         return variable in self.get_variables()
-    
+
     def keys(self) -> KeysView:
         """
         Get the keys of the solution value dict.
@@ -195,7 +200,7 @@ class Solution:
         """
 
         return self.get_variables().keys()
-    
+
     def values(self) -> ValuesView:
         """
         Get the values of the solution value dict.
@@ -283,7 +288,8 @@ class Solution:
 
         solution_definition: type[SolutionClass] = self.get_connector().get_type(
             value)
-        subsolution: Solution = solution_definition(variable_definition, connector=self.get_connector())
+        subsolution: Solution = solution_definition(
+            variable_definition, connector=self.get_connector())
         subsolution.value = {}
 
         for k, v in value.items():
@@ -308,9 +314,11 @@ class Solution:
             :meth:`initialize`
             :meth:`set`
         """
-        type_class: type[BaseTypeClass] = self.get_connector().get_type(definition)
+        type_class: type[BaseTypeClass] = self.get_connector().get_type(
+            definition)
         variable_definition = self.get_definition().get(variable)
-        self.set(variable, type_class(variable_definition, connector=self.get_connector()))
+        self.set(variable, type_class(
+            variable_definition, connector=self.get_connector()))
 
     # ** SET VALUE METHOD
 
@@ -326,7 +334,7 @@ class Solution:
             count += 1
         res += "}"
         return res
-    
+
     def __repr__(self):
         return str(self)
 
