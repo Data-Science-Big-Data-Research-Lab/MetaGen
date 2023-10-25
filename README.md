@@ -35,6 +35,23 @@ For testing the repository you just need to execute the following command:
 
 ## **MetaGen** features
 
+- **Metaheuristic development framework.**   
+It provides convenient solution management for the developer and isolates them from the intricacies of the search space.
+- **Deployment platform for metaheuristic execution.**  
+It offers an effortless problem definition process that doesn't require advanced programming skills.
+- **Standard interface between metaheuristic developers and users.**  
+Both developers and users can "speak the same language" through the **MetaGen** package.
+- **Specialized tools for deep learning hyperparameter tuning.**  
+It provides optimization capabilities not just at the layer level but also at the architecture level.
+- **Dynamic deep learning architecture adjustment.**  
+Users are not restricted to optimizing a fixed architecture (e.g., a fixed number of layers); they can also adjust specific hyperparameters per layer in a variable architecture.
+- **Python type hints annotations.**  
+Implemented using Python type hints annotations, it provides developers and users with an efficient environment for coding, debugging, and maintenance.
+- **Full compatibility with Python machine and deep learning packages**:  
+Thanks to its standard and flexible interface, it is compatible with all Python packages such as `scikit-learn`, `keras`, and `tensorflow`.
+- **RS, GA and CVOA metaheuristic implementations.**  
+It offers tow popular metaheuristic implementations, Random search and Genetic Algorithm optimization. Furthermore, it includes the implementation of CVOA \cite{martinez-cvoa}, a metaheuristic inspired by the SARS-CoV-2 propagation model, the virus responsible for COVID-19. CVOA was initially used to optimize long-short-term memory (LSTM) networks for electricity demand forecasting, but its positive results have inspired its use for other machine and deep learning models.
+
 ## How to implement a metaheuristic with **MetaGen**
 
 The random search algorithm generates a search space with a specific number of potential solutions, then alters these potential solutions a specified number of times. The potential solution with the lowest fitness function value after each iteration is considered the global solution of the random search.
@@ -144,4 +161,4 @@ Finally, we only need to instantiate our metaherustic (in this case a simple ran
   - [Optimizing f(x) = x<sup>2</sup>](https://colab.research.google.com/github/DataLabUPO/MetaGen/blob/master/notebooks/suc_p2.ipynb)
   - [Optimizing the hyperparameters of a classification model](https://colab.research.google.com/github/DataLabUPO/MetaGen/blob/master/notebooks/suc_p3.ipynb)
   - [Optimizing a Deep Learning model](https://colab.research.google.com/github/DataLabUPO/MetaGen/blob/master/notebooks/suc_p4.ipynb)
-- [CoronaVirus Optimization Algorithm paper](https://www.liebertpub.com/doi/10.1089/big.2020.0051)
+- [CVOA (CoronaVirus Optimization Algorithm) paper](https://www.liebertpub.com/doi/10.1089/big.2020.0051)
