@@ -1,12 +1,16 @@
 import random
-from typing import Any, cast
+from typing import Any, cast, TYPE_CHECKING
 
 from metagen.framework.domain.core import (BaseStructureDefinition,
                                            DynamicStructureDefinition,
                                            StaticStructureDefinition)
 from metagen.framework.solution.literals import InputValue, SolVector
+from metagen.framework.solution import Solution
 
 from .base import BaseType
+
+if TYPE_CHECKING:
+    from metagen.framework.solution.bounds import BaseTypeClass
 
 
 class Structure(BaseType):
@@ -15,8 +19,8 @@ class Structure(BaseType):
         """
         The Real class inherits from the BaseType class and represents a Real variable.
 
-        :param definition: An instance of `RealDefinition` class representing the definition of the categorical variable.
-        :type definition: `RealDefinition`
+        :param definition: An instance of `BaseStructureDefinition` class representing the definition of the categorical variable.
+        :type definition: `BaseStructureDefinition`
         """
 
         super(Structure, self).__init__(definition, connector)
@@ -175,7 +179,8 @@ class Structure(BaseType):
         :raises ValueError: If the type of the input value is not supported by the Structure [int, float, str, list, dict, BaseType]. 
         """
         if isinstance(value, int | float | str | list | dict):
-            base_type_class: type[BaseType] = self.get_connector().get_type(value)
+            base_type_class: type[BaseType] = self.get_connector().get_type(
+                value)
             value = base_type_class(self.get_definition(
             ).get_base(), connector=self.get_connector())
         elif BaseType:  # Compatibility with already defined types
@@ -259,6 +264,22 @@ class Structure(BaseType):
         current_values = self.get()
         current_values.append(self._convert(value))
         self.set(current_values)
+
+    def set(self, value: list[BaseType | Any]) -> None:
+
+        base_type_class: type[BaseTypeClass] = self.get_connector().get_type(
+            self.get_definition())
+
+        # Transform the values inside the list if they are a builtin
+        for index in range(len(value)):
+            v = value[index]
+            if not isinstance(v, (BaseType, Solution)):
+                type_value: BaseType | Solution = base_type_class(
+                    self.get_definition().get_base(), self.get_connector())
+                type_value.set(v)
+                value[index] = type_value
+
+        self.value = value
 
     def __str__(self) -> str:
         """
