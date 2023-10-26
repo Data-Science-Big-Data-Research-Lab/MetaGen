@@ -96,7 +96,7 @@ programming skills.
 | User-friendly and accessible to the general public with limited programming skills                                                               |   Yes   |     No     |   No   |    No     |          No          |   No   | No  |  No   |    No     |   No    |   Yes    |
 | Python-type hints implementation to help third-party developers and ease debugging                                                               |   Yes   |     No     |   No   |    No     |          No          |   No   | No  |  No   |    No     |   No    |    No    |
 | Mechanisms to improve metaheuristics execution across distributed systems                                                                        |   No    |    Yes     |  Yes   |    No     |         Yes          |  Yes   | No  |  Yes  |    Yes    |   No    |   Yes    |
-| The package includes visualization tools to analyze the performance of metaheuristics                                                            |   No    |    Yes     |  Yes   |    No     |          No          |   No   | No  |  No   |    Yes    |    1    |    No    |
+| The package includes visualization tools to analyze the performance of metaheuristics                                                            |   No    |    Yes     |  Yes   |    No     |          No          |   No   | No  |  No   |    Yes    |   Yes   |    No    |
 
 ## How to implement a metaheuristic with **MetaGen**
 
