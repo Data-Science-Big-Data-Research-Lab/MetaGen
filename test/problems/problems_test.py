@@ -20,7 +20,6 @@ import warnings
 import numpy as np
 from dispatcher import example_dispatcher
 from pytest_csv_params.decorator import csv_params
-import pytest
 
 warnings.filterwarnings('ignore')
     

@@ -1,0 +1,23 @@
+# CircleCI configuration file
+
+version: 2.1
+
+jobs:
+  run_tests:
+    docker:
+      - image: cimg/python:3.12.0
+    steps:
+      - run:
+          name: Install dependencies
+          command: pip install -r test-requirements.txt
+      - run:
+          name: Install MetaGen
+          command: pip install .
+      - run:
+          name: Run tests
+          command: pytest test/
+
+workflows:
+  test:
+    jobs:
+      - test-linux
