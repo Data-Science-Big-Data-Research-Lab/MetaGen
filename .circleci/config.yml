@@ -6,6 +6,7 @@ jobs:
   run_tests:
     docker:
       - image: cimg/python:3.11.6
+    resource_class: small
     steps:
       - checkout
       - run:

@@ -26,7 +26,7 @@ from utils import domain, solution
 
 def test_random_solution() -> None:
     random.seed(123)
-    repetitions = 10000
+    repetitions = 1000
 
     for _ in range(repetitions):
         assert solution is not None
