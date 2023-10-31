@@ -252,12 +252,12 @@ To conclude, the `regression_domain` and `regression_fitness` elements are passe
 
 Finally, the `regression_solution` is printed.
 
-    print(p3_solution)
+    print(regression_solution)
 
 ### See also
 
 - [Domain API](https://pymetagen.readthedocs.io/en/latest/domain/domain.html#metagen.framework.Domain)
-- [Solution API](ttps://pymetagen.readthedocs.io/en/latest/solution/solution.html)
+- [Solution API](https://pymetagen.readthedocs.io/en/latest/solution/solution.html)
 - [Google Colab Notebook of _Optimizing the hyperparameters of a regression model_](https://colab.research.google.com/github/DataLabUPO/MetaGen/blob/master/notebooks/duc_rs.ipynb)
 
 ## Resources
