@@ -111,10 +111,11 @@ package.
 
 Finally, the `Callable` and `List` classes are imported for typing management, and the `deepcopy` method from the
 standard copy package is used to preserve a consistent copy of the global solution for each iteration
-
-    from copy import deepcopy
-    from typing import Callable, List
-    from metagen.framework import Domain, Solution
+```python
+from copy import deepcopy
+from typing import Callable, List
+from metagen.framework import Domain, Solution
+```
 
 ### Prototype
 
@@ -134,14 +135,16 @@ that optimizes the function.
 
 In order to encapsulate all these characteristics, a `RandomSearch` class is defined.
 
-    class RandomSearch:
+```python
+class RandomSearch:
 
-        def __init__(self, domain: Domain, fitness: Callable[[Solution], float], search_space_size: int = 30, iterations: int = 20) -> None:
+    def __init__(self, domain: Domain, fitness: Callable[[Solution], float], search_space_size: int = 30, iterations: int = 20) -> None:
 
-            self.domain = domain
-            self.fitness = fitness
-            self.search_space_size = search_space_size
-            self.iterations = iterations
+        self.domain = domain
+        self.fitness = fitness
+        self.search_space_size = search_space_size
+        self.iterations = iterations
+```
 
 ### Search space building
 
@@ -159,17 +162,18 @@ of [`Solution`](https://pymetagen.readthedocs.io/en/latest/solution/solution.htm
 the [`Solution`](https://pymetagen.readthedocs.io/en/latest/solution/solution.html) with the minimum function value is
 also kept.
 
-    def run(self) -> Solution:
+```python
+def run(self) -> Solution:
 
-        search_space: List[Solution] = list()
+    search_space: List[Solution] = list()
 
-        for _ in range(0, search_space_size):
-            initial_solution:Solution = Solution()
-            initial_solution.evaluate(self.fitness)
-            search_space.append(initial_solution)
+    for _ in range(0, search_space_size):
+        initial_solution:Solution = Solution()
+        initial_solution.evaluate(self.fitness)
+        search_space.append(initial_solution)
 
-        global_solution: Solution = deepcopy(min(search_space))
-
+    global_solution: Solution = deepcopy(min(search_space))
+```
 ### Altering the search space
 
 The final step involves modifying the potential solutions in the search space over `iteration` iterations.
@@ -188,6 +192,7 @@ copy of the former.
 
 Finally, the `global_solution` is returned.
 
+```python
     for _ in range(0, iterations):
             for ps in search_space:
                 ps.mutate()
@@ -195,13 +200,12 @@ Finally, the `global_solution` is returned.
                 if ps < solution:
                     global_solution = deepcopy(ps)
     return global_solution
-
+```
 ### See also
 
 - [Solution API](https://pymetagen.readthedocs.io/en/latest/solution/solution.html)
 - [Domain API](https://pymetagen.readthedocs.io/en/latest/domain/domain.html#metagen.framework.Domain)
-- [Google Colab Notebook of _Implementing Random Search
-  metaheuristic_](https://colab.research.google.com/github/DataLabUPO/MetaGen/blob/master/notebooks/duc_rs.ipynb)
+- [Google Colab Notebook of _Implementing Random Search metaheuristic_](https://colab.research.google.com/github/DataLabUPO/MetaGen/blob/master/notebooks/duc_rs.ipynb)
 
 ## How to perform a hyperparameter optimization with **MetaGen**
 
@@ -212,48 +216,54 @@ object is constructed by defining a variable for each parameter to optimize.
 ### Defining the Domain.
 
 In this case, three variables are defined: a $REAL$ variable called `alpha`, with values in the range of $[0.0001, 0.001]$, is defined using the `define_real` method, and an $INTEGER$ variable called `iterations`, with values in the range of $[5, 200]$, is defined using the `define_integer` method. Additionally, a $CATEGORICAL$ variable is defined using the `define_categorical` method, with the name `loss` and a list of unique values including `squared_error`, `huber`, and `epsilon_insensitive`.
-    
-    from metagen.framework import Domain
-    regression_domain = Domain()
-    regression_domain.define_real("alpha", 0.0001, 0.001)
-    regression_domain.define_integer("iterations", 5, 200)
-    regression_domain.define_categorical("loss", ["squared_error", "huber", "epsilon_insensitive"])
 
+```python
+from metagen.framework import Domain
+regression_domain = Domain()
+regression_domain.define_real("alpha", 0.0001, 0.001)
+regression_domain.define_integer("iterations", 5, 200)
+regression_domain.define_categorical("loss", ["squared_error", "huber", "epsilon_insensitive"])
+```
 ### Implementing the fitness function
 
 The fitness function must then construct a regression model using the training dataset and the hyperparameters of the potential solution. In this case, the sklearn package is used for the machine learning operations.
 
 A synthetic training dataset with $1000$ instances and $4$ features is generated using the `make_regression` method from the `sklearn.datasets` package, and it is loaded into two variables, the inputs `X` and the expected outputs `y`.
-
-    from sklearn.datasets import make_regression
-    X, y = make_regression(n_samples=1000, n_features=4)
-
+```python
+from sklearn.datasets import make_regression
+X, y = make_regression(n_samples=1000, n_features=4)
+```
 The function `regression_fitness` is defined with a `Solution` object as an input parameter. The values of `loss`, `iterations`, and the hyperparameter `alpha` are obtained through the bracket `Python` operator.
 
 A regression model using stochastic gradient descent is constructed using the `SGDRegressor` class from the `sklearn.linear_model` package and the obtained values. Cross-validation training is performed using the `cross_val_score` function from the `sklearn.model_selection` package by passing the configured model and the training dataset (`X` and `y`). The cross-validation process is set to return the negative value of the mean absolute percentage error (`mape`), which is specified in the scoring argument.
 
 To find the solution with the least error (i.e., the smallest `mape`), the resulting `mape` value must be multiplied by $-1$.
-    
-    from metagen.framework import Solution
-    from sklearn.linear_model import SGDRegressor
-    from sklearn.model_selection import cross_val_score
 
-    def regression_fitness(solution: Solution):
-        loss = solution["loss"] # In this case, we get the builtin by getting the value property.
-        iterations = solution["iterations"]
-        alpha = solution["alpha"] 
-        model = SGDRegressor(loss=loss, alpha=alpha, max_iter=iterations)
-        mape = cross_val_score(model, X, y, scoring="neg_mean_absolute_percentage_error").mean()*-1
-        return mape
+```python
+from metagen.framework import Solution
+from sklearn.linear_model import SGDRegressor
+from sklearn.model_selection import cross_val_score
+
+def regression_fitness(solution: Solution):
+    loss = solution["loss"] # In this case, we get the builtin by getting the value property.
+    iterations = solution["iterations"]
+    alpha = solution["alpha"] 
+    model = SGDRegressor(loss=loss, alpha=alpha, max_iter=iterations)
+    mape = cross_val_score(model, X, y, scoring="neg_mean_absolute_percentage_error").mean()*-1
+    return mape
+```
 
 To conclude, the `regression_domain` and `regression_fitness` elements are passed to the `RandomSearch` metaheuristic, obtaining a hyperparameter solution for this problem by calling the `run` method.
 
-    regression_solution: Solution = RandomSearch(regression_domain, regression_fitness).run()
+```python
+regression_solution: Solution = RandomSearch(regression_domain, regression_fitness).run()
+```
 
 Finally, the `regression_solution` is printed.
 
-    print(regression_solution)
-
+```python
+print(regression_solution)
+```
 ### See also
 
 - [Domain API](https://pymetagen.readthedocs.io/en/latest/domain/domain.html#metagen.framework.Domain)
