@@ -20,4 +20,4 @@ jobs:
 workflows:
   test:
     jobs:
-      - test-linux
+      - run_tests
