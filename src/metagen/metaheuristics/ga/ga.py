@@ -19,7 +19,7 @@ from collections.abc import Callable
 from typing import List
 
 from metagen.framework import Domain
-from ga_types import GASolution
+from .ga_types import GASolution
 
 
 class GA:

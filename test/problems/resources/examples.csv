@@ -5,12 +5,12 @@ ID#,example,expected_fitness,iterations,seed
 4,dummy-1,10,4,2
 5,dummy-1,10,4,3
 6,dummy-1,10,4,4
-7,dummy-2,5,6,123
-8,dummy-2,6,6,0
+7,dummy-2,10,6,123
+8,dummy-2,10,6,0
 9,dummy-2,10,6,1
-10,dummy-2,6,6,2
-11,dummy-2,8,6,3
-12,dummy-2,6,6,4
+10,dummy-2,10,6,2
+11,dummy-2,10,6,3
+12,dummy-2,10,6,4
 13,dummy-3,2.5,4,123
 14,dummy-3,2.5,4,0
 15,dummy-3,2.5,4,1
