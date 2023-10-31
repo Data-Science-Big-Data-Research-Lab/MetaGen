@@ -18,8 +18,25 @@ jobs:
       - run:
           name: Run tests
           command: pytest test/
+          
+  run_tests_win:
+    machine:
+      image: windows-default
+    resource_class: windows.medium
+    steps:
+      - checkout
+      - run:
+          name: Install dependencies
+          command: pip install -r test-requirements.txt
+      - run:
+          name: Install MetaGen
+          command: pip install .
+      - run:
+          name: Run tests
+          command: pytest test/
 
 workflows:
   test:
     jobs:
       - run_tests
+      - run_tests_win
