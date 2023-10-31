@@ -24,11 +24,11 @@ from sklearn.svm import SVC, SVR
 from metagen.framework import Domain
 
 # Synthetic datasets
-X_regression, y_regression = make_regression(n_samples=1000, n_features=4,
+X_regression, y_regression = make_regression(n_samples=100, n_features=4,
                                              n_informative=2,
                                              random_state=0, shuffle=False)
 
-X_classification, y_classification = make_classification(n_samples=1000, n_features=4,
+X_classification, y_classification = make_classification(n_samples=100, n_features=4,
                                                          n_informative=2, n_redundant=0,
                                                          random_state=0, shuffle=False)
 
