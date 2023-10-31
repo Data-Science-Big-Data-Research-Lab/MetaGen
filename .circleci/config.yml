@@ -35,8 +35,25 @@ jobs:
           name: Run tests
           command: pytest test/
 
+  run_tests_mac:
+    macos:
+      xcode: "14.2.0"
+    resource_class: macos.x86.medium.gen1
+    steps:
+      - checkout
+      - run:
+          name: Install dependencies
+          command: pip install -r test-requirements.txt
+      - run:
+          name: Install MetaGen
+          command: pip install .
+      - run:
+          name: Run tests
+          command: pytest test/
+
 workflows:
   test:
     jobs:
       - run_tests
       - run_tests_win
+      - run_tests_mac
