@@ -22,7 +22,6 @@ jobs:
   run_tests_win:
     machine:
       image: windows-default
-    resource_class: windows.medium
     steps:
       - checkout
       - run:
