@@ -19,12 +19,12 @@ from collections.abc import Callable
 from typing import List
 
 from metagen.framework import Domain
-from .ga_types import GASolution
+from ga_types import GASolution
 
 
-class GA:
+class SSGA:
     """
-    Genetic Algorithm (GA) class for optimization problems.
+    Steady State Genetic Algorithm (SSGA) class for optimization problems which is a variant of the Genetic Algorithm (GA) with population replacement.
     
     :param domain: The domain representing the problem space.
     :type domain: Domain
@@ -34,25 +34,25 @@ class GA:
     :type population_size: int, optional
     :param mutation_rate: The probability of mutation for each solution (default is 0.1).
     :type mutation_rate: float, optional
-    :param n_generations: The number of generations to run the algorithm (default is 50).
-    :type n_generations: int, optional
+    :param n_iterations: The number of generations to run the algorithm (default is 50).
+    :type n_iterations: int, optional
 
     :ivar population_size: The size of the population.
     :vartype population_size: int
     :ivar mutation_rate: The probability of mutation for each solution.
     :vartype mutation_rate: float
-    :ivar n_generations: The number of generations to run the algorithm.
-    :vartype n_generations: int
+    :ivar n_iterations: The number of generations to run the algorithm.
+    :vartype n_iterations: int
     :ivar domain: The domain representing the problem space.
     :vartype domain: Domain
     :ivar fitness_func: The fitness function used to evaluate solutions.
     :vartype fitness_func: Callable[[Solution], float]"""
 
-    def __init__(self, domain: Domain, fitness_func: Callable[[GASolution], float], population_size: int = 10, mutation_rate: float = 0.1, n_generations: int = 50) -> None:
+    def __init__(self, domain: Domain, fitness_func: Callable[[GASolution], float], population_size: int = 10, mutation_rate: float = 0.1, n_iterations: int = 50) -> None:
     
         self.population_size: int = population_size
         self.mutation_rate: float = mutation_rate
-        self.n_generations: int = n_generations
+        self.n_iterations: int = n_iterations
         self.domain: Domain = domain
         self.fitness_func: Callable[[GASolution], float] = fitness_func
         self.population: List[GASolution] = []
@@ -72,6 +72,9 @@ class GA:
                 self.domain, connector=self.domain.get_connector())
             solution.evaluate(self.fitness_func)
             self.population.append(solution)
+        
+        self.population = sorted(self.population, key=lambda sol: sol.fitness)
+
 
     def select_parents(self) -> List[GASolution]:
         """
@@ -81,40 +84,60 @@ class GA:
         :rtype: List[Solution]
         """
 
-        parents = sorted(self.population, key=lambda sol: sol.fitness)[:2]
+        parents = self.population[:2]
         return parents
+    
+    def replace_wost(self, child) -> None:
+        """
+        Replace the solution in the population with worst fitness.
+
+        :return: The selected parent solutions.
+        :rtype: List[Solution]
+        """
+
+        worst_solution = self.population[-1]
+
+        if worst_solution.fitness > child.fitness:
+            self.population[-1] = child
+        
+        self.population = sorted(self.population, key=lambda sol: sol.fitness)
 
     def run(self) -> GASolution:
         """
-        Run the genetic algorithm for the specified number of generations and return the best solution found.
+        Run the steady-satate genetic algorithm for the specified number of generations and return the best solution found.
 
         :return: The best solution found by the genetic algorithm.
         :rtype: Solution
         """
 
-        for _ in range(self.n_generations):
+        current_iteration = 0
+
+
+        while current_iteration <= self.n_iterations:
 
             parent1, parent2 = self.select_parents()
 
-            offspring = []
-            for _ in range(self.population_size // 2):
-                child1, child2 = parent1.crossover(parent2)
+            child1, child2 = parent1.crossover(parent2)
 
-                if random.uniform(0, 1) <= self.mutation_rate:
-                    child1.mutate()
+            if random.uniform(0, 1) <= self.mutation_rate:
+                child1.mutate()
 
-                if random.uniform(0, 1) <= self.mutation_rate:
-                    child2.mutate()
+            if random.uniform(0, 1) <= self.mutation_rate:
+                child2.mutate()
+            
+            if child1 == child2:
+                continue
 
-                child1.evaluate(self.fitness_func)
-                child2.evaluate(self.fitness_func)
-                offspring.extend([child1, child2])
+            child1.evaluate(self.fitness_func)
+            child2.evaluate(self.fitness_func)
 
-            self.population = offspring
-
-            best_individual = min(
-                self.population, key=lambda sol: sol.get_fitness())
+            self.replace_wost(child1)
+            self.replace_wost(child2)
+            
+            current_iteration += 1
 
         best_individual = min(
             self.population, key=lambda sol: sol.get_fitness())
+        
         return best_individual
+

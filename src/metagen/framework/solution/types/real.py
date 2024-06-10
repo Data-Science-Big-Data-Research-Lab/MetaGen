@@ -58,11 +58,19 @@ class Real(BaseType):
             random_real = self._closest_number(random_real, step)
         self.set(random_real)
 
-    def mutate(self) -> None:
+    def mutate(self, alteration_limit: float = None) -> None:
         """
         Modify the value of this Real instance to a random value from its definition.
         """
         _, min_value, max_value, step = self.get_definition().get_attributes()
+
+        if alteration_limit != None:
+            limited_min_value = self.get() - alteration_limit
+            limited_max_value = self.get() + alteration_limit
+
+            min_value = limited_min_value if max_value > limited_min_value > min_value else min_value
+            max_value = limited_max_value if max_value > limited_max_value > min_value else max_value
+
         self.set(self._generate_numerical(min_value, max_value, step))
 
     def set(self, value: Any) -> None:

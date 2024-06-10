@@ -34,7 +34,7 @@ from simple_examples import (x_minus_15_raised_to_2_definition,
                              x_minus_15_raised_to_2_fitness,
                              x_raised_to_2_definition, x_raised_to_2_fitness)
 
-from metagen.metaheuristics.cvoa.cvoa import CVOA, cvoa_launcher
+from metagen.metaheuristics.cvoa.cvoa import CVOA
 
 
 def example_dispatcher(example, iterations):

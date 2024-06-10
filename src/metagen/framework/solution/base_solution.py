@@ -19,7 +19,7 @@ from __future__ import annotations
 import random
 import sys
 from collections.abc import Callable
-from typing import TYPE_CHECKING, KeysView, ValuesView, Dict
+from typing import TYPE_CHECKING, KeysView, ValuesView, Dict, Any
 
 import metagen.framework.solution as types
 
@@ -242,7 +242,7 @@ class Solution:
             definition = domain.get(variable)
             self._initialize(variable, definition)
 
-    def mutate(self, alterations_number: int = None):
+    def mutate(self, alterations_number: int = None, alteration_limit: Any = None):
         """
         Modify a random subset of the solution's variables calling its mutate method.
 
@@ -261,7 +261,7 @@ class Solution:
 
         for variable in altered_variables:
             value = self.get(variable)
-            value.mutate()
+            value.mutate(alteration_limit=alteration_limit)
 
             self.set(variable, value)
 
