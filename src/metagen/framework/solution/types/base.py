@@ -61,7 +61,7 @@ class BaseType(ABC):
         pass
 
     @abstractmethod
-    def mutate(self) -> None:
+    def mutate(self, alteration_limit=None) -> None:
         """
         Modifies the value of the variable. Note this class is intended to be overwritten for a specific type.
         """

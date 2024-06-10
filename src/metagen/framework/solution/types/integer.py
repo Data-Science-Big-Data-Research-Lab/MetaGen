@@ -59,12 +59,21 @@ class Integer(BaseType):
         random_integer = random.randrange(min_value, max_value + 1, step)
         self.set(random_integer)
 
-    def mutate(self) -> None:
+    def mutate(self, alteration_limit: int=None) -> None:
         """
         Modify the value of this Integer instance to a random category from its definition.
         """
         _, min_value, max_value, step = self.get_definition().get_attributes()
         step = step or 1
+
+        if alteration_limit != None:
+            limited_min_value = self.get() - alteration_limit
+            limited_max_value = self.get() + alteration_limit
+
+            min_value = limited_min_value if max_value > limited_min_value > min_value else min_value
+            max_value = limited_max_value if max_value > limited_max_value > min_value else max_value
+            
+
         random_integer = random.randrange(min_value, max_value + 1, step)
         self.set(random_integer)
 
