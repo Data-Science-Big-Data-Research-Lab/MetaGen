@@ -15,6 +15,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 from .ga import GA
+from .ssga import SSGA
 from .ga_types import GAConnector, GASolution, GAStructure
 
-__all__ = ["GA", "GASolution", "GAStructure", "GAConnector"]
+__all__ = ["GA", "SSGA", "GASolution", "GAStructure", "GAConnector"]
