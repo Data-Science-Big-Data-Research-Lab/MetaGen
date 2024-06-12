@@ -1,5 +1,5 @@
+setuptools
 scikit-learn==1.2.0
 pluggy==1.0.0
 pytest==7.2.1
 pytest-csv-params==1.0.0
-setuptools
