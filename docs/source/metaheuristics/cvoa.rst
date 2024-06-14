@@ -1,5 +1,5 @@
 CVOA
-======
+========================
 
 .. automodule:: metagen.metaheuristics.cvoa
     :members:
