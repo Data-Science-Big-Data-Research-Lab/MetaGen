@@ -61,6 +61,8 @@ class Real(BaseType):
     def mutate(self, alteration_limit: float = None) -> None:
         """
         Modify the value of this Real instance to a random value from its definition.
+
+        :param alteration_limit: The determined how much the mutation will alter the current value. If not provided, the mutation can replace the current value with any within the domain.
         """
         _, min_value, max_value, step = self.get_definition().get_attributes()
 

@@ -14,13 +14,11 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-import random
-from collections.abc import Callable
-from typing import Any
-from copy import deepcopy
-import math
-
 from metagen.framework import Domain, Solution
+from collections.abc import Callable
+from copy import deepcopy
+import random
+import math
 
 class SA:
     """
@@ -53,7 +51,7 @@ class SA:
     :vartype cooling_rate: float
     """
 
-    def __init__(self, domain: Domain, fitness_func: Callable[[Solution], float], n_iterations: int = 50, alteration_limit: Any =0.1, initial_temp: float = 50.0, cooling_rate: float=0.99) -> None:
+    def __init__(self, domain: Domain, fitness_func: Callable[[Solution], float], n_iterations: int = 50, alteration_limit: float =0.1, initial_temp: float = 50.0, cooling_rate: float=0.99) -> None:
     
         self.domain: Domain = domain
         self.n_iterations: int = n_iterations
