@@ -247,7 +247,7 @@ The SA class is defined, and its constructor (__init__) is provided with the fol
     * domain: Domain: The domain of possible solutions.
     * fitness: Callable[[Solution], float]: A function that calculates the fitness of a solution.
     * search_space_size: int = 30: The number of potential solutions to generate.
-    * iterations: int = 20: The number of search iterations to perform.
+    * n_iterations: int = 20: The number of search iterations to perform.
     * alteration_limit: float = 0.1: The alteration applied to every `Solution` to generate the neighbors.
     * initial_temp: float = 50.0: The initial temperature for the simulated annealing.
     * cooling_rate: float = 0.99: Meassures the speed of the cooling procedure.
@@ -274,67 +274,64 @@ Finally, the run method returns the best solution found after all iterations.
 
 .. code-block:: python
 
-    import random
-    from collections.abc import Callable
-    from typing import Any
-    from copy import deepcopy
-    import math
-
     from metagen.framework import Domain, Solution
-
+    from collections.abc import Callable
+    from copy import deepcopy
+    import random
+    import math
 
     class SA:
 
-    def __init__(self, domain: Domain, fitness_func: Callable[[Solution], float], n_iterations: int = 50, alteration_limit: Any =0.1, initial_temp: float = 50.0, cooling_rate: float=0.99) -> None:
-    
-        self.domain: Domain = domain
-        self.n_iterations: int = n_iterations
-        self.initial_temp: float = initial_temp
-        self.alteration_limit: Any = alteration_limit
-        self.cooling_rate: float = cooling_rate
-        self.solution = None
-        self.fitness_func: Callable[[Solution], float] = fitness_func
-
-        self.initialize()
-
-    def initialize(self):
-        """
-        Initialize the population of solutions by creating and evaluating initial solutions.
-        """
-        self.solution = Solution()
-        self.solution.evaluate(self.fitness_func)
+        def __init__(self, domain: Domain, fitness_func: Callable[[Solution], float], n_iterations: int = 50, alteration_limit: float=0.1, initial_temp: float = 50.0, cooling_rate: float=0.99) -> None:
         
+            self.domain: Domain = domain
+            self.n_iterations: int = n_iterations
+            self.initial_temp: float = initial_temp
+            self.alteration_limit: Any = alteration_limit
+            self.cooling_rate: float = cooling_rate
+            self.solution = None
+            self.fitness_func: Callable[[Solution], float] = fitness_func
 
-    def run(self) -> Solution:
-        """
-        Run the simulated annealing for the specified number of generations and return the best solution found.
+            self.initialize()
 
-        :return: The best solution found by the simulated annealing.
-        :rtype: Solution
-        """
-
-        current_iteration = 0
-        temperature = self.initial_temp
-
-
-        while current_iteration <= self.n_iterations:
-
-            neighbour = deepcopy(self.solution)
-
-            neighbour.mutate(alteration_limit=self.alteration_limit)
-
-            neighbour.evaluate(self.fitness_func)
-
-            exploration_rate = math.exp((self.solution.fitness - neighbour.fitness) / temperature) 
-
-            if neighbour.fitness < self.solution.fitness or exploration_rate > random.random():
-                self.solution = neighbour
+        def initialize(self):
+            """
+            Initialize the population of solutions by creating and evaluating initial solutions.
+            """
+            self.solution = Solution()
+            self.solution.evaluate(self.fitness_func)
             
-            temperature *= self.cooling_rate
 
-            current_iteration += 1
-        
-        return self.solution
+        def run(self) -> Solution:
+            """
+            Run the simulated annealing for the specified number of generations and return the best solution found.
+
+            :return: The best solution found by the simulated annealing.
+            :rtype: Solution
+            """
+
+            current_iteration = 0
+            temperature = self.initial_temp
+
+
+            while current_iteration <= self.n_iterations:
+
+                neighbour = deepcopy(self.solution)
+
+                neighbour.mutate(alteration_limit=self.alteration_limit)
+
+                neighbour.evaluate(self.fitness_func)
+
+                exploration_rate = math.exp((self.solution.fitness - neighbour.fitness) / temperature) 
+
+                if neighbour.fitness < self.solution.fitness or exploration_rate > random.random():
+                    self.solution = neighbour
+                
+                temperature *= self.cooling_rate
+
+                current_iteration += 1
+            
+            return self.solution
 
 
 Implement your own meta-heuristic and extend the functionality of the framework
