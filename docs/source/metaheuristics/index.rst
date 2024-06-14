@@ -5,3 +5,4 @@ Metaheuristics
     cvoa
     ga
     rs
+    sa

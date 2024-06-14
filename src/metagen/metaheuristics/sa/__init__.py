@@ -14,20 +14,6 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-from metagen.metaheuristics.cvoa import CVOA, cvoa_launcher
-from metagen.metaheuristics.ga import GA, SSGA
-from metagen.metaheuristics.sa import SA
-from metagen.metaheuristics.random import RandomSearch
+from .sa import SA
 
-__all__ = ["CVOA", "GA", "RandomSearch", "cvoa_launcher"]
-
-
-
-
-
-
-
-
-
-
-
+__all__ = ["SA"]

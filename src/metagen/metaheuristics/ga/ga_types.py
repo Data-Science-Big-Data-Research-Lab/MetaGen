@@ -78,8 +78,15 @@ class GASolution(Solution):
         """
         assert self.get_variables().keys() == other.get_variables().keys()
 
-        basic_variables = [variable_name for variable_name, variable_value in self.get_variables(
-        ).items() if self.connector.get_builtin(variable_value) in [int, float, str]]
+        basic_variables = []
+
+        for variable_name, variable_value in self.get_variables().items():
+
+            if isinstance(variable_value, GAStructure):
+                variable_value = (variable_value, "static")
+                
+            if self.connector.get_builtin(variable_value) in [int, float, str]:
+                basic_variables.append(variable_name)
 
         if len(basic_variables) > 0:
             n_variables_to_exchange = random.randint(
@@ -134,4 +141,4 @@ class GAConnector(BaseConnector):
         self.register(IntegerDefinition, types.Integer, int)
         self.register(RealDefinition, types.Real, float)
         self.register(CategoricalDefinition, types.Categorical, str)
-        self.register(StaticStructureDefinition, GAStructure, list)
+        self.register(StaticStructureDefinition, (GAStructure, "static"), list)

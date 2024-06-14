@@ -1,7 +1,7 @@
-CVOA
+Simulated annealing
 ========================
 
-.. automodule:: metagen.metaheuristics.cvoa
+.. automodule:: metagen.metaheuristics.sa.sa
     :members:
     :show-inheritance:
 
