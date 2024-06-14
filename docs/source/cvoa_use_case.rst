@@ -61,10 +61,20 @@ The `run` method
                          str(self.__bestStrainIndividual))
 
 
+The `__infect_pz` method
+------------------------
+
+.. code-block:: python
+
+      patient_zero = self.solution_type(
+            self.__problemDefinition, connector=self.__problemDefinition.get_connector())
+
+
 Visualizing the variables of a potential solutions
 ==================================================
+
 The `propagate_disease` method
-==============================
+------------------------------
 
 .. code-block:: python
 
@@ -78,20 +88,19 @@ The `propagate_disease` method
 
 
 
-The `__infect_pz` method
-========================
+Initializating a potential solution
+===================================
 
 .. code-block:: python
 
-      patient_zero = self.solution_type(
-            self.__problemDefinition, connector=self.__problemDefinition.get_connector())
         patient_zero.initialize()
-
         patient_zero.fitness = CVOA.__fitnessFunction(patient_zero)
 
 
-The `__infect` method
-=====================
+
+
+Altering a potential solution
+=============================
 
 .. code-block:: python
 
