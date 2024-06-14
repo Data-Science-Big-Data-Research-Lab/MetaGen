@@ -96,7 +96,7 @@ class Structure(BaseType):
                 self.get_definition().get_base(), connector=self.get_connector())
             self.append(base_value)
 
-    def mutate(self) -> None:
+    def mutate(self, alteration_limit: Any = None) -> None:
         """
         Modify the Structure by performing an action selected randomly from three options:
         1. Resizing: if the Structure definition is dynamic, resizes the vector to a new random size.
@@ -118,7 +118,7 @@ class Structure(BaseType):
             self._resize()
         # If the action is changing, change the vector with change_vector_variable
         elif action == 2:
-            self._alterate()
+            self._alterate(alteration_limit=alteration_limit)
         # If the action is resizing and changing, resize the vector with resize_vector_variable
         # and change the vector with change_vector_variable
         else:
@@ -164,7 +164,7 @@ class Structure(BaseType):
             ri = random.choice(range(len(self)))
             del self[ri]
 
-    def _alterate(self) -> None:
+    def _alterate(self, alteration_limit: Any=None) -> None:
         """
         Randomly alters a certain number of elements in the vector by calling their `mutate` method.
         """
@@ -175,7 +175,7 @@ class Structure(BaseType):
             list(range(0, current_size)), number_of_changes)
 
         for i in index_to_change:
-            self.get(i).mutate()
+            self.get(i).mutate(alteration_limit=alteration_limit)
 
     def _convert(self, value: InputValue) -> BaseType:
         """

@@ -57,7 +57,7 @@ class Categorical(BaseType):
 
         self.set(random_category)
 
-    def mutate(self) -> None:
+    def mutate(self, alteration_limit: Any = None) -> None:
         """
         Modify the value of this Categorical instance to a random category from its definition, excluding its current value.
         """
