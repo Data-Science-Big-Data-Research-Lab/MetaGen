@@ -15,7 +15,7 @@ Developing use cases in google colab:
 Hyperparameter optimization with scikit-learn
 ----------------------------------------------
 
-In this section, a hyperparameter optimization usecase is detailed employing the Metagen library and scikit-learn in five steps.
+In this section, a hyperparameter optimization use case is detailed employing the Metagen library and scikit-learn in five steps.
 
 Step 1: Import the required libraries. In most cases only the Domain and the meta-heuristic is required, the solution is included in this case just for type checking.
 
@@ -79,6 +79,7 @@ Hyperparameter optimization with tensorflow
 In this section, a hyperparameter optimization usecase is detailed employing the Metagen library and tensorflow in five steps.
 
 Step 1: Import the required libraries. In most cases only the Domain and the meta-heuristic is required, the solution is included in this case just for type checking.
+
 .. code-block:: python
 
      from metagen.framework import Domain, Solution
@@ -174,13 +175,13 @@ In this example a simple RandomSearch algorithm has been developed using the met
 
 **Initialization**
 
-The RandomSearch class is defined, and its constructor (__init__) is provided with the following parameters:
+The RandomSearch class is defined, and its constructor (`__init__`) is provided with the following parameters:
 
-    * domain: Domain: The domain of possible solutions.
-    * fitness: Callable[[Solution], float]: A function that calculates the fitness of a solution.
-    * search_space_size: int = 30: The number of potential solutions to generate.
-    * iterations: int = 20: The number of search iterations to perform.
-    * The constructor stores these parameters as instance variables.
+- domain: Domain: The domain of possible solutions.
+- fitness: Callable[[Solution], float]: A function that calculates the fitness of a solution.
+- search_space_size: int = 30: The number of potential solutions to generate.
+- iterations: int = 20: The number of search iterations to perform.
+- The constructor stores these parameters as instance variables.
 
 **Generating Potential Solutions**
 
@@ -196,13 +197,10 @@ Another loop is used to perform the search for self.iterations iterations.
 
 Inside this loop, each potential solution in the potential_solutions list is processed. For each potential solution (ps), the following steps are performed:
 
-    * ps.mutate(): The mutate method is called on the potential solution, which modifies it to explore new possibilities within the solution space by employing the mutate function in Solution.
-
-    * ps.evaluate(self.fitness): The fitness of the potential solution is evaluated using the provided fitness function self.fitness by employing the evaluate function in Solution.
-
-    * If the fitness of the potential solution (ps) is better (i.e., lower fitness value) than the fitness of the current best solution (solution), the solution is updated with a deep copy of the potential solution. This is done to keep track of the best solution found so far.
-
-    * After completing the search loop, the best solution found during the search is returned as the result of the run method.
+- ps.mutate(): The mutate method is called on the potential solution, which modifies it to explore new possibilities within the solution space by employing the mutate function in Solution.
+- ps.evaluate(self.fitness): The fitness of the potential solution is evaluated using the provided fitness function self.fitness by employing the evaluate function in Solution.
+- If the fitness of the potential solution (ps) is better (i.e., lower fitness value) than the fitness of the current best solution (solution), the solution is updated with a deep copy of the potential solution. This is done to keep track of the best solution found so far.
+- After completing the search loop, the best solution found during the search is returned as the result of the run method.
 
 .. code-block:: python
 
