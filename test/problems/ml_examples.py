@@ -177,7 +177,7 @@ def support_vector_regressor_fitness(individual):
 
 # SGD classifier problem definition
 sgd_classifier_definition = Domain()
-sgd_classifier_definition.define_categorical("loss", ['hinge', 'log', 'modified_huber', 'squared_hinge',
+sgd_classifier_definition.define_categorical("loss", ['hinge', 'log_loss', 'modified_huber', 'squared_hinge',
                                                       'perceptron'])
 sgd_classifier_definition.define_categorical(
     "penalty", ['l2', 'l1', 'elasticnet'])
