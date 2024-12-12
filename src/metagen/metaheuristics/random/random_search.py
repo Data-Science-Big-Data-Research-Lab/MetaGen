@@ -16,9 +16,41 @@
 """
 from copy import deepcopy
 from typing import Callable, List
+import ray
 
 from metagen.framework import Domain, Solution
 
+
+@ray.remote
+def distributed_evaluation_method(solution: Solution, fitness_function: Callable[[Solution], float]) -> Solution:
+    """
+    Remote function to mutate and evaluate a solution.
+
+    :param solution: The solution to be mutated and evaluated.
+    :type solution: Solution
+    :param fitness_function: The fitness function used to evaluate the solution.
+    :type fitness_function: Callable[[Solution], float]
+    :return: The mutated and evaluated solution.
+    :rtype: Solution
+    """
+    solution.mutate()
+    solution.evaluate(fitness_function)
+    return deepcopy(solution)
+
+def local_evaluation_method(solution: Solution, fitness_function: Callable[[Solution], float]) -> Solution:
+    """
+    Local function to mutate and evaluate a solution.
+
+    :param solution: The solution to be mutated and evaluated.
+    :type solution: Solution
+    :param fitness_function: The fitness function used to evaluate the solution.
+    :type fitness_function: Callable[[Solution], float]
+    :return: The mutated and evaluated solution.
+    :rtype: Solution
+    """
+    solution.mutate()
+    solution.evaluate(fitness_function)
+    return deepcopy(solution)
 
 class RandomSearch:
 
@@ -35,6 +67,8 @@ class RandomSearch:
     :type search_space_size: int, optional
     :param iterations: The number of optimization iterations. Default is 20.
     :type iterations: int, optional
+    :param distributed: Whether to run the algorithm in a distributed manner. Default is False.
+    :type distributed: bool, optional
 
     **Code example**
 
@@ -54,13 +88,15 @@ class RandomSearch:
 
     """
 
-    def __init__(self, domain: Domain, fitness: Callable[[Solution], float], search_space_size: int = 30,
-                 iterations: int = 20) -> None:
-
+    def __init__(self, domain: Domain, fitness: Callable[[Solution], float], search_space_size: int = 30, iterations: int = 20, distributed: bool = False) -> None:
         self.domain = domain
         self.fitness = fitness
         self.search_space_size = search_space_size
         self.iterations = iterations
+        self.distributed = distributed
+
+        if self.distributed:
+            ray.init()
 
     def run(self) -> Solution:
         """
@@ -76,16 +112,23 @@ class RandomSearch:
         solution_type: type[Solution] = self.domain.get_connector().get_type(
             self.domain.get_core())
         
-        for _ in range(0, self.search_space_size):
+        for _ in range(0, self.search_space_size): 
             potential_solutions.append(solution_type(
                 self.domain, connector=self.domain.get_connector()))
         solution: Solution = deepcopy(min(potential_solutions))
 
         for _ in range(0, self.iterations):
-            for ps in potential_solutions:
-                ps.mutate()
-                ps.evaluate(self.fitness)
+            if self.distributed:
+                futures = [distributed_evaluation_method.remote(ps, self.fitness) for ps in potential_solutions]
+                evaluated_solutions = ray.get(futures)
+            else:
+                evaluated_solutions = [local_evaluation_method(ps, self.fitness) for ps in potential_solutions]
+            
+            for ps in evaluated_solutions:
                 if ps < solution:
                     solution = deepcopy(ps)
 
         return solution
+
+
+    
