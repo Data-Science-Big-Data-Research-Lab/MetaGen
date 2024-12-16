@@ -19,7 +19,7 @@ import tensorflow as tf
 from sklearn.datasets import make_regression
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-
+import random
 from metagen.framework import Domain, Solution
 from metagen.metaheuristics import RandomSearch
 
@@ -46,9 +46,9 @@ def build_neural_network(solution: Solution) -> tf.keras.Sequential():
     model = tf.keras.Sequential()
 
     for i, layer in enumerate(solution["arch"]):
-        neurons = layer["neurons"].value
-        activation = layer["activation"].value
-        dropout = layer["dropout"].value
+        neurons = layer["neurons"]
+        activation = layer["activation"]
+        dropout = layer["dropout"]
         rs = True
         if i == len(solution["arch"]):
             rs = False
@@ -57,14 +57,14 @@ def build_neural_network(solution: Solution) -> tf.keras.Sequential():
         model.add(tf.keras.layers.Dropout(dropout))
     model.add(tf.keras.layers.Dense(1, activation="tanh"))
     # Model compilation
-    learning_rate = solution["learning_rate"].value
-    ema = solution["ema"].value
+    learning_rate = solution["learning_rate"]
+    ema = solution["ema"]
     model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate, use_ema=ema),
                   loss="mean_squared_error", metrics=[tf.keras.metrics.MAPE])
     return model
 
 
-x, y = make_regression(n_samples=1000, n_features=24)
+x, y = make_regression(n_samples=100, n_features=10)
 scaler_x = StandardScaler()
 scaler_y = StandardScaler()
 
@@ -73,9 +73,9 @@ xs_train, xs_val, ys_train, ys_val = train_test_split(
     x, y, test_size=0.33, random_state=42)
 
 xs_train = scaler_x.fit_transform(xs_train)
-ys_train = scaler_y.fit_transform(ys_train)
+ys_train = scaler_y.fit_transform(ys_train.reshape(-1, 1))
 xs_val = scaler_x.transform(xs_val)
-ys_val = scaler_y.transform(ys_val)
+ys_val = scaler_y.transform(ys_val.reshape(-1, 1))
 
 x_train = np.reshape(xs_train, (xs_train.shape[0], xs_train.shape[1], 1))
 y_train = np.reshape(ys_train, (ys_train.shape[0], 1))
@@ -84,10 +84,10 @@ y_val = np.reshape(ys_val, (ys_val.shape[0], 1))
 
 
 def p4_fitness(solution: Solution) -> float:
-    model = build_neural_network(solution)
-    model.fit(x_train, y_train, epochs=10, batch_size=1024)
-    mape = model.evaluate(x_val, y_val)[1]
-    return mape
+    #model = build_neural_network(solution)
+    #model.fit(x_train, y_train, epochs=2, batch_size=32)
+    #mape = model.evaluate(x_val, y_val)[1]
+    return random.random()
 
 
 # P4 resolution

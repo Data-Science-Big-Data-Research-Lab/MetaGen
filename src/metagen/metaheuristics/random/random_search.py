@@ -15,12 +15,11 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 from copy import deepcopy
-from typing import Callable, List
-
 from metagen.framework import Domain, Solution
+from metagen.metaheuristics.base import Metaheuristic
 
 
-class RandomSearch:
+class RandomSearch(Metaheuristic):
 
     """
     RandomSearch is a class for performing a random search optimization algorithm.
@@ -54,38 +53,41 @@ class RandomSearch:
 
     """
 
-    def __init__(self, domain: Domain, fitness: Callable[[Solution], float], search_space_size: int = 30,
-                 iterations: int = 20) -> None:
-
-        self.domain = domain
-        self.fitness = fitness
+    def __init__(self, domain: Domain, fitness_function, log_dir: str = "logs/RS", 
+                 search_space_size: int = 30, max_iterations: int = 20) -> None:
+        super().__init__(domain, fitness_function, log_dir)
         self.search_space_size = search_space_size
-        self.iterations = iterations
+        self.max_iterations = max_iterations
+    
 
-    def run(self) -> Solution:
-        """
-        Run the random search optimization algorithm.
+    def stopping_criterion(self) -> bool:
+        return self.current_iteration >= self.max_iterations
 
-        This method generates and evaluates random solutions in the search space to find an optimal solution.
-
-        :return: The optimal solution found.
-        :rtype: Solution
-        """
-
-        potential_solutions: List[Solution] = list()
+    def initialize(self) -> None:
+        """Initialize random solutions"""
         solution_type: type[Solution] = self.domain.get_connector().get_type(
             self.domain.get_core())
         
-        for _ in range(0, self.search_space_size):
-            potential_solutions.append(solution_type(
-                self.domain, connector=self.domain.get_connector()))
-        solution: Solution = deepcopy(min(potential_solutions))
+        # Create initial solutions
+        self.current_solutions = [
+            solution_type(self.domain, connector=self.domain.get_connector())
+            for _ in range(self.search_space_size)
+        ]
+        
+        # Evaluate initial solutions
+        for solution in self.current_solutions:
+            solution.evaluate(self.fitness_function)
+        
+        # Set initial best solution
+        self.best_solution = deepcopy(min(self.current_solutions))
 
-        for _ in range(0, self.iterations):
-            for ps in potential_solutions:
-                ps.mutate()
-                ps.evaluate(self.fitness)
-                if ps < solution:
-                    solution = deepcopy(ps)
-
-        return solution
+    def iterate(self) -> None:
+        """Execute one iteration of random search"""
+        for solution in self.current_solutions:
+            # Mutate and evaluate
+            solution.mutate()
+            solution.evaluate(self.fitness_function)
+            
+            # Update best solution if better found
+            if solution < self.best_solution:
+                self.best_solution = deepcopy(solution)
