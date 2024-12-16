@@ -44,10 +44,9 @@ class TensorBoardLogger:
                 avg_length = sum(len(v) for v in values) / len(values)
                 self.writer.add_scalar(f"{prefix}average_length_{key}", avg_length, iteration)
                 # Log the values in the collections
-                for i, _ in enumerate(value):
-                    nested_values = [s[key].value[i] for s in solutions_dict if i < len(s[key].value)]
-                    if nested_values and isinstance(nested_values[0], (int, float)):
-                        self.writer.add_histogram(f"{prefix}{key}_{i}", np.array(nested_values), iteration)
+                if value and isinstance(value[0].value, (int, float)):
+                    value = sum(value) / len(value)
+                    self.writer.add_scalar(f"{prefix}average_{key}", value, iteration)
 
     def log_iteration(self, iteration: int, potential_solutions: List[Solution], 
                      best_solution: Solution) -> None:
