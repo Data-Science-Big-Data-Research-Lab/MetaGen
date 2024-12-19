@@ -53,7 +53,7 @@ def local_evaluation_method(solution: Solution, fitness_function: Callable[[Solu
     solution.evaluate(fitness_function)
     return deepcopy(solution)
 
-class RandomSearch:
+class RandomSearch (Metaheuristic):
 
     """
     RandomSearch is a class for performing a random search optimization algorithm.
