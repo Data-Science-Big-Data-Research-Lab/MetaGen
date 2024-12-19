@@ -215,8 +215,6 @@ class Domain:
         """ It defines an **DynamicStructure** variable receiving a name as its identifier, the minimum and maximum size that it will
         be able to have, and the step size to traverse the size.
 
-        TODO: No entiendo qué significa var o remember.
-
         :param name: The variable name.
         :param min_len: The minimum length of the Structure.
         :param max_len: The maximum length of the Structure.

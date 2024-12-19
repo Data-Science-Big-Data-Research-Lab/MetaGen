@@ -20,9 +20,10 @@ from typing import List
 
 from metagen.framework import Domain
 from .ga_types import GASolution
+from metagen.metaheuristics.base import Metaheuristic
+from copy import deepcopy
 
-
-class GA:
+class GA(Metaheuristic):
     """
     Genetic Algorithm (GA) class for optimization problems.
     
@@ -47,74 +48,86 @@ class GA:
     :vartype domain: Domain
     :ivar fitness_func: The fitness function used to evaluate solutions.
     :vartype fitness_func: Callable[[Solution], float]"""
-
-    def __init__(self, domain: Domain, fitness_func: Callable[[GASolution], float], population_size: int = 10, mutation_rate: float = 0.1, n_generations: int = 50) -> None:
     
-        self.population_size: int = population_size
-        self.mutation_rate: float = mutation_rate
-        self.n_generations: int = n_generations
-        self.domain: Domain = domain
-        self.fitness_func: Callable[[GASolution], float] = fitness_func
-        self.population: List[GASolution] = []
+    def __init__(self, domain: Domain, 
+                 fitness_func: Callable[[GASolution], float],
+                 population_size: int = 10,
+                 mutation_rate: float = 0.1,
+                 max_generations: int = 50,
+                 log_dir: str = "logs/GA") -> None:
+        
+        super().__init__(domain, fitness_func, log_dir)
+        
+        self.population_size = population_size
+        self.mutation_rate = mutation_rate
+        self.max_generations = max_generations
 
-        self.initialize()
-
-    def initialize(self):
-        """
-        Initialize the population of solutions by creating and evaluating initial solutions.
-        """
-        self.population = []
+    def initialize(self) -> None:
+        """Initialize the population"""
         solution_type: type[GASolution] = self.domain.get_connector().get_type(
             self.domain.get_core())
-
+        
+        # Create and evaluate initial population
+        self.current_solutions = []
         for _ in range(self.population_size):
             solution = solution_type(
                 self.domain, connector=self.domain.get_connector())
-            solution.evaluate(self.fitness_func)
-            self.population.append(solution)
+            solution.evaluate(self.fitness_function)
+            self.current_solutions.append(solution)
+        
+        # Set initial best solution
+        self.best_solution = deepcopy(min(self.current_solutions))
+
+    def iterate(self) -> None:
+        """Execute one generation of the genetic algorithm"""
+        # Select parents
+        parents = self.select_parents()
+        
+        # Create offspring through crossover and mutation
+        offspring = []
+        for _ in range(self.population_size // 2):
+            # Crossover
+            child1, child2 = parents[0].crossover(parents[1])
+            
+            # Mutation
+            if random.uniform(0, 1) <= self.mutation_rate:
+                child1.mutate()
+            if random.uniform(0, 1) <= self.mutation_rate:
+                child2.mutate()
+            
+            # Evaluate offspring
+            child1.evaluate(self.fitness_function)
+            child2.evaluate(self.fitness_function)
+            
+            offspring.extend([child1, child2])
+        
+        # Update population
+        self.current_solutions = offspring
+        
+        # Update best solution if necessary
+        current_best = min(self.current_solutions)
+        if current_best < self.best_solution:
+            self.best_solution = deepcopy(current_best)
 
     def select_parents(self) -> List[GASolution]:
+        """Select the top two parents based on fitness"""
+        sorted_population = sorted(self.current_solutions, 
+                                 key=lambda sol: sol.get_fitness())
+        return sorted_population[:2]
+
+    def stopping_criterion(self) -> bool:
         """
-        Select the top two parents from the population based on their fitness values.
-
-        :return: The selected parent solutions.
-        :rtype: List[Solution]
+        Stopping criterion. 
         """
+        return self.current_iteration >= self.max_generations
 
-        parents = sorted(self.population, key=lambda sol: sol.fitness)[:2]
-        return parents
-
-    def run(self) -> GASolution:
+    def post_iteration(self) -> None:
         """
-        Run the genetic algorithm for the specified number of generations and return the best solution found.
-
-        :return: The best solution found by the genetic algorithm.
-        :rtype: Solution
+        Additional processing after each generation.
         """
-
-        for _ in range(self.n_generations):
-
-            parent1, parent2 = self.select_parents()
-
-            offspring = []
-            for _ in range(self.population_size // 2):
-                child1, child2 = parent1.crossover(parent2)
-
-                if random.uniform(0, 1) <= self.mutation_rate:
-                    child1.mutate()
-
-                if random.uniform(0, 1) <= self.mutation_rate:
-                    child2.mutate()
-
-                child1.evaluate(self.fitness_func)
-                child2.evaluate(self.fitness_func)
-                offspring.extend([child1, child2])
-
-            self.population = offspring
-
-            best_individual = min(
-                self.population, key=lambda sol: sol.get_fitness())
-
-        best_individual = min(
-            self.population, key=lambda sol: sol.get_fitness())
-        return best_individual
+        super().post_iteration()
+        
+        # Add GA-specific logging if needed
+        self.writer.add_scalar('GA/Population Size', 
+                              len(self.current_solutions), 
+                              self.current_iteration)

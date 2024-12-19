@@ -150,9 +150,14 @@ class BaseConnector:
         :raises ValueError: If the solution type is not registered in the connector.
         """
         try:
-            solution_type = solution_type if inspect.isclass(
-                solution_type) else solution_type.__class__
-            if issubclass(solution_type, types.BaseType):
+            if isinstance(solution_type, tuple):
+                solution_type = solution_type if inspect.isclass(
+                    solution_type[0]) else (solution_type[0].__class__, solution_type[1])
+            else:   
+                solution_type = solution_type if inspect.isclass(
+                    solution_type) else solution_type.__class__
+
+            if issubclass(solution_type if not isinstance(solution_type, tuple) else solution_type[0], types.BaseType):
                 return self._solution_to_builtin[solution_type]
             else:
                 raise ValueError(
