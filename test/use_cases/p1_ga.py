@@ -14,20 +14,20 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-from metagen.metaheuristics.cvoa import CVOA, cvoa_launcher
-from metagen.metaheuristics.ga import GA, SSGA, GAConnector
-from metagen.metaheuristics.sa import SA
-from metagen.metaheuristics.random import RandomSearch
+from metagen.framework import Domain, Solution
+from metagen.metaheuristics import GA, GAConnector
 
-__all__ = ["CVOA", "GA", "GAConnector", "RandomSearch", "SSGA", "SA", "cvoa_launcher"]
+# P1 fitness function
+def p1_fitness(solution: Solution) -> float:
+    x = solution["x"]  # You could use the .get function alternatively.
+    return sum(x)
 
+p1_domain: Domain = Domain(connector=GAConnector())
+p1_domain.define_static_structure("x", 5)
+p1_domain.set_structure_to_integer("x", 0, 10)
 
+ga_search: GA = GA(p1_domain, p1_fitness, max_generations=100, population_size=50, mutation_rate=0.1)
+p1_solution: Solution = ga_search.run()
 
-
-
-
-
-
-
-
-
+# P1 result
+print(p1_solution)

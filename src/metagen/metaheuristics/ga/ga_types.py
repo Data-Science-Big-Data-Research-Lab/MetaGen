@@ -81,14 +81,14 @@ class GASolution(Solution):
         basic_variables = []
 
         for variable_name, variable_value in self.get_variables().items():
-
+            
             if isinstance(variable_value, GAStructure):
                 variable_value = (variable_value, "static")
-                
+    
             if self.connector.get_builtin(variable_value) in [int, float, str]:
                 basic_variables.append(variable_name)
 
-        if len(basic_variables) > 0:
+        if len(basic_variables) > 1:
             n_variables_to_exchange = random.randint(
                 1, len(basic_variables) - 1)
 

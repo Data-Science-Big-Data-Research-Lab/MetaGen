@@ -10,3 +10,4 @@ src/pymetagen_datalabupo.egg-info/
 Copyright.txt
 licenseadd.sh
 *.eps
+logs/
