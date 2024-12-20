@@ -27,9 +27,9 @@ from typing import Callable, Set
 from metagen.framework import Domain
 from metagen.framework.solution import Solution
 from metagen.framework.solution.bounds import SolutionClass
+from metagen.metaheuristics.base import Metaheuristic
 
-
-class CVOA:
+class CVOA(Metaheuristic):
     """ 
     
     This class implements the *CVOA* algorithm. It uses the :py:class:`~metagen.framework.Solution` class as an
@@ -123,12 +123,31 @@ class CVOA:
     # If true show log messages.
     __verbosity: Callable[[str], None] | None = None
 
-    def __init__(self, strain_id="Strain 1", pandemic_duration=10, spreading_rate=5, min_super_spreading_rate=6,
+    def __init__(self,domain, fitness_function, strain_id="Strain 1", pandemic_duration=10, spreading_rate=5, min_super_spreading_rate=6,
                  max_super_spreading_rate=15, social_distancing=7, p_isolation=0.5, p_travel=0.1,
-                 p_re_infection=0.001, p_superspreader=0.1, p_die=0.05, verbose=True):
+                 p_re_infection=0.001, p_superspreader=0.1, p_die=0.05, verbose=True, update_isolated=False, log_dir="logs/CVOA"):
         """ The constructor of the :py:class:`~metagen.metaheuristics.CVOA` class. It set the specific properties
         of a strain.
         """
+
+        super().__init__(domain, fitness_function, log_dir=log_dir)
+
+        CVOA.__recovered = set()
+        CVOA.__deaths = set()
+        CVOA.__isolated = set()
+
+        # The best individual is initialized to the worst solution and the best individual condition
+        # is initialized to false. It is a standard search scheme.
+
+        CVOA.__bestIndividualFound = False
+
+        # Properties set by arguments.
+        CVOA.__fitnessFunction = fitness_function
+        CVOA.__problemDefinition = domain
+        CVOA.__update_isolated = update_isolated
+        solution_type: type[SolutionClass] = domain.get_connector().get_type(
+            domain.get_core())
+        CVOA.__bestIndividual = solution_type(domain, connector=domain.get_connector())
 
         # Properties set by arguments.
         self.__strainID = strain_id
@@ -155,17 +174,19 @@ class CVOA:
         self.solution_type: type[SolutionClass] = CVOA.__problemDefinition.get_connector().get_type(
             CVOA.__problemDefinition.get_core())
         # Best strain individual. It is initialized to the worst solution.
-        self.__bestStrainIndividual = self.solution_type(
+        self.best_solution = self.solution_type(
             CVOA.__problemDefinition, connector=CVOA.__problemDefinition.get_connector())
         # Best dead individual and worst superspreader individuals. For debug and pandemic analysis purposes.
         # They are initialized to None.
         self.__bestDeadIndividualStrain = None
         self.__worstSuperSpreaderIndividualStrain = None
 
+        self.epidemic = True
+
         self.set_verbosity(verbose)
 
     @staticmethod
-    def initialize_pandemic(problem_definition, fitness_function, update_isolated=False):
+    def initialize_pandemic(problem_definition, fitness_function, ):
         """ It initializes a **CVOA** pandemic. A pandemic can be composed by one or more strains. Each strain is
         built by instantiate the :py:class:`~metagen.metaheuristics.CVOA` class. The common characteristic of all strains are
         the problem definition (:py:class:`~metagen.framework.Domain` class) and the implementation
@@ -179,23 +200,8 @@ class CVOA:
         :type update_isolated: bool
         """
 
-        # The recovered, death and isolated sets are initialized to a void set.
-        CVOA.__recovered = set()
-        CVOA.__deaths = set()
-        CVOA.__isolated = set()
-
-        # The best individual is initialized to the worst solution and the best individual condition
-        # is initialized to false. It is a standard search scheme.
-
-        CVOA.__bestIndividualFound = False
-
-        # Properties set by arguments.
-        CVOA.__fitnessFunction = fitness_function
-        CVOA.__problemDefinition = problem_definition
-        CVOA.__update_isolated = update_isolated
-        solution_type: type[SolutionClass] = problem_definition.get_connector().get_type(
-            problem_definition.get_core())
-        CVOA.__bestIndividual = solution_type(problem_definition, connector=problem_definition.get_connector())
+        pass
+        
 
     @staticmethod
     def pandemic_report():
@@ -239,27 +245,8 @@ class CVOA:
         :rtype: str
         """
         return self.__strainID
-
-    def run(self):
-        """ This function runs the **CVOA** algorithm. Before run the algorithm, two taks must be accomplished:
-
-        #. Initialize the pandemic (:py:meth:`~metagen.metaheuristics.CVOA.initialize_pandemic` method)
-
-            * Set the problem definition (:py:class:`~metagen.framework.Domain` class)
-            * Implements the fitness function
-
-        #. Initialize a strain (instantiate a :py:class:`~metagen.metaheuristics.CVOA` class)
-
-        **NOTE**
-        If a mult-strain experiment is performed, the global best individual must be obtained by
-        the :py:meth:`~metagen.metaheuristics.CVOA.get_best_solution` method after the algorithm finishes.
-
-        :returns: The best individual found by the **CVOA** algorithm for the specific strain.
-        :rtype: :py:class:`~metagen.framework.Solution`
-        """
-
-        # ***** STEP 1. PATIENT ZERO (PZ) GENERATION. *****
-
+    
+    def initialize(self):
         pz = self.__infect_pz()
         CVOA.__verbosity(
             "\nPatient Zero (" + self.__strainID + "): \n" + str(pz))
@@ -269,7 +256,7 @@ class CVOA:
         self.__infectedStrain.add(pz)
         self.__infected_strain_super_spreader_strain.add(pz)
         # The best strain-specific individual will initially be the patient zero.
-        self.__bestStrainIndividual = pz
+        self.best_solution = pz
         # The worst strain-specific superspreader individual will initially be the best solution.
         self.__worstSuperSpreaderIndividualStrain = self.solution_type(
             CVOA.__problemDefinition, best=True, connector=CVOA.__problemDefinition.get_connector())
@@ -280,39 +267,33 @@ class CVOA:
         # Logical condition to ctrl the epidemic (main iteration).
         # If True, the iteration continues.
         # When there are no infected individuals, the epidemic finishes.
-        epidemic = True
+        self.epidemic = True
 
         # The iteration counter will be initially set to 0.
         self.__time = 0
 
-        # Stopping criterion: there are no new infected individuals or the pandemic duration is over
-        # or an individual has been found.
-        # Suggestion to third-party developers: add another stop criterion if bestSolution does not change after X
-        # consecutive iterations.
-        while epidemic and self.__time < self.__pandemic_duration and not CVOA.__bestIndividualFound:
+    def iterate(self):
+        # ***** STEP 2. SPREADING THE DISEASE. *****
+        self.__propagate_disease()
 
-            # ***** STEP 2. SPREADING THE DISEASE. *****
-            self.__propagate_disease()
+        # ***** STEP 4. STOP CRITERION. *****
+        # Stop if no new infected individuals.
+        if not self.__infectedStrain:
+            self.epidemic = False
+            CVOA.__verbosity(
+                "No new infected individuals in " + self.__strainID)
 
-            # ***** STEP 4. STOP CRITERION. *****
-            # Stop if no new infected individuals.
-            if not self.__infectedStrain:
-                epidemic = False
-                CVOA.__verbosity(
-                    "No new infected individuals in " + self.__strainID)
+        # Update the elapsed pandemic time.
+        self.__time += 1
 
-            # Update the elapsed pandemic time.
-            self.__time += 1
+    def stopping_criterion(self):
+        return self.epidemic and self.__time < self.__pandemic_duration and not CVOA.__bestIndividualFound
 
+    def after_execution(self):
         CVOA.__verbosity("\n\n" + self.__strainID +
                          " converged after " + str(self.__time) + " iterations.")
         CVOA.__verbosity("Best individual: " +
-                         str(self.__bestStrainIndividual))
-
-        # When the CVOA algorithm finishes, returns the best individual found for the specific strain.
-        # If a mult-strain experiment is performed, the global best individual
-        # must be obtained by the get_best_solution method.
-        return self.__bestStrainIndividual
+                         str(self.best_solution))
 
     def __propagate_disease(self):
         """ It spreads the disease through the individuals of the population.
@@ -325,7 +306,7 @@ class CVOA:
         # Before the new propagation, update the strain (superspreader, death) and global (death, recovered) sets.
         # Then, add the best individual of the strain to the next population.
         self.__update_strain_global_sets()
-        new_infected_population.add(self.__bestStrainIndividual)
+        new_infected_population.add(self.best_solution)
 
         # For each infected individual in the strain:
         for individual in self.__infectedStrain:
@@ -356,10 +337,8 @@ class CVOA:
                 # individual infects another with a travel distance (using __infect), and it is added
                 # to the newly infected population.
                 if self.__time < self.__SOCIAL_DISTANCING:
-                    new_infected_individual = self.__infect(
-                        individual, travel_distance)
-                    self.__update_new_infected_population(
-                        new_infected_population, new_infected_individual)
+                    new_infected_individual = self.__infect(individual, travel_distance)
+                    self.__update_new_infected_population(new_infected_population, new_infected_individual)
 
                 # After SOCIAL_DISTANCING iterations (when the SOCIAL DISTANCING policy is applied),
                 # the current individual infects another with a travel distance of one (using __infect) then,
@@ -367,8 +346,7 @@ class CVOA:
                 else:
                     new_infected_individual = self.__infect(individual, 1)
                     if random.random() < self.__P_ISOLATION:
-                        self.__update_new_infected_population(
-                            new_infected_population, new_infected_individual)
+                        self.__update_new_infected_population(new_infected_population, new_infected_individual)
                     else:
                         # If the new individual is isolated, and __update_isolated is true, this is sent to the
                         # __update_isolated_population.
@@ -381,7 +359,7 @@ class CVOA:
                          "\n\tBest global individual: " +
                          str(CVOA.__bestIndividual)
                          + "\n\tBest strain individual: " +
-                         str(self.__bestStrainIndividual)
+                         str(self.best_solution)
                          + "\n" + self.__r0_report(len(new_infected_population)))
         # + "\n\tR0 = " + str(len(new_infected_population) / len(self.__infectedStrain)))
 
@@ -474,11 +452,11 @@ class CVOA:
 
                 # If the current individual is better than the current strain one, a new strain the best individual is
                 # found, and its variable is updated.
-                if individual.fitness < self.__bestStrainIndividual.fitness:
-                    self.__bestStrainIndividual = individual
+                if individual.fitness < self.best_solution.fitness:
+                    self.best_solution = individual
 
             # Increment the discovering iteration time.
-            self.__bestStrainIndividual.discovery_iteration = self.__time + 1
+            #self.__bestStrainIndividual.discovery_iteration = self.__time + 1
 
             # Update the global death set with the strain death set.
             CVOA.__lock.acquire()

@@ -77,3 +77,18 @@ class TensorBoardLogger:
     def close(self) -> None:
         """Close the TensorBoard writer"""
         self.writer.close()
+    
+    def __getstate__(self):
+        """Control which attributes are pickled"""
+        state = self.__dict__.copy()
+        # Remove unpicklable attributes
+        state['writer'] = None
+        return state
+
+    def __setstate__(self, state):
+        """Restore instance attributes when unpickling"""
+        self.__dict__.update(state)
+
+        self.writer = SummaryWriter(self.log_dir)
+
+
