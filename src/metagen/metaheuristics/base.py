@@ -1,6 +1,7 @@
 # src/metagen/metaheuristics/metaheuristic.py
 from abc import ABC, abstractmethod
 from typing import List, Optional
+
 from metagen.framework import Domain, Solution
 from metagen.logging import TensorBoardLogger
 from copy import deepcopy
