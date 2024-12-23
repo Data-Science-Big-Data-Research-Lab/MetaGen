@@ -1,6 +1,6 @@
-from src.metagen.metaheuristics.random.random_search import DistributedRandomSearch
+from metagen.metaheuristics.ga.ga import DistributedGA, GA
 from metagen.framework import Domain, Solution
-from sklearn.datasets import make_classification, make_regression
+from sklearn.datasets import make_regression
 from sklearn.linear_model import SGDRegressor
 from sklearn.model_selection import cross_val_score
 
@@ -39,7 +39,8 @@ def sgd_regressor_fitness(individual):
     return -scores.mean()
 
 if __name__ == "__main__":
-    print('Running Random Search')
-    random_search: DistributedRandomSearch = DistributedRandomSearch(sgd_regressor_definition, sgd_regressor_fitness)
-    solution: Solution = random_search.run()
+    print('DistributedGA')
+    # ga: DistributedGA = DistributedGA(sgd_regressor_definition, sgd_regressor_fitness)
+    ga: GA = GA(sgd_regressor_definition, sgd_regressor_fitness)
+    solution: Solution = ga.run()
     print(solution)
