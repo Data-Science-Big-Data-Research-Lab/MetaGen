@@ -14,12 +14,14 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-import random
-from collections.abc import Callable
-from typing import List
+from copy import deepcopy
 
-from metagen.framework import Domain
+from metagen.framework import Domain, Solution
 from .ga_types import GASolution
+import ray
+import random
+from typing import Callable, List
+from metagen.metaheuristics.base import Metaheuristic
 
 
 class SSGA:
@@ -141,3 +143,138 @@ class SSGA:
         
         return best_individual
 
+
+
+
+
+class DistributedSSGA(Metaheuristic):
+    """
+    Distributed implementation of Steady State Genetic Algorithm (SSGA) using Ray for parallel evaluation.
+    """
+
+    def __init__(self, domain: Domain,
+                 fitness_function: Callable[[GASolution], float],
+                 log_dir: str = "logs/DistributedSSGA",
+                 population_size: int = 10,
+                 mutation_rate: float = 0.1,
+                 n_iterations: int = 50) -> None:
+        """
+        Initialize the distributed SSGA algorithm.
+
+        Args:
+            domain: The problem domain
+            fitness_func: The fitness function to evaluate solutions
+            log_dir: Directory for logging
+            population_size: Number of individuals in the population (default: 10)
+            mutation_rate: Probability of mutation for each solution (default: 0.1)
+            n_iterations: Number of iterations to run the algorithm (default: 50)
+        """
+        super().__init__(domain, fitness_function, log_dir)
+        self.population_size: int = population_size
+        self.mutation_rate: float = mutation_rate
+        self.n_iterations: int = n_iterations
+
+    def initialize(self) -> None:
+        """
+        Initialize the population with random solutions and evaluate them in parallel.
+        """
+        solution_type: type[GASolution] = self.domain.get_connector().get_type(
+            self.domain.get_core())
+
+        solutions = [
+            solution_type(self.domain, connector=self.domain.get_connector())
+            for _ in range(self.population_size)
+        ]
+
+        # Evaluate solutions in parallel using Ray
+        futures = [DistributedSSGA.evaluate_solution.remote(solution, self.fitness_function) for solution in solutions]
+        self.current_solutions = ray.get(futures)
+
+        # Set initial best solution
+        self.best_solution = deepcopy(min(self.current_solutions))
+
+    @staticmethod
+    @ray.remote
+    def evaluate_solution(solution: Solution, fitness_function: Callable[[Solution], float]) -> Solution:
+        """
+        Evaluate a solution using the fitness function in a distributed way.
+
+        Args:
+            solution: The solution to evaluate
+            fitness_function: The fitness function
+
+        Returns:
+            The evaluated solution
+        """
+        solution.evaluate(fitness_function)
+        return solution
+
+    def select_parents(self) -> List[GASolution]:
+        """
+        Select the top two parents based on fitness.
+        """
+        sorted_population = sorted(
+            self.current_solutions, key=lambda sol: sol.get_fitness()
+        )
+        return sorted_population[:2]
+
+    def replace_worst(self, child: GASolution) -> None:
+        """
+        Replace the solution in the population with the worst fitness.
+        """
+        worst_solution = self.current_solutions[-1]
+        if worst_solution.fitness > child.fitness:
+            self.current_solutions[-1] = child
+        self.current_solutions = sorted(self.current_solutions, key=lambda sol: sol.fitness)
+
+    def iterate(self) -> None:
+        """
+        Execute one iteration of the distributed SSGA with parallel evaluation.
+        """
+        parent1, parent2 = self.select_parents()
+        child1, child2 = parent1.crossover(parent2)
+
+        # Apply mutation
+        if random.uniform(0, 1) <= self.mutation_rate:
+            child1.mutate()
+        if random.uniform(0, 1) <= self.mutation_rate:
+            child2.mutate()
+
+        # Evaluate offspring in parallel using Ray
+        futures = [DistributedSSGA.evaluate_solution.remote(child, self.fitness_function) for child in [child1, child2]]
+        evaluated_children = ray.get(futures)
+
+        # Replace worst individuals in the population
+        for child in evaluated_children:
+            self.replace_worst(child)
+
+        # Update the best solution
+        current_best = min(self.current_solutions)
+        if current_best < self.best_solution:
+              self.best_solution = deepcopy(current_best)
+
+    def stopping_criterion(self) -> bool:
+        """
+        Stopping criterion for the SSGA.
+        """
+        return self.current_iteration >= self.n_iterations
+
+    def run(self) -> GASolution:
+        """
+        Execute the distributed SSGA algorithm.
+
+        Returns:
+            The best solution found.
+        """
+        # Initialize Ray at the start
+        if not ray.is_initialized():
+            ray.init()
+
+        try:
+            # Run the base Metaheuristic logic
+            super().run()
+            return self.best_solution
+
+        finally:
+            # Ensure Ray is properly shut down after execution
+            ray.shutdown()
