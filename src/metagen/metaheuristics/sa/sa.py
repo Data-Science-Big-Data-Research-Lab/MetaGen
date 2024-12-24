@@ -118,7 +118,7 @@ class DistributedSA(Metaheuristic):
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
                  log_dir: str = "logs/SA", n_iterations: int = 50,
                  alteration_limit: float = 0.1, initial_temp: float = 50.0,
-                 cooling_rate: float = 0.99) -> None:
+                 cooling_rate: float = 0.99, neighbor_population_size: int = 10) -> None:
         """
         Initialize the distributed simulated annealing algorithm.
 
@@ -130,13 +130,15 @@ class DistributedSA(Metaheuristic):
             alteration_limit: Maximum alteration for generating a neighbor (default: 0.1)
             initial_temp: Initial temperature (default: 50.0)
             cooling_rate: Cooling rate for the annealing (default: 0.99)
+            neighbor_population_size: Number of neighbors to consider in each iteration (default: 10)
         """
         super().__init__(domain, fitness_function, log_dir)
         self.n_iterations = n_iterations
         self.alteration_limit = alteration_limit
         self.initial_temp = initial_temp
         self.cooling_rate = cooling_rate
-        self.solution = None
+        self.neighbor_population_size = neighbor_population_size
+
 
     def initialize(self) -> None:
         """
@@ -144,42 +146,63 @@ class DistributedSA(Metaheuristic):
         """
         solution_type: type[Solution] = self.domain.get_connector().get_type(
             self.domain.get_core())
-        self.solution = solution_type(
+        self.best_solution = solution_type(
             self.domain, connector=self.domain.get_connector())
-        self.solution.evaluate(self.fitness_function)
+        self.best_solution.evaluate(self.fitness_function)
 
     @staticmethod
     @ray.remote
-    def evaluate_solution(solution: Solution, fitness_func: Callable[[Solution], float]) -> Solution:
+    def evaluate_solution(solution: Solution, fitness_function: Callable[[Solution], float]) -> Solution:
         """
         Evaluate a solution using the fitness function in a distributed way.
 
         Args:
             solution: The solution to evaluate
-            fitness_func: The fitness function
+            fitness_function: The fitness function
 
         Returns:
             The evaluated solution
         """
-        solution.evaluate(fitness_func)
+        solution.evaluate(fitness_function)
         return solution
+
+    def yield_best_neighbor(self, current_best_neighbor:Solution,fitness_function: Callable[[Solution], float], alteration_limit:float) -> Solution:
+        potential_neighbor = deepcopy(current_best_neighbor)
+        potential_neighbor.mutate(alteration_limit=alteration_limit)
+        potential_neighbor.evaluate(fitness_function)
+
+
 
     def iterate(self) -> None:
         """
         Perform one iteration of the simulated annealing algorithm.
         """
-        # Generate a neighbor solution
-        neighbour = deepcopy(self.solution)
-        neighbour.mutate(alteration_limit=self.alteration_limit)
+        # Generate a population of neighbor solutions
+        neighbors = [deepcopy(self.best_solution) for _ in range(self.neighbor_population_size)]
+        for neighbor in neighbors:
+            neighbor.mutate(alteration_limit=self.alteration_limit)
 
-        # Evaluate the neighbor in parallel using Ray
-        future = DistributedSA.evaluate_solution.remote(neighbour, self.fitness_function)
-        neighbour = ray.get(future)
+        # Evaluate neighbors in parallel using Ray
+        futures = [DistributedSA.evaluate_solution.remote(neighbor, self.fitness_function) for neighbor in neighbors]
+        self.current_solutions = ray.get(futures)
+
+        # Select the best neighbor
+        best_neighbor = min(self.current_solutions)
 
         # Acceptance criteria for simulated annealing
-        exploration_rate = math.exp((self.solution.fitness - neighbour.fitness) / self.initial_temp)
-        if neighbour.fitness < self.solution.fitness or exploration_rate > random.random():
-            self.solution = neighbour
+
+        # TODO: Parche para evitar overflow en el cálculo del exponente
+        # Define a maximum value to clamp the exponent
+        MAX_EXPONENT = 700  # This is a safe value to avoid overflow in most cases
+        # Calculate the exponent value
+        exponent_value = (self.best_solution.fitness - best_neighbor.fitness) / self.initial_temp
+        # Clamp the exponent value to the range [-MAX_EXPONENT, MAX_EXPONENT]
+        exponent_value = max(min(exponent_value, MAX_EXPONENT), -MAX_EXPONENT)
+        # Calculate the exploration rate
+        exploration_rate = math.exp(exponent_value)
+
+        if best_neighbor.fitness < self.best_solution.fitness or exploration_rate > random.random():
+            self.best_solution = deepcopy(best_neighbor)
 
         # Update temperature
         self.initial_temp *= self.cooling_rate
@@ -198,7 +221,7 @@ class DistributedSA(Metaheuristic):
         try:
             # Run the main loop of the metaheuristic
             super().run()
-            return self.solution
+            return self.best_solution
 
         finally:
             # Ensure Ray is properly shut down after execution
