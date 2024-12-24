@@ -53,11 +53,13 @@ class TensorBoardLogger:
         """
         Log metrics for the current iteration
         """
+
         # Log fitness statistics
         iteration_fitnesses = [ps.get_fitness() for ps in potential_solutions]
+
         avg_fitness = sum(iteration_fitnesses) / len(iteration_fitnesses)
         best_fitness = best_solution.get_fitness()
-        
+
         self.writer.add_scalar('Fitness/Average', avg_fitness, iteration)
         self.writer.add_scalar('Fitness/Best', best_fitness, iteration)
         self.writer.add_histogram('Fitness/Distribution', np.array(iteration_fitnesses), iteration)
