@@ -64,13 +64,14 @@ class GA(Metaheuristic):
 
     def initialize(self) -> None:
         """Initialize the population"""
-        solution_type: type[GASolution] = GAConnector().get_type(self.domain.get_core())
+        solution_type: type[GASolution] = self.domain.get_connector().get_type(
+            self.domain.get_core())
         
         # Create and evaluate initial population
         self.current_solutions = []
         for _ in range(self.population_size):
             solution = solution_type(
-                self.domain, connector=GAConnector())
+                self.domain, connector=self.domain.get_connector())
             solution.evaluate(self.fitness_function)
             self.current_solutions.append(solution)
         
@@ -85,6 +86,8 @@ class GA(Metaheuristic):
         # Create offspring through crossover and mutation
         offspring = []
         for _ in range(self.population_size // 2):
+
+
             # Crossover
             child1, child2 = parents[0].crossover(parents[1])
             
@@ -93,7 +96,9 @@ class GA(Metaheuristic):
                 child1.mutate()
             if random.uniform(0, 1) <= self.mutation_rate:
                 child2.mutate()
-            
+
+
+
             # Evaluate offspring
             child1.evaluate(self.fitness_function)
             child2.evaluate(self.fitness_function)
@@ -167,8 +172,8 @@ class DistributedGA(Metaheuristic):
         Initialize the population with random solutions and evaluate them in parallel.
         """
         solution_type: type[GASolution] = self.domain.get_connector().get_type(
-            self.domain.get_core()
-        )
+            self.domain.get_core())
+
         solutions = [
             solution_type(self.domain, connector=self.domain.get_connector())
             for _ in range(self.population_size)
