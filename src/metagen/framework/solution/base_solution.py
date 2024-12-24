@@ -112,12 +112,12 @@ class Solution:
             :func:`_set_sub_solution`
             :func:`_set_value`
         """
-
+        # print(f"Setting {variable} to {value}")
         if isinstance(value, (int, float, str, list)):
             base_type_class: type[BaseTypeClass] = self.get_connector().get_type(
                 value)
             variable_definition: Base = self.get_definition().get(variable)
-
+            # print(f"Variable definition: {variable_definition}")
             variable_definition.check_value(value)
 
             type_value: types.BaseType = base_type_class(

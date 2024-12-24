@@ -1,3 +1,4 @@
+from metagen.metaheuristics import GAConnector
 from metagen.metaheuristics.ga.ga import DistributedGA, GA
 from metagen.framework import Domain, Solution
 from sklearn.datasets import make_regression
@@ -10,7 +11,7 @@ X_regression, y_regression = make_regression(n_samples=100, n_features=4,
                                              random_state=0, shuffle=False)
 
 # SGD regressor problem definition
-sgd_regressor_definition = Domain()
+sgd_regressor_definition = Domain(GAConnector())
 sgd_regressor_definition.define_categorical(
     "loss", ["squared_error", "huber", "epsilon_insensitive"])
 sgd_regressor_definition.define_categorical(
@@ -40,7 +41,7 @@ def sgd_regressor_fitness(individual):
 
 if __name__ == "__main__":
     print('DistributedGA')
-    # ga: DistributedGA = DistributedGA(sgd_regressor_definition, sgd_regressor_fitness)
-    ga: GA = GA(sgd_regressor_definition, sgd_regressor_fitness)
+    ga: DistributedGA = DistributedGA(sgd_regressor_definition, sgd_regressor_fitness)
+    # ga: GA = GA(sgd_regressor_definition, sgd_regressor_fitness)
     solution: Solution = ga.run()
     print(solution)

@@ -108,12 +108,24 @@ class BaseType(ABC):
         :returns: The value rounded considering the step.
         :rtype: int, float
         """
+
+        res = -1
+
         left_value = value - (value % step)
         right_value = (value + step) - (value % step)
+        # print('value =', str(value), 'step =', str(step))
+        # print('left_value =', str(left_value), 'right_value =', str(right_value))
+
         if value - left_value > right_value - value:
-            return right_value
+            res= right_value
         else:
-            return left_value
+            res= left_value
+
+        if res < step:
+            res = step
+
+        # print('res =', str(res))
+        return res
 
     def _generate_numerical(self, left: int | float, right: int | float, step_size: int | float | None = None) -> int | float:
         """ From a value in an interval compute a new random value by adding (to the right) or subtracting (to the left)
