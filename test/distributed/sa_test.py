@@ -61,8 +61,9 @@ def p1_fitness(individual: Solution) -> float:
 
 if __name__ == "__main__":
     print('Distributed Simulated Annealing')
-    # sa: SA = SA(sgd_regressor_definition, sgd_regressor_fitness)
+    sa: SA = SA(sgd_regressor_definition, sgd_regressor_fitness, neighbor_population_size=5)
     # sa: DistributedSA = DistributedSA(sgd_regressor_definition, sgd_regressor_fitness, n_iterations=3,neighbor_population_size=5)
-    sa: DistributedSA = DistributedSA(p1_domain, p1_fitness, n_iterations=3,neighbor_population_size=5)
+    # sa: DistributedSA = DistributedSA(p1_domain, p1_fitness, n_iterations=3,neighbor_population_size=5)
+    # sa: SA = SA(p1_domain, p1_fitness, n_iterations=3, neighbor_population_size=5)
     solution: Solution = sa.run()
     print(solution)
