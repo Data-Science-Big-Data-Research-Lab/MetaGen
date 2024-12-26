@@ -22,7 +22,7 @@ from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
 from sklearn.svm import SVC, SVR
 
 from metagen.framework import Domain
-
+from metagen.framework.connector import BaseConnector
 # Synthetic datasets
 X_regression, y_regression = make_regression(n_samples=100, n_features=4,
                                              n_informative=2,
@@ -32,16 +32,71 @@ X_classification, y_classification = make_classification(n_samples=100, n_featur
                                                          n_informative=2, n_redundant=0,
                                                          random_state=0, shuffle=False)
 
-# Random Forest classifier problem definition
-random_forest_classifier_definition = Domain()
-random_forest_classifier_definition.define_integer("max_depth", 2, 8)
-random_forest_classifier_definition.define_integer("n_estimators", 2, 16)
-random_forest_classifier_definition.define_categorical(
-    "criterion", ['gini', 'entropy'])
-random_forest_classifier_definition.define_categorical(
-    "max_features", ['sqrt', 'log2'])
+def get_random_forest_classifier_domain(connector = BaseConnector()) -> Domain:
+    domain = Domain(connector)
+    domain.define_integer("max_depth", 2, 8)
+    domain.define_integer("n_estimators", 2, 16)
+    domain.define_categorical("criterion", ['gini', 'entropy'])
+    domain.define_categorical("max_features", ['sqrt', 'log2'])
+    return domain
 
-# Random Forest classifier fitness function
+def get_random_forest_regressor_domain(connector = BaseConnector()) -> Domain:
+    domain = Domain(connector)
+    domain.define_integer("max_depth", 2, 8)
+    domain.define_integer("n_estimators", 2, 16)
+    domain.define_categorical("criterion", ['absolute_error', 'squared_error', 'friedman_mse'])
+    domain.define_categorical("max_features", ['sqrt', 'log2'])
+    return domain
+
+def get_knn_classifier_domain(connector = BaseConnector()) -> Domain:
+    domain = Domain(connector)
+    domain.define_integer("n_neighbors", 2, 20)
+    domain.define_categorical("weights", ['uniform', 'distance'])
+    domain.define_integer("p", 1, 10)
+    domain.define_categorical("algorithm", ['auto', 'ball_tree', 'kd_tree', 'brute'])
+    return domain
+
+def get_knn_regressor_domain(connector = BaseConnector()) -> Domain:
+    domain = Domain(connector)
+    domain.define_integer("n_neighbors", 2, 20)
+    domain.define_categorical("weights", ['uniform', 'distance'])
+    domain.define_integer("p", 1, 10)
+    domain.define_categorical("algorithm", ['auto', 'ball_tree', 'kd_tree', 'brute'])
+    return domain
+
+def get_support_vector_classifier_domain(connector = BaseConnector()) -> Domain:
+    domain = Domain(connector)
+    domain.define_real("C", 0.5, 10., 0.5)
+    domain.define_categorical("kernel", ['linear', 'poly', 'rbf', 'sigmoid'])
+    domain.define_integer("degree", 2, 5, 1)
+    return domain
+
+def get_support_vector_regressor_domain(connector = BaseConnector()) -> Domain:
+    domain = Domain(connector)
+    domain.define_real("C", 0.5, 10., 0.5)
+    domain.define_categorical("kernel", ['linear', 'poly', 'rbf', 'sigmoid'])
+    domain.define_integer("degree", 2, 5, 1)
+    return domain
+
+def get_sgd_classifier_domain(connector = BaseConnector()) -> Domain:
+    domain = Domain(connector)
+    domain.define_categorical("loss", ['hinge', 'log_loss', 'modified_huber', 'squared_hinge', 'perceptron'])
+    domain.define_categorical("penalty", ['l2', 'l1', 'elasticnet'])
+    domain.define_real("alpha", .0001, 1., .01)
+    domain.define_integer("max_iter", 50, 2000, 5)
+    domain.define_real("tol", 1e-3, .1, 1e-3)
+    domain.define_categorical("learning_rate", ['constant', 'optimal', 'invscaling', 'adaptive'])
+    return domain
+
+def get_sgd_regressor_domain(connector = BaseConnector()) -> Domain:
+    domain = Domain(connector)
+    domain.define_categorical("loss", ["squared_error", "huber", "epsilon_insensitive"])
+    domain.define_categorical("penalty", ['l2', 'l1', 'elasticnet'])
+    domain.define_real("alpha", .0001, 1., .01)
+    domain.define_integer("max_iter", 50, 2000, 5)
+    domain.define_real("tol", 1e-3, .1, 1e-3)
+    domain.define_categorical("learning_rate", ['constant', 'optimal', 'invscaling', 'adaptive'])
+    return domain
 
 
 def random_forest_classifier_fitness(individual):
@@ -58,17 +113,6 @@ def random_forest_classifier_fitness(individual):
 
     return -scores.mean()
 
-
-# Random Forest regressor problem definition
-random_forest_regressor_definition = Domain()
-random_forest_regressor_definition.define_integer("max_depth", 2, 8)
-random_forest_regressor_definition.define_integer("n_estimators", 2, 16)
-random_forest_regressor_definition.define_categorical("criterion", [
-                                                      'absolute_error', 'squared_error', 'friedman_mse'])
-random_forest_regressor_definition.define_categorical(
-    "max_features", ['sqrt', 'log2'])
-
-
 # Random Forest regressor fitness function
 def random_forest_regressor_fitness(individual):
     max_depth = individual["max_depth"]
@@ -82,16 +126,6 @@ def random_forest_regressor_fitness(individual):
                              scoring="neg_root_mean_squared_error", cv=10, n_jobs=-1)
 
     return -scores.mean()
-
-
-# KNN classifier problem definition
-knn_classifier_definition = Domain()
-knn_classifier_definition.define_integer("n_neighbors", 2, 20)
-knn_classifier_definition.define_categorical(
-    "weights", ['uniform', 'distance'])
-knn_classifier_definition.define_integer("p", 1, 10)
-knn_classifier_definition.define_categorical(
-    "algorithm", ['auto', 'ball_tree', 'kd_tree', 'brute'])
 
 
 # KNN classifier fitness function
@@ -108,16 +142,6 @@ def knn_classifier_fitness(individual):
 
     return -scores.mean()
 
-
-# KNN regressor problem definition
-knn_regressor_definition = Domain()
-knn_regressor_definition.define_integer("n_neighbors", 2, 20)
-knn_regressor_definition.define_categorical("weights", ['uniform', 'distance'])
-knn_regressor_definition.define_integer("p", 1, 10)
-knn_regressor_definition.define_categorical(
-    "algorithm", ['auto', 'ball_tree', 'kd_tree', 'brute'])
-
-
 # KNN regressor fitness function
 def knn_regressor_fitness(individual):
     n_neighbors = individual["n_neighbors"]
@@ -132,15 +156,6 @@ def knn_regressor_fitness(individual):
 
     return -scores.mean()
 
-
-# SVM classifier problem definition
-support_vector_classifier_definition = Domain()
-support_vector_classifier_definition.define_real("C", 0.5, 10., 0.5)
-support_vector_classifier_definition.define_categorical(
-    "kernel", ['linear', 'poly', 'rbf', 'sigmoid'])
-support_vector_classifier_definition.define_integer("degree", 2, 5, 1)
-
-
 # SVM classifier fitness function
 def support_vector_classifier_fitness(individual):
     c = individual["C"]
@@ -153,15 +168,6 @@ def support_vector_classifier_fitness(individual):
 
     return -scores.mean()
 
-
-# SVM regressor problem definition
-support_vector_regressor_definition = Domain()
-support_vector_regressor_definition.define_real("C", 0.5, 10., 0.5)
-support_vector_regressor_definition.define_categorical(
-    "kernel", ['linear', 'poly', 'rbf', 'sigmoid'])
-support_vector_regressor_definition.define_integer("degree", 2, 5, 1)
-
-
 # SVM regressor fitness function
 def support_vector_regressor_fitness(individual):
     c = individual["C"]
@@ -173,19 +179,6 @@ def support_vector_regressor_fitness(individual):
                              scoring="neg_root_mean_squared_error", cv=10, n_jobs=-1)
 
     return -scores.mean()
-
-
-# SGD classifier problem definition
-sgd_classifier_definition = Domain()
-sgd_classifier_definition.define_categorical("loss", ['hinge', 'log_loss', 'modified_huber', 'squared_hinge',
-                                                      'perceptron'])
-sgd_classifier_definition.define_categorical(
-    "penalty", ['l2', 'l1', 'elasticnet'])
-sgd_classifier_definition.define_real("alpha", .0001, 1., .01)
-sgd_classifier_definition.define_integer("max_iter", 50, 2000, 5)
-sgd_classifier_definition.define_real("tol", 1e-3, .1, 1e-3)
-sgd_classifier_definition.define_categorical("learning_rate",
-                                             ['constant', 'optimal', 'invscaling', 'adaptive'])
 
 
 # SGD classifier fitness function
@@ -203,20 +196,6 @@ def sgd_classifier_fitness(individual):
                              scoring="accuracy", cv=10, n_jobs=-1)
 
     return -scores.mean()
-
-
-# SGD regressor problem definition
-sgd_regressor_definition = Domain()
-sgd_regressor_definition.define_categorical(
-    "loss", ["squared_error", "huber", "epsilon_insensitive"])
-sgd_regressor_definition.define_categorical(
-    "penalty", ['l2', 'l1', 'elasticnet'])
-sgd_regressor_definition.define_real("alpha", .0001, 1., .01)
-sgd_regressor_definition.define_integer("max_iter", 50, 2000, 5)
-sgd_regressor_definition.define_real("tol", 1e-3, .1, 1e-3)
-sgd_regressor_definition.define_categorical("learning_rate",
-                                            ['constant', 'optimal', 'invscaling', 'adaptive'])
-
 
 # SGD regressor fitness function
 def sgd_regressor_fitness(individual):
