@@ -127,7 +127,8 @@ class GA(Metaheuristic):
         """
         super().post_iteration()
         
-        # Add GA-specific logging if needed
-        self.writer.add_scalar('GA/Population Size', 
+        if self.logger is not None: 
+            # Add GA-specific logging if needed
+            self.logger.add_scalar('GA/Population Size', 
                               len(self.current_solutions), 
                               self.current_iteration)

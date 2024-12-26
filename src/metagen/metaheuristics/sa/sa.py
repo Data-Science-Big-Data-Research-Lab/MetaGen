@@ -15,12 +15,14 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 from metagen.framework import Domain, Solution
+from metagen.metaheuristics.base import Metaheuristic
 from collections.abc import Callable
+from typing import Any
 from copy import deepcopy
 import random
 import math
 
-class SA:
+class SA(Metaheuristic):
     """
     Simulated annealing (SA) class for optimization problems.
     
@@ -52,16 +54,13 @@ class SA:
     """
 
     def __init__(self, domain: Domain, fitness_func: Callable[[Solution], float], n_iterations: int = 50, alteration_limit: float =0.1, initial_temp: float = 50.0, cooling_rate: float=0.99) -> None:
-    
-        self.domain: Domain = domain
+        super().__init__(domain, fitness_func)
+
         self.n_iterations: int = n_iterations
         self.initial_temp: float = initial_temp
         self.alteration_limit: Any = alteration_limit
         self.cooling_rate: float = cooling_rate
-        self.solution = None
-        self.fitness_func: Callable[[Solution], float] = fitness_func
-
-        self.initialize()
+        self.temperature: float = self.initial_temp
 
     def initialize(self):
         """
@@ -69,41 +68,32 @@ class SA:
         """
         solution_type: type[Solution] = self.domain.get_connector().get_type(
             self.domain.get_core())
-        self.solution = solution_type(
+        self.best_solution = solution_type(
             self.domain, connector=self.domain.get_connector())
-        self.solution.evaluate(self.fitness_func)
-        
+        self.best_solution.evaluate(self.fitness_function)
 
-    def run(self) -> Solution:
+        self.current_iteration = 0
+    
+    def iterate(self) -> None:
         """
-        Run the simulated annealing for the specified number of generations and return the best solution found.
-
-        :return: The best solution found by the simulated annealing.
-        :rtype: Solution
+        Execute one iteration of simulated annealing.
         """
+        neighbour = deepcopy(self.best_solution)
 
-        current_iteration = 0
-        temperature = self.initial_temp
+        neighbour.mutate(alteration_limit=self.alteration_limit)
 
+        neighbour.evaluate(self.fitness_function)
 
-        while current_iteration <= self.n_iterations:
+        exploration_rate = math.exp((self.best_solution.fitness - neighbour.fitness) / self.temperature) 
 
-            neighbour = deepcopy(self.solution)
-
-            neighbour.mutate(alteration_limit=self.alteration_limit)
-
-            neighbour.evaluate(self.fitness_func)
-
-            exploration_rate = math.exp((self.solution.fitness - neighbour.fitness) / temperature) 
-
-            if neighbour.fitness < self.solution.fitness or exploration_rate > random.random():
-                self.solution = neighbour
-            
-            temperature *= self.cooling_rate
-
-            current_iteration += 1
+        if neighbour.fitness < self.best_solution.fitness or exploration_rate > random.random():
+            self.best_solution = neighbour
         
-        return self.solution
+        self.temperature *= self.cooling_rate
+    
+    def stopping_criterion(self) -> bool:
+        return self.current_iteration >= self.n_iterations
+        
 
 
 
