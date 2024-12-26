@@ -110,10 +110,17 @@ class BaseType(ABC):
         """
         left_value = value - (value % step)
         right_value = (value + step) - (value % step)
+
+        result = -1
         if value - left_value > right_value - value:
-            return right_value
+            result = right_value
         else:
-            return left_value
+            result = left_value
+        
+        if result < step:
+            result = step
+
+        return result
 
     def _generate_numerical(self, left: int | float, right: int | float, step_size: int | float | None = None) -> int | float:
         """ From a value in an interval compute a new random value by adding (to the right) or subtracting (to the left)

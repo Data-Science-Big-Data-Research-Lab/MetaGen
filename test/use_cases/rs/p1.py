@@ -17,13 +17,9 @@
 from metagen.framework import Domain, Solution
 from metagen.metaheuristics import RandomSearch
 
-import shutil
-
-#shutil.rmtree("./logs/random_search")
 # P1 legacy_domain
 p1_domain: Domain = Domain()
 p1_domain.define_integer("x", -10, 10)
-
 
 # P1 fitness function
 def p1_fitness(solution: Solution) -> float:
