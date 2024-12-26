@@ -76,7 +76,7 @@ class Integer(BaseType):
             max_value = limited_max_value if max_value > limited_max_value > min_value else max_value
             
 
-        random_integer = random.randrange(min_value, max_value + 1, step)
+        random_integer = random.randrange(int(min_value), int(max_value) + 1, step)
         self.set(random_integer)
 
     def set(self, value: Any) -> None:
