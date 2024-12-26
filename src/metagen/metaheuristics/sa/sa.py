@@ -20,7 +20,7 @@ import math
 import random
 from copy import deepcopy
 from typing import Callable, Any, List
-from metagen.metaheuristics.base import Metaheuristic
+from metagen.metaheuristics.base import Metaheuristic, get_bests_from_the_best
 
 
 # TODO: Parche para evitar overflow en el cálculo del exponente
@@ -196,28 +196,6 @@ class DistributedSA(Metaheuristic):
             self.domain, connector=self.domain.get_connector())
         self.best_solution.evaluate(self.fitness_function)
 
-    @staticmethod
-    @ray.remote
-    def create_and_evaluate_neighbors(best_solution: Solution, fitness_function: Callable[[Solution], float],
-                                      alteration_limit: float, num_neighbors: int) -> Solution:
-
-
-        neighbors = []
-        for _ in range(num_neighbors):
-            neighbor = deepcopy(best_solution)
-            neighbor.mutate(alteration_limit=alteration_limit)
-            neighbor.evaluate(fitness_function)
-            neighbors.append(neighbor)
-        return min(neighbors)
-
-    @staticmethod
-    def distribute_neighbors_equally(neighbor_population_size: int, num_cpus: int) -> List[int]:
-        num_cpus = min(num_cpus, neighbor_population_size)  # No asignar más CPUs que vecinos
-        base_count = neighbor_population_size // num_cpus
-        remainder = neighbor_population_size % num_cpus
-        distribution = [base_count + 1 if i < remainder else base_count for i in range(num_cpus)]
-        return distribution
-
 
 
     def iterate(self) -> None:
@@ -225,20 +203,10 @@ class DistributedSA(Metaheuristic):
         Perform one iteration of the simulated annealing algorithm.
         """
 
-        # Divide the population size by the number of available CPUs
-        num_cpus = int(ray.available_resources().get("CPU", 1))
-        # print(f"Number of CPUs: {num_cpus}")
-        distribution = DistributedSA.distribute_neighbors_equally(self.neighbor_population_size, num_cpus)
-
-        # print(f"Distribution: {distribution}")
-        # Generate and evaluate neighbors in parallel using Ray
-        futures = []
-        for count in distribution:
-            futures.append(DistributedSA.create_and_evaluate_neighbors.remote(self.best_solution, self.fitness_function,
-                                                                              self.alteration_limit, count))
+        distributed_population = get_bests_from_the_best(self.neighbor_population_size, self.best_solution, self.fitness_function, self.alteration_limit)
 
         # Select the best neighbor
-        best_neighbor = min(ray.get(futures))
+        best_neighbor = min(distributed_population)
 
         # Acceptance criteria for simulated annealing
         exploration_rate = calculate_exploration_rate(self.best_solution.fitness, best_neighbor.fitness, self.initial_temp)
