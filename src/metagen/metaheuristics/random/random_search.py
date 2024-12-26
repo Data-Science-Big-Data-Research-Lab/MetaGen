@@ -15,8 +15,11 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 from copy import deepcopy
+from typing import Callable, List
+
 from metagen.framework import Domain, Solution
-from metagen.metaheuristics.base import Metaheuristic
+from metagen.metaheuristics.base import Metaheuristic, get_bests_from_the_best, distributed_base_population, \
+    distributed_mutation_and_evaluation, local_yield_mutate_and_evaluate_individuals, local_mutate_and_evaluate_population
 import ray
 
 
@@ -66,35 +69,17 @@ class RandomSearch(Metaheuristic):
 
     def initialize(self) -> None:
         """Initialize random solutions"""
-        solution_type: type[Solution] = self.domain.get_connector().get_type(
-            self.domain.get_core())
-        
-        # Create initial solutions
-        self.current_solutions = [
-            solution_type(self.domain, connector=self.domain.get_connector())
-            for _ in range(self.search_space_size)
-        ]
-        
-        # Evaluate initial solutions
-        for solution in self.current_solutions:
-            solution.evaluate(self.fitness_function)
-        
-        # Set initial best solution
-        self.best_solution = deepcopy(min(self.current_solutions))
+        population, best_individual = local_yield_mutate_and_evaluate_individuals(self.search_space_size, self.domain, self.fitness_function)
+        self.current_solutions = population
+        self.best_solution = best_individual
 
     def iterate(self) -> None:
-        """Execute one iteration of random search"""
-        for solution in self.current_solutions:
-            # Mutate and evaluate
-            solution.mutate()
-            solution.evaluate(self.fitness_function)
-            
-            # Update the best solution if better found
-            if solution < self.best_solution:
-                self.best_solution = deepcopy(solution)
+        population, best_individual = local_mutate_and_evaluate_population(self.current_solutions, self.fitness_function)
+        self.current_solutions = population
+        self.best_solution = best_individual
 
 
-class DistributedRandomSearch(Metaheuristic):
+class DistributedRS(Metaheuristic):
     """
     RandomSearch is a class for performing a random search optimization algorithm.
 
@@ -133,67 +118,34 @@ class DistributedRandomSearch(Metaheuristic):
         self.search_space_size = search_space_size
         self.max_iterations = max_iterations
 
-    @staticmethod
-    @ray.remote
-    def evaluate_solution(solution, fitness_function):
-        """
-        Static method to evaluate a solution in parallel using Ray.
-        """
-        solution.evaluate(fitness_function)
-        return solution
-
-    def stopping_criterion(self) -> bool:
-        return self.current_iteration >= self.max_iterations
-
     def initialize(self) -> None:
         """
         Initialize random solutions and evaluate them in parallel using Ray.
         """
-        solution_type: type[Solution] = self.domain.get_connector().get_type(
-            self.domain.get_core()
-        )
-
-        # Create initial solutions
-        self.current_solutions = [
-            solution_type(self.domain, connector=self.domain.get_connector())
-            for _ in range(self.search_space_size)
-        ]
-
-        # Evaluate solutions in parallel using Ray
-        futures = [
-            DistributedRandomSearch.evaluate_solution.remote(solution, self.fitness_function)
-            for solution in self.current_solutions
-        ]
-        self.current_solutions = ray.get(futures)
-
-        # Set the initial best solution
-        self.best_solution = deepcopy(min(self.current_solutions))
+        print('initialize')
+        population, best_individual = distributed_base_population(self.search_space_size, self.domain, self.fitness_function)
+        self.current_solutions = population
+        self.best_solution = best_individual
+        print('Population: ' + str(self.current_solutions))
+        print('Best: ' + str(self.best_solution))
 
     def iterate(self) -> None:
         """
         Perform one iteration of the distributed random search.
         """
         # Mutate solutions before evaluating them
-        for solution in self.current_solutions:
-            solution.mutate()
+        print('iterate')
+        population, best_individual = distributed_mutation_and_evaluation(self.current_solutions, self.fitness_function)
+        self.current_solutions = population
+        self.best_solution = best_individual
+        print('Best: '+str(self.best_solution))
 
-        # Evaluate mutated solutions in parallel using Ray
-        futures = [
-            DistributedRandomSearch.evaluate_solution.remote(solution, self.fitness_function)
-            for solution in self.current_solutions
-        ]
-        self.current_solutions = ray.get(futures)
-
-        # Update the best solution if a better one is found
-        for solution in self.current_solutions:
-            if solution < self.best_solution:
-                self.best_solution = deepcopy(solution)
+    def stopping_criterion(self) -> bool:
+        return self.current_iteration >= self.max_iterations
 
     def run(self) -> Solution:
-        """
-        Ejecuta el algoritmo metaheurístico distribuido.
-        """
-        # Inicializar Ray al inicio de la ejecución
+
+        print('Running')
         if not ray.is_initialized():
             ray.init()
 
