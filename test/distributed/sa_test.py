@@ -34,7 +34,7 @@ sgd_regressor_definition.define_categorical("learning_rate",
 
 
 # SGD regressor fitness function
-def sgd_regressor_fitness(individual):
+def sgd_regressor_fitness(individual: Solution) -> float:
     loss = individual["loss"]
     penalty = individual["penalty"]
     alpha = individual["alpha"]
@@ -49,9 +49,20 @@ def sgd_regressor_fitness(individual):
 
     return -scores.mean()
 
+p1_domain: Domain = Domain()
+p1_domain.define_integer("x", -10, 10)
+
+def p1_fitness(individual: Solution) -> float:
+    x = individual["x"] # You could use the .get function alternatively.
+    return x + 5
+
+
+
+
 if __name__ == "__main__":
     print('Distributed Simulated Annealing')
     # sa: SA = SA(sgd_regressor_definition, sgd_regressor_fitness)
-    sa: DistributedSA = DistributedSA(sgd_regressor_definition, sgd_regressor_fitness, n_iterations=3,neighbor_population_size=5)
+    # sa: DistributedSA = DistributedSA(sgd_regressor_definition, sgd_regressor_fitness, n_iterations=3,neighbor_population_size=5)
+    sa: DistributedSA = DistributedSA(p1_domain, p1_fitness, n_iterations=3,neighbor_population_size=5)
     solution: Solution = sa.run()
     print(solution)
