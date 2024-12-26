@@ -19,7 +19,7 @@ import ray
 import math
 import random
 from copy import deepcopy
-from typing import Callable, Any
+from typing import Callable, Any, List
 from metagen.metaheuristics.base import Metaheuristic
 
 class SA:
@@ -108,8 +108,6 @@ class SA:
         return self.solution
 
 
-
-
 class DistributedSA(Metaheuristic):
     """
     Distributed implementation of Simulated Annealing (SA) using Ray for parallel evaluation.
@@ -152,60 +150,93 @@ class DistributedSA(Metaheuristic):
 
     @staticmethod
     @ray.remote
-    def evaluate_solution(solution: Solution, fitness_function: Callable[[Solution], float]) -> Solution:
+    def create_and_evaluate_neighbors(best_solution: Solution, fitness_function: Callable[[Solution], float],
+                                      alteration_limit: float, num_neighbors: int) -> Solution:
+
+
+        neighbors = []
+        for _ in range(num_neighbors):
+            neighbor = deepcopy(best_solution)
+            neighbor.mutate(alteration_limit=alteration_limit)
+            neighbor.evaluate(fitness_function)
+            neighbors.append(neighbor)
+        return min(neighbors)
+
+    @staticmethod
+    def distribute_neighbors_equally(neighbor_population_size: int, num_cpus: int) -> List[int]:
+        num_cpus = min(num_cpus, neighbor_population_size)  # No asignar más CPUs que vecinos
+        base_count = neighbor_population_size // num_cpus
+        remainder = neighbor_population_size % num_cpus
+        distribution = [base_count + 1 if i < remainder else base_count for i in range(num_cpus)]
+        return distribution
+
+    # TODO: Parche para evitar overflow en el cálculo del exponente
+    @staticmethod
+    def calculate_exploration_rate(best_solution_fitness:float, best_neighbor_fitness:float, initial_temp:float) -> float:
         """
-        Evaluate a solution using the fitness function in a distributed way.
+        Calculate the exploration rate for simulated annealing.
 
         Args:
-            solution: The solution to evaluate
-            fitness_function: The fitness function
+            best_solution_fitness (float): Fitness of the best solution.
+            best_neighbor_fitness (float): Fitness of the best neighbor.
+            initial_temp (float): Current temperature.
 
         Returns:
-            The evaluated solution
+            float: The exploration rate.
         """
-        solution.evaluate(fitness_function)
-        return solution
-
-    def yield_best_neighbor(self, current_best_neighbor:Solution,fitness_function: Callable[[Solution], float], alteration_limit:float) -> Solution:
-        potential_neighbor = deepcopy(current_best_neighbor)
-        potential_neighbor.mutate(alteration_limit=alteration_limit)
-        potential_neighbor.evaluate(fitness_function)
-
-
+        MAX_EXPONENT = 700  # This is a safe value to avoid overflow in most cases
+        exponent_value = (best_solution_fitness - best_neighbor_fitness) / initial_temp
+        exponent_value = max(min(exponent_value, MAX_EXPONENT), -MAX_EXPONENT)
+        return math.exp(exponent_value)
 
     def iterate(self) -> None:
         """
         Perform one iteration of the simulated annealing algorithm.
         """
-        # Generate a population of neighbor solutions
-        neighbors = [deepcopy(self.best_solution) for _ in range(self.neighbor_population_size)]
-        for neighbor in neighbors:
-            neighbor.mutate(alteration_limit=self.alteration_limit)
 
-        # Evaluate neighbors in parallel using Ray
-        futures = [DistributedSA.evaluate_solution.remote(neighbor, self.fitness_function) for neighbor in neighbors]
+        # Divide the population size by the number of available CPUs
+        num_cpus = int(ray.available_resources().get("CPU", 1))
+        # print(f"Number of CPUs: {num_cpus}")
+        distribution = DistributedSA.distribute_neighbors_equally(self.neighbor_population_size, num_cpus)
+
+        # print(f"Distribution: {distribution}")
+        # Generate and evaluate neighbors in parallel using Ray
+        futures = []
+        for count in distribution:
+            futures.append(DistributedSA.create_and_evaluate_neighbors.remote(self.best_solution, self.fitness_function,
+                                                                              self.alteration_limit, count))
         self.current_solutions = ray.get(futures)
 
         # Select the best neighbor
         best_neighbor = min(self.current_solutions)
 
         # Acceptance criteria for simulated annealing
-
-        # TODO: Parche para evitar overflow en el cálculo del exponente
-        # Define a maximum value to clamp the exponent
-        MAX_EXPONENT = 700  # This is a safe value to avoid overflow in most cases
-        # Calculate the exponent value
-        exponent_value = (self.best_solution.fitness - best_neighbor.fitness) / self.initial_temp
-        # Clamp the exponent value to the range [-MAX_EXPONENT, MAX_EXPONENT]
-        exponent_value = max(min(exponent_value, MAX_EXPONENT), -MAX_EXPONENT)
-        # Calculate the exploration rate
-        exploration_rate = math.exp(exponent_value)
-
+        exploration_rate = DistributedSA.calculate_exploration_rate(self.best_solution.fitness, best_neighbor.fitness, self.initial_temp)
         if best_neighbor.fitness < self.best_solution.fitness or exploration_rate > random.random():
             self.best_solution = deepcopy(best_neighbor)
 
         # Update temperature
         self.initial_temp *= self.cooling_rate
+
+    def stopping_criterion(self) -> bool:
+        """
+        Check if the stopping criterion has been reached.
+
+        Returns:
+            bool: True if the stopping criterion has been reached, False otherwise.
+        """
+        return self.current_iteration >= self.n_iterations
+
+    def post_iteration(self) -> None:
+        """
+        Additional processing after each generation.
+        """
+        super().post_iteration()
+
+        # Add GA-specific logging if needed
+        self.writer.add_scalar('SA/Population Size',
+                               len(self.current_solutions),
+                               self.current_iteration)
 
     def run(self) -> Solution:
         """
