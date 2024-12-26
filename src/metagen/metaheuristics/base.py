@@ -83,6 +83,13 @@ class Metaheuristic(TensorBoardLogger, ABC):
             self.current_solutions, 
             self.best_solution
         )
+    
+    def skip_iteration(self) -> None:
+        """
+        Callback executed when an iteration is skipped.
+        Override this method to add custom skip-iteration processing.
+        """
+        raise StopIteration("Skipping iteration")
 
     def run(self) -> Solution:
         """
@@ -96,17 +103,20 @@ class Metaheuristic(TensorBoardLogger, ABC):
         
         # Main loop
         while not self.stopping_criterion():
-            # Pre-iteration callback
-            self.pre_iteration()
+            try:
+                # Pre-iteration callback
+                self.pre_iteration()
 
-            # Execute one iteration
-            self.iterate()
-            
-            # Post-iteration callback
-            self.post_iteration()
-            
-            # Increment iteration counter
-            self.current_iteration += 1
+                # Execute one iteration
+                self.iterate()
+                
+                # Post-iteration callback
+                self.post_iteration()
+                
+                # Increment iteration counter
+                self.current_iteration += 1
+            except StopIteration:
+                continue
 
         # Post-execution callback
         self.post_execution()
