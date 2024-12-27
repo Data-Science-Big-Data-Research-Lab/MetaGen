@@ -20,8 +20,9 @@ import math
 import random
 from copy import deepcopy
 from typing import Callable, Any, List
-from metagen.metaheuristics.base import Metaheuristic, distributed_yield_mutate_evaluate_from_the_best, \
-    local_yield_mutate_and_evaluate_individuals_from_best
+from metagen.metaheuristics.base import Metaheuristic
+from metagen.metaheuristics.distributed_suite import local_yield_mutate_and_evaluate_individuals_from_best, \
+    distributed_yield_mutate_evaluate_from_the_best
 
 
 # TODO: Parche para evitar overflow en el cálculo del exponente
