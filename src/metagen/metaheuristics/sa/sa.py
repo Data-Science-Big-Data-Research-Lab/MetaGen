@@ -20,11 +20,11 @@ import math
 import random
 from copy import deepcopy
 from typing import Callable, Any, List
-from metagen.metaheuristics.base import Metaheuristic, get_bests_from_the_best
+from metagen.metaheuristics.base import Metaheuristic, distributed_yield_mutate_evaluate_from_the_best, \
+    local_yield_mutate_and_evaluate_individuals_from_best
 
 
 # TODO: Parche para evitar overflow en el cálculo del exponente
-
 def calculate_exploration_rate(best_solution_fitness: float, best_neighbor_fitness: float,
                                    initial_temp: float) -> float:
         """
@@ -104,40 +104,21 @@ class SA(Metaheuristic):
         """
         Initialize the starting solution for simulated annealing.
         """
-        solution_type: type[Solution] = self.domain.get_connector().get_type(
-            self.domain.get_core())
-        self.best_solution = solution_type(
-            self.domain, connector=self.domain.get_connector())
+        solution_type: type[Solution] = self.domain.get_connector().get_type(self.domain.get_core())
+        self.best_solution = solution_type(self.domain, connector=self.domain.get_connector())
         self.best_solution.evaluate(self.fitness_function)
-
-    @staticmethod
-    def yield_best_neighbor(best_solution: Solution, fitness_function: Callable[[Solution], float],
-                            alteration_limit: float, num_neighbors: int) -> Solution:
-
-        best_neighbor = deepcopy(best_solution)
-        best_neighbor.mutate(alteration_limit=alteration_limit)
-        best_neighbor.evaluate(fitness_function)
-        for _ in range(num_neighbors-1):
-            neighbor = deepcopy(best_solution)
-            neighbor.mutate(alteration_limit=alteration_limit)
-            neighbor.evaluate(fitness_function)
-            if neighbor.fitness < best_neighbor.fitness:
-                best_neighbor = neighbor
-        return best_neighbor
-
 
     def iterate(self) -> None:
         """
         Perform one iteration of the simulated annealing algorithm.
         """
 
-        best_neighbor = SA.yield_best_neighbor(self.best_solution, self.fitness_function,
-                                                               self.alteration_limit, self.neighbor_population_size)
+        best_neighbor = local_yield_mutate_and_evaluate_individuals_from_best(self.neighbor_population_size, self.best_solution, self.fitness_function, self.alteration_limit)
 
         # Acceptance criteria for simulated annealing
         exploration_rate = calculate_exploration_rate(self.best_solution.fitness, best_neighbor.fitness,
                                                                     self.initial_temp)
-        if best_neighbor.fitness < self.best_solution.fitness or exploration_rate > random.random():
+        if best_neighbor < self.best_solution or exploration_rate > random.random():
             self.best_solution = deepcopy(best_neighbor)
 
         self.current_solutions.append(self.best_solution)
@@ -190,20 +171,16 @@ class DistributedSA(Metaheuristic):
         """
         Initialize the starting solution for simulated annealing.
         """
-        solution_type: type[Solution] = self.domain.get_connector().get_type(
-            self.domain.get_core())
-        self.best_solution = solution_type(
-            self.domain, connector=self.domain.get_connector())
+        solution_type: type[Solution] = self.domain.get_connector().get_type(self.domain.get_core())
+        self.best_solution = solution_type(self.domain, connector=self.domain.get_connector())
         self.best_solution.evaluate(self.fitness_function)
-
-
 
     def iterate(self) -> None:
         """
         Perform one iteration of the simulated annealing algorithm.
         """
 
-        distributed_population = get_bests_from_the_best(self.neighbor_population_size, self.best_solution, self.fitness_function, self.alteration_limit)
+        distributed_population = distributed_yield_mutate_evaluate_from_the_best(self.neighbor_population_size, self.best_solution, self.fitness_function, self.alteration_limit)
 
         # Select the best neighbor
         best_neighbor = min(distributed_population)

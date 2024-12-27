@@ -48,7 +48,7 @@ def p1_fitness(individual: Solution) -> float:
 if __name__ == "__main__":
     print('Running Random Search')
     # rs: RandomSearch = RandomSearch(sgd_regressor_definition, sgd_regressor_fitness)
-    # rs: DistributedRS = DistributedRS(sgd_regressor_definition, sgd_regressor_fitness)
-    rs: DistributedRS = DistributedRS(p1_domain, p1_fitness)
+    rs: DistributedRS = DistributedRS(sgd_regressor_definition, sgd_regressor_fitness)
+    # rs: DistributedRS = DistributedRS(p1_domain, p1_fitness)
     solution: Solution = rs.run()
     print(solution)

@@ -18,7 +18,7 @@ from copy import deepcopy
 from typing import Callable, List
 
 from metagen.framework import Domain, Solution
-from metagen.metaheuristics.base import Metaheuristic, get_bests_from_the_best, distributed_base_population, \
+from metagen.metaheuristics.base import Metaheuristic, distributed_yield_mutate_evaluate_from_the_best, distributed_base_population, \
     distributed_mutation_and_evaluation, local_yield_mutate_and_evaluate_individuals, local_mutate_and_evaluate_population
 import ray
 
@@ -122,30 +122,30 @@ class DistributedRS(Metaheuristic):
         """
         Initialize random solutions and evaluate them in parallel using Ray.
         """
-        print('initialize')
+        # print('initialize')
         population, best_individual = distributed_base_population(self.search_space_size, self.domain, self.fitness_function)
         self.current_solutions = population
         self.best_solution = best_individual
-        print('Population: ' + str(self.current_solutions))
-        print('Best: ' + str(self.best_solution))
+        # print('Population: ' + str(self.current_solutions))
+        # print('Best: ' + str(self.best_solution))
 
     def iterate(self) -> None:
         """
         Perform one iteration of the distributed random search.
         """
         # Mutate solutions before evaluating them
-        print('iterate')
+        # print('iterate')
         population, best_individual = distributed_mutation_and_evaluation(self.current_solutions, self.fitness_function)
         self.current_solutions = population
         self.best_solution = best_individual
-        print('Best: '+str(self.best_solution))
+        # print('Best: '+str(self.best_solution))
 
     def stopping_criterion(self) -> bool:
         return self.current_iteration >= self.max_iterations
 
     def run(self) -> Solution:
 
-        print('Running')
+        # print('Running')
         if not ray.is_initialized():
             ray.init()
 
