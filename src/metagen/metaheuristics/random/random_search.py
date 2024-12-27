@@ -14,13 +14,12 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-from copy import deepcopy
-from typing import Callable, List
-
 from metagen.framework import Domain, Solution
-from metagen.metaheuristics.base import Metaheuristic, distributed_yield_mutate_evaluate_from_the_best, distributed_base_population, \
-    distributed_mutation_and_evaluation, local_yield_mutate_and_evaluate_individuals, local_mutate_and_evaluate_population
+from metagen.metaheuristics.base import Metaheuristic
 import ray
+
+from metagen.metaheuristics.distributed_suite import local_yield_and_evaluate_individuals, \
+    local_mutate_and_evaluate_population, distributed_base_population, distributed_mutation_and_evaluation
 
 
 class RandomSearch(Metaheuristic):
@@ -69,7 +68,7 @@ class RandomSearch(Metaheuristic):
 
     def initialize(self) -> None:
         """Initialize random solutions"""
-        population, best_individual = local_yield_mutate_and_evaluate_individuals(self.search_space_size, self.domain, self.fitness_function)
+        population, best_individual = local_yield_and_evaluate_individuals(self.search_space_size, self.domain, self.fitness_function)
         self.current_solutions = population
         self.best_solution = best_individual
 
