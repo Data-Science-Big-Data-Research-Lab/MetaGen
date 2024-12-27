@@ -1,16 +1,9 @@
-# src/metagen/metaheuristics/metaheuristic.py
 from abc import ABC, abstractmethod
 from typing import List, Optional, Callable, Tuple
-
 import ray
-from ray import remote
-
 from metagen.framework import Domain, Solution
 from metagen.logging import TensorBoardLogger
 from copy import deepcopy
-
-
-
 
 class Metaheuristic(TensorBoardLogger, ABC):
     """
@@ -200,15 +193,15 @@ def remote_mutate_and_evaluate_population (population:List[Solution], fitness_fu
 
 
 # Para SA:
-def get_bests_from_the_best(population_size: int, best_solution: Solution, fitness_function: Callable[[Solution], float], alteration_limit: Optional[float] = None) -> List[Solution]:
+def distributed_yield_mutate_evaluate_from_the_best(population_size: int, best_solution: Solution, fitness_function: Callable[[Solution], float], alteration_limit: Optional[float] = None) -> List[Solution]:
     distribution = assign_load_equally(population_size)
     futures= []
     for count in distribution:
-        futures.append(yield_mutate_and_evaluate_individuals_from_best.remote(count, best_solution, fitness_function, alteration_limit=alteration_limit))
+        futures.append(remote_yield_mutate_and_evaluate_individuals_from_best.remote(count, best_solution, fitness_function, alteration_limit=alteration_limit))
     return ray.get(futures)
 
-@ray.remote
-def yield_mutate_and_evaluate_individuals_from_best(num_individuals: int, best_solution: Solution, fitness_function: Callable[[Solution], float], alteration_limit: Optional[float] = None) -> Solution:
+
+def local_yield_mutate_and_evaluate_individuals_from_best(num_individuals: int, best_solution: Solution, fitness_function: Callable[[Solution], float], alteration_limit: Optional[float] = None) -> Solution:
         best_neighbor = deepcopy(best_solution)
         best_neighbor.mutate(alteration_limit=alteration_limit)
         best_neighbor.evaluate(fitness_function)
@@ -219,5 +212,9 @@ def yield_mutate_and_evaluate_individuals_from_best(num_individuals: int, best_s
             if neighbor.fitness < best_neighbor.fitness:
                 best_neighbor = neighbor
         return best_neighbor
+
+@ray.remote
+def remote_yield_mutate_and_evaluate_individuals_from_best(num_individuals: int, best_solution: Solution, fitness_function: Callable[[Solution], float], alteration_limit: Optional[float] = None) -> Solution:
+    return local_yield_mutate_and_evaluate_individuals_from_best(num_individuals, best_solution, fitness_function, alteration_limit=alteration_limit)
 
 
