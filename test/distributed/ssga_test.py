@@ -40,9 +40,23 @@ def sgd_regressor_fitness(individual):
 
     return -scores.mean()
 
+
+p1_domain: Domain = Domain(GAConnector())
+p1_domain.define_integer("x", -5, 20)
+
+def p1_fitness(individual: Solution) -> float:
+    x = individual["x"] # You could use the .get function alternatively.
+    return x + 5
+
 if __name__ == "__main__":
-    print('DistributedSSGA')
-    ssga: DistributedSSGA = DistributedSSGA(sgd_regressor_definition, sgd_regressor_fitness)
+
+    # print('SSGA')
+    # ssga: SSGA = SSGA(p1_domain, p1_fitness)
     # ssga: SSGA = SSGA(sgd_regressor_definition, sgd_regressor_fitness)
+
+    print('DistributedSSGA')
+    # ssga: DistributedSSGA = DistributedSSGA(p1_domain, p1_fitness)
+    ssga: DistributedSSGA = DistributedSSGA(sgd_regressor_definition, sgd_regressor_fitness)
+
     solution: Solution = ssga.run()
     print(solution)

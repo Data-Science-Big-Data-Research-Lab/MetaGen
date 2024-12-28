@@ -4,8 +4,6 @@ from metagen.framework import Domain, Solution
 from metagen.logging import TensorBoardLogger
 from copy import deepcopy
 
-
-
 class Metaheuristic(TensorBoardLogger, ABC):
     """
     Abstract base class for metaheuristic algorithms.
@@ -17,8 +15,6 @@ class Metaheuristic(TensorBoardLogger, ABC):
         Args:
             domain: The problem domain
             fitness_function: Function to evaluate solutions
-            algorithm_name: Name of the algorithm for logging
-            max_iterations: Maximum number of iterations
         """
         super().__init__(log_dir=log_dir)
         self.domain = domain
@@ -85,6 +81,13 @@ class Metaheuristic(TensorBoardLogger, ABC):
             self.best_solution
         )
 
+    def skip_iteration(self) -> None:
+        """
+        Callback executed when an iteration is skipped.
+        Override this method to add custom skip-iteration processing.
+        """
+        raise StopIteration("Skipping iteration")
+
     def run(self) -> Solution:
         """
         Execute the metaheuristic algorithm.
@@ -97,21 +100,22 @@ class Metaheuristic(TensorBoardLogger, ABC):
 
         # Main loop
         while not self.stopping_criterion():
-            # Pre-iteration callback
-            self.pre_iteration()
+            try:
+                # Pre-iteration callback
+                self.pre_iteration()
 
-            # Execute one iteration
-            self.iterate()
+                # Execute one iteration
+                self.iterate()
 
-            # Post-iteration callback
-            self.post_iteration()
+                # Post-iteration callback
+                self.post_iteration()
 
-            # Increment iteration counter
-            self.current_iteration += 1
+                # Increment iteration counter
+                self.current_iteration += 1
+            except StopIteration:
+                continue
 
         # Post-execution callback
         self.post_execution()
 
         return deepcopy(self.best_solution)
-
-
