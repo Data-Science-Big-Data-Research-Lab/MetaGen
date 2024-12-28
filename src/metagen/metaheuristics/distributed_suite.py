@@ -1,15 +1,13 @@
-import os
 import random
 from copy import deepcopy
-import platform
 from typing import List, Callable, Tuple, Optional
 
 import ray
-from ray.thirdparty_files import psutil
-
 from metagen.framework import Domain, Solution
 
 
+
+# Común a todos los algoritmos
 def task_environment() -> None:
     worker_id = ray.get_runtime_context().get_worker_id()
     print(f'This task is running on worker {worker_id}')
@@ -29,6 +27,52 @@ def assign_load_equally(neighbor_population_size: int) -> List[int]:
     return distribution
 
 
+
+# Para SSGA -> Población inicial ordenada
+
+def ssga_local_sorted_yield_and_evaluate_individuals(num_individuals: int, domain:Domain, fitness_function: Callable[[Solution], float]) -> Tuple[List['GASolution'],'GASolution']:
+    subpopulation, best_subpopulation_individual = ga_local_yield_and_evaluate_individuals(num_individuals, domain, fitness_function)
+    subpopulation = sorted(subpopulation, key=lambda sol: sol.fitness)
+    return subpopulation, best_subpopulation_individual
+
+@ray.remote
+def ssga_remote_sorted_yield_and_evaluate_individuals(num_individuals: int, domain:Domain, fitness_function: Callable[[Solution], float]) -> Tuple[List['GASolution'],'GASolution']:
+    task_environment()
+    return ssga_local_sorted_yield_and_evaluate_individuals(num_individuals, domain, fitness_function)
+
+def distributed_sorted_base_population(population_size: int, domain:Domain, fitness_function: Callable[[Solution], float]) -> [List['GASolution'], 'GASolution']:
+    distribution = assign_load_equally(population_size)
+    futures = []
+    for count in distribution:
+        futures.append(ssga_remote_sorted_yield_and_evaluate_individuals.remote(count, domain, fitness_function))
+    remote_results = ray.get(futures)
+    all_subpopulations = [result[0] for result in remote_results]
+    population = [individual for subpopulation in all_subpopulations for individual in subpopulation]
+    partial_best = [result[1] for result in remote_results]
+    population = sorted(population, key=lambda sol: sol.get_fitness())
+    best_individual = min(partial_best)
+    return population, best_individual
+
+
+def distributed_sort(population: List['GASolution']) -> Tuple[List['GASolution'], 'GASolution']:
+    distribution = assign_load_equally(len(population))
+    futures = []
+    for count in distribution:
+        futures.append(remote_sort_population.remote(population[:count]))
+        population = population[count:]
+    remote_results = ray.get(futures)
+    all_subpopulations = [individual for sublist in remote_results for individual in sublist]
+    population = sorted(all_subpopulations, key=lambda sol: sol.get_fitness())
+    return population, population[0]
+
+@ray.remote
+def remote_sort_population(population:List['GASolution']) -> List['GASolution']:
+    return sorted(population, key=lambda sol: sol.get_fitness())
+
+
+
+
+
 # Para GA -> Población inicial
 
 def ga_local_yield_and_evaluate_individuals(num_individuals: int, domain:Domain, fitness_function: Callable[[Solution], float]) -> Tuple[List['GASolution'],'GASolution']:
@@ -41,7 +85,7 @@ def ga_local_yield_and_evaluate_individuals(num_individuals: int, domain:Domain,
             individual = solution_type(domain, connector=domain.get_connector())
             individual.evaluate(fitness_function)
             subpopulation.append(individual)
-            if individual.fitness < best_subpopulation_individual.fitness:
+            if individual.get_fitness() < best_subpopulation_individual.get_fitness():
                 best_subpopulation_individual = individual
     return subpopulation, best_subpopulation_individual
 
@@ -60,12 +104,12 @@ def ga_distributed_base_population(population_size: int, domain:Domain, fitness_
     all_subpopulations = [result[0] for result in remote_results]
     population = [individual for subpopulation in all_subpopulations for individual in subpopulation]
     partial_best = [result[1] for result in remote_results]
-    best_individual = min(partial_best)
+    best_individual = min(partial_best, key=lambda sol: sol.get_fitness())
     return population, best_individual
 
 # Para GA -> Offspring
 
-def yield_two_children(parents:List['GASolution'], mutation_rate: float, fitness_function: Callable[[Solution], float]) -> Tuple['GASolution','GASolution']:
+def yield_two_children(parents:Tuple['GASolution','GASolution'], mutation_rate: float, fitness_function: Callable[[Solution], float]) -> Tuple['GASolution','GASolution']:
     child1, child2 = parents[0].crossover(parents[1])
     if random.uniform(0, 1) <= mutation_rate:
         child1.mutate()
@@ -75,26 +119,26 @@ def yield_two_children(parents:List['GASolution'], mutation_rate: float, fitness
     child2.evaluate(fitness_function)
     return child1, child2
 
-def ga_local_offspring_individuals(parents:List['GASolution'], num_individuals: int, mutation_rate: float, fitness_function: Callable[[Solution], float]) -> Tuple[List['GASolution'],'GASolution']:
+def ga_local_offspring_individuals(parents:Tuple['GASolution','GASolution'], num_individuals: int, mutation_rate: float, fitness_function: Callable[[Solution], float]) -> Tuple[List['GASolution'],'GASolution']:
     offspring = []
     child1, child2 = yield_two_children(parents, mutation_rate, fitness_function)
-    best_child = min(child1, child2)
+    best_child = min(child1, child2, key=lambda sol: sol.get_fitness())
     offspring.extend([child1, child2])
     for _ in range(num_individuals-1):
         child1, child2 = yield_two_children(parents, mutation_rate, fitness_function)
         offspring.extend([child1, child2])
-        if child1 < best_child:
+        if child1.get_fitness() < best_child.get_fitness():
             best_child = child1
-        if child2 < best_child:
+        if child2.get_fitness() < best_child.get_fitness():
             best_child = child2
     return offspring, best_child
 
 @ray.remote
-def ga_remote_offspring_individuals(parents:List['GASolution'], num_individuals: int, mutation_rate: float, fitness_function: Callable[[Solution], float]) -> Tuple[List['GASolution'],'GASolution']:
+def ga_remote_offspring_individuals(parents:Tuple['GASolution','GASolution'], num_individuals: int, mutation_rate: float, fitness_function: Callable[[Solution], float]) -> Tuple[List['GASolution'],'GASolution']:
     task_environment()
     return ga_local_offspring_individuals(parents, num_individuals, mutation_rate, fitness_function)
 
-def ga_distributed_offspring(parents:List['GASolution'], offspring_size: int, mutation_rate: float, fitness_function: Callable[[Solution], float]) -> Tuple[List['GASolution'], Solution]:
+def ga_distributed_offspring(parents:Tuple['GASolution','GASolution'], offspring_size: int, mutation_rate: float, fitness_function: Callable[[Solution], float]) -> Tuple[List['GASolution'], Solution]:
     distribution = assign_load_equally(offspring_size)
     resources_avialable(distribution, 'Offspring')
     futures = []
@@ -104,7 +148,7 @@ def ga_distributed_offspring(parents:List['GASolution'], offspring_size: int, mu
     all_offsprings = [result[0] for result in remote_results]
     offspring = [individual for subpopulation in all_offsprings for individual in subpopulation]
     partial_best_children = [result[1] for result in remote_results]
-    best_child = min(partial_best_children)
+    best_child = min(partial_best_children, key=lambda sol: sol.get_fitness())
     return offspring, best_child
 
 
@@ -120,7 +164,7 @@ def distributed_base_population(population_size: int, domain:Domain, fitness_fun
     all_subpopulations = [result[0] for result in remote_results]
     population = [individual for subpopulation in all_subpopulations for individual in subpopulation]
     partial_best = [result[1] for result in remote_results]
-    best_individual = min(partial_best)
+    best_individual = min(partial_best, key=lambda sol: sol.get_fitness())
     return population, best_individual
 
 def local_yield_and_evaluate_individuals(num_individuals: int, domain:Domain, fitness_function: Callable[[Solution], float]) -> Tuple[List[Solution],Solution]:
@@ -132,7 +176,7 @@ def local_yield_and_evaluate_individuals(num_individuals: int, domain:Domain, fi
             individual = solution_type(domain, connector=domain.get_connector())
             individual.evaluate(fitness_function)
             subpopulation.append(individual)
-            if individual.fitness < best_subpopulation_individual.fitness:
+            if individual.get_fitness() < best_subpopulation_individual.get_fitness():
                 best_subpopulation_individual = individual
     return subpopulation, best_subpopulation_individual
 
@@ -153,7 +197,7 @@ def distributed_mutation_and_evaluation(population:List[Solution], fitness_funct
     all_subpopulations = [result[0] for result in remote_results]
     population = [individual for subpopulation in all_subpopulations for individual in subpopulation]
     partial_best = [result[1] for result in remote_results]
-    best_individual = min(partial_best)
+    best_individual = min(partial_best, key=lambda sol: sol.get_fitness())
     return population, best_individual
 
 def local_mutate_and_evaluate_population(population:List[Solution], fitness_function: Callable[[Solution], float], alteration_limit: Optional[float] = None) -> [List[Solution],Solution]:
@@ -166,7 +210,7 @@ def local_mutate_and_evaluate_population(population:List[Solution], fitness_func
     for individual in population[1:]:
         individual.mutate(alteration_limit=alteration_limit)
         individual.evaluate(fitness_function)
-        if individual.fitness < best_subpopulation_individual.fitness:
+        if individual.get_fitness() < best_subpopulation_individual.get_fitness():
             best_subpopulation_individual = individual
     return population, best_subpopulation_individual
 
@@ -194,7 +238,7 @@ def local_yield_mutate_and_evaluate_individuals_from_best(num_individuals: int, 
             neighbor = deepcopy(best_solution)
             neighbor.mutate(alteration_limit=alteration_limit)
             neighbor.evaluate(fitness_function)
-            if neighbor.fitness < best_neighbor.fitness:
+            if neighbor.get_fitness() < best_neighbor.get_fitness():
                 best_neighbor = neighbor
         return best_neighbor
 

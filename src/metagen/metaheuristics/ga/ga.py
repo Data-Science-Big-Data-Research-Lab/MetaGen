@@ -19,7 +19,7 @@ from metagen.framework import Domain
 from .ga_types import GASolution
 from metagen.metaheuristics.base import Metaheuristic
 import ray
-from typing import Callable, List
+from typing import Callable, List, Tuple
 
 from metagen.metaheuristics.distributed_suite import ga_local_yield_and_evaluate_individuals, ga_local_offspring_individuals, \
     ga_distributed_base_population, ga_distributed_offspring
@@ -70,10 +70,10 @@ class GA(Metaheuristic):
         """Execute one generation of the genetic algorithm"""
         self.current_solutions, self.best_solution = ga_local_offspring_individuals(self.select_parents(), self.population_size // 2, self.mutation_rate, self.fitness_function)
 
-    def select_parents(self) -> List[GASolution]:
+    def select_parents(self) -> Tuple[GASolution,GASolution]:
         """Select the top two parents based on fitness"""
         sorted_population = sorted(self.current_solutions, key=lambda sol: sol.get_fitness())
-        return sorted_population[:2]
+        return tuple(sorted_population[:2])
 
     def stopping_criterion(self) -> bool:
         """
@@ -136,12 +136,10 @@ class DistributedGA(Metaheuristic):
                                                                                     self.mutation_rate,
                                                                                     self.fitness_function)
 
-    def select_parents(self) -> List[GASolution]:
-        """
-        Select the top two parents based on fitness.
-        """
+    def select_parents(self) -> Tuple[GASolution, GASolution]:
+        """Select the top two parents based on fitness"""
         sorted_population = sorted(self.current_solutions, key=lambda sol: sol.get_fitness())
-        return sorted_population[:2]
+        return tuple(sorted_population[:2])
 
     def stopping_criterion(self) -> bool:
         """
