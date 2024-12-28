@@ -185,23 +185,6 @@ class CVOA(Metaheuristic):
 
         self.set_verbosity(verbose)
 
-    @staticmethod
-    def initialize_pandemic(problem_definition, fitness_function, ):
-        """ It initializes a **CVOA** pandemic. A pandemic can be composed by one or more strains. Each strain is
-        built by instantiate the :py:class:`~metagen.metaheuristics.CVOA` class. The common characteristic of all strains are
-        the problem definition (:py:class:`~metagen.framework.Domain` class) and the implementation
-        of a fitness function.
-
-        :param problem_definition: The problem definition.
-        :param fitness_function: The fitness function.
-        :param update_isolated: If true the isolated set will be updated on each iteration.
-        :type problem_definition: :py:class:`~metagen.framework.Domain`
-        :type fitness_function: function
-        :type update_isolated: bool
-        """
-
-        pass
-
 
     @staticmethod
     def pandemic_report():
@@ -287,7 +270,7 @@ class CVOA(Metaheuristic):
         self.__time += 1
 
     def stopping_criterion(self):
-        return self.epidemic and self.__time < self.__pandemic_duration and not CVOA.__bestIndividualFound
+        return not self.epidemic or self.__time > self.__pandemic_duration or CVOA.__bestIndividualFound
 
     def after_execution(self):
         CVOA.__verbosity("\n\n" + self.__strainID +
