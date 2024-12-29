@@ -20,7 +20,7 @@ class TabuSearch:
         self.max_iterations = max_iterations
         self.tabu_size = tabu_size
         self.fitness_func = fitness_func if fitness_func else self.default_aspiration_criteria
-        self.alteration_limit: Any = alteration_limit
+        self.alteration_limit: float = alteration_limit
         self.tabu_list = deque(maxlen=tabu_size)
 
     @staticmethod
