@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List, Optional
+from typing import List, Optional, Callable
 from metagen.framework import Domain, Solution
 from metagen.logging import TensorBoardLogger
 from copy import deepcopy
@@ -8,7 +8,7 @@ class Metaheuristic(TensorBoardLogger, ABC):
     """
     Abstract base class for metaheuristic algorithms.
     """
-    def __init__(self, domain: Domain, fitness_function, log_dir: str = "logs") -> None:
+    def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float], log_dir: str = "logs") -> None:
         """
         Initialize the metaheuristic.
         
