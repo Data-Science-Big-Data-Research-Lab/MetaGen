@@ -56,8 +56,13 @@ class TensorBoardLogger:
 
         # Log fitness statistics
         iteration_fitnesses = [ps.get_fitness() for ps in potential_solutions]
+        len_iter_fit = len(iteration_fitnesses)
+        # TODO: para evitar division por cero
+        if len_iter_fit == 0:
+            len_iter_fit = 1
 
-        avg_fitness = sum(iteration_fitnesses) / len(iteration_fitnesses)
+
+        avg_fitness = sum(iteration_fitnesses) / len_iter_fit
         best_fitness = best_solution.get_fitness()
 
         self.writer.add_scalar('Fitness/Average', avg_fitness, iteration)
