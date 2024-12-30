@@ -20,7 +20,7 @@ import math
 import random
 from datetime import timedelta
 from time import time
-from typing import Callable, Set, List, Type, NamedTuple
+from typing import Callable, Set, List, Type, NamedTuple, Tuple
 
 import ray
 
@@ -47,7 +47,7 @@ class StrainProperties(NamedTuple):
 IndividualState = NamedTuple("IndividualState", [("recovered", bool), ("dead", bool), ("isolated", bool)])
 
 @ray.remote
-class GlobalState:
+class PandemicState:
     def __init__(self, initial_individual:Solution):
         self.recovered:Set[Solution] = set()
         self.deaths:Set[Solution] = set()
@@ -185,82 +185,90 @@ class DistributedCVOA(Metaheuristic):
     def __init__(self, global_state, domain, fitness_function, strain_properties:StrainProperties = StrainProperties(), verbose=True, update_isolated=False,
                  log_dir="logs/CVOA"):
 
+        # 1. Initialize the base class.
         super().__init__(domain, fitness_function, log_dir=log_dir)
+
+        # 2. The Pandemic global state and strain properties.
         self.global_state = global_state
-        self.update_isolated: bool = update_isolated
-        self.epidemic:bool = True
+        self.strain_properties: StrainProperties = strain_properties
+
+        # 3. Auxiliary strain control variables.
         self.verbosity = print if verbose else lambda *a, **k: None
+        self.update_isolated: bool = update_isolated
+        self.solution_type: type[SolutionClass] = self.domain.get_connector().get_type(self.domain.get_core())
 
-        # Strain properties set by arguments.
-        self.strain_properties:StrainProperties = strain_properties
+        # 4. Strain control flow variables.
 
-        # Main strain sets: infected, superspreaders, infected superspreaders and deaths.
+        # 4.1. Logical condition to ctrl the epidemic (main iteration).
+        # If True, the iteration continues. When there are no infected individuals, the epidemic finishes.
+        self.epidemic:bool = True
+
+        # 4.2. The current iteration. The iteration counter will be initially set to 0.
+        self.time: int = 0
+
+        # 4.3. The best solution found by the strain.
+        self.best_solution: Solution | None = None
+        self.best_founded: bool = False
+
+        # 4.4. The best strain-specific death individual will initially be the worst solution.
+        self.best_dead = self.solution_type(self.domain, connector=self.domain.get_connector())
+
+        # 4.5. The worst strain-specific superspreader individual will initially be the best solution.
+        self.worst_superspreader = self.solution_type(self.domain, connector=self.domain.get_connector())
+
+        # 5. Main strain sets: infected, superspreaders, infected superspreaders and deaths.
         self.infected:Set[Solution] = set()
         self.superspreaders:Set[Solution] = set()
         self.infected_superspreaders:Set[Solution] = set()
         self.dead:Set[Solution] = set()
-        self.time:int|None = None
-        self.solution_type: type[SolutionClass] = self.domain.get_connector().get_type(self.domain.get_core())
-        self.best_solution:Solution = self.solution_type(self.domain, connector=self.domain.get_connector())
-        self.best_founded:bool = False
-        self.best_dead:Solution|None = None
-        self.worst_superspreader:Solution|None = None
+
 
     def initialize(self) -> None:
 
-        pz = self.infect_pz()
+        # 1. Yield the patient zero (pz).
+        pz:Solution = self.solution_type(self.domain, connector=self.domain.get_connector())
+        pz.evaluate(self.fitness_function)
         self.verbosity(f'[{self.strain_properties.strain_id}] Patient zero: {pz}')
 
-        # Initialize strain:
-        # Add the patient zero to the strain-specific infected set.
+        # 2. Add the patient zero to the strain-specific infected set.
         self.infected.add(pz)
         self.infected_superspreaders.add(pz)
-        # The best strain-specific individual will initially be the patient zero.
+
+        # 3. The best strain-specific individual will initially be the patient zero.
         self.best_solution = pz
-        # The worst strain-specific superspreader individual will initially be the best solution.
-        self.worst_superspreader = self.solution_type(self.domain, connector=self.domain.get_connector())
-        # The best strain-specific death individual will initially be the worst solution.
-        self.best_dead = self.solution_type(self.domain, connector=self.domain.get_connector())
 
-        # Logical condition to ctrl the epidemic (main iteration).
-        # If True, the iteration continues.
-        # When there are no infected individuals, the epidemic finishes.
-        self.epidemic = True
-
-        # The iteration counter will be initially set to 0.
-        self.time = 0
 
     def iterate(self) -> None:
-        # ***** STEP 2. SPREADING THE DISEASE. *****
+
+        # 1. Spreading the disease.
         self.propagate_disease()
 
-        # ***** STEP 4. STOP CRITERION. *****
-        # Stop if no new infected individuals.
+        # 2. Stop if no new infected individuals.
         if not self.infected:
             self.epidemic = False
             self.verbosity(f'[{self.strain_properties.strain_id}] No new infected individuals at {self.time}')
 
-        # Update the elapsed pandemic time.
+        # 3. Update the elapsed pandemic time.
         self.time += 1
+
+        # 4. Update the base properties.
         self.current_iteration = self.time
         self.current_solutions = self.infected
 
     def stopping_criterion(self) -> bool:
-        # ¿ Cuándo se detiene la cepa ?
-        # Cuando no hay más infectados
+
+        # When the strain is stopped?
+
+        # First condition: When there are no infected individuals
         first_condition:bool = self.epidemic == False
-        # Cuando se ha terminado el tiempo de la pandemia
+
+        # Second condition: When the pandemic duration has been reached
         second_condition:bool = self.time > self.strain_properties.pandemic_duration
 
-        # La cepa ha encontrado una mejor solución que la global y no es la primera vez que lo hace
+        # Third condition: When the best individual has been found and the time is greater than 1
         third_condition = self.best_founded and self.time > 1
 
-        res = first_condition or second_condition or third_condition
-
-        # if res:
-        #     print(f'1: {first_condition}, 2: {second_condition} (time: {self.time}), {third_condition}, res: {res}')
-
-        return res
+        return first_condition or second_condition or third_condition
 
     def post_execution(self) -> None:
         self.verbosity(f'[{self.strain_properties.strain_id}] Converged after {self.time} iterations with best individual: {self.best_solution}')
@@ -269,77 +277,117 @@ class DistributedCVOA(Metaheuristic):
     def propagate_disease(self) -> None:
         """ It spreads the disease through the individuals of the population.
         """
-        # Initialize the new infected population set and the travel distance.
-        # Each new infected individual will be added to this set.
-        new_infected_population = set()
-        travel_distance = 1
 
-        # Before the new propagation, update the strain (superspreader, death) and global (death, recovered) sets.
-        # Then, add the best individual of the strain to the next population.
-        self.update_strain_global_sets()
-        new_infected_population.add(self.best_solution)
+        # 1. Initialize the new infected population set
+        new_infected_population:Set[Solution] = set()
 
-        # For each infected individual in the strain:
+        # 2. Before the new propagation, update the strain (superspreader, death) and global (death, recovered) sets.
+        self.update_pandemic_global_state()
+
+        # 3. For each infected individual in the strain:
         for individual in self.infected:
 
-            # ** 1. Determine the number of infections. **
-            # If the current individual is superspreader the number of infected ones will be in
-            # (MIN_SUPERSPREADING_RATE, MAX_SUPERSPREADING_RATE).
-            # If the current individual is common the number of infected ones will be in
-            # (0, MAX_SUPERSPREADING_RATE).
-            if individual in self.superspreaders:
-                n_infected = random.randint(self.strain_properties.min_superspreading_rate, self.strain_properties.max_superspreading_rate)
-            else:
-                n_infected = random.randint(0, self.strain_properties.spreading_rate)
-                # n_infected = random.randint(0, self.__MAX_SUPERSPREADING_RATE)
+            # ** 3.1. Determine the travel distance and the number of infections **
+            n_infected, travel_distance = self.compute_n_infected_travel_distance(individual)
 
-            # ** 2. Determine the travel distance. **
-            # If the current individual is a traveler, the travel distance will be in
-            # (0, number of variable defined in the problem), otherwise the travel distance will be 1.
-            if random.random() < self.strain_properties.p_travel:
-                travel_distance = random.randint(0, len(self.domain.get_core().variable_list()))
+            # ** 3.2. Infect the new individuals. **
+            new_infected_population = self.infect_individuals(individual, travel_distance, n_infected)
 
-            # ** 3. Infect the new individuals. **
-            # For each n_infected new individuals:
-            for _ in range(0, n_infected):
-                # If the current disease time is not affected by the SOCIAL DISTANCING policy, the current
-                # individual infects another with a travel distance (using __infect), and it is added
-                # to the newly infected population.
-                if self.time < self.strain_properties.social_distancing:
-                    new_infected_individual = self.infect(individual, travel_distance)
-                    self.update_new_infected_population(new_infected_population, new_infected_individual)
+        # 4. Then, add the best individual of the strain to the next population.
+        new_infected_population.add(self.best_solution)
 
-                # After SOCIAL_DISTANCING iterations (when the SOCIAL DISTANCING policy is applied),
-                # the current individual infects another with a travel distance of one (using __infect) then,
-                # the newly infected individual can be isolated or not.
-                else:
-                    new_infected_individual = self.infect(individual, 1)
-                    if random.random() < self.strain_properties.p_isolation:
-                        self.update_new_infected_population(new_infected_population, new_infected_individual)
-                    else:
-                        # If the new individual is isolated, and __update_isolated is true, this is sent to the
-                        # __update_isolated_population.
-                        if self.update_isolated:
-                            ray.remote(self.global_state.isolate_individual_conditional_state.remote(new_infected_individual, IndividualState(True, True, True)))
-
-        # Just one print to ensure it is printed without interfering with other threads
         self.verbosity(f'[{self.strain_properties.strain_id}] Iteration #{self.time} - {self.r0_report(len(new_infected_population))}'
                        f'- Best strain individual: {self.best_solution} , Best global individual: {ray.get(self.global_state.get_best_individual.remote())} ')
 
 
-        # Update the infected strain population for the next iteration
+        # 5. Update the infected strain population for the next iteration
         self.infected.clear()
         self.infected.update(new_infected_population)
 
-    def infect_pz(self) -> Solution:
-        """ It builds the *patient zero*, **PZ**, for the **CVOA** algorithm.
 
-        :returns: The *patient zero*, **PZ**
-        :rtype: :py:class:`~metagen.framework.Solution`
+    def compute_n_infected_travel_distance(self, individual: Solution) -> Tuple[int, int]:
+
+        # ** 1. Determine the number of infections. **
+        if individual in self.superspreaders:
+            # If the current individual is superspreader the number of infected ones will be in
+            # (MIN_SUPERSPREADING_RATE, MAX_SUPERSPREADING_RATE)
+            n_infected = random.randint(self.strain_properties.min_superspreading_rate,
+                                        self.strain_properties.max_superspreading_rate)
+        else:
+            # If the current individual is common the number of infected ones will be in
+            # (0, MAX_SUPERSPREADING_RATE)
+            n_infected = random.randint(0, self.strain_properties.spreading_rate)
+            # n_infected = random.randint(0, self.__MAX_SUPERSPREADING_RATE)
+
+        # ** 2. Determine the travel distance. **
+        if random.random() < self.strain_properties.p_travel:
+            # If the current individual is a traveler, the travel distance will be in
+            # (0, number of variable defined in the problem)
+            travel_distance = random.randint(0, len(self.domain.get_core().variable_list()))
+        else:
+            # Otherwise the travel distance will be 1.
+            travel_distance = 1
+
+        return n_infected, travel_distance
+
+
+    def infect_individuals(self, carrier_individual: Solution, travel_distance: int, n_infected:int) -> Set[Solution]:
+
+        infected_population:Set[Solution] = set()
+
+        for _ in range(0, n_infected):
+
+            # If the current disease time is not affected by the SOCIAL DISTANCING policy, the current
+            # individual infects another with a travel distance (using infect), and it is added
+            # to the newly infected population.
+            if self.time < self.strain_properties.social_distancing:
+                new_infected_individual = self.infect(carrier_individual, travel_distance)
+                self.update_new_infected_population(infected_population, new_infected_individual)
+
+            # After SOCIAL_DISTANCING iterations (when the SOCIAL DISTANCING policy is applied),
+            # the current individual infects another with a travel distance of one (using infect) then,
+            # the newly infected individual can be isolated or not.
+            else:
+                new_infected_individual = self.infect(carrier_individual, 1)
+                if random.random() < self.strain_properties.p_isolation:
+                    self.update_new_infected_population(infected_population, new_infected_individual)
+                else:
+                    # If the new individual is isolated, and update_isolated is true, this is sent to the
+                    # Isolated population.
+                    if self.update_isolated:
+                        ray.remote(
+                            self.global_state.isolate_individual_conditional_state.remote(new_infected_individual,
+                                                                                          IndividualState(True, True,
+                                                                                                          True)))
+        return infected_population
+
+
+    def update_new_infected_population(self, new_infected_population: Set[Solution],
+                                       new_infected_individual: Solution) -> None:
+        """ It updates the next infected population with a new infected individual.
+
+        :param new_infected_population: The population of the next iteration.
+        :param new_infected_individual: The new infected individual that will be inserted into the netx iteration set.
+        :type new_infected_population: set of :py:class:`~metagen.framework.Solution`
+        :type new_infected_individual: :py:class:`~metagen.framework.Solution`
         """
-        patient_zero:Solution = self.solution_type(self.domain, connector=self.domain.get_connector())
-        patient_zero.evaluate(self.fitness_function)
-        return patient_zero
+
+        # Get the global individual state.
+        individual_state: IndividualState = ray.get(
+            self.global_state.get_individual_state.remote(new_infected_individual))
+
+        # If the new individual is not in global death and recovered sets, then insert it in the next population.
+        if not individual_state.dead and not individual_state.recovered:
+            new_infected_population.add(new_infected_individual)
+
+        # If the new individual is in the global recovered set, then check if it can be reinfected with
+        # p_reinfection. If it can be reinfected, insert it into the new population and remove it from the global
+        # recovered set.
+        elif individual_state.recovered:
+            if random.random() < self.strain_properties.p_re_infection:
+                new_infected_population.add(new_infected_individual)
+                ray.get(self.global_state.get_infected_again.remote(new_infected_individual))
+
 
     def r0_report(self, new_infections: int) -> str:
         recovered = ray.get(self.global_state.get_recovered_len.remote())
@@ -360,17 +408,17 @@ class DistributedCVOA(Metaheuristic):
         infected.evaluate(self.fitness_function)
         return infected
 
-    def update_strain_global_sets(self) -> None:
+
+    def update_pandemic_global_state(self) -> None:
         """ It updates the specific strain death and superspreader's sets and the global death and recovered sets.
         """
 
-        # A percentage,__P_SUPERSPREADER, of the infected individuals in the strain (__infectedStrain)
-        # will be superspreaders.
-        # A percentage, __P_DIE, of the infected individuals in the strain (__infectedStrain)
-        # will die.
-        number_of_super_spreaders = math.ceil(
-            self.strain_properties.p_superspreader * len(self.infected))
+        # A percentage, p_superspreader, of the infected individuals in the strain (infected) will be superspreaders.
+        number_of_super_spreaders = math.ceil(self.strain_properties.p_superspreader * len(self.infected))
+
+        # A percentage, p_die, of the infected individuals in the strain (infected) will die.
         number_of_deaths = math.ceil(self.strain_properties.p_die * len(self.infected))
+
         # If there are at least two infected individuals in the strain:
         # TODO: lo cambio a >= 1 (!=1 puede lanzar excepción)
         if len(self.infected) >= 1:
@@ -393,6 +441,7 @@ class DistributedCVOA(Metaheuristic):
                     ray.get(self.global_state.update_best_individual.remote(individual))
                     self.best_founded = True
                     self.verbosity(f'[{self.strain_properties.strain_id}] New global best individual found at {self.time}! ({individual})')
+
                 # If the current individual is better than the current strain one, a new strain the best individual is
                 # found, and its variable is updated.
                 if individual.get_fitness() < self.best_solution.get_fitness():
@@ -425,6 +474,7 @@ class DistributedCVOA(Metaheuristic):
 
         return dead
 
+    # TODO: Método muy chungo, tocar lo menos posible
     def insert_into_set_strain(self, bag: Set[Solution], to_insert:Solution, remaining:int, ty:str) -> bool:
         """ Insert an individual in the strain sets (death or superspreader).
 
@@ -492,28 +542,6 @@ class DistributedCVOA(Metaheuristic):
 
         return inserted
 
-    def update_new_infected_population(self, new_infected_population: Set[Solution], new_infected_individual: Solution) -> None:
-        """ It updates the next infected population with a new infected individual.
-
-        :param new_infected_population: The population of the next iteration.
-        :param new_infected_individual: The new infected individual that will be inserted into the netx iteration set.
-        :type new_infected_population: set of :py:class:`~metagen.framework.Solution`
-        :type new_infected_individual: :py:class:`~metagen.framework.Solution`
-        """
-        individual_state:IndividualState = ray.get(self.global_state.get_individual_state.remote(new_infected_individual))
-
-        # If the new individual is not in global death and recovered sets, then insert it in the next population.
-        if not individual_state.dead and not individual_state.recovered:
-            new_infected_population.add(new_infected_individual)
-
-        # If the new individual is in the global recovered set, then check if it can be reinfected with
-        # __P_REINFECTION. If it can be reinfected, insert it into the new population and remove it from the global
-        # recovered set.
-        elif individual_state.recovered:
-            if random.random() < self.strain_properties.p_re_infection:
-                new_infected_population.add(new_infected_individual)
-                ray.get(self.global_state.get_infected_again.remote(new_infected_individual))
-
 
     def __str__(self):
         """ String representation of a :py:class:`~metagen.metaheuristics.CVOA` object (a strain).
@@ -556,7 +584,7 @@ def cvoa_launcher(strains: List[StrainProperties], domain: Domain, fitness_funct
 
     # Initialize the global state
     solution_type: type[SolutionClass] = domain.get_connector().get_type(domain.get_core())
-    global_state = GlobalState.remote(solution_type(domain, connector=domain.get_connector()))
+    global_state = PandemicState.remote(solution_type(domain, connector=domain.get_connector()))
 
     t1 = time()
     futures = [run_strain.remote(global_state, domain, fitness_function, strain_properties, verbose, update_isolated, log_dir) for strain_properties in strains]
