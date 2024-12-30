@@ -304,13 +304,13 @@ class CVOA(Metaheuristic):
             n_infected, travel_distance = self.compute_n_infected_travel_distance(individual)
 
             # ** 3.2. Infect the new individuals. **
-            new_infected_population = self.infect_individuals(individual, travel_distance, n_infected)
+            new_infected_population.update(self.infect_individuals(individual, travel_distance, n_infected))
 
         # 4. Then, add the best individual of the strain to the next population.
         new_infected_population.add(self.best_solution)
 
         self.verbosity(f'[{self.strain_properties.strain_id}, {threading.get_ident()}] Iteration #{self.time} - {self.r0_report(len(new_infected_population))}'
-                       f'- Best strain individual: {self.best_solution} , Best global individual: {self.global_state.get_best_individual()} ')
+                       f' - Best strain individual: {self.best_solution} , Best global individual: {self.global_state.get_best_individual()} ')
 
 
         # 5. Update the infected strain population for the next iteration
@@ -350,14 +350,14 @@ class CVOA(Metaheuristic):
 
         for _ in range(0, n_infected):
 
-            # If the current disease time is not affected by the SOCIAL DISTANCING policy, the current
+            # If the current disease time is not affected by the social_distancing policy, the current
             # individual infects another with a travel distance (using infect), and it is added
             # to the newly infected population.
             if self.time < self.strain_properties.social_distancing:
                 new_infected_individual = self.infect(carrier_individual, travel_distance)
                 self.update_new_infected_population(infected_population, new_infected_individual)
 
-            # After SOCIAL_DISTANCING iterations (when the SOCIAL DISTANCING policy is applied),
+            # After social_distancing iterations (when the social_distancing policy is applied),
             # the current individual infects another with a travel distance of one (using infect) then,
             # the newly infected individual can be isolated or not.
             else:
@@ -405,7 +405,7 @@ class CVOA(Metaheuristic):
         r0 = new_infections
         if recovered != 0:
             r0 = new_infections / recovered
-        report = "\tNew infected = " + str(new_infections) + ", Recovered = " + str(recovered) + ", R0 = " + str(r0)
+        report = "New infected = " + str(new_infections) + ", Recovered = " + str(recovered) + ", R0 = " + str(r0)
         return report
 
     def infect(self, individual: Solution, travel_distance:int) -> Solution:
@@ -451,7 +451,7 @@ class CVOA(Metaheuristic):
                 if individual.get_fitness() < self.global_state.get_best_individual().get_fitness():
                     self.global_state.update_best_individual(individual)
                     self.best_founded = True
-                    self.verbosity(f'[{self.strain_properties.strain_id}] New global best individual found at {self.time}! ({individual})')
+                    self.verbosity(f'[{self.strain_properties.strain_id}, {threading.get_ident()}] New global best individual found at {self.time}! ({individual})')
 
                 # If the current individual is better than the current strain one, a new strain the best individual is
                 # found, and its variable is updated.

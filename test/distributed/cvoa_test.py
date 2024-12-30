@@ -72,4 +72,4 @@ if __name__ == "__main__":
     # solution: Solution = cvoa_launcher([strain1, strain2, strain3], p1_domain, p1_fitness)
     # solution: Solution = cvoa_launcher([strain1, strain2, strain3], sgd_regressor_definition, sgd_regressor_fitness)
 
-    print(f'\n\nRESULT = {solution}')
+    print(f'\n\nRESULT: {solution}')
