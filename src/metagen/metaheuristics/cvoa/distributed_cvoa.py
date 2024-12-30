@@ -28,84 +28,8 @@ from metagen.framework import Domain
 from metagen.framework.solution import Solution
 from metagen.framework.solution.bounds import SolutionClass
 from metagen.metaheuristics.base import Metaheuristic
-
-
-class StrainProperties(NamedTuple):
-    strain_id: str = "Strain#1"
-    pandemic_duration: int = 10
-    spreading_rate: int = 5
-    min_superspreading_rate: int = 6
-    max_superspreading_rate: int = 15
-    social_distancing: int = 7
-    p_isolation: float = 0.5
-    p_travel: float = 0.1
-    p_re_infection: float = 0.001
-    p_superspreader: float = 0.1
-    p_die: float = 0.05
-
-
-IndividualState = NamedTuple("IndividualState", [("recovered", bool), ("dead", bool), ("isolated", bool)])
-
-@ray.remote
-class PandemicState:
-    def __init__(self, initial_individual:Solution):
-        self.recovered:Set[Solution] = set()
-        self.deaths:Set[Solution] = set()
-        self.isolated:Set[Solution] = set()
-        self.best_individual_found:bool = False
-        self.best_individual:Solution = initial_individual
-
-    def get_individual_state(self, individual: Solution) -> IndividualState:
-        result: IndividualState = IndividualState(False, False, False)
-        if individual in self.recovered:
-            result = result._replace(recovered=True)
-        if individual in self.deaths:
-            result = result._replace(dead=True)
-        if individual in self.isolated:
-            result = result._replace(isolated=True)
-        return result
-
-    # Recovered
-    def get_recovered_len(self) -> int:
-        return len(self.recovered)
-
-    def get_infected_again(self, individual:Solution) -> None:
-        self.recovered.remove(individual)
-
-    # Deaths
-    def update_deaths(self, individuals:Set[Solution])-> None:
-        self.deaths.update(individuals)
-
-    # Recovered and Deaths
-    def update_recovered_with_deaths(self)-> None:
-        self.recovered.difference_update(self.deaths)
-
-    def recover_if_not_dead(self, individual:Solution)-> None:
-        if individual not in self.deaths:
-            self.recovered.add(individual)
-
-    # Isolated
-    def isolate_individual_conditional_state(self, individual:Solution, conditional_state:IndividualState) -> None:
-        current_state:IndividualState = self.get_individual_state(individual)
-        if current_state == conditional_state:
-            self.isolated.add(individual)
-
-    # Best Individual
-    def update_best_individual(self, individual:Solution) -> None:
-        self.best_individual_found = True
-        self.best_individual = individual
-
-    def get_best_individual(self) -> Solution:
-        return self.best_individual
-
-    def get_pandemic_report(self):
-        return {
-            "recovered": len(self.recovered),
-            "deaths": len(self.deaths),
-            "isolated": len(self.isolated),
-            "best_individual": self.best_individual
-        }
-
+from metagen.metaheuristics.distributed_suite import IndividualState, PandemicState, StrainProperties, \
+    distributed_cvoa_new_infected_population
 
 
 class DistributedCVOA(Metaheuristic):
@@ -278,22 +202,14 @@ class DistributedCVOA(Metaheuristic):
         """ It spreads the disease through the individuals of the population.
         """
 
-        # 1. Initialize the new infected population set
-        new_infected_population:Set[Solution] = set()
-
-        # 2. Before the new propagation, update the strain (superspreader, death) and global (death, recovered) sets.
+        # 1. Before the new propagation, update the strain (superspreader, death) and global (death, recovered) sets.
         self.update_pandemic_global_state()
 
-        # 3. For each infected individual in the strain:
-        for individual in self.infected:
+        # 2. Initialize the new infected population distributed.
+        new_infected_population = distributed_cvoa_new_infected_population(self.global_state, self.domain, self.fitness_function, self.strain_properties,
+                                                                           self.infected, self.superspreaders, self.time, self.update_isolated)
 
-            # ** 3.1. Determine the travel distance and the number of infections **
-            n_infected, travel_distance = self.compute_n_infected_travel_distance(individual)
-
-            # ** 3.2. Infect the new individuals. **
-            new_infected_population = self.infect_individuals(individual, travel_distance, n_infected)
-
-        # 4. Then, add the best individual of the strain to the next population.
+        # 3. Then, add the best individual of the strain to the next population.
         new_infected_population.add(self.best_solution)
 
         self.verbosity(f'[{self.strain_properties.strain_id}] Iteration #{self.time} - {self.r0_report(len(new_infected_population))}'
@@ -337,7 +253,7 @@ class DistributedCVOA(Metaheuristic):
 
         for _ in range(0, n_infected):
 
-            # If the current disease time is not affected by the SOCIAL DISTANCING policy, the current
+            # If the current disease time is not affected by the social_distancing policy, the current
             # individual infects another with a travel distance (using infect), and it is added
             # to the newly infected population.
             if self.time < self.strain_properties.social_distancing:
