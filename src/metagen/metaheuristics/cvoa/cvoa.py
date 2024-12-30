@@ -241,7 +241,7 @@ class CVOA(Metaheuristic):
         # 1. Yield the patient zero (pz).
         pz:Solution = self.solution_type(self.domain, connector=self.domain.get_connector())
         pz.evaluate(self.fitness_function)
-        self.verbosity(f'[{self.strain_properties.strain_id}] Patient zero: {pz}')
+        self.verbosity(f'[{self.strain_properties.strain_id}, {threading.get_ident()}] Patient zero: {pz}')
 
         # 2. Add the patient zero to the strain-specific infected set.
         self.infected.add(pz)
@@ -259,7 +259,7 @@ class CVOA(Metaheuristic):
         # 2. Stop if no new infected individuals.
         if not self.infected:
             self.epidemic = False
-            self.verbosity(f'[{self.strain_properties.strain_id}] No new infected individuals at {self.time}')
+            self.verbosity(f'[{self.strain_properties.strain_id}, {threading.get_ident()}] No new infected individuals at {self.time}')
 
         # 3. Update the elapsed pandemic time.
         self.time += 1
@@ -284,7 +284,7 @@ class CVOA(Metaheuristic):
         return first_condition or second_condition or third_condition
 
     def post_execution(self) -> None:
-        self.verbosity(f'[{self.strain_properties.strain_id}] Converged after {self.time} iterations with best individual: {self.best_solution}')
+        self.verbosity(f'[{self.strain_properties.strain_id}, {threading.get_ident()}] Converged after {self.time} iterations with best individual: {self.best_solution}')
         super().post_execution()
 
     def propagate_disease(self) -> None:
@@ -309,7 +309,7 @@ class CVOA(Metaheuristic):
         # 4. Then, add the best individual of the strain to the next population.
         new_infected_population.add(self.best_solution)
 
-        self.verbosity(f'[{self.strain_properties.strain_id}] Iteration #{self.time} - {self.r0_report(len(new_infected_population))}'
+        self.verbosity(f'[{self.strain_properties.strain_id}, {threading.get_ident()}] Iteration #{self.time} - {self.r0_report(len(new_infected_population))}'
                        f'- Best strain individual: {self.best_solution} , Best global individual: {self.global_state.get_best_individual()} ')
 
 
@@ -448,7 +448,7 @@ class CVOA(Metaheuristic):
 
                 # If the current individual is better than the current global one, a new global best individual is
                 # found, and its global variable is updated.
-                if individual.get_fitness() < self.global_state.get_best_individual.get_fitness():
+                if individual.get_fitness() < self.global_state.get_best_individual().get_fitness():
                     self.global_state.update_best_individual(individual)
                     self.best_founded = True
                     self.verbosity(f'[{self.strain_properties.strain_id}] New global best individual found at {self.time}! ({individual})')

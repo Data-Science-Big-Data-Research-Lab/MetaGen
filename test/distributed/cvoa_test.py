@@ -1,6 +1,7 @@
 import warnings
 from sklearn.exceptions import ConvergenceWarning
 
+import metagen
 from metagen.metaheuristics.cvoa.distributed_cvoa import DistributedCVOA, StrainProperties, cvoa_launcher
 
 # Suppress all ConvergenceWarning warnings
@@ -58,13 +59,17 @@ def p1_fitness(individual: Solution) -> float:
     return x + 5
 
 if __name__ == "__main__":
-    print('Distributed CVOA')
+
     strain1:StrainProperties = StrainProperties(strain_id="STR-1")
     strain2:StrainProperties = StrainProperties(strain_id="STR-2")
     strain3: StrainProperties = StrainProperties(strain_id="STR-3",pandemic_duration=20)
 
-    solution: Solution = cvoa_launcher([strain1, strain2, strain3], p1_domain, p1_fitness)
-    # solution: Solution = cvoa_launcher([strain1, strain2], sgd_regressor_definition, sgd_regressor_fitness)
+    print('CVOA')
+    # solution: Solution = metagen.metaheuristics.cvoa.cvoa_launcher([strain1, strain2, strain3], p1_domain, p1_fitness)
+    solution: Solution = metagen.metaheuristics.cvoa.cvoa_launcher([strain1, strain2, strain3], sgd_regressor_definition, sgd_regressor_fitness)
 
+    # print('Distributed CVOA')
+    # solution: Solution = cvoa_launcher([strain1, strain2, strain3], p1_domain, p1_fitness)
+    # solution: Solution = cvoa_launcher([strain1, strain2, strain3], sgd_regressor_definition, sgd_regressor_fitness)
 
-    print(f'RESULT = {solution}')
+    print(f'\n\nRESULT = {solution}')
