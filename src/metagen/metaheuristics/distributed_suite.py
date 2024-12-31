@@ -54,6 +54,7 @@ def distributed_sorted_base_population(population_size: int, domain: Domain,
                                        fitness_function: Callable[[Solution], float]) -> [List['GASolution'],
                                                                                           'GASolution']:
     distribution = assign_load_equally(population_size)
+    resources_avialable(distribution, 'Distributed Sorted Base Population')
     futures = []
     for count in distribution:
         futures.append(ssga_remote_sorted_yield_and_evaluate_individuals.remote(count, domain, fitness_function))
@@ -68,6 +69,7 @@ def distributed_sorted_base_population(population_size: int, domain: Domain,
 
 def distributed_sort(population: List['GASolution']) -> Tuple[List['GASolution'], 'GASolution']:
     distribution = assign_load_equally(len(population))
+    resources_avialable(distribution, 'Distributed Sort')
     futures = []
     for count in distribution:
         futures.append(remote_sort_population.remote(population[:count]))
@@ -80,6 +82,7 @@ def distributed_sort(population: List['GASolution']) -> Tuple[List['GASolution']
 
 @ray.remote
 def remote_sort_population(population: List['GASolution']) -> List['GASolution']:
+    task_environment()
     return sorted(population, key=lambda sol: sol.get_fitness())
 
 

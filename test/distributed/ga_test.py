@@ -51,8 +51,8 @@ if __name__ == "__main__":
 
     # ga: GA = GA(p1_domain, p1_fitness)
     # ga: GA = GA(sgd_regressor_definition, sgd_regressor_fitness)
-    # ga: DistributedGA = DistributedGA(p1_domain, p1_fitness)
-    ga: DistributedGA = DistributedGA(sgd_regressor_definition, sgd_regressor_fitness, population_size=20)
+    ga: DistributedGA = DistributedGA(p1_domain, p1_fitness)
+    # ga: DistributedGA = DistributedGA(sgd_regressor_definition, sgd_regressor_fitness, population_size=20)
 
 
     solution: Solution = ga.run()
