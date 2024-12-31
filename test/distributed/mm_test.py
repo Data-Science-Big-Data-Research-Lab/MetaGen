@@ -1,11 +1,11 @@
-
+from metagen.metaheuristics.ga import GAConnector
+from metagen.metaheuristics.ga.ga import GA, DistributedGA
 from metagen.framework import Domain, Solution
 from sklearn.datasets import make_regression
 from sklearn.linear_model import SGDRegressor
 from sklearn.model_selection import cross_val_score
 
-from metagen.metaheuristics.ga import GAConnector
-from metagen.metaheuristics.ga.ssga import DistributedSSGA, SSGA
+from metagen.metaheuristics.memetic.memetic import Memetic, DistributedMemetic
 
 # Synthetic datasets
 X_regression, y_regression = make_regression(n_samples=100, n_features=4,
@@ -41,23 +41,18 @@ def sgd_regressor_fitness(individual):
 
     return -scores.mean()
 
-
 p1_domain: Domain = Domain(GAConnector())
-p1_domain.define_integer("x", -5, 20)
+p1_domain.define_integer("x", -5, 100)
 
 def p1_fitness(individual: Solution) -> float:
     x = individual["x"] # You could use the .get function alternatively.
     return x + 5
 
 if __name__ == "__main__":
-
-    print('SSGA')
-    # ssga: SSGA = SSGA(p1_domain, p1_fitness)
-    # ssga: SSGA = SSGA(sgd_regressor_definition, sgd_regressor_fitness)
-
-    # print('DistributedSSGA')
-    # ssga: DistributedSSGA = DistributedSSGA(p1_domain, p1_fitness)
-    ssga: DistributedSSGA = DistributedSSGA(sgd_regressor_definition, sgd_regressor_fitness)
-
-    solution: Solution = ssga.run()
+    print('Running Memetic')
+    # mm: Memetic = Memetic(p1_domain, p1_fitness)
+    # mm: Memetic = Memetic(sgd_regressor_definition, sgd_regressor_fitness)
+    # mm: DistributedMemetic = DistributedMemetic(p1_domain, p1_fitness)
+    mm: DistributedMemetic = DistributedMemetic(sgd_regressor_definition, sgd_regressor_fitness)
+    solution: Solution = mm.run()
     print(solution)

@@ -82,6 +82,7 @@ def distributed_sort(population: List['GASolution']) -> Tuple[List['GASolution']
 def remote_sort_population(population: List['GASolution']) -> List['GASolution']:
     return sorted(population, key=lambda sol: sol.get_fitness())
 
+
 # ******************** Para GA ********************
 # Población inicial
 
@@ -124,6 +125,7 @@ def ga_distributed_base_population(population_size: int, domain: Domain,
     partial_best = [result[1] for result in remote_results]
     best_individual = min(partial_best, key=lambda sol: sol.get_fitness())
     return population, best_individual
+
 
 # Offspring
 
@@ -177,6 +179,65 @@ def ga_distributed_offspring(parents: Tuple['GASolution', 'GASolution'], offspri
     partial_best_children = [result[1] for result in remote_results]
     best_child = min(partial_best_children, key=lambda sol: sol.get_fitness())
     return offspring, best_child
+
+
+# ******************** Para MM ********************
+
+def mm_local_offspring_individuals(parents: Tuple['GASolution', 'GASolution'], num_individuals: int,
+                                   mutation_rate: float, fitness_function: Callable[[Solution], float],
+                                   neighbor_population_size: int, alteration_limit: float) -> Tuple[
+    List['GASolution'], 'GASolution']:
+    offspring = []
+    child1, child2 = yield_two_children(parents, mutation_rate, fitness_function)
+    best_child = min(child1, child2, key=lambda sol: sol.get_fitness())
+
+    offspring.extend([child1, child2])
+
+    for _ in range(num_individuals - 1):
+        child1, child2 = yield_two_children(parents, mutation_rate, fitness_function)
+        child1 = local_yield_mutate_and_evaluate_individuals_from_best(neighbor_population_size, child1,
+                                                                       fitness_function, alteration_limit)
+        child2 = local_yield_mutate_and_evaluate_individuals_from_best(neighbor_population_size, child2,
+                                                                       fitness_function, alteration_limit)
+
+        offspring.extend([child1, child2])
+
+        if child1.get_fitness() < best_child.get_fitness():
+            best_child = child1
+
+        if child2.get_fitness() < best_child.get_fitness():
+            best_child = child2
+
+    return offspring, best_child
+
+
+@ray.remote
+def mm_remote_offspring_individuals(parents: Tuple['GASolution', 'GASolution'], num_individuals: int,
+                                    mutation_rate: float, fitness_function: Callable[[Solution], float],
+                                    neighbor_population_size: int, alteration_limit: float) -> Tuple[
+    List['GASolution'], 'GASolution']:
+    task_environment()
+    return mm_local_offspring_individuals(parents, num_individuals, mutation_rate, fitness_function,
+                                          neighbor_population_size, alteration_limit)
+
+
+def mm_distributed_offspring(parents: Tuple['GASolution', 'GASolution'], offspring_size: int, mutation_rate: float,
+                             fitness_function: Callable[[Solution], float],
+                             neighbor_population_size: int, alteration_limit: float) -> Tuple[
+    List['GASolution'], Solution]:
+    distribution = assign_load_equally(offspring_size)
+    resources_avialable(distribution, 'Memetic Offspring')
+    futures = []
+    for count in distribution:
+        futures.append(mm_remote_offspring_individuals.remote(parents, count, mutation_rate, fitness_function,
+                                                              neighbor_population_size, alteration_limit))
+    remote_results = ray.get(futures)
+    all_offsprings = [result[0] for result in remote_results]
+    offspring = [individual for subpopulation in all_offsprings for individual in subpopulation]
+    partial_best_children = [result[1] for result in remote_results]
+    best_child = min(partial_best_children, key=lambda sol: sol.get_fitness())
+    return offspring, best_child
+
 
 # ******************** Para RS ********************
 
@@ -258,7 +319,6 @@ def remote_mutate_and_evaluate_population(population: List[Solution], fitness_fu
 def distributed_yield_mutate_evaluate_from_the_best(population_size: int, best_solution: Solution,
                                                     fitness_function: Callable[[Solution], float],
                                                     alteration_limit: Optional[float] = None) -> List[Solution]:
-
     distribution = assign_load_equally(population_size)
     resources_avialable(distribution, 'Neighborhood')
     futures = []
@@ -269,11 +329,9 @@ def distributed_yield_mutate_evaluate_from_the_best(population_size: int, best_s
     return ray.get(futures)
 
 
-
-
 def local_yield_mutate_and_evaluate_individuals_from_best(num_individuals: int, best_solution: Solution,
                                                           fitness_function: Callable[[Solution], float],
-                                                          alteration_limit: Optional[float] = None) -> Solution:
+                                                          alteration_limit: Optional[float]) -> Solution:
     best_neighbor = deepcopy(best_solution)
     best_neighbor.mutate(alteration_limit=alteration_limit)
     best_neighbor.evaluate(fitness_function)
@@ -289,17 +347,17 @@ def local_yield_mutate_and_evaluate_individuals_from_best(num_individuals: int, 
 @ray.remote
 def remote_yield_mutate_and_evaluate_individuals_from_best(num_individuals: int, best_solution: Solution,
                                                            fitness_function: Callable[[Solution], float],
-                                                           alteration_limit: Optional[float] = None) -> Solution:
+                                                           alteration_limit: float) -> Solution:
     task_environment()
-    return local_yield_mutate_and_evaluate_individuals_from_best(num_individuals, best_solution, fitness_function,
-                                                                 alteration_limit=alteration_limit)
-
+    return local_yield_mutate_and_evaluate_individuals_from_best(num_individuals, best_solution,
+                                                                 fitness_function, alteration_limit)
 
 
 # ******************** Para TS ********************
 def local_yield_mutate_evaluate_population_from_the_best(population_size: int, best_solution: Solution,
-                                                    fitness_function: Callable[[Solution], float],
-                                                    alteration_limit: Optional[float] = None) -> Tuple[List[Solution], Solution]:
+                                                         fitness_function: Callable[[Solution], float],
+                                                         alteration_limit: Optional[float] = None) -> Tuple[
+    List[Solution], Solution]:
     neighbor_population = []
     best_neighbor = deepcopy(best_solution)
     best_neighbor.mutate(alteration_limit=alteration_limit)
@@ -400,13 +458,10 @@ def distributed_cvoa_new_infected_population(global_state, domain: Domain,
                                              strain_properties: StrainProperties,
                                              carrier_population: Set[Solution], superspreaders: Set[Solution],
                                              time: int, update_isolated: bool) -> Set[Solution]:
-
-
     futures = [cvoa_remote_yield_infected_population_from_a_carrier.remote(global_state, domain, fitness_function,
                                                                            strain_properties, carrier, superspreaders,
                                                                            time, update_isolated)
                for carrier in carrier_population]
-
 
     new_infected_population = set()
     for result in ray.get(futures):
@@ -436,13 +491,9 @@ def cvoa_local_yield_infected_population_from_a_carrier(global_state, domain: Do
                                                         time: int, update_isolated: bool) -> Set[Solution]:
     n_infected, travel_distance = compute_n_infected_travel_distance(domain, strain_properties, carrier, superspreaders)
 
-    # return local_infect_individuals(global_state, fitness_function, strain_properties, carrier, n_infected, travel_distance, time, update_isolated)
-
     return distributed_infect_individuals(global_state, fitness_function, strain_properties, carrier, n_infected,
-                                    travel_distance,
-                                    time, update_isolated)
-
-
+                                          travel_distance,
+                                          time, update_isolated)
 
 
 @ray.remote
@@ -471,30 +522,35 @@ def compute_n_infected_travel_distance(domain: Domain, strain_properties: Strain
     return n_infected, travel_distance
 
 
-def local_infect_individuals(global_state, fitness_function: Callable[[Solution], float], strain_properties: StrainProperties,
+def local_infect_individuals(global_state, fitness_function: Callable[[Solution], float],
+                             strain_properties: StrainProperties,
                              carrier: Solution, n_infected: int, travel_distance: int, time: int,
                              update_isolated: bool) -> Set[Solution]:
-    return cvoa_local_yield_infected_from_carrier(global_state, fitness_function, strain_properties, carrier, n_infected, travel_distance, time, update_isolated)
+    return cvoa_local_yield_infected_from_carrier(global_state, fitness_function, strain_properties, carrier,
+                                                  n_infected, travel_distance, time, update_isolated)
 
 
-def distributed_infect_individuals(global_state, fitness_function: Callable[[Solution], float], strain_properties: StrainProperties,
-                             carrier: Solution, n_infected: int, travel_distance: int, time: int,
-                             update_isolated: bool) -> Set[Solution]:
-
+def distributed_infect_individuals(global_state, fitness_function: Callable[[Solution], float],
+                                   strain_properties: StrainProperties,
+                                   carrier: Solution, n_infected: int, travel_distance: int, time: int,
+                                   update_isolated: bool) -> Set[Solution]:
     distribution = assign_load_equally(n_infected)
     resources_avialable(distribution, 'CVOA Infection')
     futures = []
     for count in distribution:
-        futures.append(cvoa_remote_yield_infected_from_carrier.remote(global_state, fitness_function, strain_properties, carrier, count, travel_distance, time, update_isolated))
+        futures.append(
+            cvoa_remote_yield_infected_from_carrier.remote(global_state, fitness_function, strain_properties, carrier,
+                                                           count, travel_distance, time, update_isolated))
     new_infected_population = set()
     for result in ray.get(futures):
         new_infected_population.update(result)
     return new_infected_population
 
-def cvoa_local_yield_infected_from_carrier(global_state, fitness_function: Callable[[Solution], float], strain_properties: StrainProperties,
-                       carrier: Solution, n_infected: int, travel_distance: int, time: int,
-                       update_isolated: bool) -> Set[Solution]:
 
+def cvoa_local_yield_infected_from_carrier(global_state, fitness_function: Callable[[Solution], float],
+                                           strain_properties: StrainProperties,
+                                           carrier: Solution, n_infected: int, travel_distance: int, time: int,
+                                           update_isolated: bool) -> Set[Solution]:
     new_infected_population: Set[Solution] = set()
 
     for _ in range(0, n_infected):
@@ -521,15 +577,14 @@ def cvoa_local_yield_infected_from_carrier(global_state, fitness_function: Calla
 
     return new_infected_population
 
+
 @ray.remote
-def cvoa_remote_yield_infected_from_carrier(global_state, fitness_function: Callable[[Solution], float], strain_properties: StrainProperties,
-                       carrier: Solution, n_infected: int, travel_distance: int, time: int,
-                       update_isolated: bool) -> Set[Solution]:
+def cvoa_remote_yield_infected_from_carrier(global_state, fitness_function: Callable[[Solution], float],
+                                            strain_properties: StrainProperties,
+                                            carrier: Solution, n_infected: int, travel_distance: int, time: int,
+                                            update_isolated: bool) -> Set[Solution]:
     return cvoa_local_yield_infected_from_carrier(global_state, fitness_function, strain_properties, carrier,
                                                   n_infected, travel_distance, time, update_isolated)
-
-
-
 
 
 def update_new_infected_population(global_state, new_infected_population: Set[Solution],
