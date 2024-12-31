@@ -1,4 +1,4 @@
-from metagen.metaheuristics import GAConnector
+from metagen.metaheuristics.ga import GAConnector
 from metagen.metaheuristics.ga.ga import GA, DistributedGA
 from metagen.framework import Domain, Solution
 from sklearn.datasets import make_regression
@@ -40,7 +40,7 @@ def sgd_regressor_fitness(individual):
     return -scores.mean()
 
 p1_domain: Domain = Domain(GAConnector())
-p1_domain.define_integer("x", -10, 10)
+p1_domain.define_integer("x", -5, 10)
 
 def p1_fitness(individual: Solution) -> float:
     x = individual["x"] # You could use the .get function alternatively.
