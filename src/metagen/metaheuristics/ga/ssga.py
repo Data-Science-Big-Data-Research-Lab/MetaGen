@@ -73,6 +73,7 @@ class SSGA(Metaheuristic):
         child1, child2 = yield_two_children(self.select_parents(), self.mutation_rate, self.fitness_function)
 
         if child1 == child2:
+            self.current_iteration += 1
             self.skip_iteration()
 
         self.replace_wost(child1)
@@ -101,12 +102,6 @@ class SSGA(Metaheuristic):
         worst_solution = self.current_solutions[-1]
         if worst_solution.fitness > child.fitness:
             self.current_solutions[-1] = child
-
-    # def post_execution(self) -> None:
-    #     current_best = min(self.current_solutions, key=lambda sol: sol.fitness)
-    #     self.best_solution = current_best if current_best.fitness < self.best_solution.fitness else self.best_solution
-    #     super().post_execution()
-
 
     def stopping_criterion(self) -> bool:
         return self.current_iteration >= self.n_iterations
