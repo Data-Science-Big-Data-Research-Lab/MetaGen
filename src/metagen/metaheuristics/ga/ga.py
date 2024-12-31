@@ -104,7 +104,7 @@ class DistributedGA(Metaheuristic):
                  population_size: int = 10,
                  mutation_rate: float = 0.1,
                  max_generations: int = 50,
-                 log_dir: str = "logs/GA") -> None:
+                 log_dir: str = "logs/DGA") -> None:
         """
         Initialize the distributed genetic algorithm.
 
@@ -153,7 +153,7 @@ class DistributedGA(Metaheuristic):
         """
         super().post_iteration()
         # print(f'[{self.current_iteration}] {self.best_solution}')
-        self.writer.add_scalar('GA/Population Size',
+        self.writer.add_scalar('DGA/Population Size',
                                len(self.current_solutions),
                                self.current_iteration)
 

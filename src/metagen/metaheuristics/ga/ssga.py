@@ -118,7 +118,7 @@ class SSGA(Metaheuristic):
         super().post_iteration()
         # print(f'[{self.current_iteration}] {self.current_solutions}')
         print(f'[{self.current_iteration}] {self.best_solution}')
-        self.writer.add_scalar('GA/Population Size',
+        self.writer.add_scalar('SSGA/Population Size',
                               len(self.current_solutions),
                               self.current_iteration)
 
@@ -150,7 +150,7 @@ class DistributedSSGA (Metaheuristic):
     :vartype fitness_func: Callable[[Solution], float]"""
 
     def __init__(self, domain: Domain, fitness_func: Callable[[GASolution], float], population_size: int = 10,
-                 mutation_rate: float = 0.1, n_iterations: int = 50, log_dir: str = "logs/SSGA") -> None:
+                 mutation_rate: float = 0.1, n_iterations: int = 50, log_dir: str = "logs/DSSGA") -> None:
 
         super().__init__(domain, fitness_func, log_dir=log_dir)
         self.population_size: int = population_size
@@ -214,7 +214,7 @@ class DistributedSSGA (Metaheuristic):
         """
         super().post_iteration()
         print(f'[{self.current_iteration}] {self.best_solution}')
-        self.writer.add_scalar('GA/Population Size',
+        self.writer.add_scalar('DSSGA/Population Size',
                               len(self.current_solutions),
                               self.current_iteration)
 
