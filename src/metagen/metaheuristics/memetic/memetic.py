@@ -125,7 +125,7 @@ class DistributedMemetic(Metaheuristic):
         Additional processing after each generation.
         """
         super().post_iteration()
-        print(f'[{self.current_iteration}] {self.best_solution}')
+        # print(f'[{self.current_iteration}] {self.best_solution}')
         self.writer.add_scalar('DMM/Population Size',
                                len(self.current_solutions),
                                self.current_iteration)
