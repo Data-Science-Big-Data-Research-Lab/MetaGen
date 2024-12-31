@@ -136,6 +136,16 @@ class SA(Metaheuristic):
         """
         return self.current_iteration >= self.n_iterations
 
+    def post_iteration(self) -> None:
+        """
+        Additional processing after each generation.
+        """
+        super().post_iteration()
+        print(f'[{self.current_iteration}] {self.best_solution}')
+        self.writer.add_scalar('SA/Population Size',
+                               len(self.current_solutions),
+                               self.current_iteration)
+
 
 
 class DistributedSA(Metaheuristic):
@@ -205,6 +215,15 @@ class DistributedSA(Metaheuristic):
         """
         return self.current_iteration >= self.n_iterations
 
+    def post_iteration(self) -> None:
+        """
+        Additional processing after each generation.
+        """
+        super().post_iteration()
+        print(f'[{self.current_iteration}] {self.best_solution}')
+        self.writer.add_scalar('DSA/Population Size',
+                               len(self.current_solutions),
+                               self.current_iteration)
 
     def run(self) -> Solution:
         """

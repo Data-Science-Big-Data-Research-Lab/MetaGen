@@ -107,7 +107,7 @@ class DistributedCVOA(Metaheuristic):
     """
 
     def __init__(self, global_state, domain, fitness_function, strain_properties:StrainProperties = StrainProperties(), verbose=True, update_isolated=False,
-                 log_dir="logs/CVOA"):
+                 log_dir="logs/DCVOA"):
 
         # 1. Initialize the base class.
         super().__init__(domain, fitness_function, log_dir=log_dir)
@@ -458,6 +458,16 @@ class DistributedCVOA(Metaheuristic):
 
         return inserted
 
+    def post_iteration(self) -> None:
+        """
+        Additional processing after each generation.
+        """
+        super().post_iteration()
+        print(f'[{self.current_iteration}] {self.best_solution}')
+        self.writer.add_scalar('DCVOA/Population Size',
+                               len(self.current_solutions),
+                               self.current_iteration)
+
 
     def __str__(self):
         """ String representation of a :py:class:`~metagen.metaheuristics.CVOA` object (a strain).
@@ -492,7 +502,7 @@ def run_strain(global_state, domain:Domain, fitness_function: Callable[[Solution
 
 
 def cvoa_launcher(strains: List[StrainProperties], domain: Domain, fitness_function: Callable[[Solution], float],
-                  verbose: bool = True, update_isolated: bool = False, log_dir: str = "logs/CVOA") -> Solution:
+                  verbose: bool = True, update_isolated: bool = False, log_dir: str = "logs/DCVOA") -> Solution:
 
     # Initialize Ray
     if not ray.is_initialized():

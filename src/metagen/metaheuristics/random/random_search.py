@@ -61,10 +61,6 @@ class RandomSearch(Metaheuristic):
         super().__init__(domain, fitness_function, log_dir=log_dir)
         self.search_space_size = search_space_size
         self.max_iterations = max_iterations
-    
-
-    def stopping_criterion(self) -> bool:
-        return self.current_iteration >= self.max_iterations
 
     def initialize(self) -> None:
         """Initialize random solutions"""
@@ -76,6 +72,23 @@ class RandomSearch(Metaheuristic):
         population, best_individual = local_mutate_and_evaluate_population(self.current_solutions, self.fitness_function)
         self.current_solutions = population
         self.best_solution = best_individual
+
+    def stopping_criterion(self) -> bool:
+        return self.current_iteration >= self.max_iterations
+
+    def post_iteration(self) -> None:
+        """
+        Additional processing after each generation.
+        """
+        super().post_iteration()
+        print(f'[{self.current_iteration}] {self.best_solution}')
+        self.writer.add_scalar('RS/Population Size',
+                               len(self.current_solutions),
+                               self.current_iteration)
+
+
+
+
 
 
 class DistributedRS(Metaheuristic):
@@ -111,7 +124,7 @@ class DistributedRS(Metaheuristic):
 
     """
 
-    def __init__(self, domain: Domain, fitness_function, log_dir: str = "logs/RS",
+    def __init__(self, domain: Domain, fitness_function, log_dir: str = "logs/DRS",
                  search_space_size: int = 30, max_iterations: int = 20) -> None:
         super().__init__(domain, fitness_function, log_dir=log_dir)
         self.search_space_size = search_space_size
@@ -141,6 +154,16 @@ class DistributedRS(Metaheuristic):
 
     def stopping_criterion(self) -> bool:
         return self.current_iteration >= self.max_iterations
+
+    def post_iteration(self) -> None:
+        """
+        Additional processing after each generation.
+        """
+        super().post_iteration()
+        print(f'[{self.current_iteration}] {self.best_solution}')
+        self.writer.add_scalar('DRS/Population Size',
+                               len(self.current_solutions),
+                               self.current_iteration)
 
     def run(self) -> Solution:
 

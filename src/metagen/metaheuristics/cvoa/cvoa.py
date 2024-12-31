@@ -553,6 +553,16 @@ class CVOA(Metaheuristic):
 
         return inserted
 
+    def post_iteration(self) -> None:
+        """
+        Additional processing after each generation.
+        """
+        super().post_iteration()
+        print(f'[{self.current_iteration}] {self.best_solution}')
+        self.writer.add_scalar('CVOA/Population Size',
+                               len(self.current_solutions),
+                               self.current_iteration)
+
 
     def __str__(self):
         """ String representation of a :py:class:`~metagen.metaheuristics.CVOA` object (a strain).
