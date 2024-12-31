@@ -1,6 +1,6 @@
 import random
 from copy import deepcopy
-from typing import List, Callable, Tuple, Optional, Set, NamedTuple
+from typing import List, Callable, Tuple, Set, NamedTuple
 
 import ray
 
@@ -183,6 +183,32 @@ def ga_distributed_offspring(parents: Tuple['GASolution', 'GASolution'], offspri
 
 # ******************** Para MM ********************
 
+def mm_distributed_offspring(parents: Tuple['GASolution', 'GASolution'], offspring_size: int, mutation_rate: float,
+                             fitness_function: Callable[[Solution], float],
+                             neighbor_population_size: int, alteration_limit: float) -> Tuple[
+    List['GASolution'], Solution]:
+    distribution = assign_load_equally(offspring_size)
+    resources_avialable(distribution, 'Distributed Memetic Offspring')
+    futures = []
+    for count in distribution:
+        futures.append(mm_remote_offspring_individuals.remote(parents, count, mutation_rate, fitness_function,
+                                                              neighbor_population_size, alteration_limit))
+    remote_results = ray.get(futures)
+    all_offsprings = [result[0] for result in remote_results]
+    offspring = [individual for subpopulation in all_offsprings for individual in subpopulation]
+    partial_best_children = [result[1] for result in remote_results]
+    best_child = min(partial_best_children, key=lambda sol: sol.get_fitness())
+    return offspring, best_child
+
+@ray.remote
+def mm_remote_offspring_individuals(parents: Tuple['GASolution', 'GASolution'], num_individuals: int,
+                                    mutation_rate: float, fitness_function: Callable[[Solution], float],
+                                    neighbor_population_size: int, alteration_limit: float) -> Tuple[
+    List['GASolution'], 'GASolution']:
+    task_environment()
+    return mm_local_offspring_individuals(parents, num_individuals, mutation_rate, fitness_function,
+                                          neighbor_population_size, alteration_limit)
+
 def mm_local_offspring_individuals(parents: Tuple['GASolution', 'GASolution'], num_individuals: int,
                                    mutation_rate: float, fitness_function: Callable[[Solution], float],
                                    neighbor_population_size: int, alteration_limit: float) -> Tuple[
@@ -194,11 +220,15 @@ def mm_local_offspring_individuals(parents: Tuple['GASolution', 'GASolution'], n
     offspring.extend([child1, child2])
 
     for _ in range(num_individuals - 1):
+
         child1, child2 = yield_two_children(parents, mutation_rate, fitness_function)
-        child1 = local_yield_mutate_and_evaluate_individuals_from_best(neighbor_population_size, child1,
-                                                                       fitness_function, alteration_limit)
-        child2 = local_yield_mutate_and_evaluate_individuals_from_best(neighbor_population_size, child2,
-                                                                       fitness_function, alteration_limit)
+
+        # child1, child2 = mm_local_local_search_of_two_childs((child1, child2), neighbor_population_size, fitness_function, alteration_limit)
+
+        child1, child2 = mm_distributed_local_search_of_two_childs((child1, child2), neighbor_population_size,
+                                                             fitness_function, alteration_limit)
+
+        # print(f'---------------------------------------- Child1 = {child1}')
 
         offspring.extend([child1, child2])
 
@@ -211,32 +241,71 @@ def mm_local_offspring_individuals(parents: Tuple['GASolution', 'GASolution'], n
     return offspring, best_child
 
 
+def mm_local_local_search_of_two_childs(children:Tuple['GASolution', 'GASolution'], neighbor_population_size: int,
+                                        fitness_function: Callable[[Solution], float], alteration_limit: float) -> Tuple[
+    'GASolution', 'GASolution']:
+    child1 = local_yield_mutate_and_evaluate_individuals_from_best(neighbor_population_size, children[0],
+                                                                   fitness_function, alteration_limit)
+    child2 = local_yield_mutate_and_evaluate_individuals_from_best(neighbor_population_size, children[1],
+                                                                   fitness_function, alteration_limit)
+    return child1, child2
+
+def mm_distributed_local_search_of_two_childs(children:Tuple['GASolution', 'GASolution'], neighbor_population_size: int,
+                                        fitness_function: Callable[[Solution], float], alteration_limit: float) -> Tuple[
+    'GASolution', 'GASolution']:
+
+    distribution = assign_load_equally(2)
+    resources_avialable(distribution, 'Parallel Local search of two children')
+
+    futures = []
+    for child in children:
+        futures.append(mm_distributed_local_search_of_one_children.remote(neighbor_population_size, child,
+                                                                   fitness_function, alteration_limit))
+
+    results = ray.get(futures)
+    # flattened_results = [individual for sublist in results for individual in sublist]
+
+    # print(f'---------------------------------------- mm_distributed_local_search_of_two_childs = {results}')
+    child1 = results[0]
+    child2 = results[1]
+
+    return child1, child2
+
 @ray.remote
-def mm_remote_offspring_individuals(parents: Tuple['GASolution', 'GASolution'], num_individuals: int,
-                                    mutation_rate: float, fitness_function: Callable[[Solution], float],
-                                    neighbor_population_size: int, alteration_limit: float) -> Tuple[
-    List['GASolution'], 'GASolution']:
-    task_environment()
-    return mm_local_offspring_individuals(parents, num_individuals, mutation_rate, fitness_function,
-                                          neighbor_population_size, alteration_limit)
-
-
-def mm_distributed_offspring(parents: Tuple['GASolution', 'GASolution'], offspring_size: int, mutation_rate: float,
-                             fitness_function: Callable[[Solution], float],
-                             neighbor_population_size: int, alteration_limit: float) -> Tuple[
-    List['GASolution'], Solution]:
-    distribution = assign_load_equally(offspring_size)
-    resources_avialable(distribution, 'Memetic Offspring')
+def mm_distributed_local_search_of_one_children(population_size: int, best_solution: 'GASolution',
+                                                    fitness_function: Callable[[Solution], float],
+                                                    alteration_limit: float) -> 'GASolution':
+    distribution = assign_load_equally(population_size)
+    resources_avialable(distribution, 'Local search of a child')
     futures = []
     for count in distribution:
-        futures.append(mm_remote_offspring_individuals.remote(parents, count, mutation_rate, fitness_function,
-                                                              neighbor_population_size, alteration_limit))
-    remote_results = ray.get(futures)
-    all_offsprings = [result[0] for result in remote_results]
-    offspring = [individual for subpopulation in all_offsprings for individual in subpopulation]
-    partial_best_children = [result[1] for result in remote_results]
-    best_child = min(partial_best_children, key=lambda sol: sol.get_fitness())
-    return offspring, best_child
+        futures.append(
+            remote_yield_mutate_and_evaluate_individuals_from_best.remote(count, best_solution, fitness_function, alteration_limit))
+    results = ray.get(futures)
+    # print(f'---------------------------------------- mm_distributed_local_search_of_one_children = {results}')
+    flattened_results = [individual for individual in results]
+    res = min(flattened_results, key=lambda sol: sol.get_fitness())
+
+    return res
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # ******************** Para RS ********************
@@ -278,12 +347,12 @@ def remote_yield_and_evaluate_individuals(num_individuals: int, domain: Domain,
 
 
 def distributed_mutation_and_evaluation(population: List[Solution], fitness_function: Callable[[Solution], float],
-                                        alteration_limit: Optional[float] = None) -> Tuple[List[Solution], Solution]:
+                                        alteration_limit: float) -> Tuple[List[Solution], Solution]:
     distribution = assign_load_equally(len(population))
     futures = []
     for count in distribution:
-        futures.append(remote_mutate_and_evaluate_population.remote(population[:count], fitness_function,
-                                                                    alteration_limit=alteration_limit))
+        futures.append(remote_mutate_and_evaluate_population.remote(population[:count],
+                                                                    fitness_function, alteration_limit))
         population = population[count:]
     remote_results = ray.get(futures)
     all_subpopulations = [result[0] for result in remote_results]
@@ -294,7 +363,7 @@ def distributed_mutation_and_evaluation(population: List[Solution], fitness_func
 
 
 def local_mutate_and_evaluate_population(population: List[Solution], fitness_function: Callable[[Solution], float],
-                                         alteration_limit: Optional[float] = None) -> [List[Solution], Solution]:
+                                         alteration_limit: float) -> [List[Solution], Solution]:
     # print('Population = ' + str(population))
     first_individual = population[0]
     # print('First individual = '+str(first_individual))
@@ -311,27 +380,27 @@ def local_mutate_and_evaluate_population(population: List[Solution], fitness_fun
 
 @ray.remote
 def remote_mutate_and_evaluate_population(population: List[Solution], fitness_function: Callable[[Solution], float],
-                                          alteration_limit: Optional[float] = None) -> [List[Solution], Solution]:
+                                          alteration_limit: float) -> [List[Solution], Solution]:
     return local_mutate_and_evaluate_population(population, fitness_function, alteration_limit=alteration_limit)
 
 
 # ******************** Para SA ********************
 def distributed_yield_mutate_evaluate_from_the_best(population_size: int, best_solution: Solution,
                                                     fitness_function: Callable[[Solution], float],
-                                                    alteration_limit: Optional[float] = None) -> List[Solution]:
+                                                    alteration_limit: float) -> List[Solution]:
     distribution = assign_load_equally(population_size)
     resources_avialable(distribution, 'Neighborhood')
     futures = []
     for count in distribution:
         futures.append(
             remote_yield_mutate_and_evaluate_individuals_from_best.remote(count, best_solution, fitness_function,
-                                                                          alteration_limit=alteration_limit))
+                                                                          alteration_limit))
     return ray.get(futures)
 
 
 def local_yield_mutate_and_evaluate_individuals_from_best(num_individuals: int, best_solution: Solution,
                                                           fitness_function: Callable[[Solution], float],
-                                                          alteration_limit: Optional[float]) -> Solution:
+                                                          alteration_limit: float) -> Solution:
     best_neighbor = deepcopy(best_solution)
     best_neighbor.mutate(alteration_limit=alteration_limit)
     best_neighbor.evaluate(fitness_function)
@@ -356,7 +425,7 @@ def remote_yield_mutate_and_evaluate_individuals_from_best(num_individuals: int,
 # ******************** Para TS ********************
 def local_yield_mutate_evaluate_population_from_the_best(population_size: int, best_solution: Solution,
                                                          fitness_function: Callable[[Solution], float],
-                                                         alteration_limit: Optional[float] = None) -> Tuple[
+                                                         alteration_limit: float) -> Tuple[
     List[Solution], Solution]:
     neighbor_population = []
     best_neighbor = deepcopy(best_solution)
