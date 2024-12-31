@@ -21,7 +21,8 @@ from metagen.metaheuristics.base import Metaheuristic
 import ray
 from typing import Callable, List, Tuple
 
-from metagen.metaheuristics.distributed_suite import ga_local_yield_and_evaluate_individuals, ga_local_offspring_individuals, \
+from metagen.metaheuristics.distributed_suite import ga_local_yield_and_evaluate_individuals, \
+    ga_local_offspring_individuals, \
     ga_distributed_base_population, ga_distributed_offspring
 
 
@@ -50,13 +51,13 @@ class GA(Metaheuristic):
     :vartype domain: Domain
     :ivar fitness_func: The fitness function used to evaluate solutions.
     :vartype fitness_func: Callable[[Solution], float]"""
-    def __init__(self, domain: Domain, 
+
+    def __init__(self, domain: Domain,
                  fitness_func: Callable[[GASolution], float],
                  population_size: int = 10,
                  mutation_rate: float = 0.1,
                  max_generations: int = 50,
                  log_dir: str = "logs/GA") -> None:
-        
         super().__init__(domain, fitness_func, log_dir)
         self.population_size = population_size
         self.mutation_rate = mutation_rate
@@ -64,13 +65,22 @@ class GA(Metaheuristic):
 
     def initialize(self) -> None:
         """Initialize the population"""
-        self.current_solutions, self.best_solution = ga_local_yield_and_evaluate_individuals(self.population_size, self.domain, self.fitness_function)
+        self.current_solutions, self.best_solution = ga_local_yield_and_evaluate_individuals(self.population_size,
+                                                                                             self.domain,
+                                                                                             self.fitness_function)
 
     def iterate(self) -> None:
         """Execute one generation of the genetic algorithm"""
-        self.current_solutions, self.best_solution = ga_local_offspring_individuals(self.select_parents(), self.population_size // 2, self.mutation_rate, self.fitness_function)
+        children, best_child = ga_local_offspring_individuals(self.select_parents(),
+                                                              self.population_size // 2,
+                                                              self.mutation_rate,
+                                                              self.fitness_function)
 
-    def select_parents(self) -> Tuple[GASolution,GASolution]:
+        if best_child.get_fitness() < self.best_solution.get_fitness():
+            self.best_solution = best_child
+            self.current_solutions = children
+
+    def select_parents(self) -> Tuple[GASolution, GASolution]:
         """Select the top two parents based on fitness"""
         sorted_population = sorted(self.current_solutions, key=lambda sol: sol.get_fitness())
         return tuple(sorted_population[:2])
@@ -88,17 +98,15 @@ class GA(Metaheuristic):
         super().post_iteration()
         print(f'[{self.current_iteration}] {self.best_solution}')
         self.writer.add_scalar('GA/Population Size',
-                              len(self.current_solutions), 
-                              self.current_iteration)
-
-
-
+                               len(self.current_solutions),
+                               self.current_iteration)
 
 
 class DistributedGA(Metaheuristic):
     """
     Distributed implementation of Genetic Algorithm (GA) using Ray for parallel evaluation of solutions.
     """
+
     def __init__(self, domain: Domain,
                  fitness_function: Callable[[GASolution], float],
                  population_size: int = 10,
@@ -125,16 +133,21 @@ class DistributedGA(Metaheuristic):
         """
         Initialize the population with random solutions and evaluate them in parallel.
         """
-        self.current_solutions, self.best_solution = ga_distributed_base_population(self.population_size, self.domain, self.fitness_function)
+        self.current_solutions, self.best_solution = ga_distributed_base_population(self.population_size, self.domain,
+                                                                                    self.fitness_function)
 
     def iterate(self) -> None:
         """
         Perform one generation of the genetic algorithm with distributed evaluation.
         """
-        self.current_solutions, self.best_solution = ga_distributed_offspring(self.select_parents(),
-                                                                                    self.population_size // 2,
-                                                                                    self.mutation_rate,
-                                                                                    self.fitness_function)
+        children, best_child = ga_distributed_offspring(self.select_parents(),
+                                                        self.population_size // 2,
+                                                        self.mutation_rate,
+                                                        self.fitness_function)
+
+        if best_child.get_fitness() < self.best_solution.get_fitness():
+            self.best_solution = best_child
+            self.current_solutions = children
 
     def select_parents(self) -> Tuple[GASolution, GASolution]:
         """Select the top two parents based on fitness"""
