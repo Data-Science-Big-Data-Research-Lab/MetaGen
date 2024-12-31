@@ -52,7 +52,7 @@ class SSGA(Metaheuristic):
     :ivar fitness_func: The fitness function used to evaluate solutions.
     :vartype fitness_func: Callable[[Solution], float]"""
 
-    def __init__(self, domain: Domain, fitness_func: Callable[[GASolution], float], population_size: int = 10, mutation_rate: float = 0.1, n_iterations: int = 50, log_dir: str = "logs/SSGA") -> None:
+    def __init__(self, domain: Domain, fitness_func: Callable[[GASolution], float], population_size: int = 10, mutation_rate: float = 0.1, n_iterations: int = 20, log_dir: str = "logs/SSGA") -> None:
 
         super().__init__(domain, fitness_func, log_dir=log_dir)
         self.population_size: int = population_size
@@ -81,6 +81,8 @@ class SSGA(Metaheuristic):
 
         self.current_solutions = sorted(self.current_solutions, key=lambda sol: sol.fitness)
         self.best_solution = self.current_solutions[0]
+
+
 
     def select_parents(self) -> Tuple[GASolution, GASolution]:
         """
@@ -145,7 +147,7 @@ class DistributedSSGA (Metaheuristic):
     :vartype fitness_func: Callable[[Solution], float]"""
 
     def __init__(self, domain: Domain, fitness_func: Callable[[GASolution], float], population_size: int = 10,
-                 mutation_rate: float = 0.1, n_iterations: int = 50, log_dir: str = "logs/DSSGA") -> None:
+                 mutation_rate: float = 0.1, n_iterations: int = 20, log_dir: str = "logs/DSSGA") -> None:
 
         super().__init__(domain, fitness_func, log_dir=log_dir)
         self.population_size: int = population_size
