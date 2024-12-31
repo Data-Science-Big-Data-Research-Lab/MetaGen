@@ -4,6 +4,8 @@ from sklearn.datasets import make_regression
 from sklearn.linear_model import SGDRegressor
 from sklearn.model_selection import cross_val_score
 
+from metagen.metaheuristics.tabu.tabu import DistributedTabuSearch
+
 # Synthetic datasets
 X_regression, y_regression = make_regression(n_samples=100, n_features=4,
                                              n_informative=2,
@@ -48,8 +50,9 @@ def p1_fitness(individual: Solution) -> float:
 if __name__ == "__main__":
     print('Running Tabu Search')
     # ts: TabuSearch = TabuSearch(p1_domain, p1_fitness, max_iterations=10, neighbor_population_size=5, tabu_size=5, alteration_limit=1.0)
-    ts: TabuSearch = TabuSearch(sgd_regressor_definition, sgd_regressor_fitness, max_iterations=10, neighbor_population_size=20, tabu_size=5, alteration_limit=5.5)
-    # rs: DistributedRS = DistributedRS(sgd_regressor_definition, sgd_regressor_fitness)
-    # rs: DistributedRS = DistributedRS(p1_domain, p1_fitness)
+    # ts: TabuSearch = TabuSearch(sgd_regressor_definition, sgd_regressor_fitness, max_iterations=10, neighbor_population_size=20, tabu_size=5, alteration_limit=5.5)
+    ts: DistributedTabuSearch = DistributedTabuSearch(p1_domain, p1_fitness, max_iterations=10, neighbor_population_size=20, tabu_size=5, alteration_limit=1.0)
+    # ts: DistributedTabuSearch = DistributedTabuSearch(sgd_regressor_definition, sgd_regressor_fitness, max_iterations=10, neighbor_population_size=20, tabu_size=5, alteration_limit=5.5)
+
     solution: Solution = ts.run()
     print(solution)

@@ -258,7 +258,9 @@ def remote_mutate_and_evaluate_population(population: List[Solution], fitness_fu
 def distributed_yield_mutate_evaluate_from_the_best(population_size: int, best_solution: Solution,
                                                     fitness_function: Callable[[Solution], float],
                                                     alteration_limit: Optional[float] = None) -> List[Solution]:
+
     distribution = assign_load_equally(population_size)
+    resources_avialable(distribution, 'Neighborhood')
     futures = []
     for count in distribution:
         futures.append(
@@ -288,6 +290,7 @@ def local_yield_mutate_and_evaluate_individuals_from_best(num_individuals: int, 
 def remote_yield_mutate_and_evaluate_individuals_from_best(num_individuals: int, best_solution: Solution,
                                                            fitness_function: Callable[[Solution], float],
                                                            alteration_limit: Optional[float] = None) -> Solution:
+    task_environment()
     return local_yield_mutate_and_evaluate_individuals_from_best(num_individuals, best_solution, fitness_function,
                                                                  alteration_limit=alteration_limit)
 
@@ -310,11 +313,6 @@ def local_yield_mutate_evaluate_population_from_the_best(population_size: int, b
         if neighbor.get_fitness() < best_neighbor.get_fitness():
             best_neighbor = neighbor
     return neighbor_population, best_neighbor
-
-
-
-
-
 
 
 # ******************** Para CVOA ********************
