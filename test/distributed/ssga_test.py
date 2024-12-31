@@ -1,9 +1,10 @@
-from metagen.metaheuristics import GAConnector
+
 from metagen.framework import Domain, Solution
 from sklearn.datasets import make_regression
 from sklearn.linear_model import SGDRegressor
 from sklearn.model_selection import cross_val_score
 
+from metagen.metaheuristics.ga import GAConnector
 from metagen.metaheuristics.ga.ssga import DistributedSSGA, SSGA
 
 # Synthetic datasets
@@ -50,13 +51,13 @@ def p1_fitness(individual: Solution) -> float:
 
 if __name__ == "__main__":
 
-    # print('SSGA')
-    # ssga: SSGA = SSGA(p1_domain, p1_fitness)
+    print('SSGA')
+    ssga: SSGA = SSGA(p1_domain, p1_fitness)
     # ssga: SSGA = SSGA(sgd_regressor_definition, sgd_regressor_fitness)
 
-    print('DistributedSSGA')
+    # print('DistributedSSGA')
     # ssga: DistributedSSGA = DistributedSSGA(p1_domain, p1_fitness)
-    ssga: DistributedSSGA = DistributedSSGA(sgd_regressor_definition, sgd_regressor_fitness)
+    # ssga: DistributedSSGA = DistributedSSGA(sgd_regressor_definition, sgd_regressor_fitness)
 
     solution: Solution = ssga.run()
     print(solution)
