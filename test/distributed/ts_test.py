@@ -1,19 +1,8 @@
-import warnings
-from sklearn.exceptions import ConvergenceWarning
-
-# Suppress all ConvergenceWarning warnings
-warnings.filterwarnings("ignore", category=ConvergenceWarning)
-
+from metagen.metaheuristics import TabuSearch
+from metagen.framework import Domain, Solution
 from sklearn.datasets import make_regression
-from sklearn.exceptions import ConvergenceWarning
 from sklearn.linear_model import SGDRegressor
 from sklearn.model_selection import cross_val_score
-
-from metagen.framework import Domain, Solution
-from metagen.metaheuristics.sa.sa import DistributedSA, SA
-
-
-
 
 # Synthetic datasets
 X_regression, y_regression = make_regression(n_samples=100, n_features=4,
@@ -34,7 +23,7 @@ sgd_regressor_definition.define_categorical("learning_rate",
 
 
 # SGD regressor fitness function
-def sgd_regressor_fitness(individual: Solution) -> float:
+def sgd_regressor_fitness(individual):
     loss = individual["loss"]
     penalty = individual["penalty"]
     alpha = individual["alpha"]
@@ -50,22 +39,17 @@ def sgd_regressor_fitness(individual: Solution) -> float:
     return -scores.mean()
 
 p1_domain: Domain = Domain()
-p1_domain.define_integer("x", -5, 20)
+p1_domain.define_integer("x", -5, 10)
 
 def p1_fitness(individual: Solution) -> float:
     x = individual["x"] # You could use the .get function alternatively.
     return x + 5
 
-
-
-
 if __name__ == "__main__":
-    print('Distributed Simulated Annealing')
-    sa: SA = SA(p1_domain, p1_fitness, n_iterations=5, neighbor_population_size=10, alteration_limit=2.0)
-    # sa: SA = SA(sgd_regressor_definition, sgd_regressor_fitness, neighbor_population_size=5)
-
-    # sa: DistributedSA = DistributedSA(sgd_regressor_definition, sgd_regressor_fitness,neighbor_population_size=5)
-    # sa: DistributedSA = DistributedSA(p1_domain, p1_fitness, n_iterations=3,neighbor_population_size=5)
-
-    solution: Solution = sa.run()
+    print('Running Tabu Search')
+    # ts: TabuSearch = TabuSearch(p1_domain, p1_fitness, max_iterations=10, neighbor_population_size=5, tabu_size=5, alteration_limit=1.0)
+    ts: TabuSearch = TabuSearch(sgd_regressor_definition, sgd_regressor_fitness, max_iterations=10, neighbor_population_size=20, tabu_size=5, alteration_limit=5.5)
+    # rs: DistributedRS = DistributedRS(sgd_regressor_definition, sgd_regressor_fitness)
+    # rs: DistributedRS = DistributedRS(p1_domain, p1_fitness)
+    solution: Solution = ts.run()
     print(solution)

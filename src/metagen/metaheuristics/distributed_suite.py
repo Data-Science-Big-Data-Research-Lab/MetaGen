@@ -30,7 +30,8 @@ def assign_load_equally(neighbor_population_size: int) -> List[int]:
     return distribution
 
 
-# Para SSGA -> Población inicial ordenada
+# ******************** Para SSGA ********************
+# Población inicial ordenada
 
 def ssga_local_sorted_yield_and_evaluate_individuals(num_individuals: int, domain: Domain,
                                                      fitness_function: Callable[[Solution], float]) -> Tuple[
@@ -81,8 +82,8 @@ def distributed_sort(population: List['GASolution']) -> Tuple[List['GASolution']
 def remote_sort_population(population: List['GASolution']) -> List['GASolution']:
     return sorted(population, key=lambda sol: sol.get_fitness())
 
-
-# Para GA -> Población inicial
+# ******************** Para GA ********************
+# Población inicial
 
 def ga_local_yield_and_evaluate_individuals(num_individuals: int, domain: Domain,
                                             fitness_function: Callable[[Solution], float]) -> Tuple[
@@ -124,8 +125,7 @@ def ga_distributed_base_population(population_size: int, domain: Domain,
     best_individual = min(partial_best, key=lambda sol: sol.get_fitness())
     return population, best_individual
 
-
-# Para GA -> Offspring
+# Offspring
 
 def yield_two_children(parents: Tuple['GASolution', 'GASolution'], mutation_rate: float,
                        fitness_function: Callable[[Solution], float]) -> Tuple['GASolution', 'GASolution']:
@@ -178,8 +178,7 @@ def ga_distributed_offspring(parents: Tuple['GASolution', 'GASolution'], offspri
     best_child = min(partial_best_children, key=lambda sol: sol.get_fitness())
     return offspring, best_child
 
-
-# Para RS:
+# ******************** Para RS ********************
 
 def distributed_base_population(population_size: int, domain: Domain,
                                 fitness_function: Callable[[Solution], float]) -> [List[Solution], Solution]:
@@ -255,7 +254,7 @@ def remote_mutate_and_evaluate_population(population: List[Solution], fitness_fu
     return local_mutate_and_evaluate_population(population, fitness_function, alteration_limit=alteration_limit)
 
 
-# Para SA:
+# ******************** Para SA ********************
 def distributed_yield_mutate_evaluate_from_the_best(population_size: int, best_solution: Solution,
                                                     fitness_function: Callable[[Solution], float],
                                                     alteration_limit: Optional[float] = None) -> List[Solution]:
@@ -266,6 +265,8 @@ def distributed_yield_mutate_evaluate_from_the_best(population_size: int, best_s
             remote_yield_mutate_and_evaluate_individuals_from_best.remote(count, best_solution, fitness_function,
                                                                           alteration_limit=alteration_limit))
     return ray.get(futures)
+
+
 
 
 def local_yield_mutate_and_evaluate_individuals_from_best(num_individuals: int, best_solution: Solution,
@@ -289,6 +290,31 @@ def remote_yield_mutate_and_evaluate_individuals_from_best(num_individuals: int,
                                                            alteration_limit: Optional[float] = None) -> Solution:
     return local_yield_mutate_and_evaluate_individuals_from_best(num_individuals, best_solution, fitness_function,
                                                                  alteration_limit=alteration_limit)
+
+
+
+# ******************** Para TS ********************
+def local_yield_mutate_evaluate_population_from_the_best(population_size: int, best_solution: Solution,
+                                                    fitness_function: Callable[[Solution], float],
+                                                    alteration_limit: Optional[float] = None) -> Tuple[List[Solution], Solution]:
+    neighbor_population = []
+    best_neighbor = deepcopy(best_solution)
+    best_neighbor.mutate(alteration_limit=alteration_limit)
+    best_neighbor.evaluate(fitness_function)
+    neighbor_population.append(best_neighbor)
+    for _ in range(population_size - 1):
+        neighbor = deepcopy(best_solution)
+        neighbor.mutate(alteration_limit=alteration_limit)
+        neighbor.evaluate(fitness_function)
+        neighbor_population.append(neighbor)
+        if neighbor.get_fitness() < best_neighbor.get_fitness():
+            best_neighbor = neighbor
+    return neighbor_population, best_neighbor
+
+
+
+
+
 
 
 # ******************** Para CVOA ********************
