@@ -108,6 +108,9 @@ class BaseType(ABC):
         :returns: The value rounded considering the step.
         :rtype: int, float
         """
+
+        res = -1
+
         left_value = value - (value % step)
         right_value = (value + step) - (value % step)
 

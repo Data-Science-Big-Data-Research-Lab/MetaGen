@@ -15,11 +15,12 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 from metagen.metaheuristics.cvoa import CVOA, cvoa_launcher
-from metagen.metaheuristics.ga import GA, SSGA, GAConnector
+from metagen.metaheuristics.ga import GA, SSGA
 from metagen.metaheuristics.sa import SA
 from metagen.metaheuristics.random import RandomSearch
+from metagen.metaheuristics.tabu import TabuSearch
 
-__all__ = ["CVOA", "GA", "GAConnector", "RandomSearch", "SSGA", "SA", "cvoa_launcher"]
+__all__ = ["CVOA", "GA", "RandomSearch", "cvoa_launcher", "TabuSearch"]
 
 
 
