@@ -7,6 +7,15 @@ import ray
 from metagen.framework import Domain, Solution
 
 
+@ray.remote
+def call_distributed(function: Callable, *args, **kargs) -> None:
+    """
+    Initialize the population/solutions for the metaheuristic in a distributed manner.
+    Must set self.current_solutions and self.best_solution
+    """
+    return function(*args, **kargs)
+
+
 # Común a todos los algoritmos
 def task_environment() -> None:
     worker_id = ray.get_runtime_context().get_worker_id()

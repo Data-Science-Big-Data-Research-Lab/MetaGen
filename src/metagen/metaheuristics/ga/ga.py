@@ -18,8 +18,9 @@
 from metagen.framework import Domain
 from .ga_types import GASolution
 from metagen.metaheuristics.base import Metaheuristic
-import ray
 from typing import Callable, List, Tuple
+
+
 
 from metagen.metaheuristics.distributed_suite import ga_local_yield_and_evaluate_individuals, \
     ga_local_offspring_individuals, \

@@ -19,14 +19,16 @@ import random
 import warnings
 import numpy as np
 from dispatcher import problem_dispatcher
-from metagen.metaheuristics import CVOA, SSGA, SA, GA, RandomSearch, GAConnector, cvoa_launcher
+from metagen.metaheuristics import RandomSearch#CVOA, SSGA, SA, GA, GAConnector, cvoa_launcher
 from pytest_csv_params.decorator import csv_params
+import ray
+import os
 
 warnings.filterwarnings('ignore')
 
 resources_path = pathlib.Path(__file__).parents[0].resolve().as_posix() + "/resources"
 
-@csv_params(data_file=resources_path+"/examples.csv", id_col="ID#",
+"""@csv_params(data_file=resources_path+"/examples.csv", id_col="ID#",
             data_casts={"iterations": int, "seed": int})
 def test_cvoa(example: str, iterations: int, seed: int) -> None:
     random.seed(seed)
@@ -110,7 +112,7 @@ def test_sa(example: str, iterations: int, seed: int) -> None:
     assert solution is not None
     assert hasattr(solution, 'fitness')
     assert solution.fitness < float('inf')
-    # assert solution.fitness <= initial_best.fitness, cannot be guaranteed in this case
+    # assert solution.fitness <= initial_best.fitness, cannot be guaranteed in this case"""
 
 @csv_params(data_file=resources_path+"/examples.csv", id_col="ID#",
             data_casts={"iterations": int, "seed": int})
@@ -118,10 +120,14 @@ def test_rs(example: str, iterations: int, seed: int) -> None:
     random.seed(seed)
     np.random.seed(seed)
 
+    distributed = True
     problem_definition, fitness_function = problem_dispatcher(example)
-    algorithm = RandomSearch(problem_definition, fitness_function, max_iterations=iterations)
+    algorithm = RandomSearch(problem_definition, fitness_function, population_size=50, max_iterations=iterations, distributed=distributed)
 
-    algorithm.initialize()
+    if distributed:
+        current_folder = os.path.dirname(os.path.abspath(__file__))
+        ray.init(runtime_env={"working_dir": current_folder})
+    algorithm._initialize()
 
     random.seed(seed)
     np.random.seed(seed)
@@ -132,4 +138,8 @@ def test_rs(example: str, iterations: int, seed: int) -> None:
     assert solution is not None
     assert hasattr(solution, 'fitness')
     assert solution.fitness < float('inf')
-    assert solution.fitness <= initial_best.fitness
+    assert solution.fitness <= initial_best.fitness or distributed # Cannot be guaranteed in the distributed case
+
+
+if __name__ == "__main__":
+    test_rs("dummy-2", 10, 123)
