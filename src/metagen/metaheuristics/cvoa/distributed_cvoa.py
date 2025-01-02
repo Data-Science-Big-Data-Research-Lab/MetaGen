@@ -18,110 +18,21 @@ import copy
 import logging
 import math
 import random
-import threading
 from datetime import timedelta
 from time import time
-from typing import Callable, Set, List, NamedTuple, Tuple
-from concurrent.futures.thread import ThreadPoolExecutor
+from typing import Callable, Set, List, Type, NamedTuple, Tuple
 
-
+import ray
 
 from metagen.framework import Domain
 from metagen.framework.solution import Solution
 from metagen.framework.solution.bounds import SolutionClass
 from metagen.metaheuristics.base import Metaheuristic
+from metagen.metaheuristics.distributed_suite import IndividualState, PandemicState, StrainProperties, \
+    distributed_cvoa_new_infected_population
 
 
-class StrainProperties(NamedTuple):
-    strain_id: str = "Strain#1"
-    pandemic_duration: int = 10
-    spreading_rate: int = 5
-    min_superspreading_rate: int = 6
-    max_superspreading_rate: int = 15
-    social_distancing: int = 7
-    p_isolation: float = 0.5
-    p_travel: float = 0.1
-    p_re_infection: float = 0.001
-    p_superspreader: float = 0.1
-    p_die: float = 0.05
-
-
-IndividualState = NamedTuple("IndividualState", [("recovered", bool), ("dead", bool), ("isolated", bool)])
-
-class PandemicState:
-    def __init__(self, initial_individual:Solution):
-        # Lock fot multi-threading safety access to the shared structures.
-        self.lock = threading.Lock()
-        self.recovered:Set[Solution] = set()
-        self.deaths:Set[Solution] = set()
-        self.isolated:Set[Solution] = set()
-        self.best_individual_found:bool = False
-        self.best_individual:Solution = initial_individual
-
-    def get_individual_state(self, individual: Solution) -> IndividualState:
-        with self.lock:
-            result: IndividualState = IndividualState(False, False, False)
-            if individual in self.recovered:
-                result = result._replace(recovered=True)
-            if individual in self.deaths:
-                result = result._replace(dead=True)
-            if individual in self.isolated:
-                result = result._replace(isolated=True)
-            return result
-
-    # Recovered
-    def get_recovered_len(self) -> int:
-        with self.lock:
-            return len(self.recovered)
-
-    def get_infected_again(self, individual:Solution) -> None:
-        with self.lock:
-            self.recovered.remove(individual)
-
-    # Deaths
-    def update_deaths(self, individuals:Set[Solution])-> None:
-        with self.lock:
-            self.deaths.update(individuals)
-
-    # Recovered and Deaths
-    def update_recovered_with_deaths(self)-> None:
-        with self.lock:
-            self.recovered.difference_update(self.deaths)
-
-    def recover_if_not_dead(self, individual:Solution)-> None:
-        with self.lock:
-            if individual not in self.deaths:
-                self.recovered.add(individual)
-
-    # Isolated
-    def isolate_individual_conditional_state(self, individual:Solution, conditional_state:IndividualState) -> None:
-        with self.lock:
-            current_state:IndividualState = self.get_individual_state(individual)
-            if current_state == conditional_state:
-                self.isolated.add(individual)
-
-    # Best Individual
-    def update_best_individual(self, individual:Solution) -> None:
-        with self.lock:
-            self.best_individual_found = True
-            self.best_individual = individual
-
-    def get_best_individual(self) -> Solution:
-        with self.lock:
-            return self.best_individual
-
-    def get_pandemic_report(self):
-        with self.lock:
-            return {
-                "recovered": len(self.recovered),
-                 "deaths": len(self.deaths),
-                 "isolated": len(self.isolated),
-                "best_individual": self.best_individual
-            }
-
-
-
-class CVOA(Metaheuristic):
+class DistributedCVOA(Metaheuristic):
     """
 
     This class implements the *CVOA* algorithm. It uses the :py:class:`~metagen.framework.Solution` class as an
@@ -196,7 +107,7 @@ class CVOA(Metaheuristic):
     """
 
     def __init__(self, global_state, domain, fitness_function, strain_properties:StrainProperties = StrainProperties(), verbose=True, update_isolated=False,
-                 log_dir="logs/CVOA"):
+                 log_dir="logs/DCVOA"):
 
         # 1. Initialize the base class.
         super().__init__(domain, fitness_function, log_dir=log_dir)
@@ -241,7 +152,7 @@ class CVOA(Metaheuristic):
         # 1. Yield the patient zero (pz).
         pz:Solution = self.solution_type(self.domain, connector=self.domain.get_connector())
         pz.evaluate(self.fitness_function)
-        self.verbosity(f'[{self.strain_properties.strain_id}, {threading.get_ident()}] Patient zero: {pz}')
+        self.verbosity(f'[{self.strain_properties.strain_id}] Patient zero: {pz}')
 
         # 2. Add the patient zero to the strain-specific infected set.
         self.infected.add(pz)
@@ -259,7 +170,7 @@ class CVOA(Metaheuristic):
         # 2. Stop if no new infected individuals.
         if not self.infected:
             self.epidemic = False
-            self.verbosity(f'[{self.strain_properties.strain_id}, {threading.get_ident()}] No new infected individuals at {self.time}')
+            self.verbosity(f'[{self.strain_properties.strain_id}] No new infected individuals at {self.time}')
 
         # 3. Update the elapsed pandemic time.
         self.time += 1
@@ -284,33 +195,25 @@ class CVOA(Metaheuristic):
         return first_condition or second_condition or third_condition
 
     def post_execution(self) -> None:
-        self.verbosity(f'[{self.strain_properties.strain_id}, {threading.get_ident()}] Converged after {self.time} iterations with best individual: {self.best_solution}')
+        self.verbosity(f'[{self.strain_properties.strain_id}] Converged after {self.time} iterations with best individual: {self.best_solution}')
         super().post_execution()
 
     def propagate_disease(self) -> None:
         """ It spreads the disease through the individuals of the population.
         """
 
-        # 1. Initialize the new infected population set
-        new_infected_population:Set[Solution] = set()
-
-        # 2. Before the new propagation, update the strain (superspreader, death) and global (death, recovered) sets.
+        # 1. Before the new propagation, update the strain (superspreader, death) and global (death, recovered) sets.
         self.update_pandemic_global_state()
 
-        # 3. For each infected individual in the strain:
-        for individual in self.infected:
+        # 2. Initialize the new infected population distributed.
+        new_infected_population = distributed_cvoa_new_infected_population(self.global_state, self.domain, self.fitness_function, self.strain_properties,
+                                                                           self.infected, self.superspreaders, self.time, self.update_isolated)
 
-            # ** 3.1. Determine the travel distance and the number of infections **
-            n_infected, travel_distance = self.compute_n_infected_travel_distance(individual)
-
-            # ** 3.2. Infect the new individuals. **
-            new_infected_population.update(self.infect_individuals(individual, travel_distance, n_infected))
-
-        # 4. Then, add the best individual of the strain to the next population.
+        # 3. Then, add the best individual of the strain to the next population.
         new_infected_population.add(self.best_solution)
 
-        self.verbosity(f'[{self.strain_properties.strain_id}, {threading.get_ident()}] Iteration #{self.time} - {self.r0_report(len(new_infected_population))}'
-                       f' - Best strain individual: {self.best_solution} , Best global individual: {self.global_state.get_best_individual()} ')
+        self.verbosity(f'[{self.strain_properties.strain_id}] Iteration #{self.time} - {self.r0_report(len(new_infected_population))}'
+                       f'- Best strain individual: {self.best_solution} , Best global individual: {ray.get(self.global_state.get_best_individual.remote())} ')
 
 
         # 5. Update the infected strain population for the next iteration
@@ -357,7 +260,7 @@ class CVOA(Metaheuristic):
                 new_infected_individual = self.infect(carrier_individual, travel_distance)
                 self.update_new_infected_population(infected_population, new_infected_individual)
 
-            # After social_distancing iterations (when the social_distancing policy is applied),
+            # After SOCIAL_DISTANCING iterations (when the SOCIAL DISTANCING policy is applied),
             # the current individual infects another with a travel distance of one (using infect) then,
             # the newly infected individual can be isolated or not.
             else:
@@ -368,9 +271,10 @@ class CVOA(Metaheuristic):
                     # If the new individual is isolated, and update_isolated is true, this is sent to the
                     # Isolated population.
                     if self.update_isolated:
-                        self.global_state.isolate_individual_conditional_state.remote(new_infected_individual,
+                        ray.remote(
+                            self.global_state.isolate_individual_conditional_state.remote(new_infected_individual,
                                                                                           IndividualState(True, True,
-                                                                                                          True))
+                                                                                                          True)))
         return infected_population
 
 
@@ -385,7 +289,8 @@ class CVOA(Metaheuristic):
         """
 
         # Get the global individual state.
-        individual_state: IndividualState = self.global_state.get_individual_state(new_infected_individual)
+        individual_state: IndividualState = ray.get(
+            self.global_state.get_individual_state.remote(new_infected_individual))
 
         # If the new individual is not in global death and recovered sets, then insert it in the next population.
         if not individual_state.dead and not individual_state.recovered:
@@ -397,15 +302,15 @@ class CVOA(Metaheuristic):
         elif individual_state.recovered:
             if random.random() < self.strain_properties.p_re_infection:
                 new_infected_population.add(new_infected_individual)
-                self.global_state.get_infected_again(new_infected_individual)
+                ray.get(self.global_state.get_infected_again.remote(new_infected_individual))
 
 
     def r0_report(self, new_infections: int) -> str:
-        recovered = self.global_state.get_recovered_len()
+        recovered = ray.get(self.global_state.get_recovered_len.remote())
         r0 = new_infections
         if recovered != 0:
             r0 = new_infections / recovered
-        report = "New infected = " + str(new_infections) + ", Recovered = " + str(recovered) + ", R0 = " + str(r0)
+        report = "\tNew infected = " + str(new_infections) + ", Recovered = " + str(recovered) + ", R0 = " + str(r0)
         return report
 
     def infect(self, individual: Solution, travel_distance:int) -> Solution:
@@ -448,10 +353,10 @@ class CVOA(Metaheuristic):
 
                 # If the current individual is better than the current global one, a new global best individual is
                 # found, and its global variable is updated.
-                if individual.get_fitness() < self.global_state.get_best_individual().get_fitness():
-                    self.global_state.update_best_individual(individual)
+                if individual.get_fitness() < ray.get(self.global_state.get_best_individual.remote()).get_fitness():
+                    ray.get(self.global_state.update_best_individual.remote(individual))
                     self.best_founded = True
-                    self.verbosity(f'[{self.strain_properties.strain_id}, {threading.get_ident()}] New global best individual found at {self.time}! ({individual})')
+                    self.verbosity(f'[{self.strain_properties.strain_id}] New global best individual found at {self.time}! ({individual})')
 
                 # If the current individual is better than the current strain one, a new strain the best individual is
                 # found, and its variable is updated.
@@ -459,10 +364,10 @@ class CVOA(Metaheuristic):
                     self.best_solution = individual
 
             # Update the global death set with the strain death set.
-            self.global_state.update_deaths(self.dead)
+            ray.get(self.global_state.update_deaths.remote(self.dead))
 
         # Remove the global dead individuals from the global recovered set.
-        self.global_state.update_recovered_with_deaths()
+        ray.get(self.global_state.update_recovered_with_deaths.remote())
 
     def update_recovered_death_strain(self, to_insert: Solution, remaining:int) -> bool:
         """ It updates the specific strain death set and the global recovered set.
@@ -481,7 +386,7 @@ class CVOA(Metaheuristic):
 
         # If the current individual is not dead, it is added to the recovered set.
         if not dead:
-            self.global_state.recover_if_not_dead(to_insert)
+            ray.get(self.global_state.recover_if_not_dead.remote(to_insert))
 
         return dead
 
@@ -559,7 +464,7 @@ class CVOA(Metaheuristic):
         """
         super().post_iteration()
         print(f'[{self.current_iteration}] {self.best_solution}')
-        self.writer.add_scalar('CVOA/Population Size',
+        self.writer.add_scalar('DCVOA/Population Size',
                                len(self.current_solutions),
                                self.current_iteration)
 
@@ -588,37 +493,42 @@ class CVOA(Metaheuristic):
         return res
 
 
-
+@ray.remote
 def run_strain(global_state, domain:Domain, fitness_function: Callable[[Solution],float], strain_properties:StrainProperties,
                verbose:bool=True, update_isolated:bool=False, log_dir:str="logs/CVOA") -> Solution:
-    strain = CVOA(global_state, domain,fitness_function, strain_properties, verbose, update_isolated, log_dir)
+    strain = DistributedCVOA(global_state, domain,fitness_function, strain_properties, verbose, update_isolated, log_dir)
     return strain.run()
 
 
 
 def cvoa_launcher(strains: List[StrainProperties], domain: Domain, fitness_function: Callable[[Solution], float],
-                  verbose: bool = True, update_isolated: bool = False, log_dir: str = "logs/CVOA") -> Solution:
+                  verbose: bool = True, update_isolated: bool = False, log_dir: str = "logs/DCVOA") -> Solution:
 
+    # Initialize Ray
+    if not ray.is_initialized():
+        ray.init()
 
     # Initialize the global state
     solution_type: type[SolutionClass] = domain.get_connector().get_type(domain.get_core())
-    global_state = PandemicState(solution_type(domain, connector=domain.get_connector()))
+    global_state = PandemicState.remote(solution_type(domain, connector=domain.get_connector()))
 
     t1 = time()
-    with ThreadPoolExecutor(max_workers=len(strains)) as executor:
-        futures = {strain.strain_id: executor.submit(run_strain, global_state, domain, fitness_function, strain, verbose, update_isolated, log_dir) for strain in strains}
+    futures = [run_strain.remote(global_state, domain, fitness_function, strain_properties, verbose, update_isolated, log_dir) for strain_properties in strains]
+    results = ray.get(futures)
     t2 = time()
 
     print("\n********** Results by strain **********")
-    for strain_id, future in futures.items():
-        print("[" + strain_id + "] Best individual: " + str(future.result()))
+    i = 0
+    for result in results:
+        print("[" + strains[i].strain_id + "] Best individual: " + str(result))
+        i += 1
 
     print("\n********** Best result **********")
-    best_solution = global_state.get_best_individual()
+    best_solution = ray.get(global_state.get_best_individual.remote())
     print("Best individual: " + str(best_solution))
 
     print("\n********** Pandemic report **********")
-    print("Pandemic report: " + str(global_state.get_pandemic_report()))
+    print("Pandemic report: " + str(ray.get(global_state.get_pandemic_report.remote())))
 
     print("\n********** Performance **********")
     print("Execution time: " + str(timedelta(milliseconds=t2 - t1)))

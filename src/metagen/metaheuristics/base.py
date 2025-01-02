@@ -17,7 +17,7 @@
 
 from abc import ABC, abstractmethod
 from .import_helper import is_package_installed
-from typing import List, Optional
+from typing import List, Optional, Callable
 from metagen.framework import Domain, Solution
 from copy import deepcopy
 
@@ -29,15 +29,13 @@ class Metaheuristic(ABC):
     """
     Abstract base class for metaheuristic algorithms.
     """
-    def __init__(self, domain: Domain, fitness_function, log_dir: str = "logs") -> None:
+    def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float], log_dir: str = "logs") -> None:
         """
         Initialize the metaheuristic.
         
         Args:
             domain: The problem domain
             fitness_function: Function to evaluate solutions
-            algorithm_name: Name of the algorithm for logging
-            max_iterations: Maximum number of iterations
         """
         super().__init__()
 
@@ -117,6 +115,13 @@ class Metaheuristic(ABC):
         """
         raise StopIteration("Skipping iteration")
 
+    def skip_iteration(self) -> None:
+        """
+        Callback executed when an iteration is skipped.
+        Override this method to add custom skip-iteration processing.
+        """
+        raise StopIteration("Skipping iteration")
+
     def run(self) -> Solution:
         """
         Execute the metaheuristic algorithm.
@@ -126,7 +131,7 @@ class Metaheuristic(ABC):
 
         # Initialize the algorithm
         self.initialize()
-        
+
         # Main loop
         while not self.stopping_criterion():
             try:
@@ -146,5 +151,5 @@ class Metaheuristic(ABC):
 
         # Post-execution callback
         self.post_execution()
-        
+
         return deepcopy(self.best_solution)

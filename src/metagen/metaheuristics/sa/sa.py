@@ -20,7 +20,36 @@ from collections.abc import Callable
 from typing import Any
 from copy import deepcopy
 import random
+import ray
 import math
+import random
+from copy import deepcopy
+from typing import Callable, Any, List
+from metagen.metaheuristics.base import Metaheuristic
+from metagen.metaheuristics.distributed_suite import local_yield_mutate_and_evaluate_individuals_from_best, \
+    distributed_yield_mutate_evaluate_from_the_best
+
+
+# TODO: Parche para evitar overflow en el cálculo del exponente
+def calculate_exploration_rate(best_solution_fitness: float, best_neighbor_fitness: float,
+                                   initial_temp: float) -> float:
+        """
+        Calculate the exploration rate for simulated annealing.
+
+        Args:
+            best_solution_fitness (float): Fitness of the best solution.
+            best_neighbor_fitness (float): Fitness of the best neighbor.
+            initial_temp (float): Current temperature.
+
+        Returns:
+            float: The exploration rate.
+        """
+        MAX_EXPONENT = 700  # This is a safe value to avoid overflow in most cases
+        exponent_value = (best_solution_fitness - best_neighbor_fitness) / initial_temp
+        exponent_value = max(min(exponent_value, MAX_EXPONENT), -MAX_EXPONENT)
+        return math.exp(exponent_value)
+
+
 
 class SA(Metaheuristic):
     """
@@ -53,47 +82,176 @@ class SA(Metaheuristic):
     :vartype cooling_rate: float
     """
 
-    def __init__(self, domain: Domain, fitness_func: Callable[[Solution], float], n_iterations: int = 50, alteration_limit: float =0.1, initial_temp: float = 50.0, cooling_rate: float=0.99) -> None:
-        super().__init__(domain, fitness_func)
-
-        self.n_iterations: int = n_iterations
-        self.initial_temp: float = initial_temp
-        self.alteration_limit: Any = alteration_limit
-        self.cooling_rate: float = cooling_rate
-        self.temperature: float = self.initial_temp
-
-    def initialize(self):
+    def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
+                 log_dir: str = "logs/SA", n_iterations: int = 50,
+                 alteration_limit: float = 0.1, initial_temp: float = 50.0,
+                 cooling_rate: float = 0.99, neighbor_population_size: int = 1) -> None:
         """
-        Initialize the population of solutions by creating and evaluating initial solutions.
+        Initialize the distributed simulated annealing algorithm.
+
+        Args:
+            domain: The problem domain
+            fitness_func: Function to evaluate solutions
+            log_dir: Directory for logging
+            n_iterations: Number of iterations (default: 50)
+            alteration_limit: Maximum alteration for generating a neighbor (default: 0.1)
+            initial_temp: Initial temperature (default: 50.0)
+            cooling_rate: Cooling rate for the annealing (default: 0.99)
+            neighbor_population_size: Number of neighbors to consider in each iteration (default: 10)
         """
-        solution_type: type[Solution] = self.domain.get_connector().get_type(
-            self.domain.get_core())
-        self.best_solution = solution_type(
-            self.domain, connector=self.domain.get_connector())
+        super().__init__(domain, fitness_function, log_dir)
+        self.n_iterations = n_iterations
+        self.alteration_limit = alteration_limit
+        self.initial_temp = initial_temp
+        self.cooling_rate = cooling_rate
+        self.neighbor_population_size = neighbor_population_size
+
+    def initialize(self) -> None:
+        """
+        Initialize the starting solution for simulated annealing.
+        """
+        solution_type: type[Solution] = self.domain.get_connector().get_type(self.domain.get_core())
+        self.best_solution = solution_type(self.domain, connector=self.domain.get_connector())
         self.best_solution.evaluate(self.fitness_function)
 
-        self.current_iteration = 0
-    
     def iterate(self) -> None:
         """
-        Execute one iteration of simulated annealing.
+        Perform one iteration of the simulated annealing algorithm.
         """
-        neighbour = deepcopy(self.best_solution)
 
-        neighbour.mutate(alteration_limit=self.alteration_limit)
+        best_neighbor = local_yield_mutate_and_evaluate_individuals_from_best(self.neighbor_population_size, self.best_solution, self.fitness_function, self.alteration_limit)
 
-        neighbour.evaluate(self.fitness_function)
+        # Acceptance criteria for simulated annealing
+        exploration_rate = calculate_exploration_rate(self.best_solution.fitness, best_neighbor.fitness,
+                                                                    self.initial_temp)
+        if best_neighbor < self.best_solution or exploration_rate > random.random():
+            self.best_solution = deepcopy(best_neighbor)
 
-        exploration_rate = math.exp((self.best_solution.fitness - neighbour.fitness) / self.temperature) 
+        self.current_solutions.append(self.best_solution)
 
-        if neighbour.fitness < self.best_solution.fitness or exploration_rate > random.random():
-            self.best_solution = neighbour
-        
-        self.temperature *= self.cooling_rate
-    
+        # Update temperature
+        self.initial_temp *= self.cooling_rate
+
     def stopping_criterion(self) -> bool:
+        """
+        Check if the stopping criterion has been reached.
+
+        Returns:
+            bool: True if the stopping criterion has been reached, False otherwise.
+        """
         return self.current_iteration >= self.n_iterations
+
+    def post_iteration(self) -> None:
+        """
+        Additional processing after each generation.
+        """
+        super().post_iteration()
+        print(f'[{self.current_iteration}] {self.best_solution}')
+        if self.logger:
+            self.logger.add_scalar('DSA/Population Size',
+                                len(self.current_solutions),
+                                self.current_iteration)
+
+
+
+class DistributedSA(Metaheuristic):
+    """
+    Distributed implementation of Simulated Annealing (SA) using Ray for parallel evaluation.
+    """
+
+    def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
+                 log_dir: str = "logs/SA", n_iterations: int = 50,
+                 alteration_limit: float = 0.1, initial_temp: float = 50.0,
+                 cooling_rate: float = 0.99, neighbor_population_size: int = 10) -> None:
+        """
+        Initialize the distributed simulated annealing algorithm.
+
+        Args:
+            domain: The problem domain
+            fitness_func: Function to evaluate solutions
+            log_dir: Directory for logging
+            n_iterations: Number of iterations (default: 50)
+            alteration_limit: Maximum alteration for generating a neighbor (default: 0.1)
+            initial_temp: Initial temperature (default: 50.0)
+            cooling_rate: Cooling rate for the annealing (default: 0.99)
+            neighbor_population_size: Number of neighbors to consider in each iteration (default: 10)
+        """
+        super().__init__(domain, fitness_function, log_dir)
+        self.n_iterations = n_iterations
+        self.alteration_limit = alteration_limit
+        self.initial_temp = initial_temp
+        self.cooling_rate = cooling_rate
+        self.neighbor_population_size = neighbor_population_size
+
+
+    def initialize(self) -> None:
+        """
+        Initialize the starting solution for simulated annealing.
+        """
+        solution_type: type[Solution] = self.domain.get_connector().get_type(self.domain.get_core())
+        self.best_solution = solution_type(self.domain, connector=self.domain.get_connector())
+        self.best_solution.evaluate(self.fitness_function)
+
+    def iterate(self) -> None:
+        """
+        Perform one iteration of the simulated annealing algorithm.
+        """
+
+        distributed_population = distributed_yield_mutate_evaluate_from_the_best(self.neighbor_population_size, self.best_solution, self.fitness_function, self.alteration_limit)
+
+        # Select the best neighbor
+        best_neighbor = min(distributed_population)
+
+        # Acceptance criteria for simulated annealing
+        exploration_rate = calculate_exploration_rate(self.best_solution.fitness, best_neighbor.fitness, self.initial_temp)
+        if best_neighbor.fitness < self.best_solution.fitness or exploration_rate > random.random():
+            self.best_solution = deepcopy(best_neighbor)
+
+        self.current_solutions.append(self.best_solution)
+
+        # Update temperature
+        self.initial_temp *= self.cooling_rate
+
+    def stopping_criterion(self) -> bool:
+        """
+        Check if the stopping criterion has been reached.
+
+        Returns:
+            bool: True if the stopping criterion has been reached, False otherwise.
+        """
+        return self.current_iteration >= self.n_iterations
+
+    def post_iteration(self) -> None:
+        """
+        Additional processing after each generation.
+        """
+        super().post_iteration()
+        print(f'[{self.current_iteration}] {self.best_solution}')
         
+        if self.logger:
+            self.logger.add_scalar('DSA/Population Size',
+                                len(self.current_solutions),
+                                self.current_iteration)
+
+    def run(self) -> Solution:
+        """
+        Execute the distributed simulated annealing algorithm.
+
+        Returns:
+            The best solution found
+        """
+        # Initialize Ray at the start
+        if not ray.is_initialized():
+            ray.init()
+
+        try:
+            # Run the main loop of the metaheuristic
+            super().run()
+            return self.best_solution
+
+        finally:
+            # Ensure Ray is properly shut down after execution
+            ray.shutdown()
 
 
 

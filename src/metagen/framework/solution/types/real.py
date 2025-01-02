@@ -42,7 +42,7 @@ class Real(BaseType):
         """
 
         definition = self.get_definition()
-
+        # print('definition =' , str(definition),' value =', str(value))
         if not definition.check_value(value):
             _, min_value, max_value, _ = definition.get_attributes()
             raise ValueError(
@@ -53,9 +53,13 @@ class Real(BaseType):
         Initialize the Real variable with a random float value in the defined ranges considering the step size.
         """
         _, min_value, max_value, step = self.get_definition().get_attributes()
+        # print('min_value =', str(min_value), 'max_value =', str(max_value), 'step =', str(step))
+
         random_real = random.uniform(min_value, max_value)
+        # print('random_real =', str(random_real))
         if step is not None:
             random_real = self._closest_number(random_real, step)
+        # print('random_real =', str(random_real))
         self.set(random_real)
 
     def mutate(self, alteration_limit: float = None) -> None:
