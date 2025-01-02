@@ -30,7 +30,7 @@ from simple_examples import (get_x_minus_15_raised_to_2_domain,
                            get_x_raised_to_2_domain, x_raised_to_2_fitness)
 
 
-from metagen.metaheuristics.cvoa.cvoa import CVOA
+#from metagen.metaheuristics.cvoa.cvoa import CVOA
 from metagen.framework.connector import BaseConnector
 
 def example_dispatcher(example, iterations):
