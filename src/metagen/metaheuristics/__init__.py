@@ -14,15 +14,14 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-"""from metagen.metaheuristics.cvoa import CVOA, cvoa_launcher
-from metagen.metaheuristics.ga import GA, SSGA
+from metagen.metaheuristics.cvoa import CVOA, cvoa_launcher
+from metagen.metaheuristics.ga import GA, SSGA, GAConnector
 from metagen.metaheuristics.sa import SA
 from metagen.metaheuristics.tabu import TabuSearch
 
-"""
 from metagen.metaheuristics.random import RandomSearch
 
-__all__ = ["RandomSearch"]#, "CVOA", "GA", , "cvoa_launcher", "TabuSearch"]
+__all__ = ["RandomSearch", "GA", "CVOA", "GA", "SSGA", "GAConnector", "SA", "cvoa_launcher", "TabuSearch"]
 
 
 

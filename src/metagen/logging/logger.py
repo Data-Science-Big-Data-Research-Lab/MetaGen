@@ -11,7 +11,7 @@ class TensorBoardLogger:
     """Base class for TensorBoard logging in metaheuristics"""
     
     def __init__(self, log_dir: str = "logs"):
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
         self.run_id = f"{timestamp}_{uuid.uuid4().hex[:6]}"
         self.log_dir = os.path.join(log_dir, self.run_id)
         self.writer = SummaryWriter(self.log_dir)
