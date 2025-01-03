@@ -19,7 +19,7 @@ import random
 import warnings
 import numpy as np
 from dispatcher import problem_dispatcher
-from metagen.metaheuristics import RandomSearch#CVOA, SSGA, SA, GA, GAConnector, cvoa_launcher
+from metagen.metaheuristics import RandomSearch, GA, GAConnector#CVOA, SSGA, SA, GA, GAConnector, cvoa_launcher
 from pytest_csv_params.decorator import csv_params
 import ray
 import os
@@ -49,29 +49,38 @@ def test_cvoa(example: str, iterations: int, seed: int) -> None:
     assert hasattr(solution, 'fitness')
     assert solution.fitness < float('inf')
     assert solution.fitness <= initial_best.fitness
-
+"""
 @csv_params(data_file=resources_path+"/examples_ga.csv", id_col="ID#",
             data_casts={"iterations": int, "seed": int})
 def test_ga(example: str, iterations: int, seed: int) -> None:
     random.seed(seed)
     np.random.seed(seed)
 
+    distributed = True
     problem_definition, fitness_function = problem_dispatcher(example, connector=GAConnector())
-    
-    algorithm = GA(problem_definition, fitness_function, max_generations=iterations)
-    algorithm.initialize()
+    algorithm = GA(problem_definition, fitness_function, population_size=50, mutation_rate=0.5, max_iterations=iterations, distributed=distributed)
+
+    if distributed:
+        current_folder = os.path.dirname(os.path.abspath(__file__))
+        ray.init(runtime_env={"working_dir": current_folder})
+        initial_best = float('inf') # Cannot initialize in the distributed case
+    else:
+        algorithm._initialize()
+        initial_best = algorithm.best_solution.fitness if algorithm.best_solution else float('inf')
 
     random.seed(seed)
     np.random.seed(seed)
-
-    initial_best = algorithm.best_solution
+    
     assert initial_best is not None
     solution = algorithm.run()
     assert solution is not None
+    print(solution)
+
     assert hasattr(solution, 'fitness')
     assert solution.fitness < float('inf')
-    assert solution.fitness <= initial_best.fitness
+    assert solution.fitness <= initial_best 
 
+"""
 @csv_params(data_file=resources_path+"/examples_ga.csv", id_col="ID#",
             data_casts={"iterations": int, "seed": int})
 def test_ssga(example: str, iterations: int, seed: int) -> None:
@@ -127,19 +136,23 @@ def test_rs(example: str, iterations: int, seed: int) -> None:
     if distributed:
         current_folder = os.path.dirname(os.path.abspath(__file__))
         ray.init(runtime_env={"working_dir": current_folder})
-    algorithm._initialize()
+        initial_best = float('inf') # Cannot initialize in the distributed case
+    else:
+        algorithm._initialize()
+        initial_best = algorithm.best_solution.fitness if algorithm.best_solution else float('inf')
 
     random.seed(seed)
     np.random.seed(seed)
 
-    initial_best = algorithm.best_solution
+    
     assert initial_best is not None
     solution = algorithm.run()
+    print(solution)
     assert solution is not None
     assert hasattr(solution, 'fitness')
     assert solution.fitness < float('inf')
-    assert solution.fitness <= initial_best.fitness or distributed # Cannot be guaranteed in the distributed case
+    assert solution.fitness <= initial_best 
 
 
 if __name__ == "__main__":
-    test_rs("dummy-2", 10, 123)
+    test_ga("simple-1", 50, 0)

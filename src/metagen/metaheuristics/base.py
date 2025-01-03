@@ -17,7 +17,7 @@
 
 from abc import ABC, abstractmethod
 from .import_helper import is_package_installed
-from typing import List, Tuple, Optional, Callable
+from typing import List, Tuple, Optional, Callable, Union
 from metagen.framework import Domain, Solution
 from copy import deepcopy
 
@@ -52,7 +52,7 @@ class Metaheuristic(ABC):
         self.best_solution: Optional[Solution] = None
         self.current_solutions: List[Solution] = []
         self.logger = TensorBoardLogger(log_dir=log_dir) if is_package_installed("tensorboard") else None
-        
+    
     
     @abstractmethod
     def initialize(self, num_solutions=10) -> Tuple[List[Solution], Solution]:
@@ -63,12 +63,18 @@ class Metaheuristic(ABC):
         pass
 
     
-    def _launch_distributed_initialization(self):
+    def _launch_distributed_method(self, method: Callable) -> Tuple[List[Solution], Solution]:
         distribution = assign_load_equally(self.population_size)
+        population = deepcopy(self.current_solutions)
         futures = []
 
         for count in distribution:
-            futures.append(call_distributed.remote(self.initialize, count))
+
+            if len(population) > 0:
+                futures.append(call_distributed.remote(method, count, population[:count]))
+                population = population[count:]
+            else:
+                futures.append(call_distributed.remote(method, count))
 
         remote_results = ray.get(futures)
         population = [individual for subpopulation in remote_results for individual in subpopulation[0]]
@@ -85,7 +91,7 @@ class Metaheuristic(ABC):
             if not IS_RAY_INSTALLED:
                 raise ImportError("Ray must be installed to use distributed initialization")
             
-            population, best_individual = self._launch_distributed_initialization()
+            population, best_individual = self._launch_distributed_method(self.initialize)
         else:
             population, best_individual = self.initialize(self.population_size)
 
@@ -94,25 +100,9 @@ class Metaheuristic(ABC):
 
         return population, best_individual
     
-    
-    def _launch_distributed_iteration(self):
-
-        population = deepcopy(self.current_solutions)
-        distribution = assign_load_equally(len(population))
-        futures = []
-
-        for count in distribution:
-            futures.append(call_distributed.remote(self.iterate, population[:count]))
-            population = population[count:]
-
-        remote_results = ray.get(futures)
-        population = [individual for subpopulation in remote_results for individual in subpopulation[0]]
-        best_individual = min([result[1] for result in remote_results], key=lambda sol: sol.get_fitness())
-
-        return population, best_individual
 
     @abstractmethod
-    def iterate(self, population: List[Solution]) -> None:
+    def iterate(self, num_solutions:int, solutions: List[Solution]) -> None:
         """
         Execute one iteration of the metaheuristic.
         Must update self.current_solutions and self.best_solution if better found
@@ -127,9 +117,9 @@ class Metaheuristic(ABC):
             if not IS_RAY_INSTALLED:
                 raise ImportError("Ray must be installed to use distributed initialization")
             
-            population, best_individual = self._launch_distributed_iteration()
+            population, best_individual = self._launch_distributed_method(self.iterate)
         else:
-            population, best_individual = self.iterate(self.current_solutions)
+            population, best_individual = self.iterate(len(self.current_solutions), self.current_solutions)
 
         self.current_solutions = population
         self.best_solution = best_individual
@@ -224,14 +214,14 @@ class Metaheuristic(ABC):
                     
                     # Increment iteration counter
                     self.current_iteration += 1
-                except StopIteration:
+                except StopIteration: # Skip iteration flow
                     continue
 
             # Post-execution callback
             self.post_execution()
         except Exception as e:
             raise e
-        finally:    
+        finally: # Finalize Ray if necessary 
             if self.distributed and IS_RAY_INSTALLED and ray.is_initialized():
                 ray.shutdown()
 

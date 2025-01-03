@@ -16,7 +16,7 @@
 """
 from metagen.framework import Domain, Solution
 from metagen.metaheuristics.base import Metaheuristic
-from typing import List
+from typing import List, Tuple
 from copy import deepcopy
 
 class RandomSearch(Metaheuristic):
@@ -58,7 +58,7 @@ class RandomSearch(Metaheuristic):
         super().__init__(domain, fitness_function, population_size=population_size, log_dir=log_dir, **kargs)
         self.max_iterations = max_iterations
 
-    def initialize(self, num_solutions=10) -> None:
+    def initialize(self, num_solutions=10) -> Tuple[List[Solution], Solution]:
         """Initialize random solutions"""
 
         solution_type: type[Solution] = self.domain.get_connector().get_type(self.domain.get_core())
@@ -74,19 +74,19 @@ class RandomSearch(Metaheuristic):
         return current_solutions, best_solution
 
 
-    def iterate(self, population: List[Solution]) -> None:
+    def iterate(self, num_solutions: int, solutions: List[Solution]) -> Tuple[List[Solution], Solution]:
         
         best_solution = deepcopy(self.best_solution)
-        next_generation = [best_solution]
+        current_solutions = [best_solution]
 
-        for individual in population[:-1]:
+        for individual in solutions[:-1]:
             individual.mutate()
             individual.evaluate(self.fitness_function)
-            next_generation.append(individual)
+            current_solutions.append(individual)
             if individual.get_fitness() < best_solution.get_fitness():
                 best_solution = individual
         
-        return next_generation, best_solution
+        return current_solutions, best_solution
 
     def stopping_criterion(self) -> bool:
         return self.current_iteration >= self.max_iterations
