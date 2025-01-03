@@ -9,16 +9,19 @@ MetaGen is a Python scientific package designed to provide users with a standard
   :align: center
   :width: 400
   :alt: MetaGen's overview
+  :class: vspace
 
 As is shown in the previous figure, MetaGen has two main use cases that depend on two user profiles:
 
 * [DUC] Development Use Case: MetaGen is used by a developer to program a new metaheuristic algorithm, simplifying the development process and making it accessible to any user who wants to optimize a problem.
 * [SUC] Solving Use Case: MetaGen is used by a solver to define an optimization problem and use a metaheuristic to find the best hyperparameter configuration for a specific machine or deep learning model.
 
+
 .. image:: images/duc.png
   :align: center
   :width: 400
   :alt: Development Use Case
+  :class: vspace
 
 The core of MetaGen is located in the metagen.framework package; it contains the logic to support both use cases. This package includes two classes, Domain and Solution. As shown in Figure \ref{img.duc, metagen.framework provides a developer with a standard system for potential solution representation through the Solution class and methods to generate and modify these solutions. Additionally, the Domain class provides a standard interface between the metaheuristic and its potential users (solvers), ensuring that the values of generated or modified solutions fall within the specified range.
 
