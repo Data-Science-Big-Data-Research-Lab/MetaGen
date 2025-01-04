@@ -106,6 +106,7 @@ def ga_local_yield_and_evaluate_individuals(num_individuals: int, domain: Domain
     return subpopulation, best_subpopulation_individual
 
 
+
 @ray.remote
 def ga_remote_yield_and_evaluate_individuals(num_individuals: int, domain: Domain,
                                              fitness_function: Callable[[Solution], float]) -> Tuple[
@@ -530,6 +531,7 @@ def distributed_cvoa_new_infected_population(global_state, domain: Domain,
                                              strain_properties: StrainProperties,
                                              carrier_population: Set[Solution], superspreaders: Set[Solution],
                                              time: int, update_isolated: bool) -> Set[Solution]:
+
     futures = [cvoa_remote_yield_infected_population_from_a_carrier.remote(global_state, domain, fitness_function,
                                                                            strain_properties, carrier, superspreaders,
                                                                            time, update_isolated)

@@ -65,7 +65,6 @@ class RandomSearch(Metaheuristic):
     def initialize(self) -> None:
         """Initialize random solutions"""
         population, best_individual = local_yield_and_evaluate_individuals(self.search_space_size, self.domain, self.fitness_function)
-        self.current_solutions = population
         self.best_solution = best_individual
 
     def iterate(self) -> None:
