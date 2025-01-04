@@ -38,8 +38,19 @@ extensions = [
     'sphinx.ext.autosummary',
     'sphinx.ext.graphviz',
     'sphinx.ext.inheritance_diagram',
-    'sphinx_rtd_theme'
+    'sphinx_rtd_theme',
+    'sphinx.ext.autosectionlabel'
 ]
+
+
+
+
+# Numbering of figures, tables and code-blocks
+numfig = True
+numfig_format = {
+    'figure': 'Figure %s'  # Sin punto en ambas por defecto
+}
+
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
