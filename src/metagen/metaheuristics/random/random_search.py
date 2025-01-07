@@ -14,10 +14,19 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
+import logging
+
+from ray.util.state.state_cli import ray_get
+
 from metagen.framework import Domain, Solution
+from metagen.logging.ray_logger import DistributedLogger
 from metagen.metaheuristics.base import Metaheuristic
 from typing import List, Tuple
 from copy import deepcopy
+
+
+ray_logger = DistributedLogger.get_logger()
+
 
 class RandomSearch(Metaheuristic):
 
@@ -70,7 +79,6 @@ class RandomSearch(Metaheuristic):
             current_solutions.append(individual)
             if best_solution is None or individual.get_fitness() < best_solution.get_fitness():
                 best_solution = individual
-        
         return current_solutions, best_solution
 
 
@@ -85,7 +93,6 @@ class RandomSearch(Metaheuristic):
             current_solutions.append(individual)
             if individual.get_fitness() < best_solution.get_fitness():
                 best_solution = individual
-        
         return current_solutions, best_solution
 
     def stopping_criterion(self) -> bool:
@@ -96,7 +103,7 @@ class RandomSearch(Metaheuristic):
         Additional processing after each generation.
         """
         super().post_iteration()
-        print(f'[{self.current_iteration}] {self.best_solution}')
+        ray_logger.debug(f'[{self.current_iteration}] {self.best_solution}')
         if self.logger:
             self.logger.writer.add_scalar('RS/Population Size',
                                 len(self.current_solutions),

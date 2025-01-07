@@ -1,8 +1,14 @@
-from metagen.metaheuristics.random.random_search import RandomSearch, DistributedRS
+import logging
+
+from metagen.logging.ray_logger import DistributedLogger
+from metagen.metaheuristics.random.random_search import RandomSearch
 from metagen.framework import Domain, Solution
 from sklearn.datasets import make_classification, make_regression
 from sklearn.linear_model import SGDRegressor
 from sklearn.model_selection import cross_val_score
+
+
+
 
 # Synthetic datasets
 X_regression, y_regression = make_regression(n_samples=100, n_features=4,
@@ -46,9 +52,10 @@ def p1_fitness(individual: Solution) -> float:
     return x + 5
 
 if __name__ == "__main__":
-    print('Running Random Search')
-    # rs: RandomSearch = RandomSearch(sgd_regressor_definition, sgd_regressor_fitness)
-    rs: DistributedRS = DistributedRS(sgd_regressor_definition, sgd_regressor_fitness)
+    ray_logger = DistributedLogger.get_logger(log_dir="ray-logs/rs", level=logging.DEBUG, console_output=True)
+    ray_logger.info('Running Random Search')
+    # rs: RandomSearch = RandomSearch(sgd_regressor_definition, sgd_regressor_fitness, distributed=True)
+    rs: RandomSearch = RandomSearch(sgd_regressor_definition, sgd_regressor_fitness)
     # rs: DistributedRS = DistributedRS(p1_domain, p1_fitness)
     solution: Solution = rs.run()
-    print(solution)
+    ray_logger.info(solution)
