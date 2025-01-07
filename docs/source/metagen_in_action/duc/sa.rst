@@ -1,5 +1,5 @@
-The Simulated Annealing metaheuristic
-=======================================
+Implementing the Simulated Annealing metaheuristic with MetaGen
+================================================================
 
 In this example a simple SimulatedAnnealing algorithm has been developed using the metagen framework.
 
