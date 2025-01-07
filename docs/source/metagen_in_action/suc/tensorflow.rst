@@ -1,18 +1,11 @@
+.. include:: ../../aliases.rst
+
 Optimizing the architecture of a tensorflow Deep Learning model
 ================================================================
 
-In this section, a hyperparameter optimization usecase is detailed employing the Metagen library and tensorflow in five steps.
+Google Colab Notebook: `Deep Learning <https://colab.research.google.com/github/DataLabUPO/MetaGen/blob/master/notebooks/suc_p4.ipynb>`_
 
-Step 1: Import the required libraries. In most cases only the Domain and the meta-heuristic is required, the solution is included in this case just for type checking.
-
-.. code-block:: python
-
-     from metagen.framework import Domain, Solution
-     from metagen.heuristics import RandomSearch
-     import tensorflow as tf
-
-
-Step 2: Select your datasets. In this case, a syntetic regression dataset has been employed.
+As preliminary step the following code can be used to generate a synthetic dataset.
 
 .. code-block:: python
 
@@ -39,7 +32,24 @@ Step 2: Select your datasets. In this case, a syntetic regression dataset has be
     x_val = np.reshape(xs_val, (xs_val.shape[0], xs_val.shape[1], 1))
     y_val = np.reshape(ys_val, (ys_val.shape[0], 1))
 
-Step 3: Define the domain. The usual hyperparameters of a neural network has been defined in our domain.
+
+Firstly, the required libraries must be imported. In this case, the |domain|, |solution| and the |rs| metaheuristic are imported from the metagen framework. The RandomForestClassifier is imported from the scikit-learn library.
+
+.. code-block:: python
+
+     from metagen.framework import Domain, Solution
+     from metagen.heuristics import RandomSearch
+     import tensorflow as tf
+
+Next, the domain definition is created. The domain definition is used to define the search space of the hyperparameters. In this case, the hyperparameters are the `learning_rate`, `ema`, `arch` and `layer` of the neural network.
+
+The |define_real| method is used to define the real hyperparameters, while the |define_categorical| method is used to define the categorical hyperparameters.
+
+The |define_dynamic_structure| method is used to define the dynamic structure of the neural network.
+
+The |define_group| method is used to define the group of hyperparameters, while the |define_integer_in_group|, |define_categorical_in_group| and |define_real_in_group| methods are used to define the hyperparameters inside the group.
+
+Finally, the |set_structure_to_variable| method is used to link the `arch` variable to the definition of a `layer`. This will yield a architecture of from two to ten layers with a concrete set of `neurons`, `activation` function amd `dropout` for each potential |solution|.
 
 .. code-block:: python
 
@@ -53,7 +63,7 @@ Step 3: Define the domain. The usual hyperparameters of a neural network has bee
     nn_domain.define_real_in_group("layer", "dropout", 0.0, 0.45)
     nn_domain.set_structure_to_variable("arch", "layer")
 
-Step 4: Define fitness function. First, the neural network is build considering the solution which encodes the hyperparameters. Secondly, the model is trained on the training set and evaluated on the validation set, returning the validation MSE.
+Now, the fitness function is defined. It is used to evaluate every potential solution. In this case, the neural network is build considering the solution which encodes the hyperparameters. Secondly, the model is trained on the training set and evaluated on the validation set, returning the validation *MAPE*.
 
 .. code-block:: python
 
@@ -77,17 +87,16 @@ Step 4: Define fitness function. First, the neural network is build considering 
                     loss="mean_squared_error", metrics=[tf.keras.metrics.MAPE])
         return model
 
-    def fitness(solution: Solution, x_train, y_train, x_val, y_val) -> float:
+    def nn_fitness(solution: Solution) -> float:
         model = build_neural_network(solution)
         model.fit(x_train, y_train, epochs=10, batch_size=1024)
         mape = model.evaluate(x_val, y_val)[1]
         return mape
 
-
-Step 5: Execute the optimization algorithm. Note than the fitness function must be Callabe[[Solution], float], so cannot set a function with more than one parameters. For that reason, a lambda function is employed.
+Finally, a metaheuristic is used to find the best hyperparameters. In this case, the |rs| metaheuristic is used to randomly sample the search space and evaluate the fitness function.
 
 .. code-block:: python
 
-    best_solution: Solution = RandomSearch(nn_domain, lambda solution: fitness(solution, x_train, y_train, x_val, y_val), search_space_size=5, iterations=2).run()
+    best_solution: Solution = RandomSearch(nn_domain, nn_fitness).run()
 
-Every meta-heuristic receives the domain definition and the fitness function at least. The instances contains the `run` function which executes the algorithm and always returns a the best Solution.
+Every metaheuristic receives the |domain| definition and the **fitness function** at least. The instances contains the **run** function which executes the algorithm and always returns a the best |solution|.

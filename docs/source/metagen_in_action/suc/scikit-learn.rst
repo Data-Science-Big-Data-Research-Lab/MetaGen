@@ -1,16 +1,20 @@
-Tunning a scikit-learn Random Forest classification model
+.. include:: ../../aliases.rst
+
+Tuning a scikit-learn Random Forest classification model
 ===========================================================
 
-Solving use cases in google colab:
+Google Colab Notebook: `Random Forest <https://colab.research.google.com/github/DataLabUPO/MetaGen/blob/master/notebooks/suc_p3.ipynb>`_
 
-    * https://colab.research.google.com/github/DataLabUPO/MetaGen/blob/master/notebooks/suc_p1.ipynb
-    * https://colab.research.google.com/github/DataLabUPO/MetaGen/blob/master/notebooks/suc_p2.ipynb
-    * https://colab.research.google.com/github/DataLabUPO/MetaGen/blob/master/notebooks/suc_p3.ipynb
-    * https://colab.research.google.com/github/DataLabUPO/MetaGen/blob/master/notebooks/suc_p4.ipynb
+As preliminary step the following code can be used to generate a synthetic dataset.
 
-In this section, a hyperparameter optimization use case is detailed employing the Metagen library and scikit-learn in five steps.
+.. code-block:: python
 
-Step 1: Import the required libraries. In most cases only the Domain and the meta-heuristic is required, the solution is included in this case just for type checking.
+    from sklearn.datasets import make_classification
+    X_classification, y_classification = make_classification(n_samples=1000, n_features=4,
+                                                         n_informative=2, n_redundant=0,
+                                                         random_state=0, shuffle=False)
+
+Firstly, the required libraries must be imported. In this case, the |domain|, |solution| and the |rs| metaheuristic are imported from the metagen framework. The RandomForestClassifier is imported from the scikit-learn library.
 
 .. code-block:: python
 
@@ -18,18 +22,7 @@ Step 1: Import the required libraries. In most cases only the Domain and the met
      from metagen.heuristics import RandomSearch
      from sklearn.ensemble import RandomForestClassifier
 
-
-Step 2: Select your datasets. In this case, a syntetic classification dataset has been employed.
-
-.. code-block:: python
-
-    X_classification, y_classification = make_classification(n_samples=1000, n_features=4,
-                                                         n_informative=2, n_redundant=0,
-                                                         random_state=0, shuffle=False)
-
-
-
-Step 3: Define the domain. The usual hyperparameters of a random forest classifier has been defined in our domain.
+Next, the domain definition is created. The domain definition is used to define the search space of the hyperparameters. In this case, the hyperparameters are the `max_depth`, `n_estimators`, `criterion` and `max_features` of the RandomForestClassifier. The |define_integer| method is used to define the integer hyperparameters, while the |define_categorical| method is used to define the categorical hyperparameters.
 
 .. code-block:: python
 
@@ -39,8 +32,7 @@ Step 3: Define the domain. The usual hyperparameters of a random forest classifi
     random_forest_classifier_definition.define_categorical("criterion", ['gini', 'entropy'])
     random_forest_classifier_definition.define_categorical("max_features", ['auto', 'sqrt', 'log2'])
 
-
-Step 4: Define fitness function. In this case, the the averaged accuracy over the folds on the cross validation has been selected. Note that the solution can be accessed like a dictionary to obtain the sampled hyparameters.
+Now, the fitness function is defined. It is used to evaluate every potential solution. In this case, the fitness function is the averaged accuracy over the folds on the cross validation. The |solution| variables can be accessed like a dictionary to obtain the sampled hyperparameters.
 
 .. code-block:: python
 
@@ -57,11 +49,11 @@ Step 4: Define fitness function. In this case, the the averaged accuracy over th
 
         return -scores.mean()
 
-Step 5: Use an already defined meta-heuristic in the metagen framework.
+Finally, a metaheuristic is used to find the best hyperparameters. In this case, the |rs| metaheuristic is used to randomly sample the search space and evaluate the fitness function.
 
 .. code-block:: python
 
     random_search: RandomSearch = RandomSearch(random_forest_classifier_definition, random_forest_classifier_fitness)
     best_solution: Solution = random_search.run()
 
-Every meta-heuristic receives the domain definition and the fitness function at least. The instances contains the `run` function which executes the algorithm and always returns a the best Solution.
+Every metaheuristic receives the |domain| definition and the **fitness function** at least. The instances contains the **run** function which executes the algorithm and always returns a the best |solution|.

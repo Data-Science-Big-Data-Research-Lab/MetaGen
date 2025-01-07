@@ -1,5 +1,5 @@
-The Random Search metaheuristic
-=================================
+Implementing the Random Search metaheuristic with MetaGen
+==========================================================
 
 Developing use cases in google colab:
     * https://colab.research.google.com/github/DataLabUPO/MetaGen/blob/master/notebooks/duc_rs.ipynb
