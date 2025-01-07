@@ -29,7 +29,7 @@ tf.config.set_visible_devices([], "GPU")
 
 # P4 legacy_domain
 p4_domain = Domain()
-p4_domain.define_real("learning_rate", 0.0, 0.000001)
+"""p4_domain.define_real("learning_rate", 0.0, 0.000001)
 p4_domain.define_categorical("ema", [True, False])
 p4_domain.define_dynamic_structure("arch", 2, 10)
 p4_domain.define_group("layer")
@@ -37,8 +37,10 @@ p4_domain.define_integer_in_group("layer", "neurons", 25, 300)
 p4_domain.define_categorical_in_group(
     "layer", "activation", ["relu", "sigmoid", "softmax", "tanh"])
 p4_domain.define_real_in_group("layer", "dropout", 0.0, 0.45)
-p4_domain.set_structure_to_variable("arch", "layer")
+p4_domain.set_structure_to_variable("arch", "layer")"""
 
+p4_domain.define_dynamic_structure("test", 2, 10)
+p4_domain.set_structure_to_integer("test", 0, 10)
 
 # P4 fitness function
 def build_neural_network(solution: Solution) -> tf.keras.Sequential():
@@ -92,7 +94,7 @@ def p4_fitness(solution: Solution) -> float:
 
 # P4 resolution
 p4_solution: Solution = RandomSearch(
-    p4_domain, p4_fitness, search_space_size=10, iterations=5).run()
+    p4_domain, p4_fitness, search_space_size=10, max_iterations=5).run()
 
 # P4 result
 print(p4_solution)

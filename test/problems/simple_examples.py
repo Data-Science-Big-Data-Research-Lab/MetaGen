@@ -15,22 +15,24 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 from metagen.framework import Domain
+from metagen.framework.connector import BaseConnector
 
-# x^2 problem definition
-x_raised_to_2_definition = Domain()
-x_raised_to_2_definition.define_real("x", 0.0, 100.0, 0.05)
+def get_x_raised_to_2_domain(connector = BaseConnector()) -> Domain:
+    domain = Domain(connector)
+    domain.define_real("x", 0.0, 100.0, 0.05)
+    return domain
+
+
+def get_x_minus_15_raised_to_2_domain(connector = BaseConnector()) -> Domain:
+    domain = Domain(connector)
+    domain.define_real("x", 0.0, 100.0, 0.05)
+    return domain
 
 
 # x^2 fitness function
 def x_raised_to_2_fitness(individual):
     x = individual["x"]
     return pow(x, 2)
-
-
-# (x-15)^2 problem definition
-x_minus_15_raised_to_2_definition = Domain()
-x_minus_15_raised_to_2_definition.define_real("x", 0.0, 100.0, 0.05)
-
 
 # (x-15)^2 fitness function
 def x_minus_15_raised_to_2_fitness(individual):

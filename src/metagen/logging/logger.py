@@ -11,7 +11,7 @@ class TensorBoardLogger:
     """Base class for TensorBoard logging in metaheuristics"""
     
     def __init__(self, log_dir: str = "logs"):
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
         self.run_id = f"{timestamp}_{uuid.uuid4().hex[:6]}"
         self.log_dir = os.path.join(log_dir, self.run_id)
         self.writer = SummaryWriter(self.log_dir)
@@ -84,3 +84,18 @@ class TensorBoardLogger:
     def close(self) -> None:
         """Close the TensorBoard writer"""
         self.writer.close()
+    
+    def __getstate__(self):
+        """Control which attributes are pickled"""
+        state = self.__dict__.copy()
+        # Remove unpicklable attributes
+        state['writer'] = None
+        return state
+
+    def __setstate__(self, state):
+        """Restore instance attributes when unpickling"""
+        self.__dict__.update(state)
+
+        self.writer = SummaryWriter(self.log_dir)
+
+

@@ -17,11 +17,48 @@
 import random
 
 from metagen.framework import Domain
+from metagen.framework.connector import BaseConnector
+def get_categorical_domain(connector = BaseConnector()) -> Domain:
+    domain = Domain(connector)
+    domain.define_categorical(
+        "c", ["level1", "level2", "level3", "level5"])
+    return domain
 
-# Dummy categorical problem definition
-categorical_example_definition = Domain()
-categorical_example_definition.define_categorical(
-    "c", ["level1", "level2", "level3", "level5"])
+
+def get_vector_domain(connector = BaseConnector()) -> Domain:
+    domain = Domain(connector)
+    domain.define_dynamic_structure("v", 2, 20, 1)
+    domain.set_structure_to_integer("v", 1, 20, 1)
+    return domain
+
+
+def get_all_types_domain(connector = BaseConnector()) -> Domain:
+    domain = Domain(connector)
+    domain.define_integer("I", 1, 10, 1)
+    domain.define_real("R", 0.0, 5.0, 0.01)
+    domain.define_categorical("C", ["Label1", "Label2", "Label3"])
+    
+    domain.define_group("L")
+    domain.define_integer("CompI", 25, 300, 20)
+    domain.link_variable_to_group("L", "CompI")
+    domain.define_real("CompR", 0.25, 4.5, 0.05)
+    domain.link_variable_to_group("L", "CompR")
+    domain.define_categorical("CompC", ["F1", "F2", "F3", "F4"])
+    domain.link_variable_to_group("L", "CompC")
+
+    domain.define_dynamic_structure("VI", 1, 5, 2)
+    domain.set_structure_to_integer("VI", 0, 5)
+    domain.link_variable_to_group("L", "VI")
+
+    domain.define_static_structure("VR", 3)
+    domain.set_structure_to_integer("VR", 0, 1)
+    domain.link_variable_to_group("L", "VR")
+
+    domain.define_static_structure("VC", 3)
+    domain.set_structure_to_categorical("VC", ["A", "B"])
+    domain.link_variable_to_group("L", "VC")
+    
+    return domain
 
 
 # Dummy categorical fitness function
@@ -38,44 +75,10 @@ def categorical_example_fitness(individual):
 
     return val
 
-
-# Dummy vector problem definition
-vector_example_definition = Domain()
-vector_example_definition.define_dynamic_structure("v", 2, 20, 1)
-vector_example_definition.set_structure_to_integer("v", 1, 20, 1)
-
-
 # Dummy vector fitness function
 def vector_example_fitness(individual):
     v = individual["v"]
     return sum(v)
-
-
-# Dummy all legacy problem definition
-all_types_definition = Domain()
-all_types_definition.define_integer("I", 1, 10, 1)
-all_types_definition.define_real("R", 0.0, 5.0, 0.01)
-all_types_definition.define_categorical("C", ["Label1", "Label2", "Label3"])
-all_types_definition.define_group("L")
-all_types_definition.define_integer("CompI", 25, 300, 20)
-all_types_definition.link_variable_to_group("L", "CompI")
-all_types_definition.define_real("CompR", 0.25, 4.5, 0.05)
-all_types_definition.link_variable_to_group("L", "CompR")
-all_types_definition.define_categorical("CompC", ["F1", "F2", "F3", "F4"])
-all_types_definition.link_variable_to_group("L", "CompC")
-
-all_types_definition.define_dynamic_structure("VI", 1, 5, 2)
-all_types_definition.set_structure_to_integer("VI", 0, 5)
-all_types_definition.link_variable_to_group("L", "VI")
-
-all_types_definition.define_static_structure("VR", 3)
-all_types_definition.set_structure_to_integer("VR", 0, 1)
-all_types_definition.link_variable_to_group("L", "VR")
-
-all_types_definition.define_static_structure("VC", 3)
-all_types_definition.set_structure_to_categorical("VC", ["A", "B"])
-all_types_definition.link_variable_to_group("L", "VC")
-
 
 # Dummy all legacy fitness function
 def all_types_fitness(individual):

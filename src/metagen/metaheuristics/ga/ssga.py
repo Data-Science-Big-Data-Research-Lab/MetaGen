@@ -115,9 +115,10 @@ class SSGA(Metaheuristic):
         super().post_iteration()
         # print(f'[{self.current_iteration}] {self.current_solutions}')
         print(f'[{self.current_iteration}] {self.best_solution}')
-        self.writer.add_scalar('SSGA/Population Size',
-                              len(self.current_solutions),
-                              self.current_iteration)
+        if self.logger:
+            self.logger.add_scalar('SSGA/Population Size',
+                                len(self.current_solutions),
+                                self.current_iteration)
 
 
 class DistributedSSGA (Metaheuristic):
@@ -210,10 +211,10 @@ class DistributedSSGA (Metaheuristic):
         Additional processing after each generation.
         """
         super().post_iteration()
-        print(f'[{self.current_iteration}] {self.best_solution}')
-        self.writer.add_scalar('DSSGA/Population Size',
-                              len(self.current_solutions),
-                              self.current_iteration)
+        if self.logger:
+            self.logger.add_scalar('SSGA/Population Size',
+                                len(self.current_solutions),
+                                self.current_iteration)
 
     def run(self) -> GASolution:
         """
