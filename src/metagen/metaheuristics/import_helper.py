@@ -14,22 +14,10 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-from metagen.metaheuristics.cvoa import CVOA, cvoa_launcher
-from metagen.metaheuristics.ga import GA, SSGA, GAConnector
-from metagen.metaheuristics.sa import SA
-from metagen.metaheuristics.tabu import TabuSearch
+import importlib.util
 
-from metagen.metaheuristics.random import RandomSearch
-
-__all__ = ["RandomSearch", "GA", "CVOA", "GA", "SSGA", "GAConnector", "SA", "cvoa_launcher", "TabuSearch"]
-
-
-
-
-
-
-
-
-
-
-
+def is_package_installed(package_name: str) -> bool:
+    try:
+        return importlib.util.find_spec(package_name) is not None
+    except ImportError:
+        return False

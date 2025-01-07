@@ -113,19 +113,17 @@ class BaseType(ABC):
 
         left_value = value - (value % step)
         right_value = (value + step) - (value % step)
-        # print('value =', str(value), 'step =', str(step))
-        # print('left_value =', str(left_value), 'right_value =', str(right_value))
 
+        result = -1
         if value - left_value > right_value - value:
-            res= right_value
+            result = right_value
         else:
-            res= left_value
+            result = left_value
+        
+        if result < step:
+            result = step
 
-        if res < step:
-            res = step
-
-        # print('res =', str(res))
-        return res
+        return result
 
     def _generate_numerical(self, left: int | float, right: int | float, step_size: int | float | None = None) -> int | float:
         """ From a value in an interval compute a new random value by adding (to the right) or subtracting (to the left)

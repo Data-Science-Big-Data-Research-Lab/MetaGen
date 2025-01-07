@@ -79,9 +79,6 @@ class Integer(BaseType):
             min_value = limited_min_value if max_value > limited_min_value > min_value else min_value
             max_value = limited_max_value if max_value > limited_max_value > min_value else max_value
 
-        # print(f"Min value: {min_value}, Max value: {max_value}")
-
-        # TODO: parcheado con int() para que no de error en el random.randrange
         random_integer = random.randrange(int(min_value), int(max_value) + 1, step)
         self.set(random_integer)
 

@@ -16,11 +16,8 @@
 """
 from metagen.framework import Domain, Solution
 from metagen.metaheuristics.base import Metaheuristic
-import ray
-
-from metagen.metaheuristics.distributed_suite import local_yield_and_evaluate_individuals, \
-    local_mutate_and_evaluate_population, distributed_base_population, distributed_mutation_and_evaluation
-
+from typing import List, Tuple
+from copy import deepcopy
 
 class RandomSearch(Metaheuristic):
 
@@ -57,99 +54,39 @@ class RandomSearch(Metaheuristic):
     """
 
     def __init__(self, domain: Domain, fitness_function, log_dir: str = "logs/RS",
-                 search_space_size: int = 30, max_iterations: int = 20) -> None:
-        super().__init__(domain, fitness_function, log_dir=log_dir)
-        self.search_space_size = search_space_size
+                 population_size: int = 5, max_iterations: int = 20, **kargs) -> None:
+        super().__init__(domain, fitness_function, population_size=population_size, log_dir=log_dir, **kargs)
         self.max_iterations = max_iterations
 
-    def initialize(self) -> None:
+    def initialize(self, num_solutions=10) -> Tuple[List[Solution], Solution]:
         """Initialize random solutions"""
-        population, best_individual = local_yield_and_evaluate_individuals(self.search_space_size, self.domain, self.fitness_function)
-        self.best_solution = best_individual
 
-    def iterate(self) -> None:
-        population, best_individual = local_mutate_and_evaluate_population(self.current_solutions, self.fitness_function)
-        self.current_solutions = population
-        self.best_solution = best_individual
-
-    def stopping_criterion(self) -> bool:
-        return self.current_iteration >= self.max_iterations
-
-    def post_iteration(self) -> None:
-        """
-        Additional processing after each generation.
-        """
-        super().post_iteration()
-        print(f'[{self.current_iteration}] {self.best_solution}')
-        self.writer.add_scalar('RS/Population Size',
-                               len(self.current_solutions),
-                               self.current_iteration)
+        solution_type: type[Solution] = self.domain.get_connector().get_type(self.domain.get_core())
+        best_solution = None 
+        current_solutions = []
+        for _ in range(num_solutions):
+            individual = solution_type(self.domain, connector=self.domain.get_connector())
+            individual.evaluate(self.fitness_function)
+            current_solutions.append(individual)
+            if best_solution is None or individual.get_fitness() < best_solution.get_fitness():
+                best_solution = individual
+        
+        return current_solutions, best_solution
 
 
+    def iterate(self, num_solutions: int, solutions: List[Solution]) -> Tuple[List[Solution], Solution]:
+        
+        best_solution = deepcopy(self.best_solution)
+        current_solutions = [best_solution]
 
-
-
-
-class DistributedRS(Metaheuristic):
-    """
-    RandomSearch is a class for performing a random search optimization algorithm.
-
-    It generates and evaluates random solutions in a search space to find an optimal solution.
-
-    :param domain: The search domain that defines the solution space.
-    :type domain: Domain
-    :param fitness_function: The fitness function used to evaluate solutions.
-    :type fitness_function: Callable[[Solution], float]
-    :param search_space_size: The size of the search space. Default is 30.
-    :type search_space_size: int, optional
-    :param max_iterations: The number of optimization iterations. Default is 20.
-    :type max_iterations: int, optional
-
-    **Code example**
-
-    .. code-block:: python
-
-        from metagen.framework import Domain
-        from metagen.metaheuristics import RandomSearch
-
-        domain = Domain()
-
-        domain.defineInteger(0, 1)
-
-        fitness_function = ...
-
-        search = RandomSearch(domain, fitness_function, search_space_size=50, iterations=100)
-        optimal_solution = search.run()
-
-    """
-
-    def __init__(self, domain: Domain, fitness_function, log_dir: str = "logs/DRS",
-                 search_space_size: int = 30, max_iterations: int = 20) -> None:
-        super().__init__(domain, fitness_function, log_dir=log_dir)
-        self.search_space_size = search_space_size
-        self.max_iterations = max_iterations
-
-    def initialize(self) -> None:
-        """
-        Initialize random solutions and evaluate them in parallel using Ray.
-        """
-        # print('initialize')
-        population, best_individual = distributed_base_population(self.search_space_size, self.domain, self.fitness_function)
-        self.current_solutions = population
-        self.best_solution = best_individual
-        # print('Population: ' + str(self.current_solutions))
-        # print('Best: ' + str(self.best_solution))
-
-    def iterate(self) -> None:
-        """
-        Perform one iteration of the distributed random search.
-        """
-        # Mutate solutions before evaluating them
-        # print('iterate')
-        population, best_individual = distributed_mutation_and_evaluation(self.current_solutions, self.fitness_function)
-        self.current_solutions = population
-        self.best_solution = best_individual
-        # print('Best: '+str(self.best_solution))
+        for individual in solutions[:-1]:
+            individual.mutate()
+            individual.evaluate(self.fitness_function)
+            current_solutions.append(individual)
+            if individual.get_fitness() < best_solution.get_fitness():
+                best_solution = individual
+        
+        return current_solutions, best_solution
 
     def stopping_criterion(self) -> bool:
         return self.current_iteration >= self.max_iterations
@@ -160,19 +97,7 @@ class DistributedRS(Metaheuristic):
         """
         super().post_iteration()
         print(f'[{self.current_iteration}] {self.best_solution}')
-        self.writer.add_scalar('DRS/Population Size',
-                               len(self.current_solutions),
-                               self.current_iteration)
-
-    def run(self) -> Solution:
-
-        # print('Running')
-        if not ray.is_initialized():
-            ray.init()
-
-        try:
-            # Flujo estándar
-            return super().run()
-        finally:
-            # Asegurarse de que Ray se cierre al finalizar
-            ray.shutdown()
+        if self.logger:
+            self.logger.writer.add_scalar('RS/Population Size',
+                                len(self.current_solutions),
+                                self.current_iteration)
