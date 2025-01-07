@@ -1,4 +1,6 @@
 # src/metagen/utils/tensorboard_logger.py
+
+
 from tensorboardX import SummaryWriter
 from datetime import datetime
 import uuid
@@ -97,5 +99,4 @@ class TensorBoardLogger:
         self.__dict__.update(state)
 
         self.writer = SummaryWriter(self.log_dir)
-
 
