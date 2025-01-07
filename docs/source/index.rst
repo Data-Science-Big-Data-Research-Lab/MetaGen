@@ -28,8 +28,14 @@ Main features
 - **Standard interface**: It provides a standard interface that isolates the developer from the end user, facilitating seamless development.
 - **Dynamic optimization of deep learning architectures**: Tools for dynamically adjusting deep learning model architectures, including layers and hyperparameters, during execution.
 - **Python-type hints**: The use of Python's typing features simplifies the development process and debugging.
-- **Implemented metaheuristics**: It offers a robust selection of algorithms, providing flexibility for solving various optimization problems.
 - **User-friendly problem domain definition**: It  simplifies the representation of problem domains by eliminating the need for complex object-oriented artifacts and using intuitive methods to define search spaces.
+- **Implemented metaheuristics**: It offers a robust selection of algorithms, providing flexibility for solving various optimization problems. The current implemented metaheuristics are listed below.
+
+.. csv-table:: Current implemented metaheuristics
+   :header: "Metaheuristic", "Run class/method"
+   :widths: auto
+   :file: current_metaheuristics.csv
+
 
 Installation
 -------------
@@ -50,5 +56,6 @@ Index
     metagen_in_action/index
     performance_tracking/index
     distributed_execution/index
+    advanced_topics/index
     api
 
