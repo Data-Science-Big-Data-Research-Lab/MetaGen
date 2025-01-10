@@ -74,7 +74,7 @@ class RandomSearch(Metaheuristic):
         return current_solutions, best_solution
 
 
-    def iterate(self, num_solutions: int, solutions: List[Solution]) -> Tuple[List[Solution], Solution]:
+    def iterate(self, solutions: List[Solution]) -> Tuple[List[Solution], Solution]:
         
         best_solution = deepcopy(self.best_solution)
         current_solutions = [best_solution]
