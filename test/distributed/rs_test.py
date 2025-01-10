@@ -1,6 +1,6 @@
 import logging
 
-from metagen.logging.ray_logger import DistributedLogger
+from metagen.logging.metagen_logger import metagen_logger_setup, get_metagen_logger
 from metagen.metaheuristics.random.random_search import RandomSearch
 from metagen.framework import Domain, Solution
 from sklearn.datasets import make_classification, make_regression
@@ -47,15 +47,41 @@ def sgd_regressor_fitness(individual):
 p1_domain: Domain = Domain()
 p1_domain.define_integer("x", -10, 10)
 
+
 def p1_fitness(individual: Solution) -> float:
     x = individual["x"] # You could use the .get function alternatively.
     return x + 5
 
+
+
 if __name__ == "__main__":
-    ray_logger = DistributedLogger.get_logger(log_dir="ray-logs/rs", level=logging.DEBUG, console_output=True)
-    ray_logger.info('Running Random Search')
-    # rs: RandomSearch = RandomSearch(sgd_regressor_definition, sgd_regressor_fitness, distributed=True)
-    rs: RandomSearch = RandomSearch(sgd_regressor_definition, sgd_regressor_fitness)
-    # rs: DistributedRS = DistributedRS(p1_domain, p1_fitness)
+
+    logging.Logger("metagen_logger")
+
+    metagen_logger_setup()
+
+    get_metagen_logger().info('Running Random Search')
+
+    rs: RandomSearch = RandomSearch(sgd_regressor_definition, sgd_regressor_fitness,distributed=True)
+
+
     solution: Solution = rs.run()
-    ray_logger.info(solution)
+    get_metagen_logger().info(f"Solution found: {solution}")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,10 +1,14 @@
+import os
 import random
 from copy import deepcopy
 from typing import List, Callable, Tuple, Set, NamedTuple
 
 import ray
+from ray.util import get_node_ip_address
 
+import logging
 from metagen.framework import Domain, Solution
+from metagen.logging.metagen_logger import metagen_logger_setup, get_metagen_logger, metagen_remote_logger_setup
 
 
 @ray.remote
@@ -13,19 +17,10 @@ def call_distributed(function: Callable, *args, **kargs) -> None:
     Initialize the population/solutions for the metaheuristic in a distributed manner.
     Must set self.current_solutions and self.best_solution
     """
+    metagen_remote_logger_setup(level=logging.DEBUG)
+    get_metagen_logger().info(f"Initializing distributed function {function.__name__}")
     return function(*args, **kargs)
 
-
-# Común a todos los algoritmos
-def task_environment() -> None:
-    worker_id = ray.get_runtime_context().get_worker_id()
-    print(f'This task is running on worker {worker_id}')
-
-
-def resources_avialable(distribution, message="") -> None:
-    available_resources = ray.available_resources()
-    cpu_resources = available_resources.get('CPU', 0)
-    print(f"{message} , CPUs = {cpu_resources}, distribution = {distribution}")
 
 
 def assign_load_equally(neighbor_population_size: int) -> List[int]:
@@ -55,7 +50,6 @@ def ssga_local_sorted_yield_and_evaluate_individuals(num_individuals: int, domai
 def ssga_remote_sorted_yield_and_evaluate_individuals(num_individuals: int, domain: Domain,
                                                       fitness_function: Callable[[Solution], float]) -> Tuple[
     List['GASolution'], 'GASolution']:
-    task_environment()
     return ssga_local_sorted_yield_and_evaluate_individuals(num_individuals, domain, fitness_function)
 
 
@@ -63,7 +57,6 @@ def distributed_sorted_base_population(population_size: int, domain: Domain,
                                        fitness_function: Callable[[Solution], float]) -> [List['GASolution'],
                                                                                           'GASolution']:
     distribution = assign_load_equally(population_size)
-    resources_avialable(distribution, 'Distributed Sorted Base Population')
     futures = []
     for count in distribution:
         futures.append(ssga_remote_sorted_yield_and_evaluate_individuals.remote(count, domain, fitness_function))
@@ -78,7 +71,6 @@ def distributed_sorted_base_population(population_size: int, domain: Domain,
 
 def distributed_sort(population: List['GASolution']) -> Tuple[List['GASolution'], 'GASolution']:
     distribution = assign_load_equally(len(population))
-    resources_avialable(distribution, 'Distributed Sort')
     futures = []
     for count in distribution:
         futures.append(remote_sort_population.remote(population[:count]))
@@ -91,7 +83,6 @@ def distributed_sort(population: List['GASolution']) -> Tuple[List['GASolution']
 
 @ray.remote
 def remote_sort_population(population: List['GASolution']) -> List['GASolution']:
-    task_environment()
     return sorted(population, key=lambda sol: sol.get_fitness())
 
 
@@ -120,7 +111,6 @@ def ga_local_yield_and_evaluate_individuals(num_individuals: int, domain: Domain
 def ga_remote_yield_and_evaluate_individuals(num_individuals: int, domain: Domain,
                                              fitness_function: Callable[[Solution], float]) -> Tuple[
     List['GASolution'], 'GASolution']:
-    task_environment()
     return ga_local_yield_and_evaluate_individuals(num_individuals, domain, fitness_function)
 
 
@@ -128,7 +118,6 @@ def ga_distributed_base_population(population_size: int, domain: Domain,
                                    fitness_function: Callable[[Solution], float]) -> Tuple[
     List['GASolution'], 'GASolution']:
     distribution = assign_load_equally(population_size)
-    resources_avialable(distribution, 'Base population')
     futures = []
     for count in distribution:
         futures.append(ga_remote_yield_and_evaluate_individuals.remote(count, domain, fitness_function))
@@ -175,14 +164,12 @@ def ga_local_offspring_individuals(parents: Tuple['GASolution', 'GASolution'], n
 def ga_remote_offspring_individuals(parents: Tuple['GASolution', 'GASolution'], num_individuals: int,
                                     mutation_rate: float, fitness_function: Callable[[Solution], float]) -> Tuple[
     List['GASolution'], 'GASolution']:
-    task_environment()
     return ga_local_offspring_individuals(parents, num_individuals, mutation_rate, fitness_function)
 
 
 def ga_distributed_offspring(parents: Tuple['GASolution', 'GASolution'], offspring_size: int, mutation_rate: float,
                              fitness_function: Callable[[Solution], float]) -> Tuple[List['GASolution'], Solution]:
     distribution = assign_load_equally(offspring_size)
-    resources_avialable(distribution, 'Offspring')
     futures = []
     for count in distribution:
         futures.append(ga_remote_offspring_individuals.remote(parents, count, mutation_rate, fitness_function))
@@ -201,7 +188,6 @@ def mm_distributed_offspring(parents: Tuple['GASolution', 'GASolution'], offspri
                              neighbor_population_size: int, alteration_limit: float) -> Tuple[
     List['GASolution'], Solution]:
     distribution = assign_load_equally(offspring_size)
-    resources_avialable(distribution, 'Distributed Memetic Offspring')
     futures = []
     for count in distribution:
         futures.append(mm_remote_offspring_individuals.remote(parents, count, mutation_rate, fitness_function,
@@ -218,7 +204,6 @@ def mm_remote_offspring_individuals(parents: Tuple['GASolution', 'GASolution'], 
                                     mutation_rate: float, fitness_function: Callable[[Solution], float],
                                     neighbor_population_size: int, alteration_limit: float) -> Tuple[
     List['GASolution'], 'GASolution']:
-    task_environment()
     return mm_local_offspring_individuals(parents, num_individuals, mutation_rate, fitness_function,
                                           neighbor_population_size, alteration_limit)
 
@@ -268,7 +253,6 @@ def mm_distributed_local_search_of_two_childs(children:Tuple['GASolution', 'GASo
     'GASolution', 'GASolution']:
 
     distribution = assign_load_equally(2)
-    resources_avialable(distribution, 'Parallel Local search of two children')
 
     futures = []
     for child in children:
@@ -289,7 +273,6 @@ def mm_distributed_local_search_of_one_children(population_size: int, best_solut
                                                     fitness_function: Callable[[Solution], float],
                                                     alteration_limit: float) -> 'GASolution':
     distribution = assign_load_equally(population_size)
-    resources_avialable(distribution, 'Local search of a child')
     futures = []
     for count in distribution:
         futures.append(
@@ -402,7 +385,6 @@ def distributed_yield_mutate_evaluate_from_the_best(population_size: int, best_s
                                                     fitness_function: Callable[[Solution], float],
                                                     alteration_limit: float) -> List[Solution]:
     distribution = assign_load_equally(population_size)
-    resources_avialable(distribution, 'Neighborhood')
     futures = []
     for count in distribution:
         futures.append(
@@ -430,7 +412,7 @@ def local_yield_mutate_and_evaluate_individuals_from_best(num_individuals: int, 
 def remote_yield_mutate_and_evaluate_individuals_from_best(num_individuals: int, best_solution: Solution,
                                                            fitness_function: Callable[[Solution], float],
                                                            alteration_limit: float) -> Solution:
-    task_environment()
+
     return local_yield_mutate_and_evaluate_individuals_from_best(num_individuals, best_solution,
                                                                  fitness_function, alteration_limit)
 
@@ -618,7 +600,6 @@ def distributed_infect_individuals(global_state, fitness_function: Callable[[Sol
                                    carrier: Solution, n_infected: int, travel_distance: int, time: int,
                                    update_isolated: bool) -> Set[Solution]:
     distribution = assign_load_equally(n_infected)
-    resources_avialable(distribution, 'CVOA Infection')
     futures = []
     for count in distribution:
         futures.append(

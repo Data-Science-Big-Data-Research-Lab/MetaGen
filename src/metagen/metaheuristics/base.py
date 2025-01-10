@@ -21,6 +21,8 @@ from typing import List, Tuple, Optional, Callable, Union
 from metagen.framework import Domain, Solution
 from copy import deepcopy
 
+from ..logging.metagen_logger import get_metagen_logger
+
 IS_RAY_INSTALLED = is_package_installed("ray")
 
 if is_package_installed("tensorboard"):
@@ -67,7 +69,7 @@ class Metaheuristic(ABC):
         distribution = assign_load_equally(self.population_size)
         population = deepcopy(self.current_solutions)
         futures = []
-
+        get_metagen_logger().debug(f"[{self.current_iteration}] {ray.available_resources().get('CPU', 0)} CPUs -- {distribution}")
         for count in distribution:
 
             if len(population) > 0:
@@ -189,7 +191,6 @@ class Metaheuristic(ABC):
         """
         Execute the metaheuristic algorithm.
         """
-
         if self.distributed and IS_RAY_INSTALLED and not ray.is_initialized():
             ray.init()
 
