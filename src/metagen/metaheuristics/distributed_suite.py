@@ -17,8 +17,8 @@ def call_distributed(function: Callable, *args, **kargs) -> None:
     Initialize the population/solutions for the metaheuristic in a distributed manner.
     Must set self.current_solutions and self.best_solution
     """
-    metagen_remote_logger_setup(level=logging.DEBUG)
-    get_metagen_logger().info(f"Initializing distributed function {function.__name__}")
+    # metagen_remote_logger_setup(level=logging.DEBUG)
+    # get_metagen_logger().info(f"Initializing distributed function {function.__name__}")
     return function(*args, **kargs)
 
 

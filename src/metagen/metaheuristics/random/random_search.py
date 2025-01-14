@@ -96,7 +96,6 @@ class RandomSearch(Metaheuristic):
         Additional processing after each generation.
         """
         super().post_iteration()
-        print(f'[{self.current_iteration}] {self.best_solution}')
         if self.logger:
             self.logger.writer.add_scalar('RS/Population Size',
                                 len(self.current_solutions),
