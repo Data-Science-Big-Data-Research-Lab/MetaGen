@@ -16,15 +16,11 @@
 """
 
 from metagen.framework import Domain
-from .ga_types import GASolution, Solution
+from .ga_types import GASolution
 from metagen.metaheuristics.base import Metaheuristic
 from typing import Callable, List, Tuple
 import random
 from copy import deepcopy
-
-from metagen.metaheuristics.distributed_suite import ga_local_yield_and_evaluate_individuals, \
-    ga_local_offspring_individuals, \
-    ga_distributed_base_population, ga_distributed_offspring
 
 
 class GA(Metaheuristic):
@@ -92,16 +88,17 @@ class GA(Metaheuristic):
 
         return child1, child2
 
-    def iterate(self, num_solutions=10, solutions: List[GASolution]=None) -> Tuple[List[GASolution], GASolution]:
+    def iterate(self, solutions: List[GASolution]) -> Tuple[List[GASolution], GASolution]:
         """Execute one generation of the genetic algorithm"""
         
         parents = self.select_parents()
+        num_solutions = len(solutions)
         best_solution = deepcopy(self.best_solution)
         current_solutions = []
 
         current_solutions = [deepcopy(parents[0]), deepcopy(parents[1])]
 
-        for _ in range(num_solutions//2 - 1):
+        for _ in range(num_solutions//2):
             child1, child2 = self.yield_two_children(parents)
             current_solutions.extend([child1, child2])
             if best_solution is None or child1 < best_solution:

@@ -14,20 +14,10 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-import logging
-
-from ray.util.state.state_cli import ray_get
-
 from metagen.framework import Domain, Solution
-from metagen.logging.metagen_logger import get_metagen_logger
-
 from metagen.metaheuristics.base import Metaheuristic
 from typing import List, Tuple
 from copy import deepcopy
-
-
-
-
 
 class RandomSearch(Metaheuristic):
 
@@ -63,13 +53,14 @@ class RandomSearch(Metaheuristic):
 
     """
 
-    def    __init__(self, domain: Domain, fitness_function, log_dir: str = "logs/RS",
+    def __init__(self, domain: Domain, fitness_function, log_dir: str = "logs/RS",
                  population_size: int = 5, max_iterations: int = 20, **kargs) -> None:
         super().__init__(domain, fitness_function, population_size=population_size, log_dir=log_dir, **kargs)
         self.max_iterations = max_iterations
 
     def initialize(self, num_solutions=10) -> Tuple[List[Solution], Solution]:
         """Initialize random solutions"""
+
         solution_type: type[Solution] = self.domain.get_connector().get_type(self.domain.get_core())
         best_solution = None 
         current_solutions = []
@@ -79,10 +70,12 @@ class RandomSearch(Metaheuristic):
             current_solutions.append(individual)
             if best_solution is None or individual.get_fitness() < best_solution.get_fitness():
                 best_solution = individual
+        
         return current_solutions, best_solution
 
 
-    def iterate(self, num_solutions: int, solutions: List[Solution]) -> Tuple[List[Solution], Solution]:
+    def iterate(self, solutions: List[Solution]) -> Tuple[List[Solution], Solution]:
+        
         best_solution = deepcopy(self.best_solution)
         current_solutions = [best_solution]
 
@@ -92,6 +85,7 @@ class RandomSearch(Metaheuristic):
             current_solutions.append(individual)
             if individual.get_fitness() < best_solution.get_fitness():
                 best_solution = individual
+        
         return current_solutions, best_solution
 
     def stopping_criterion(self) -> bool:
@@ -102,7 +96,7 @@ class RandomSearch(Metaheuristic):
         Additional processing after each generation.
         """
         super().post_iteration()
-        get_metagen_logger().debug(f'[{self.current_iteration}] {self.best_solution}')
+        print(f'[{self.current_iteration}] {self.best_solution}')
         if self.logger:
             self.logger.writer.add_scalar('RS/Population Size',
                                 len(self.current_solutions),
