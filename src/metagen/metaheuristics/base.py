@@ -17,7 +17,7 @@
 
 from abc import ABC, abstractmethod
 from .import_helper import is_package_installed
-from typing import List, Tuple, Optional, Callable, Union
+from typing import List, Tuple, Optional, Callable
 from metagen.framework import Domain, Solution
 from copy import deepcopy
 
@@ -84,7 +84,7 @@ class Metaheuristic(ABC):
 
         return population, best_individual
 
-    def _initialize(self) -> None:
+    def _initialize(self) -> Tuple[List[Solution], Solution]:
         """
         Private function to initialize the population/solutions for the metaheuristic.
         """
@@ -104,14 +104,14 @@ class Metaheuristic(ABC):
     
 
     @abstractmethod
-    def iterate(self, solutions: List[Solution]) -> None:
+    def iterate(self, solutions: List[Solution]) -> Tuple[List[Solution], Solution]:
         """
         Execute one iteration of the metaheuristic.
         Must update self.current_solutions and self.best_solution if better found
         """
         pass
 
-    def _iterate(self) -> None:
+    def _iterate(self) -> Tuple[List[Solution], Solution]:
         """
         Private function to execute one iteration of the metaheuristic.
         """
@@ -165,6 +165,7 @@ class Metaheuristic(ABC):
         Callback executed after each iteration.
         Override this method to add custom post-iteration processing.
         """
+        get_metagen_logger().info(f'[ITERATION {self.current_iteration}] BEST SOLUTION: {self.best_solution}')
         if self.logger: 
             # Log iteration metrics
             self.logger.log_iteration(
@@ -173,13 +174,6 @@ class Metaheuristic(ABC):
                 self.best_solution
             )
     
-    def skip_iteration(self) -> None:
-        """
-        Callback executed when an iteration is skipped.
-        Override this method to add custom skip-iteration processing.
-        """
-        raise StopIteration("Skipping iteration")
-
     def skip_iteration(self) -> None:
         """
         Callback executed when an iteration is skipped.

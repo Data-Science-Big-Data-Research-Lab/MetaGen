@@ -124,7 +124,6 @@ class GA(Metaheuristic):
         Additional processing after each generation.
         """
         super().post_iteration()
-        print(self.best_solution)
         if self.logger is not None: 
             # Add GA-specific logging if needed
             self.logger.writer.add_scalar('GA/Population Size', 
