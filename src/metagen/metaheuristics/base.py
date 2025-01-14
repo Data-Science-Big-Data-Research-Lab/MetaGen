@@ -66,14 +66,14 @@ class Metaheuristic(ABC):
 
     
     def _launch_distributed_method(self, method: Callable) -> Tuple[List[Solution], Solution]:
-        distribution = assign_load_equally(self.population_size)
+        distribution = assign_load_equally(len(self.current_solutions) if len(self.current_solutions)>0 else self.population_size)
         population = deepcopy(self.current_solutions)
         futures = []
         get_metagen_logger().debug(f"[{self.current_iteration}] {ray.available_resources().get('CPU', 0)} CPUs -- {distribution}")
         for count in distribution:
 
             if len(population) > 0:
-                futures.append(call_distributed.remote(method, count, population[:count]))
+                futures.append(call_distributed.remote(method, population[:count]))
                 population = population[count:]
             else:
                 futures.append(call_distributed.remote(method, count))
@@ -104,7 +104,7 @@ class Metaheuristic(ABC):
     
 
     @abstractmethod
-    def iterate(self, num_solutions:int, solutions: List[Solution]) -> None:
+    def iterate(self, solutions: List[Solution]) -> None:
         """
         Execute one iteration of the metaheuristic.
         Must update self.current_solutions and self.best_solution if better found
@@ -121,7 +121,7 @@ class Metaheuristic(ABC):
             
             population, best_individual = self._launch_distributed_method(self.iterate)
         else:
-            population, best_individual = self.iterate(len(self.current_solutions), self.current_solutions)
+            population, best_individual = self.iterate(self.current_solutions)
 
         self.current_solutions = population
         self.best_solution = best_individual
