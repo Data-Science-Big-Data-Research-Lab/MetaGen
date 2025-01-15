@@ -107,7 +107,6 @@ class Metaheuristic(ABC):
     def iterate(self, solutions: List[Solution]) -> Tuple[List[Solution], Solution]:
         """
         Execute one iteration of the metaheuristic.
-        Must update self.current_solutions and self.best_solution if better found
         """
         pass
 

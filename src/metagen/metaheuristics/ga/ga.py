@@ -50,13 +50,13 @@ class GA(Metaheuristic):
     :vartype fitness_func: Callable[[Solution], float]"""
 
     def __init__(self, domain: Domain,
-                 fitness_func: Callable[[GASolution], float],
+                 fitness_function: Callable[[GASolution], float],
                  distributed: bool = False,
                  population_size: int = 10,
                  mutation_rate: float = 0.1,
                  max_iterations: int = 50,
                  log_dir: str = "logs/GA") -> None:
-        super().__init__(domain, fitness_func, population_size, distributed, log_dir)
+        super().__init__(domain, fitness_function, population_size, distributed, log_dir)
         self.mutation_rate = mutation_rate
         self.max_iterations = max_iterations
 

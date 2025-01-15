@@ -22,27 +22,27 @@ import random
 import math
 import random
 from copy import deepcopy
-from typing import Callable
+from typing import Callable, Tuple, List
 from metagen.metaheuristics.base import Metaheuristic
 
 
-def calculate_exploration_rate(best_solution_fitness: float, best_neighbor_fitness: float,
-                                   initial_temp: float) -> float:
-        """
-        Calculate the exploration rate for simulated annealing.
+def calculate_exploration_rate(best_solution_fitness: float, neighbor_fitness: float,
+                               initial_temp: float) -> float:
+    """
+    Calculate the exploration rate for simulated annealing.
 
-        Args:
-            best_solution_fitness (float): Fitness of the best solution.
-            best_neighbor_fitness (float): Fitness of the best neighbor.
-            initial_temp (float): Current temperature.
+    Args:
+        best_solution_fitness (float): Fitness of the best solution.
+        neighbor_fitness (float): Fitness of the best neighbor.
+        initial_temp (float): Current temperature.
 
-        Returns:
-            float: The exploration rate.
-        """
-        MAX_EXPONENT = 700  # This is a safe value to avoid overflow in most cases
-        exponent_value = (best_solution_fitness - best_neighbor_fitness) / initial_temp
-        exponent_value = max(min(exponent_value, MAX_EXPONENT), -MAX_EXPONENT)
-        return math.exp(exponent_value)
+    Returns:
+        float: The exploration rate.
+    """
+    MAX_EXPONENT = 700  # This is a safe value to avoid overflow in most cases
+    exponent_value = (best_solution_fitness - neighbor_fitness) / initial_temp
+    exponent_value = max(min(exponent_value, MAX_EXPONENT), -MAX_EXPONENT)
+    return math.exp(exponent_value)
 
 
 
@@ -101,34 +101,44 @@ class SA(Metaheuristic):
         self.cooling_rate = cooling_rate
         self.neighbor_population_size = neighbor_population_size
 
-    def initialize(self) -> None:
+    def initialize(self, num_solutions=10) -> Tuple[List[Solution], Solution]:
         """
         Initialize the starting solution for simulated annealing.
         """
         solution_type: type[Solution] = self.domain.get_connector().get_type(self.domain.get_core())
-        self.best_solution = solution_type(self.domain, connector=self.domain.get_connector())
-        self.best_solution.evaluate(self.fitness_function)
-        self.current_solutions = [self.best_solution]
+        best_solution = solution_type(self.domain, connector=self.domain.get_connector())
+        best_solution.evaluate(self.fitness_function)
+        current_solutions = [best_solution]
+        return current_solutions, best_solution
 
-    def iterate(self) -> None:
+    def iterate(self, solutions: List[Solution]) -> Tuple[List[Solution], Solution]:
         """
         Perform one iteration of the simulated annealing algorithm.
         """
 
-        best_neighbor = deepcopy(self.best_solution)
-        best_neighbor.mutate(alteration_limit=self.alteration_limit)
-        best_neighbor.evaluate(self.fitness_function)
+        neighbor = deepcopy(solutions[0])
+        neighbor.mutate(alteration_limit=self.alteration_limit)
+        neighbor.evaluate(self.fitness_function)
+
+        current_fitness = solutions[0].get_fitness()
+        neighbor_fitness = neighbor.get_fitness()
+        delta = current_fitness - neighbor_fitness
 
         # Acceptance criteria for simulated annealing
-        exploration_rate = calculate_exploration_rate(self.best_solution.fitness, best_neighbor.fitness,
-                                                                    self.initial_temp)
-        if best_neighbor < self.best_solution or exploration_rate > random.random():
-            self.best_solution = deepcopy(best_neighbor)
+        exploration_rate = calculate_exploration_rate(self.best_solution.fitness, neighbor.fitness,
+                                                      self.initial_temp)
 
-        self.current_solutions = [self.best_solution]
+        partial_best_solution = deepcopy(self.best_solution)
+
+        if delta < 0 or exploration_rate > random.random():
+            solutions[0] = deepcopy(neighbor)
+            if current_fitness > neighbor_fitness:
+                partial_best_solution = deepcopy(neighbor)
 
         # Update temperature
         self.initial_temp *= self.cooling_rate
+
+        return solutions, partial_best_solution
 
     def stopping_criterion(self) -> bool:
         """
