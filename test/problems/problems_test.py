@@ -66,7 +66,7 @@ def test_ga(example: str, iterations: int, seed: int) -> None:
         initial_best = float('inf') # Cannot initialize in the distributed case
     else:
         algorithm._initialize()
-        initial_best = algorithm.best_solution.fitness if algorithm.best_solution else float('inf')
+        initial_best = algorithm.partial_best_solution.fitness if algorithm.partial_best_solution else float('inf')
 
     random.seed(seed)
     np.random.seed(seed)
@@ -139,7 +139,7 @@ def test_rs(example: str, iterations: int, seed: int) -> None:
         initial_best = float('inf') # Cannot initialize in the distributed case
     else:
         algorithm._initialize()
-        initial_best = algorithm.best_solution.fitness if algorithm.best_solution else float('inf')
+        initial_best = algorithm.partial_best_solution.fitness if algorithm.partial_best_solution else float('inf')
 
     random.seed(seed)
     np.random.seed(seed)
@@ -169,7 +169,7 @@ def test_ts(example: str, iterations: int, seed: int) -> None:
         initial_best = float('inf') # Cannot initialize in the distributed case
     else:
         algorithm._initialize()
-        initial_best = algorithm.best_solution.fitness if algorithm.best_solution else float('inf')
+        initial_best = algorithm.partial_best_solution.fitness if algorithm.partial_best_solution else float('inf')
 
     random.seed(seed)
     np.random.seed(seed)

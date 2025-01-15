@@ -10,7 +10,7 @@ from sklearn.linear_model import SGDRegressor
 from sklearn.model_selection import cross_val_score
 
 from metagen.framework import Domain, Solution
-from metagen.metaheuristics.sa.sa import DistributedSA, SA
+from metagen.metaheuristics.sa.sa import SA
 
 
 
