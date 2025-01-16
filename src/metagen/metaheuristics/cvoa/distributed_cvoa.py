@@ -28,7 +28,7 @@ from metagen.framework import Domain
 from metagen.framework.solution import Solution
 from metagen.framework.solution.bounds import SolutionClass
 from metagen.metaheuristics.base import Metaheuristic
-from metagen.metaheuristics.distributed_suite import IndividualState, PandemicState, StrainProperties, \
+from metagen.metaheuristics.distributed_tools import IndividualState, PandemicState, StrainProperties, \
     distributed_cvoa_new_infected_population
 
 
