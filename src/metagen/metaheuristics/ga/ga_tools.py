@@ -17,11 +17,12 @@
 from __future__ import annotations
 
 import random
+from collections.abc import Callable
 from copy import copy
-from typing import Tuple
+from typing import Tuple, List
 
 import metagen.framework.solution as types
-from metagen.framework import BaseConnector, Solution
+from metagen.framework import BaseConnector, Solution, Domain
 from metagen.framework.domain import (BaseDefinition, CategoricalDefinition,
                                       DynamicStructureDefinition,
                                       IntegerDefinition, RealDefinition,
@@ -81,10 +82,10 @@ class GASolution(Solution):
         basic_variables = []
 
         for variable_name, variable_value in self.get_variables().items():
-            
+
             if isinstance(variable_value, GAStructure):
                 variable_value = (variable_value, "static")
-    
+
             if self.connector.get_builtin(variable_value) in [int, float, str]:
                 basic_variables.append(variable_name)
 
@@ -142,3 +143,47 @@ class GAConnector(BaseConnector):
         self.register(RealDefinition, types.Real, float)
         self.register(CategoricalDefinition, types.Categorical, str)
         self.register(StaticStructureDefinition, (GAStructure, "static"), list)
+
+
+
+
+
+def yield_two_children(parents: Tuple[GASolution, GASolution], mutation_rate: float, fitness_function:Callable[[GASolution], float]) -> Tuple[GASolution, GASolution]:
+
+    child1, child2 = parents[0].crossover(parents[1])
+
+    if random.uniform(0, 1) <= mutation_rate:
+        child1.mutate()
+    if random.uniform(0, 1) <= mutation_rate:
+        child2.mutate()
+
+    child1.evaluate(fitness_function)
+    child2.evaluate(fitness_function)
+
+    return child1, child2
+
+def yield_ga_population(num_solutions: int, domain: Domain, fitness_function: Callable[[GASolution], float]) -> Tuple[List[GASolution], GASolution]:
+
+    solution_type: type[GASolution] = domain.get_connector().get_type(domain.get_core())
+    best_solution = None
+    current_solutions: List[GASolution] = []
+    for _ in range(num_solutions):
+        individual = solution_type(domain, connector=domain.get_connector())
+        individual.evaluate(fitness_function)
+        current_solutions.append(individual)
+        if best_solution is None or individual.get_fitness() < best_solution.get_fitness():
+            best_solution = individual
+
+    return current_solutions, best_solution
+
+
+def replace_wost(child:GASolution, solutions:List[GASolution]) -> None:
+    """
+    Replace the solution in the population with the worst fitness.
+
+    :return: The selected parent solutions.
+    :rtype: List[Solution]
+    """
+    worst_solution = solutions[-1]
+    if worst_solution.fitness > child.fitness:
+        solutions[-1] = child

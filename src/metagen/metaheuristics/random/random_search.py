@@ -90,13 +90,3 @@ class RandomSearch(Metaheuristic):
 
     def stopping_criterion(self) -> bool:
         return self.current_iteration >= self.max_iterations
-
-    def post_iteration(self) -> None:
-        """
-        Additional processing after each generation.
-        """
-        super().post_iteration()
-        if self.logger:
-            self.logger.writer.add_scalar('RS/Population Size',
-                                len(self.current_solutions),
-                                self.current_iteration)
