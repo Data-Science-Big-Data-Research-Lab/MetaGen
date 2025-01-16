@@ -16,7 +16,7 @@
 """
 
 from metagen.framework import Domain
-from .ga_types import GASolution
+from .ga_tools import GASolution, yield_two_children, yield_ga_population
 from metagen.metaheuristics.base import Metaheuristic
 from typing import Callable, List, Tuple
 import random
@@ -62,44 +62,20 @@ class GA(Metaheuristic):
 
     def initialize(self, num_solutions=10) -> Tuple[List[GASolution], GASolution]:
         """Initialize the population"""
-        solution_type: type[GASolution] = self.domain.get_connector().get_type(self.domain.get_core())
-        best_solution = None
-        current_solutions: List[GASolution] = []
-        for _ in range(num_solutions):
-            individual = solution_type(self.domain, connector=self.domain.get_connector())
-            individual.evaluate(self.fitness_function)
-            current_solutions.append(individual)
-            if best_solution is None or individual.get_fitness() < best_solution.get_fitness():
-                best_solution = individual
-
+        current_solutions, best_solution = yield_ga_population(num_solutions, self.domain, self.fitness_function)
         return current_solutions, best_solution
-    
-    def yield_two_children(self, parents: Tuple[GASolution, GASolution]) -> Tuple['GASolution', 'GASolution']:
-        
-        child1, child2 = parents[0].crossover(parents[1])
-
-        if random.uniform(0, 1) <= self.mutation_rate:
-            child1.mutate()
-        if random.uniform(0, 1) <= self.mutation_rate:
-            child2.mutate()
-
-        child1.evaluate(self.fitness_function)
-        child2.evaluate(self.fitness_function)
-
-        return child1, child2
 
     def iterate(self, solutions: List[GASolution]) -> Tuple[List[GASolution], GASolution]:
         """Execute one generation of the genetic algorithm"""
-        
-        parents = self.select_parents()
+
+        sorted_population = sorted(solutions, key=lambda sol: sol.get_fitness())
+        parents = tuple(sorted_population[:2])
         num_solutions = len(solutions)
         best_solution = deepcopy(self.best_solution)
-        current_solutions = []
-
         current_solutions = [deepcopy(parents[0]), deepcopy(parents[1])]
 
-        for _ in range(num_solutions//2):
-            child1, child2 = self.yield_two_children(parents)
+        for _ in range(num_solutions // 2):
+            child1, child2 = yield_two_children(parents, self.mutation_rate, self.fitness_function)
             current_solutions.extend([child1, child2])
             if best_solution is None or child1 < best_solution:
                 best_solution = child1
@@ -108,24 +84,8 @@ class GA(Metaheuristic):
 
         return current_solutions, best_solution
 
-    def select_parents(self) -> Tuple[GASolution, GASolution]:
-        """Select the top two parents based on fitness"""
-        sorted_population = sorted(self.current_solutions, key=lambda sol: sol.get_fitness())
-        return tuple(sorted_population[:2])
-
     def stopping_criterion(self) -> bool:
         """
         Stopping criterion. 
         """
         return self.current_iteration >= self.max_iterations
-
-    def post_iteration(self) -> None:
-        """
-        Additional processing after each generation.
-        """
-        super().post_iteration()
-        if self.logger is not None: 
-            # Add GA-specific logging if needed
-            self.logger.writer.add_scalar('GA/Population Size', 
-                              len(self.current_solutions), 
-                              self.current_iteration)

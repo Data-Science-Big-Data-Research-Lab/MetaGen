@@ -2,6 +2,8 @@ from collections import deque
 from metagen.framework import Domain, Solution
 from collections.abc import Callable
 from typing import List, Tuple
+
+from metagen.logging.metagen_logger import get_metagen_logger
 from metagen.metaheuristics.base import Metaheuristic
 from copy import deepcopy
 
@@ -59,7 +61,6 @@ class TabuSearch(Metaheuristic):
 
         # Skip iteration if no valid neighbors
         if not current_solutions:
-            print(f'[{self.current_iteration}] Skipped')
             self.current_iteration += 1
             self.skip_iteration()
 
@@ -71,15 +72,5 @@ class TabuSearch(Metaheuristic):
 
     def stopping_criterion(self) -> bool:
         return self.current_iteration >= self.max_iterations
-
-    def post_iteration(self) -> None:
-        """
-        Additional processing after each generation.
-        """
-        super().post_iteration()
-        if self.logger:
-            self.logger.writer.add_scalar('RS/Population Size',
-                                len(self.current_solutions),
-                                self.current_iteration)
 
 

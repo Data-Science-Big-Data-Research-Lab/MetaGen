@@ -149,15 +149,5 @@ class SA(Metaheuristic):
         """
         return self.current_iteration >= self.n_iterations
 
-    def post_iteration(self) -> None:
-        """
-        Additional processing after each generation.
-        """
-        super().post_iteration()
-        if self.logger:
-            self.logger.writer.add_scalar('DSA/Population Size',
-                                len(self.current_solutions),
-                                self.current_iteration)
-
 
 
