@@ -1,13 +1,14 @@
-from typing import Callable, Tuple
+from typing import Callable, Tuple, List
 
 import ray
 
 from metagen.framework import Domain
 from metagen.metaheuristics.base import Metaheuristic
-from metagen.metaheuristics.distributed_suite import ga_local_yield_and_evaluate_individuals, \
+from metagen.metaheuristics.distributed_tools import ga_local_yield_and_evaluate_individuals, \
     ga_local_offspring_individuals, mm_local_offspring_individuals, ga_distributed_base_population, \
     ga_distributed_offspring, mm_distributed_offspring
 from metagen.metaheuristics.ga import GASolution
+from metagen.metaheuristics.ga.ga_tools import yield_ga_population
 
 
 class Memetic(Metaheuristic):
@@ -27,14 +28,16 @@ class Memetic(Metaheuristic):
         self.neighbor_population_size = neighbor_population_size
         self.alteration_limit = alteration_limit
 
-    def initialize(self) -> None:
+    def initialize(self, num_solutions=10) -> Tuple[List[GASolution], GASolution]:
         """Initialize the population"""
-        self.current_solutions, self.best_solution = ga_local_yield_and_evaluate_individuals(self.population_size,
-                                                                                             self.domain,
-                                                                                             self.fitness_function)
+        current_solutions, best_solution = yield_ga_population(num_solutions, self.domain, self.fitness_function)
+        return current_solutions, best_solution
 
-    def iterate(self) -> None:
+    def iterate(self, solutions: List[GASolution]) -> Tuple[List[GASolution], GASolution]:
         """Execute one generation of the genetic algorithm"""
+
+        sorted_population = sorted(self.current_solutions, key=lambda sol: sol.get_fitness())
+        parents = tuple(sorted_population[:2])
 
         children, best_child = mm_local_offspring_individuals(self.select_parents(),
                                                               self.population_size // 2, self.mutation_rate,
@@ -46,10 +49,6 @@ class Memetic(Metaheuristic):
             self.best_solution = best_child
             self.current_solutions = children
 
-    def select_parents(self) -> Tuple[GASolution, GASolution]:
-        """Select the top two parents based on fitness"""
-        sorted_population = sorted(self.current_solutions, key=lambda sol: sol.get_fitness())
-        return tuple(sorted_population[:2])
 
     def stopping_criterion(self) -> bool:
         """
@@ -57,15 +56,16 @@ class Memetic(Metaheuristic):
         """
         return self.current_iteration >= self.max_generations
 
-    def post_iteration(self) -> None:
-        """
-        Additional processing after each generation.
-        """
-        super().post_iteration()
-        print(f'[{self.current_iteration}] {self.best_solution}')
-        self.writer.add_scalar('MM/Population Size',
-                               len(self.current_solutions),
-                               self.current_iteration)
+
+
+
+
+
+
+
+
+
+
 
 class DistributedMemetic(Metaheuristic):
     """

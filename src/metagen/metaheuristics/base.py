@@ -30,7 +30,7 @@ if is_package_installed("tensorboard"):
 
 if IS_RAY_INSTALLED:
     import ray
-    from .distributed_suite import assign_load_equally, call_distributed
+    from .distributed_tools import assign_load_equally, call_distributed
 
 class Metaheuristic(ABC):
     """

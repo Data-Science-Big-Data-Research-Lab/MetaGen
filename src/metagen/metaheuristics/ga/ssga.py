@@ -22,7 +22,7 @@ import ray
 from metagen.framework import Domain
 from .ga_tools import GASolution, yield_ga_population, replace_wost
 from metagen.metaheuristics.base import Metaheuristic
-from ..distributed_suite import ga_local_yield_and_evaluate_individuals, yield_two_children, \
+from ..distributed_tools import ga_local_yield_and_evaluate_individuals, yield_two_children, \
     ssga_local_sorted_yield_and_evaluate_individuals, distributed_sorted_base_population, distributed_sort
 
 
