@@ -60,9 +60,16 @@ class Metaheuristic(ABC):
         distribution = assign_load_equally(
             len(self.current_solutions) if len(self.current_solutions) > 0 else self.population_size)
         population = deepcopy(self.current_solutions)
+        population_size = len(population)
         futures = []
-        get_metagen_logger().debug(
-            f"[{self.current_iteration}] {ray.available_resources().get('CPU', 0)} CPUs -- {distribution}")
+
+        if population_size > 0:
+            get_metagen_logger().debug(
+                f"[{self.current_iteration}] Distributing the iteration with {ray.available_resources().get('CPU', 0)} CPUs -- {distribution}")
+        else:
+            get_metagen_logger().debug(
+                f"Distributing the initialization with {ray.available_resources().get('CPU', 0)} CPUs -- {distribution}")
+
         for count in distribution:
 
             if len(population) > 0:
@@ -161,6 +168,7 @@ class Metaheuristic(ABC):
         Callback executed after each iteration.
         Override this method to add custom post-iteration processing.
         """
+        get_metagen_logger().debug(f'[ITERATION {self.current_iteration}] POPULATION ({len(self.current_solutions)}): {self.current_solutions}')
         get_metagen_logger().info(f'[ITERATION {self.current_iteration}] BEST SOLUTION: {self.best_solution}')
         if self.logger: 
             # Log iteration metrics
