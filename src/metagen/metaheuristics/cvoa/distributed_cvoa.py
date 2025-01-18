@@ -233,7 +233,7 @@ class DistributedCVOA(Metaheuristic):
             # If the current individual is common the number of infected ones will be in
             # (0, MAX_SUPERSPREADING_RATE)
             n_infected = random.randint(0, self.strain_properties.spreading_rate)
-            # n_infected = random.randint(0, self.__MAX_SUPERSPREADING_RATE)
+            # n_infected = rs.randint(0, self.__MAX_SUPERSPREADING_RATE)
 
         # ** 2. Determine the travel distance. **
         if random.random() < self.strain_properties.p_travel:

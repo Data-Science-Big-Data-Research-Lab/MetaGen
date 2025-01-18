@@ -1,11 +1,13 @@
+import logging
+
+from metagen.logging.metagen_logger import get_metagen_logger, metagen_logger_setup
 from metagen.metaheuristics.ga import GAConnector
-from metagen.metaheuristics.ga.ga import GA, DistributedGA
 from metagen.framework import Domain, Solution
 from sklearn.datasets import make_regression
 from sklearn.linear_model import SGDRegressor
 from sklearn.model_selection import cross_val_score
 
-from metagen.metaheuristics.memetic.memetic import Memetic, DistributedMemetic
+from metagen.metaheuristics.mm.memetic import Memetic
 
 # Synthetic datasets
 X_regression, y_regression = make_regression(n_samples=100, n_features=4,
@@ -49,10 +51,14 @@ def p1_fitness(individual: Solution) -> float:
     return x + 5
 
 if __name__ == "__main__":
-    print('Running Memetic')
-    # mm: Memetic = Memetic(p1_domain, p1_fitness)
-    # mm: Memetic = Memetic(sgd_regressor_definition, sgd_regressor_fitness)
-    mm: DistributedMemetic = DistributedMemetic(p1_domain, p1_fitness, population_size=20, max_generations=10, neighbor_population_size=20)
-    # mm: DistributedMemetic = DistributedMemetic(sgd_regressor_definition, sgd_regressor_fitness, population_size=10, max_generations=5, neighbor_population_size=5)
+    logging.Logger("metagen_logger")
+    metagen_logger_setup(logging.DEBUG)
+
+    get_metagen_logger().info('Running Memetic')
+
+    mm: Memetic = Memetic(p1_domain, p1_fitness, population_size=20, max_generations=10, neighbor_population_size=20)
+    # mm: Memetic = Memetic(sgd_regressor_definition, sgd_regressor_fitness, population_size=10, max_generations=5, neighbor_population_size=5)
+
     solution: Solution = mm.run()
-    print(solution)
+
+    get_metagen_logger().info(solution)

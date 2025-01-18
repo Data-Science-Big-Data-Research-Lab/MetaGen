@@ -75,7 +75,7 @@ html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']
 html_css_files = ['css/custom.css']
 
-autodoc_mock_imports = ["sklearn","random"]
+autodoc_mock_imports = ["sklearn","rs"]
 autodoc_member_order = 'bysource'
 add_module_names = False
 autoclass_content = 'both'

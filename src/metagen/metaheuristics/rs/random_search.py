@@ -14,17 +14,19 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
+import metagen.framework
 from metagen.framework import Domain, Solution
+from metagen.framework.solution.tools import yield_potential_solutions
 from metagen.metaheuristics.base import Metaheuristic
-from typing import List, Tuple
+from typing import List, Tuple, Callable
 from copy import deepcopy
 
+
 class RandomSearch(Metaheuristic):
-
     """
-    RandomSearch is a class for performing a random search optimization algorithm.
+    RandomSearch is a class for performing a rs search optimization algorithm.
 
-    It generates and evaluates random solutions in a search space to find an optimal solution.
+    It generates and evaluates rs solutions in a search space to find an optimal solution.
 
     :param domain: The search domain that defines the solution space.
     :type domain: Domain
@@ -52,30 +54,17 @@ class RandomSearch(Metaheuristic):
         optimal_solution = search.run()
 
     """
-
-    def __init__(self, domain: Domain, fitness_function, log_dir: str = "logs/RS",
-                 population_size: int = 5, max_iterations: int = 20, **kargs) -> None:
-        super().__init__(domain, fitness_function, population_size=population_size, log_dir=log_dir, **kargs)
+    def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float], population_size = 1, max_iterations: int = 20, distributed = False, log_dir: str = "logs/RS") -> None:
+        super().__init__(domain, fitness_function, population_size, distributed, log_dir)
         self.max_iterations = max_iterations
 
     def initialize(self, num_solutions=10) -> Tuple[List[Solution], Solution]:
-        """Initialize random solutions"""
-
-        solution_type: type[Solution] = self.domain.get_connector().get_type(self.domain.get_core())
-        best_solution = None 
-        current_solutions = []
-        for _ in range(num_solutions):
-            individual = solution_type(self.domain, connector=self.domain.get_connector())
-            individual.evaluate(self.fitness_function)
-            current_solutions.append(individual)
-            if best_solution is None or individual.get_fitness() < best_solution.get_fitness():
-                best_solution = individual
-        
+        """Initialize rs solutions"""
+        current_solutions, best_solution = yield_potential_solutions(self.domain, self.fitness_function, num_solutions)
         return current_solutions, best_solution
 
-
     def iterate(self, solutions: List[Solution]) -> Tuple[List[Solution], Solution]:
-        
+
         best_solution = deepcopy(self.best_solution)
         current_solutions = [best_solution]
 
@@ -85,7 +74,7 @@ class RandomSearch(Metaheuristic):
             current_solutions.append(individual)
             if individual.get_fitness() < best_solution.get_fitness():
                 best_solution = individual
-        
+
         return current_solutions, best_solution
 
     def stopping_criterion(self) -> bool:

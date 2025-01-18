@@ -1,11 +1,15 @@
+import logging
+
+import ray
 
 from metagen.framework import Domain, Solution
 from sklearn.datasets import make_regression
 from sklearn.linear_model import SGDRegressor
 from sklearn.model_selection import cross_val_score
 
+from metagen.logging.metagen_logger import metagen_logger_setup, get_metagen_logger
 from metagen.metaheuristics.ga import GAConnector
-from metagen.metaheuristics.ga.ssga import DistributedSSGA, SSGA
+from metagen.metaheuristics.ga.ssga import SSGA
 
 # Synthetic datasets
 X_regression, y_regression = make_regression(n_samples=100, n_features=4,
@@ -50,14 +54,17 @@ def p1_fitness(individual: Solution) -> float:
     return x + 5
 
 if __name__ == "__main__":
+    logging.Logger("metagen_logger")
+    metagen_logger_setup(logging.INFO)
 
-    print('SSGA')
-    # ssga: SSGA = SSGA(p1_domain, p1_fitness)
-    # ssga: SSGA = SSGA(sgd_regressor_definition, sgd_regressor_fitness)
+    get_metagen_logger().info('Running Steady State Genetic Algorithm')
 
-    # print('DistributedSSGA')
-    # ssga: DistributedSSGA = DistributedSSGA(p1_domain, p1_fitness)
-    ssga: DistributedSSGA = DistributedSSGA(sgd_regressor_definition, sgd_regressor_fitness)
+    # ssga: SSGA = SSGA(p1_domain, p1_fitness, population_size=20, max_iterations=10)
+    # ssga: SSGA = SSGA(p1_domain, p1_fitness, population_size=20, max_iterations=10, distributed=True)
+
+    # ssga: SSGA = SSGA(sgd_regressor_definition, sgd_regressor_fitness, population_size=20, max_iterations=10)
+    ray.init(num_cpus=4)
+    ssga: SSGA = SSGA(sgd_regressor_definition, sgd_regressor_fitness, population_size=20, max_iterations=10, distributed=True)
 
     solution: Solution = ssga.run()
     print(solution)

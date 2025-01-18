@@ -17,9 +17,9 @@
 from metagen.metaheuristics.cvoa import CVOA, cvoa_launcher
 from metagen.metaheuristics.ga import GA, SSGA, GAConnector
 from metagen.metaheuristics.sa import SA
-from metagen.metaheuristics.tabu import TabuSearch
+from metagen.metaheuristics.ts import TabuSearch
 
-from metagen.metaheuristics.random import RandomSearch
+from metagen.metaheuristics.rs import RandomSearch
 
 __all__ = ["RandomSearch", "GA", "CVOA", "GA", "SSGA", "GAConnector", "SA", "cvoa_launcher", "TabuSearch"]
 

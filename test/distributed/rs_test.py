@@ -1,7 +1,7 @@
 import logging
 
 from metagen.logging.metagen_logger import metagen_logger_setup, get_metagen_logger
-from metagen.metaheuristics.random.random_search import RandomSearch
+from metagen.metaheuristics.rs.random_search import RandomSearch
 from metagen.framework import Domain, Solution
 from sklearn.datasets import make_classification, make_regression
 from sklearn.linear_model import SGDRegressor

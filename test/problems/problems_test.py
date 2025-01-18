@@ -31,8 +31,8 @@ resources_path = pathlib.Path(__file__).parents[0].resolve().as_posix() + "/reso
 """@csv_params(data_file=resources_path+"/examples.csv", id_col="ID#",
             data_casts={"iterations": int, "seed": int})
 def test_cvoa(example: str, iterations: int, seed: int) -> None:
-    random.seed(seed)
-    np.random.seed(seed)
+    rs.seed(seed)
+    np.rs.seed(seed)
 
     problem_definition, fitness_function = problem_dispatcher(example)
     algorithm = CVOA(problem_definition, fitness_function, pandemic_duration=iterations)
@@ -41,8 +41,8 @@ def test_cvoa(example: str, iterations: int, seed: int) -> None:
     initial_best = algorithm.best_solution
     assert initial_best is not None
 
-    random.seed(seed)
-    np.random.seed(seed)
+    rs.seed(seed)
+    np.rs.seed(seed)
 
     solution = cvoa_launcher([algorithm], iterations)
     assert solution is not None
@@ -84,15 +84,15 @@ def test_ga(example: str, iterations: int, seed: int) -> None:
 @csv_params(data_file=resources_path+"/examples_ga.csv", id_col="ID#",
             data_casts={"iterations": int, "seed": int})
 def test_ssga(example: str, iterations: int, seed: int) -> None:
-    random.seed(seed)
-    np.random.seed(seed)
+    rs.seed(seed)
+    np.rs.seed(seed)
 
     problem_definition, fitness_function = problem_dispatcher(example, connector=GAConnector())
     algorithm = SSGA(problem_definition, fitness_function, n_iterations=iterations)
     algorithm.initialize()
 
-    random.seed(seed)
-    np.random.seed(seed)
+    rs.seed(seed)
+    np.rs.seed(seed)
 
     initial_best = algorithm.best_solution
     assert initial_best is not None
@@ -105,15 +105,15 @@ def test_ssga(example: str, iterations: int, seed: int) -> None:
 @csv_params(data_file=resources_path+"/examples.csv", id_col="ID#",
             data_casts={"iterations": int, "seed": int})
 def test_sa(example: str, iterations: int, seed: int) -> None:
-    random.seed(seed)
-    np.random.seed(seed)
+    rs.seed(seed)
+    np.rs.seed(seed)
 
     problem_definition, fitness_function = problem_dispatcher(example)
     algorithm = SA(problem_definition, fitness_function, n_iterations=iterations)
     algorithm.initialize()
 
-    random.seed(seed)
-    np.random.seed(seed)
+    rs.seed(seed)
+    np.rs.seed(seed)
 
     initial_best = algorithm.best_solution
     assert initial_best is not None

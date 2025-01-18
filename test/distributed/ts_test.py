@@ -1,10 +1,14 @@
+import logging
+
+import ray
+
+from metagen.logging.metagen_logger import metagen_logger_setup, get_metagen_logger
 from metagen.metaheuristics import TabuSearch
 from metagen.framework import Domain, Solution
 from sklearn.datasets import make_regression
 from sklearn.linear_model import SGDRegressor
 from sklearn.model_selection import cross_val_score
 
-from metagen.metaheuristics.tabu.tabu import DistributedTabuSearch
 
 # Synthetic datasets
 X_regression, y_regression = make_regression(n_samples=100, n_features=4,
@@ -48,11 +52,18 @@ def p1_fitness(individual: Solution) -> float:
     return x + 5
 
 if __name__ == "__main__":
-    print('Running Tabu Search')
-    # ts: TabuSearch = TabuSearch(p1_domain, p1_fitness, max_iterations=10, neighbor_population_size=5, tabu_size=5, alteration_limit=1.0)
-    # ts: TabuSearch = TabuSearch(sgd_regressor_definition, sgd_regressor_fitness, max_iterations=10, neighbor_population_size=20, tabu_size=5, alteration_limit=5.5)
-    ts: DistributedTabuSearch = DistributedTabuSearch(p1_domain, p1_fitness, max_iterations=10, neighbor_population_size=20, tabu_size=5, alteration_limit=1.0)
-    # ts: DistributedTabuSearch = DistributedTabuSearch(sgd_regressor_definition, sgd_regressor_fitness, max_iterations=10, neighbor_population_size=20, tabu_size=5, alteration_limit=5.5)
+    logging.Logger("metagen_logger")
+    metagen_logger_setup(logging.DEBUG)
 
-    solution: Solution = ts.run()
+    get_metagen_logger().info('Running Tabu Search')
+
+    experiment: TabuSearch = TabuSearch(p1_domain, p1_fitness, population_size=5, tabu_size=40, max_iterations=40)
+
+
+    # experiment: TabuSearch = TabuSearch(p1_domain, p1_fitness, population_size=5, tabu_size=10, max_iterations=30, alteration_limit=2, distributed=True)
+    # experiment: TabuSearch = TabuSearch(sgd_regressor_definition, sgd_regressor_fitness, population_size=20, tabu_size=40, max_iterations=40)
+    # ray.init(num_cpus=4)
+    # experiment: TabuSearch = TabuSearch(sgd_regressor_definition, sgd_regressor_fitness, population_size=5, tabu_size=10, max_iterations=30, alteration_limit=2, distributed=True)
+
+    solution: Solution = experiment.run()
     print(solution)
