@@ -21,7 +21,7 @@ from sklearn.model_selection import cross_val_score
 from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
 from sklearn.svm import SVC, SVR
 
-from metagen.framework import Domain
+from metagen.framework import Domain, Solution
 from metagen.framework.connector import BaseConnector
 # Synthetic datasets
 X_regression, y_regression = make_regression(n_samples=100, n_features=4,
@@ -99,7 +99,7 @@ def get_sgd_regressor_domain(connector = BaseConnector()) -> Domain:
     return domain
 
 
-def random_forest_classifier_fitness(individual):
+def random_forest_classifier_fitness(individual:Solution) -> float:
     max_depth = individual["max_depth"]
     n_estimators = individual["n_estimators"]
     criterion = individual["criterion"]
@@ -114,7 +114,7 @@ def random_forest_classifier_fitness(individual):
     return -scores.mean()
 
 # Random Forest regressor fitness function
-def random_forest_regressor_fitness(individual):
+def random_forest_regressor_fitness(individual:Solution) -> float:
     max_depth = individual["max_depth"]
     n_estimators = individual["n_estimators"]
     criterion = individual["criterion"]
@@ -129,7 +129,7 @@ def random_forest_regressor_fitness(individual):
 
 
 # KNN classifier fitness function
-def knn_classifier_fitness(individual):
+def knn_classifier_fitness(individual:Solution) -> float:
     n_neighbors = individual["n_neighbors"]
     weights = individual["weights"]
     p = individual["p"]
@@ -143,7 +143,7 @@ def knn_classifier_fitness(individual):
     return -scores.mean()
 
 # KNN regressor fitness function
-def knn_regressor_fitness(individual):
+def knn_regressor_fitness(individual:Solution) -> float:
     n_neighbors = individual["n_neighbors"]
     weights = individual["weights"]
     p = individual["p"]
@@ -157,7 +157,7 @@ def knn_regressor_fitness(individual):
     return -scores.mean()
 
 # SVM classifier fitness function
-def support_vector_classifier_fitness(individual):
+def support_vector_classifier_fitness(individual:Solution) -> float:
     c = individual["C"]
     kernel = individual["kernel"]
     degree = individual["degree"]
@@ -169,7 +169,7 @@ def support_vector_classifier_fitness(individual):
     return -scores.mean()
 
 # SVM regressor fitness function
-def support_vector_regressor_fitness(individual):
+def support_vector_regressor_fitness(individual:Solution) -> float:
     c = individual["C"]
     kernel = individual["kernel"]
     degree = individual["degree"]
@@ -182,7 +182,7 @@ def support_vector_regressor_fitness(individual):
 
 
 # SGD classifier fitness function
-def sgd_classifier_fitness(individual):
+def sgd_classifier_fitness(individual:Solution) -> float:
     loss = individual["loss"]
     penalty = individual["penalty"]
     alpha = individual["alpha"]
@@ -198,7 +198,7 @@ def sgd_classifier_fitness(individual):
     return -scores.mean()
 
 # SGD regressor fitness function
-def sgd_regressor_fitness(individual):
+def sgd_regressor_fitness(individual:Solution) -> float:
     loss = individual["loss"]
     penalty = individual["penalty"]
     alpha = individual["alpha"]
