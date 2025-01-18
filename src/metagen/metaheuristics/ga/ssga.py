@@ -14,16 +14,15 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
+import heapq
 from collections.abc import Callable
-from typing import List, Tuple
+from copy import deepcopy
+from typing import List, Tuple, cast
 
-import ray
-
-from metagen.framework import Domain
-from .ga_tools import GASolution, yield_ga_population, replace_wost
+from metagen.framework import Domain, Solution
+from .ga_tools import GASolution, yield_ga_population, yield_two_children
 from metagen.metaheuristics.base import Metaheuristic
-from ..distributed_tools import ga_local_yield_and_evaluate_individuals, yield_two_children, \
-    ssga_local_sorted_yield_and_evaluate_individuals, distributed_sorted_base_population, distributed_sort
+from ...framework.solution.tools import yield_potential_solutions
 
 
 class SSGA(Metaheuristic):
@@ -52,40 +51,40 @@ class SSGA(Metaheuristic):
     :ivar fitness_func: The fitness function used to evaluate solutions.
     :vartype fitness_func: Callable[[Solution], float]"""
 
-    def __init__(self, domain: Domain, fitness_function: Callable[[GASolution], float], population_size: int = 10,
-                 mutation_rate: float = 0.1, n_iterations: int = 20, log_dir: str = "logs/SSGA") -> None:
-        super().__init__(domain, fitness_function, log_dir=log_dir)
-        self.population_size: int = population_size
-        self.mutation_rate: float = mutation_rate
-        self.n_iterations: int = n_iterations
+    def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float], population_size: int = 10,
+                 distributed: bool = False, log_dir: str = "logs/SSGA", mutation_rate: float = 0.1,
+                 max_iterations: int = 50):
+        super().__init__(domain, fitness_function, population_size, distributed, log_dir)
+        self.mutation_rate = mutation_rate
+        self.max_iterations = max_iterations
 
-    def initialize(self, num_solutions=10) -> Tuple[List[GASolution], GASolution]:
-        """
-        Initialize the population of solutions by creating and evaluating initial solutions.
-        """
-        current_solutions, best_solution = yield_ga_population(num_solutions, self.domain, self.fitness_function)
-        current_solutions = sorted(current_solutions, key=lambda sol: sol.get_fitness())
+    def initialize(self, num_solutions=10) -> Tuple[List[Solution], Solution]:
+        current_solutions, best_solution = yield_potential_solutions(self.domain, self.fitness_function, num_solutions)
         return current_solutions, best_solution
 
-    def iterate(self, solutions: List[GASolution]) -> Tuple[List[GASolution], GASolution]:
+    def iterate(self, solutions: List[Solution]) -> Tuple[List[Solution], Solution]:
         """
         Iterate the algorithm for one generation.
         """
-        parents = tuple(solutions[:2])
+        best_parents = heapq.nsmallest(2, solutions, key=lambda sol: sol.get_fitness())
 
-        child1, child2 = yield_two_children(parents, self.mutation_rate, self.fitness_function)
+        father = cast(GASolution, best_parents[0])
+        mother = cast(GASolution, best_parents[1])
 
-        if child1 == child2:
-            self.current_iteration += 1
-            self.skip_iteration()
+        child1, child2 = yield_two_children((father,mother), self.mutation_rate, self.fitness_function)
 
-        replace_wost(child1, solutions)
-        replace_wost(child2, solutions)
+        best_solution = deepcopy(self.best_solution)
 
-        solutions = sorted(solutions, key=lambda sol: sol.get_fitnes())
-        best_solution = solutions[0]
+        if child1 != child2:
+            worst_parents = heapq.nlargest(2, solutions, key=lambda sol: sol.get_fitness())
+            candidates = [worst_parents[0], worst_parents[1], child1, child2]
+            best_two = heapq.nsmallest(2, candidates, key=lambda sol: sol.get_fitness())
+            for i, worst in enumerate(worst_parents):
+                if worst in solutions:
+                    solutions[solutions.index(worst)] = best_two[i]
+            best_solution = heapq.nsmallest(1, solutions, key=lambda sol: sol.get_fitness())[0]
 
         return solutions, best_solution
 
     def stopping_criterion(self) -> bool:
-        return self.current_iteration >= self.n_iterations
+        return self.current_iteration >= self.max_iterations

@@ -48,12 +48,14 @@ class Metaheuristic(ABC):
 
         self.domain = domain
         self.fitness_function = fitness_function
-        self.current_iteration = 0
         self.population_size = population_size
         self.distributed = distributed
+        self.logger = TensorBoardLogger(log_dir=log_dir) if is_package_installed("tensorboard") else None
+
+        self.current_iteration = 0
         self.best_solution: Optional[Solution] = None
         self.current_solutions: List[Solution] = []
-        self.logger = TensorBoardLogger(log_dir=log_dir) if is_package_installed("tensorboard") else None
+
 
 
     def _launch_distributed_method(self, method: Callable) -> Tuple[List[Solution], Solution]:
@@ -155,14 +157,6 @@ class Metaheuristic(ABC):
         """
         return False
 
-    def skip_iteration(self) -> None:
-        """
-        Callback executed when an iteration is skipped.
-        Override this method to add custom skip-iteration processing.
-        """
-        get_metagen_logger().info(f'[{self.current_iteration}] Skipped')
-        raise StopIteration("Skipping iteration")
-
     def post_iteration(self) -> None:
         """
         Callback executed after each iteration.
@@ -198,36 +192,31 @@ class Metaheuristic(ABC):
         if self.distributed and IS_RAY_INSTALLED and not ray.is_initialized():
             ray.init()
 
-        try:
-            # Pre-execution callback
-            self.pre_execution()
+        # Pre-execution callback
+        self.pre_execution()
 
-            # Initialize the algorithm
-            self._initialize()
+        # Initialize the algorithm
+        self._initialize()
 
-            # Main loop
-            while not self.stopping_criterion():
-                try:
-                    # Pre-iteration callback
-                    self.pre_iteration()
+        # Main loop
+        while not self.stopping_criterion():
+            # Pre-iteration callback
+            self.pre_iteration()
 
-                    # Execute one iteration
-                    self._iterate()
+            # Execute one iteration
+            self._iterate()
+
+            # Post-iteration callback
+            self.post_iteration()
                     
-                    # Post-iteration callback
-                    self.post_iteration()
-                    
-                    # Increment iteration counter
-                    self.current_iteration += 1
-                except StopIteration: # Skip iteration flow
-                    continue
+            # Increment iteration counter
+            self.current_iteration += 1
 
-            # Post-execution callback
-            self.post_execution()
-        except Exception as e:
-            raise e
-        finally: # Finalize Ray if necessary 
-            if self.distributed and IS_RAY_INSTALLED and ray.is_initialized():
+        # Post-execution callback
+        self.post_execution()
+
+        # Finalize Ray if necessary
+        if self.distributed and IS_RAY_INSTALLED and ray.is_initialized():
                 ray.shutdown()
 
         return deepcopy(self.best_solution)

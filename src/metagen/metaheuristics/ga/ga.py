@@ -14,13 +14,16 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
+import heapq
 
-from metagen.framework import Domain
+from metagen.framework import Domain, Solution
 from .ga_tools import GASolution, yield_two_children, yield_ga_population
 from metagen.metaheuristics.base import Metaheuristic
-from typing import Callable, List, Tuple
+from typing import Callable, List, Tuple, cast
 import random
 from copy import deepcopy
+
+from ...framework.solution.tools import yield_potential_solutions
 
 
 class GA(Metaheuristic):
@@ -49,43 +52,40 @@ class GA(Metaheuristic):
     :ivar fitness_func: The fitness function used to evaluate solutions.
     :vartype fitness_func: Callable[[Solution], float]"""
 
-    def __init__(self, domain: Domain,
-                 fitness_function: Callable[[GASolution], float],
-                 distributed: bool = False,
-                 population_size: int = 10,
-                 mutation_rate: float = 0.1,
-                 max_iterations: int = 50,
-                 log_dir: str = "logs/GA") -> None:
+    def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float], population_size: int = 10, distributed: bool = False, log_dir: str = "logs/GA", mutation_rate: float = 0.1, max_iterations: int = 50):
         super().__init__(domain, fitness_function, population_size, distributed, log_dir)
         self.mutation_rate = mutation_rate
         self.max_iterations = max_iterations
 
-    def initialize(self, num_solutions=10) -> Tuple[List[GASolution], GASolution]:
+    def initialize(self, num_solutions=10) -> Tuple[List[Solution], Solution]:
         """Initialize the population"""
-        current_solutions, best_solution = yield_ga_population(num_solutions, self.domain, self.fitness_function)
+        # current_solutions, best_solution = yield_ga_population(num_solutions, self.domain, self.fitness_function)
+        current_solutions, best_solution = yield_potential_solutions(self.domain, self.fitness_function, num_solutions)
         return current_solutions, best_solution
 
-    def iterate(self, solutions: List[GASolution]) -> Tuple[List[GASolution], GASolution]:
+    def iterate(self, solutions: List[Solution]) -> Tuple[List[Solution], Solution]:
         """Execute one generation of the genetic algorithm"""
-
-        sorted_population = sorted(solutions, key=lambda sol: sol.get_fitness())
-        parents = tuple(sorted_population[:2])
         num_solutions = len(solutions)
+        best_parents = heapq.nsmallest(2, solutions, key=lambda sol: sol.get_fitness())
         best_solution = deepcopy(self.best_solution)
-        current_solutions = [deepcopy(parents[0]), deepcopy(parents[1])]
+        current_solutions = [deepcopy(best_parents[0]), deepcopy(best_parents[1])]
 
         for _ in range(num_solutions // 2):
-            child1, child2 = yield_two_children(parents, self.mutation_rate, self.fitness_function)
+
+            father = cast(GASolution, best_parents[0])
+            mother = cast(GASolution, best_parents[1])
+
+            child1, child2 = yield_two_children((father, mother), self.mutation_rate, self.fitness_function)
             current_solutions.extend([child1, child2])
+
             if best_solution is None or child1 < best_solution:
                 best_solution = child1
             if best_solution is None or child2 < best_solution:
                 best_solution = child2
 
+        current_solutions = current_solutions[:num_solutions]
+
         return current_solutions, best_solution
 
     def stopping_criterion(self) -> bool:
-        """
-        Stopping criterion. 
-        """
         return self.current_iteration >= self.max_iterations

@@ -1,5 +1,9 @@
+import logging
+
+from metagen.logging.metagen_logger import metagen_logger_setup, get_metagen_logger
+from metagen.metaheuristics import GA
 from metagen.metaheuristics.ga import GAConnector
-from metagen.metaheuristics.ga.ga import GA, DistributedGA
+
 from metagen.framework import Domain, Solution
 from sklearn.datasets import make_regression
 from sklearn.linear_model import SGDRegressor
@@ -40,19 +44,23 @@ def sgd_regressor_fitness(individual):
     return -scores.mean()
 
 p1_domain: Domain = Domain(GAConnector())
-p1_domain.define_integer("x", -5, 10)
+p1_domain.define_integer("x", -5, 100)
 
 def p1_fitness(individual: Solution) -> float:
     x = individual["x"] # You could use the .get function alternatively.
     return x + 5
 
 if __name__ == "__main__":
-    print('DistributedGA')
+    logging.Logger("metagen_logger")
+    metagen_logger_setup(logging.DEBUG)
 
-    # ga: GA = GA(p1_domain, p1_fitness)
-    # ga: GA = GA(sgd_regressor_definition, sgd_regressor_fitness)
-    ga: DistributedGA = DistributedGA(p1_domain, p1_fitness)
-    # ga: DistributedGA = DistributedGA(sgd_regressor_definition, sgd_regressor_fitness, population_size=20)
+    get_metagen_logger().info('Running Genetic Algorithm')
+
+    # ga: GA = GA(p1_domain, p1_fitness, population_size=20, max_iterations=10)
+    # ga: GA = GA(p1_domain, p1_fitness, population_size=20, max_iterations=10, distributed=True)
+
+    # ga: GA = GA(sgd_regressor_definition, sgd_regressor_fitness, population_size=20, max_iterations=10)
+    ga: GA = GA(sgd_regressor_definition, sgd_regressor_fitness, population_size=20, max_iterations=10, distributed=True)
 
 
     solution: Solution = ga.run()

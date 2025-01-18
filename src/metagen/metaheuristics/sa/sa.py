@@ -15,6 +15,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 from metagen.framework import Domain, Solution
+from metagen.framework.solution.tools import yield_potential_solutions
 from metagen.metaheuristics.base import Metaheuristic
 from collections.abc import Callable
 from copy import deepcopy
@@ -55,7 +56,7 @@ class SA(Metaheuristic):
     :param fitness_func: The fitness function used to evaluate solutions.
     :type fitness_func: Callable[[Solution], float]
     :param n_iterations: The number of generations to run the algorithm (default is 50).
-    :type n_iterations: int, optional
+    :type max_iterations: int, optional
     :param alteration_limit: The alteration performed over every the solution to generate the neighbor.
     :type alteration_limit: any, optional
     :param initial_temp: The initial temperature for the annealing.
@@ -63,7 +64,7 @@ class SA(Metaheuristic):
     :param cooling_rate: Meassures the speed of the cooling procedure.
     :type cooling_rate: float, optional
 
-    :ivar n_iterations: The number of generations to run the algorithm.
+    :ivar max_iterations: The number of generations to run the algorithm.
     :vartype n_iterations: int
     :ivar domain: The domain representing the problem space.
     :vartype domain: Domain
@@ -77,10 +78,10 @@ class SA(Metaheuristic):
     :vartype cooling_rate: float
     """
 
-    def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
-                 log_dir: str = "logs/SA", n_iterations: int = 50,
+    def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float], max_iterations: int = 20,
                  alteration_limit: float = 0.1, initial_temp: float = 50.0,
-                 cooling_rate: float = 0.99, neighbor_population_size: int = 1) -> None:
+                 cooling_rate: float = 0.99, neighbor_population_size: int = 1, distributed=False,
+                 log_dir: str = "logs/SA") -> None:
         """
         Initialize the distributed simulated annealing algorithm.
 
@@ -94,28 +95,18 @@ class SA(Metaheuristic):
             cooling_rate: Cooling rate for the annealing (default: 0.99)
             neighbor_population_size: Number of neighbors to consider in each iteration (default: 10)
         """
-        super().__init__(domain, fitness_function, log_dir)
-        self.n_iterations = n_iterations
+        super().__init__(domain, fitness_function, distributed, log_dir)
+        self.max_iterations = max_iterations
         self.alteration_limit = alteration_limit
         self.initial_temp = initial_temp
         self.cooling_rate = cooling_rate
         self.neighbor_population_size = neighbor_population_size
 
     def initialize(self, num_solutions=10) -> Tuple[List[Solution], Solution]:
-        """
-        Initialize the starting solution for simulated annealing.
-        """
-        solution_type: type[Solution] = self.domain.get_connector().get_type(self.domain.get_core())
-        best_solution = solution_type(self.domain, connector=self.domain.get_connector())
-        best_solution.evaluate(self.fitness_function)
-        current_solutions = [best_solution]
+        current_solutions, best_solution = yield_potential_solutions(self.domain, self.fitness_function, 1)
         return current_solutions, best_solution
 
     def iterate(self, solutions: List[Solution]) -> Tuple[List[Solution], Solution]:
-        """
-        Perform one iteration of the simulated annealing algorithm.
-        """
-
         neighbor = deepcopy(solutions[0])
         neighbor.mutate(alteration_limit=self.alteration_limit)
         neighbor.evaluate(self.fitness_function)
@@ -141,13 +132,7 @@ class SA(Metaheuristic):
         return solutions, partial_best_solution
 
     def stopping_criterion(self) -> bool:
-        """
-        Check if the stopping criterion has been reached.
-
-        Returns:
-            bool: True if the stopping criterion has been reached, False otherwise.
-        """
-        return self.current_iteration >= self.n_iterations
+        return self.current_iteration >= self.max_iterations
 
 
 

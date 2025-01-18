@@ -69,7 +69,7 @@ class GASolution(Solution):
     Represents a Solution type for the Genetic Algorithm (GA).
 
     Methods:
-        mutate(alterations_number: int = None): Modify a random subset of the solution's variables calling its mutate method. Inherited from :py:class:`~metagen.framework.solution.Solution`.
+        mutate(alterations_number: int = None): Modify a rs subset of the solution's variables calling its mutate method. Inherited from :py:class:`~metagen.framework.solution.Solution`.
         crossover(other: GASolution) -> Tuple[GASolution, GASolution]: Performs crossover operation with another GASolution instance.
     """
 
@@ -145,10 +145,7 @@ class GAConnector(BaseConnector):
         self.register(StaticStructureDefinition, (GAStructure, "static"), list)
 
 
-
-
-
-def yield_two_children(parents: Tuple[GASolution, GASolution], mutation_rate: float, fitness_function:Callable[[GASolution], float]) -> Tuple[GASolution, GASolution]:
+def yield_two_children(parents: Tuple[GASolution, GASolution], mutation_rate: float, fitness_function:Callable[[Solution], float]) -> Tuple[GASolution, GASolution]:
 
     child1, child2 = parents[0].crossover(parents[1])
 
@@ -162,28 +159,3 @@ def yield_two_children(parents: Tuple[GASolution, GASolution], mutation_rate: fl
 
     return child1, child2
 
-def yield_ga_population(num_solutions: int, domain: Domain, fitness_function: Callable[[GASolution], float]) -> Tuple[List[GASolution], GASolution]:
-
-    solution_type: type[GASolution] = domain.get_connector().get_type(domain.get_core())
-    best_solution = None
-    current_solutions: List[GASolution] = []
-    for _ in range(num_solutions):
-        individual = solution_type(domain, connector=domain.get_connector())
-        individual.evaluate(fitness_function)
-        current_solutions.append(individual)
-        if best_solution is None or individual.get_fitness() < best_solution.get_fitness():
-            best_solution = individual
-
-    return current_solutions, best_solution
-
-
-def replace_wost(child:GASolution, solutions:List[GASolution]) -> None:
-    """
-    Replace the solution in the population with the worst fitness.
-
-    :return: The selected parent solutions.
-    :rtype: List[Solution]
-    """
-    worst_solution = solutions[-1]
-    if worst_solution.fitness > child.fitness:
-        solutions[-1] = child
