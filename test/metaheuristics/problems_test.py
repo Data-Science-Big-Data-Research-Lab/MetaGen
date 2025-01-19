@@ -18,11 +18,13 @@ import pathlib
 import random
 import warnings
 import numpy as np
-from dispatcher import problem_dispatcher
+from metaheuristics.problems.dispatcher import problem_dispatcher
 from metagen.metaheuristics import RandomSearch, GA, GAConnector, TabuSearch#CVOA, SSGA, SA, GA, GAConnector, cvoa_launcher
 from pytest_csv_params.decorator import csv_params
 import ray
 import os
+
+from utils import resource_path
 
 warnings.filterwarnings('ignore')
 
@@ -123,7 +125,7 @@ def test_sa(example: str, iterations: int, seed: int) -> None:
     assert solution.fitness < float('inf')
     # assert solution.fitness <= initial_best.fitness, cannot be guaranteed in this case"""
 
-@csv_params(data_file=resources_path+"/examples.csv", id_col="ID#",
+@csv_params(data_file=resource_path("examples.csv"), id_col="ID#",
             data_casts={"iterations": int, "seed": int})
 def test_rs(example: str, iterations: int, seed: int) -> None:
     random.seed(seed)
@@ -153,7 +155,7 @@ def test_rs(example: str, iterations: int, seed: int) -> None:
     assert solution.fitness < float('inf')
     assert solution.fitness <= initial_best 
 
-@csv_params(data_file=resources_path+"/examples.csv", id_col="ID#",
+@csv_params(data_file=resource_path("examples.csv"), id_col="ID#",
             data_casts={"iterations": int, "seed": int})
 def test_ts(example: str, iterations: int, seed: int) -> None:
     random.seed(seed)

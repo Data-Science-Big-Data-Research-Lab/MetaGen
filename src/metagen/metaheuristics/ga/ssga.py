@@ -20,7 +20,7 @@ from copy import deepcopy
 from typing import List, Tuple, cast
 
 from metagen.framework import Domain, Solution
-from .ga_tools import GASolution, yield_ga_population, yield_two_children
+from .ga_tools import GASolution, yield_two_children
 from metagen.metaheuristics.base import Metaheuristic
 from ...framework.solution.tools import yield_potential_solutions
 
@@ -52,8 +52,8 @@ class SSGA(Metaheuristic):
     :vartype fitness_func: Callable[[Solution], float]"""
 
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float], population_size: int = 10,
-                 distributed: bool = False, log_dir: str = "logs/SSGA", mutation_rate: float = 0.1,
-                 max_iterations: int = 50):
+                 max_iterations: int = 50, mutation_rate: float = 0.1,
+                 distributed: bool = False, log_dir: str = "logs/SSGA"):
         super().__init__(domain, fitness_function, population_size, distributed, log_dir)
         self.mutation_rate = mutation_rate
         self.max_iterations = max_iterations

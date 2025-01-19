@@ -18,20 +18,39 @@ import random
 
 from metagen.framework import Domain
 from metagen.framework.connector import BaseConnector
+
+# dummy-1
 def get_categorical_domain(connector = BaseConnector()) -> Domain:
     domain = Domain(connector)
     domain.define_categorical(
         "c", ["level1", "level2", "level3", "level5"])
     return domain
 
+def categorical_example_fitness(individual):
+    level = individual["c"]
+    if level == "level1":
+        val = random.randint(0, 10)
+    elif level == "level2":
+        val = random.randint(10, 20)
+    elif level == "level3":
+        val = random.randint(20, 30)
+    else:
+        val = random.randint(30, 50)
 
+    return val
+
+# dummy-2
 def get_vector_domain(connector = BaseConnector()) -> Domain:
     domain = Domain(connector)
     domain.define_dynamic_structure("v", 2, 20, 1)
     domain.set_structure_to_integer("v", 1, 20, 1)
     return domain
 
+def vector_example_fitness(individual):
+    v = individual["v"]
+    return sum(v)
 
+ # dummy-3
 def get_all_types_domain(connector = BaseConnector()) -> Domain:
     domain = Domain(connector)
     domain.define_integer("I", 1, 10, 1)
@@ -61,26 +80,6 @@ def get_all_types_domain(connector = BaseConnector()) -> Domain:
     return domain
 
 
-# Dummy categorical fitness function
-def categorical_example_fitness(individual):
-    level = individual["c"]
-    if level == "level1":
-        val = random.randint(0, 10)
-    elif level == "level2":
-        val = random.randint(10, 20)
-    elif level == "level3":
-        val = random.randint(20, 30)
-    else:
-        val = random.randint(30, 50)
-
-    return val
-
-# Dummy vector fitness function
-def vector_example_fitness(individual):
-    v = individual["v"]
-    return sum(v)
-
-# Dummy all legacy fitness function
 def all_types_fitness(individual):
     r = individual["R"]
     return r + 2
