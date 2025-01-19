@@ -19,7 +19,7 @@ from __future__ import annotations
 import random
 from collections.abc import Callable
 from copy import copy
-from typing import Tuple, List
+from typing import Tuple, List, cast
 
 import metagen.framework.solution as types
 from metagen.framework import BaseConnector, Solution, Domain

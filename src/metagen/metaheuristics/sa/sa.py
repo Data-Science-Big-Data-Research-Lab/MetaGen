@@ -95,7 +95,7 @@ class SA(Metaheuristic):
             cooling_rate: Cooling rate for the annealing (default: 0.99)
             neighbor_population_size: Number of neighbors to consider in each iteration (default: 10)
         """
-        super().__init__(domain, fitness_function, distributed, log_dir)
+        super().__init__(domain, fitness_function, distributed=distributed, log_dir=log_dir)
         self.max_iterations = max_iterations
         self.alteration_limit = alteration_limit
         self.initial_temp = initial_temp

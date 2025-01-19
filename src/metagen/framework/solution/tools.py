@@ -39,8 +39,8 @@ def local_search(solution: Solution, fitness_function: Callable[[Solution], floa
     return best_neighbor
 
 
-def local_search_with_tabu (solution: Solution, fitness_function: Callable[[Solution], float], neighbor_population_size: int
-                             , alteration_limit: float, tabu_list:List[Solution]) -> Tuple[List[Solution], Solution]:
+def local_search_with_tabu (solution: Solution, fitness_function: Callable[[Solution], float],
+                            neighbor_population_size: int, alteration_limit: float, tabu_list:List[Solution]) -> Tuple[List[Solution], Solution]:
 
     best_neighbor = deepcopy(solution)
     neighborhood = []

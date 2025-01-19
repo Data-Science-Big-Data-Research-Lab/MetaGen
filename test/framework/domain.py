@@ -1,21 +1,6 @@
-"""
-    Copyright (C) 2023 David Gutierrez Avilés and Manuel Jesús Jiménez Navarro
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <https://www.gnu.org/licenses/>.
-"""
-
 import pathlib
+import sys
+from os import path
 
 import pytest
 from pytest_csv_params.decorator import csv_params
@@ -25,12 +10,12 @@ from metagen.framework.domain.core import (CategoricalDefinition,
                                            IntegerDefinition, RealDefinition)
 from metagen.framework.solution.literals import CATEGORICAL, INTEGER, REAL
 
-# ******** INTEGER TESTS ********
+
+from utils import resource_path
 
 
 @csv_params(
-    data_file=pathlib.Path(
-        __file__).parents[0].resolve().as_posix()+"/resources/integer_test.csv",
+    data_file=resource_path("integer_test.csv"),
     id_col="ID#",
     data_casts={
         "variable": str,
@@ -38,6 +23,7 @@ from metagen.framework.solution.literals import CATEGORICAL, INTEGER, REAL
         "maximum": int
     },
 )
+
 def test_define_integer_domain_positive(variable: str, minimum: int, maximum: int, step: int | None) -> None:
     if step == '':
         step = None
@@ -64,8 +50,7 @@ def test_define_integer_domain_positive(variable: str, minimum: int, maximum: in
 
 
 @csv_params(
-    data_file=pathlib.Path(
-        __file__).parents[0].resolve().as_posix()+"/resources/integer_test.csv",
+    data_file=resource_path("integer_test.csv"),
     id_col="ID#",
     data_casts={
         "variable": str,
@@ -93,11 +78,9 @@ def test_define_integer_domain_negative(variable: str, minimum: int, maximum: in
     assert not domain.get_core().get(variable).check_value(minimum-1)
     assert not domain.get_core().get(variable).check_value(maximum+1)
 
-
 # ******** REAL TESTS ********
 @csv_params(
-    data_file=pathlib.Path(
-        __file__).parents[0].resolve().as_posix()+"/resources/real_test.csv",
+    data_file=resource_path("real_test.csv"),
     id_col="ID#",
     data_casts={
         "variable": str,
@@ -131,8 +114,7 @@ def test_define_real_domain_positive(variable: str, minimum: float, maximum: flo
 
 
 @csv_params(
-    data_file=pathlib.Path(
-        __file__).parents[0].resolve().as_posix()+"/resources/real_test.csv",
+    data_file=resource_path("real_test.csv"),
     id_col="ID#",
     data_casts={
         "variable": str,
@@ -163,8 +145,7 @@ def test_define_real_domain_negative(variable: str, minimum: float, maximum: flo
 
 # ******** CATEGORICAL TESTS ********
 @csv_params(
-    data_file=pathlib.Path(
-        __file__).parents[0].resolve().as_posix()+"/resources/categorical_positive_test.csv",
+    data_file=resource_path("categorical_positive_test.csv"),
     id_col="ID#",
     data_casts={
         "variable": str,

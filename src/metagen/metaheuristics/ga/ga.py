@@ -17,7 +17,7 @@
 import heapq
 
 from metagen.framework import Domain, Solution
-from .ga_tools import GASolution, yield_two_children, yield_ga_population
+from .ga_tools import GASolution, yield_two_children
 from metagen.metaheuristics.base import Metaheuristic
 from typing import Callable, List, Tuple, cast
 import random
@@ -52,7 +52,9 @@ class GA(Metaheuristic):
     :ivar fitness_func: The fitness function used to evaluate solutions.
     :vartype fitness_func: Callable[[Solution], float]"""
 
-    def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float], population_size: int = 10, distributed: bool = False, log_dir: str = "logs/GA", mutation_rate: float = 0.1, max_iterations: int = 50):
+    def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float], population_size: int = 10,
+                 max_iterations: int = 50, mutation_rate: float = 0.1,
+                 distributed: bool = False, log_dir: str = "logs/GA"):
         super().__init__(domain, fitness_function, population_size, distributed, log_dir)
         self.mutation_rate = mutation_rate
         self.max_iterations = max_iterations
@@ -74,7 +76,6 @@ class GA(Metaheuristic):
 
             father = cast(GASolution, best_parents[0])
             mother = cast(GASolution, best_parents[1])
-
             child1, child2 = yield_two_children((father, mother), self.mutation_rate, self.fitness_function)
             current_solutions.extend([child1, child2])
 

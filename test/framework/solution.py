@@ -22,7 +22,7 @@ from pytest_csv_params.decorator import csv_params
 from os import path
 
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
-from utils import solution
+from utils import solution, resource_path
 
 
 def parse_input(type_col, value):
@@ -43,8 +43,7 @@ def parse_input(type_col, value):
 
 
 @csv_params(
-    data_file=pathlib.Path(
-        __file__).parents[0].resolve().as_posix() + "/resources/positive.csv",
+    data_file=resource_path("positive.csv"),
     data_casts={
         "variable": str,
         "type_var": str,
@@ -61,10 +60,8 @@ def test_set_raw_positive(variable: str, type_var: str, value: str) -> None:
     assert solution.get(variable).value == value
     assert solution.is_available(variable)
 
-
 @csv_params(
-    data_file=pathlib.Path(__file__).parents[0].resolve(
-    ).as_posix() + "/resources/negative.csv",
+    data_file=resource_path("negative.csv"),
     data_casts={
         "variable": str,
         "type_var": str,
