@@ -37,8 +37,8 @@ class TPE(Metaheuristic):
         optimal_solution = search.run()
     """
 
-    def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float], population_size: int = 10, max_iterations: int = 50, gamma: float = 0.25, log_dir: str = "logs/TPE") -> None:
-        super().__init__(domain, fitness_function, population_size, log_dir=log_dir)
+    def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float], population_size: int = 10, max_iterations: int = 50, gamma: float = 0.25, distributed=False, log_dir: str = "logs/TPE") -> None:
+        super().__init__(domain, fitness_function, population_size, distributed=distributed, log_dir=log_dir)
         self.max_iterations = max_iterations
         self.gamma = gamma
 
@@ -62,9 +62,9 @@ class TPE(Metaheuristic):
         best_solutions = sorted(solutions, key=lambda sol: sol.get_fitness())[:l]
         worst_solutions = sorted(solutions, key=lambda sol: sol.get_fitness())[l:]
 
-        new_solutions = []
+        new_solutions = [deepcopy(self.best_solution)]
         
-        for _ in range(len(solutions)):
+        for _ in range(len(solutions)-1):
             new_solution = self.sample_new_solution(best_solutions, worst_solutions)
             new_solution.evaluate(self.fitness_function)
             new_solutions.append(new_solution)
@@ -87,10 +87,13 @@ class TPE(Metaheuristic):
             p_best = norm.pdf(new_solution[var], mu_best, sigma_best)
             p_worst = norm.pdf(new_solution[var], mu_worst, sigma_worst)
 
+            minumum = self.domain.get_core().get(var).get_attributes()[1]
+            maximum = self.domain.get_core().get(var).get_attributes()[2]
+
             if p_best / (p_best + p_worst) > np.random.rand():
-                new_solution[var] = np.random.normal(mu_best, sigma_best)
+                new_solution[var] = np.clip(np.random.normal(mu_best, sigma_best), minumum, maximum).item()
             else:
-                new_solution[var] = np.random.normal(mu_worst, sigma_worst)
+                new_solution[var] = np.clip(np.random.normal(mu_worst, sigma_worst), minumum, maximum).item()
 
         return new_solution
 
