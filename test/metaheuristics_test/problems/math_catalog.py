@@ -38,3 +38,17 @@ def get_x_minus_15_raised_to_2_domain(connector = BaseConnector()) -> Domain:
 def x_minus_15_raised_to_2_fitness(individual):
     x = individual["x"]
     return pow(x - 15, 2)
+
+
+# math-3
+def equation_domain(connector = BaseConnector()) -> Domain:
+    domain = Domain(connector)
+    domain.define_integer("x", -10, 10)
+    domain.define_integer("y", -10, 10)
+    return domain
+
+# Result: (3, -2)
+def equation_fitness(individual):
+    x = individual["x"]
+    y = individual["y"]
+    return (x - 3) ** 2 + (y + 2) ** 2

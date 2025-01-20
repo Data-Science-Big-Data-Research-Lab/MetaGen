@@ -1,0 +1,7 @@
+active,ID#,metaheuristic,problem,population_size,max_iterations,tabu_size,alteration_limit,initial_temp,cooling_rate,neighbor_population_size,mutation_rate,distributed,log_dir,distribution_level,seed
+True,1,rs,math-3,20,10,-,-,-,-,-,-,False,logs/rs,-,0
+False,2,sa,math-3,-,20,-,1.2,50,0.99,10,-,False,logs/sa,-,1
+False,3,ts,math-3,20,10,10,1.2,-,-,-,-,False,logs/ts,-,2
+True,4,ga,math-3,20,20,-,-,-,-,-,0.25,False,logs/ga,-,3
+False,5,ssga,math-3,20,20,-,-,-,-,-,0.25,False,logs/ssga,-,4
+False,6,mm,math-3,20,40,-,0.2,-,-,10,0.25,False,logs/mm,0,5

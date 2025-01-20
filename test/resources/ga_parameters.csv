@@ -1,3 +1,2 @@
 ID#,problem,population_size,max_iterations,mutation_rate,distributed,log_dir,seed
-1,dummy-1,20,10,0.25,False,logs/ts,0
-2,sgd-r,20,10,0.25,False,logs/ts,1
+1,math-3,20,10,0.25,False,logs/ts,0
