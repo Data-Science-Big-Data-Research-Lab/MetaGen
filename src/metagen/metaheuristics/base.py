@@ -17,9 +17,11 @@
 
 from abc import ABC, abstractmethod
 from .import_helper import is_package_installed
-from typing import List, Tuple, Optional, Callable, Union
+from typing import List, Tuple, Optional, Callable
 from metagen.framework import Domain, Solution
 from copy import deepcopy
+
+from ..logging.metagen_logger import get_metagen_logger
 
 IS_RAY_INSTALLED = is_package_installed("ray")
 
@@ -28,7 +30,7 @@ if is_package_installed("tensorboard"):
 
 if IS_RAY_INSTALLED:
     import ray
-    from .distributed_suite import assign_load_equally, call_distributed
+    from .distributed_tools import assign_load_equally, call_distributed
 
 class Metaheuristic(ABC):
     """
@@ -46,27 +48,29 @@ class Metaheuristic(ABC):
 
         self.domain = domain
         self.fitness_function = fitness_function
-        self.current_iteration = 0
         self.population_size = population_size
         self.distributed = distributed
+        self.logger = TensorBoardLogger(log_dir=log_dir) if is_package_installed("tensorboard") else None
+
+        self.current_iteration = 0
         self.best_solution: Optional[Solution] = None
         self.current_solutions: List[Solution] = []
-        self.logger = TensorBoardLogger(log_dir=log_dir) if is_package_installed("tensorboard") else None
-    
-    
-    @abstractmethod
-    def initialize(self, num_solutions=10) -> Tuple[List[Solution], Solution]:
-        """
-        Initialize the population/solutions for the metaheuristic.
-        Must set self.current_solutions and self.best_solution
-        """
-        pass
 
-    
+
+
     def _launch_distributed_method(self, method: Callable) -> Tuple[List[Solution], Solution]:
-        distribution = assign_load_equally(len(self.current_solutions) if len(self.current_solutions)>0 else self.population_size)
+        distribution = assign_load_equally(
+            len(self.current_solutions) if len(self.current_solutions) > 0 else self.population_size)
         population = deepcopy(self.current_solutions)
+        population_size = len(population)
         futures = []
+
+        if population_size > 0:
+            get_metagen_logger().debug(
+                f"[{self.current_iteration}] Distributing the iteration with {ray.available_resources().get('CPU', 0)} CPUs -- {distribution}")
+        else:
+            get_metagen_logger().debug(
+                f"Distributing the initialization with {ray.available_resources().get('CPU', 0)} CPUs -- {distribution}")
 
         for count in distribution:
 
@@ -82,15 +86,15 @@ class Metaheuristic(ABC):
 
         return population, best_individual
 
-    def _initialize(self) -> None:
+    def _initialize(self) -> Tuple[List[Solution], Solution]:
         """
         Private function to initialize the population/solutions for the metaheuristic.
         """
-        
+
         if self.distributed:
             if not IS_RAY_INSTALLED:
                 raise ImportError("Ray must be installed to use distributed initialization")
-            
+
             population, best_individual = self._launch_distributed_method(self.initialize)
         else:
             population, best_individual = self.initialize(self.population_size)
@@ -99,24 +103,15 @@ class Metaheuristic(ABC):
         self.best_solution = best_individual
 
         return population, best_individual
-    
 
-    @abstractmethod
-    def iterate(self, solutions: List[Solution]) -> None:
-        """
-        Execute one iteration of the metaheuristic.
-        Must update self.current_solutions and self.best_solution if better found
-        """
-        pass
-
-    def _iterate(self) -> None:
+    def _iterate(self) -> Tuple[List[Solution], Solution]:
         """
         Private function to execute one iteration of the metaheuristic.
         """
         if self.distributed:
             if not IS_RAY_INSTALLED:
                 raise ImportError("Ray must be installed to use distributed initialization")
-            
+
             population, best_individual = self._launch_distributed_method(self.iterate)
         else:
             population, best_individual = self.iterate(self.current_solutions)
@@ -126,13 +121,6 @@ class Metaheuristic(ABC):
 
         return population, best_individual
 
-    def stopping_criterion(self) -> bool:
-        """
-        Check if the algorithm should stop.
-        Override this method to implement custom stopping criteria.
-        """
-        return False
-
     def pre_execution(self) -> None:
         """
         Callback executed before algorithm execution starts.
@@ -140,16 +128,13 @@ class Metaheuristic(ABC):
         """
         pass
 
-    def post_execution(self) -> None:
+    @abstractmethod
+    def initialize(self, num_solutions=10) -> Tuple[List[Solution], Solution]:
         """
-        Callback executed after algorithm execution completes.
-        Override this method to add custom post-execution cleanup.
+        Initialize the population/solutions for the metaheuristic.
+        Must set self.current_solutions and self.best_solution
         """
-
-        if self.logger:
-            # Log final results
-            self.logger.log_final_results(self.best_solution)
-            self.logger.close()
+        pass
 
     def pre_iteration(self) -> None:
         """
@@ -158,71 +143,80 @@ class Metaheuristic(ABC):
         """
         pass
 
+    @abstractmethod
+    def iterate(self, solutions: List[Solution]) -> Tuple[List[Solution], Solution]:
+        """
+        Execute one iteration of the metaheuristic.
+        """
+        pass
+
+    def stopping_criterion(self) -> bool:
+        """
+        Check if the algorithm should stop.
+        Override this method to implement custom stopping criteria.
+        """
+        return False
+
     def post_iteration(self) -> None:
         """
         Callback executed after each iteration.
         Override this method to add custom post-iteration processing.
         """
+        get_metagen_logger().debug(f'[ITERATION {self.current_iteration}] POPULATION ({len(self.current_solutions)}): {self.current_solutions}')
+        get_metagen_logger().info(f'[ITERATION {self.current_iteration}] BEST SOLUTION: {self.best_solution}')
         if self.logger: 
             # Log iteration metrics
+            self.logger.writer.add_scalar('Population Size',
+                                          len(self.current_solutions),
+                                          self.current_iteration)
             self.logger.log_iteration(
                 self.current_iteration, 
                 self.current_solutions, 
                 self.best_solution
             )
-    
-    def skip_iteration(self) -> None:
-        """
-        Callback executed when an iteration is skipped.
-        Override this method to add custom skip-iteration processing.
-        """
-        raise StopIteration("Skipping iteration")
 
-    def skip_iteration(self) -> None:
+    def post_execution(self) -> None:
         """
-        Callback executed when an iteration is skipped.
-        Override this method to add custom skip-iteration processing.
+        Callback executed after algorithm execution completes.
+        Override this method to add custom post-execution cleanup.
         """
-        raise StopIteration("Skipping iteration")
+        if self.logger:
+            # Log final results
+            self.logger.log_final_results(self.best_solution)
+            self.logger.close()
 
     def run(self) -> Solution:
         """
         Execute the metaheuristic algorithm.
         """
-
         if self.distributed and IS_RAY_INSTALLED and not ray.is_initialized():
             ray.init()
 
-        try:
-            # Pre-execution callback
-            self.pre_execution()
+        # Pre-execution callback
+        self.pre_execution()
 
-            # Initialize the algorithm
-            self._initialize()
+        # Initialize the algorithm
+        self._initialize()
 
-            # Main loop
-            while not self.stopping_criterion():
-                try:
-                    # Pre-iteration callback
-                    self.pre_iteration()
+        # Main loop
+        while not self.stopping_criterion():
+            # Pre-iteration callback
+            self.pre_iteration()
 
-                    # Execute one iteration
-                    self._iterate()
+            # Execute one iteration
+            self._iterate()
+
+            # Post-iteration callback
+            self.post_iteration()
                     
-                    # Post-iteration callback
-                    self.post_iteration()
-                    
-                    # Increment iteration counter
-                    self.current_iteration += 1
-                except StopIteration: # Skip iteration flow
-                    continue
+            # Increment iteration counter
+            self.current_iteration += 1
 
-            # Post-execution callback
-            self.post_execution()
-        except Exception as e:
-            raise e
-        finally: # Finalize Ray if necessary 
-            if self.distributed and IS_RAY_INSTALLED and ray.is_initialized():
+        # Post-execution callback
+        self.post_execution()
+
+        # Finalize Ray if necessary
+        if self.distributed and IS_RAY_INSTALLED and ray.is_initialized():
                 ray.shutdown()
 
         return deepcopy(self.best_solution)

@@ -50,7 +50,7 @@ class Categorical(BaseType):
 
     def initialize(self) -> None:
         """
-        Initialize the categorical variable with a random category from the available categories.
+        Initialize the categorical variable with a rs category from the available categories.
         """
         _, categories = self.get_definition().get_attributes()
         random_category = random.choice(categories)
@@ -59,7 +59,7 @@ class Categorical(BaseType):
 
     def mutate(self, alteration_limit: Any = None) -> None:
         """
-        Modify the value of this Categorical instance to a random category from its definition, excluding its current value.
+        Modify the value of this Categorical instance to a rs category from its definition, excluding its current value.
         """
         _, categories = self.get_definition().get_attributes()
         current_category = self.get()

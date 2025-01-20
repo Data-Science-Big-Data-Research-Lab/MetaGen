@@ -126,7 +126,7 @@ class BaseType(ABC):
         return result
 
     def _generate_numerical(self, left: int | float, right: int | float, step_size: int | float | None = None) -> int | float:
-        """ From a value in an interval compute a new random value by adding (to the right) or subtracting (to the left)
+        """ From a value in an interval compute a new rs value by adding (to the right) or subtracting (to the left)
         a number of steps.
 
         :param left: Left value of the interval.
@@ -135,7 +135,7 @@ class BaseType(ABC):
         :type left: int, float
         :type right: int, float
         :type step_size: int, float
-        :returns: A random value.
+        :returns: A rs value.
         :rtype: int, float
         """
 

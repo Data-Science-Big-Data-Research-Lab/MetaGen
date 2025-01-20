@@ -15,6 +15,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 from metagen.framework import Domain, Solution
+from metagen.framework.solution.tools import yield_potential_solutions
 from metagen.metaheuristics.base import Metaheuristic
 from collections.abc import Callable
 from copy import deepcopy
@@ -22,27 +23,27 @@ import random
 import math
 import random
 from copy import deepcopy
-from typing import Callable
+from typing import Callable, Tuple, List
 from metagen.metaheuristics.base import Metaheuristic
 
 
-def calculate_exploration_rate(best_solution_fitness: float, best_neighbor_fitness: float,
-                                   initial_temp: float) -> float:
-        """
-        Calculate the exploration rate for simulated annealing.
+def calculate_exploration_rate(best_solution_fitness: float, neighbor_fitness: float,
+                               initial_temp: float) -> float:
+    """
+    Calculate the exploration rate for simulated annealing.
 
-        Args:
-            best_solution_fitness (float): Fitness of the best solution.
-            best_neighbor_fitness (float): Fitness of the best neighbor.
-            initial_temp (float): Current temperature.
+    Args:
+        best_solution_fitness (float): Fitness of the best solution.
+        neighbor_fitness (float): Fitness of the best neighbor.
+        initial_temp (float): Current temperature.
 
-        Returns:
-            float: The exploration rate.
-        """
-        MAX_EXPONENT = 700  # This is a safe value to avoid overflow in most cases
-        exponent_value = (best_solution_fitness - best_neighbor_fitness) / initial_temp
-        exponent_value = max(min(exponent_value, MAX_EXPONENT), -MAX_EXPONENT)
-        return math.exp(exponent_value)
+    Returns:
+        float: The exploration rate.
+    """
+    MAX_EXPONENT = 700  # This is a safe value to avoid overflow in most cases
+    exponent_value = (best_solution_fitness - neighbor_fitness) / initial_temp
+    exponent_value = max(min(exponent_value, MAX_EXPONENT), -MAX_EXPONENT)
+    return math.exp(exponent_value)
 
 
 
@@ -55,7 +56,7 @@ class SA(Metaheuristic):
     :param fitness_func: The fitness function used to evaluate solutions.
     :type fitness_func: Callable[[Solution], float]
     :param n_iterations: The number of generations to run the algorithm (default is 50).
-    :type n_iterations: int, optional
+    :type max_iterations: int, optional
     :param alteration_limit: The alteration performed over every the solution to generate the neighbor.
     :type alteration_limit: any, optional
     :param initial_temp: The initial temperature for the annealing.
@@ -63,7 +64,7 @@ class SA(Metaheuristic):
     :param cooling_rate: Meassures the speed of the cooling procedure.
     :type cooling_rate: float, optional
 
-    :ivar n_iterations: The number of generations to run the algorithm.
+    :ivar max_iterations: The number of generations to run the algorithm.
     :vartype n_iterations: int
     :ivar domain: The domain representing the problem space.
     :vartype domain: Domain
@@ -77,10 +78,10 @@ class SA(Metaheuristic):
     :vartype cooling_rate: float
     """
 
-    def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
-                 log_dir: str = "logs/SA", n_iterations: int = 50,
+    def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float], max_iterations: int = 20,
                  alteration_limit: float = 0.1, initial_temp: float = 50.0,
-                 cooling_rate: float = 0.99, neighbor_population_size: int = 1) -> None:
+                 cooling_rate: float = 0.99, neighbor_population_size: int = 1, distributed=False,
+                 log_dir: str = "logs/SA") -> None:
         """
         Initialize the distributed simulated annealing algorithm.
 
@@ -94,61 +95,44 @@ class SA(Metaheuristic):
             cooling_rate: Cooling rate for the annealing (default: 0.99)
             neighbor_population_size: Number of neighbors to consider in each iteration (default: 10)
         """
-        super().__init__(domain, fitness_function, log_dir)
-        self.n_iterations = n_iterations
+        super().__init__(domain, fitness_function, distributed=distributed, log_dir=log_dir)
+        self.max_iterations = max_iterations
         self.alteration_limit = alteration_limit
         self.initial_temp = initial_temp
         self.cooling_rate = cooling_rate
         self.neighbor_population_size = neighbor_population_size
 
-    def initialize(self) -> None:
-        """
-        Initialize the starting solution for simulated annealing.
-        """
-        solution_type: type[Solution] = self.domain.get_connector().get_type(self.domain.get_core())
-        self.best_solution = solution_type(self.domain, connector=self.domain.get_connector())
-        self.best_solution.evaluate(self.fitness_function)
-        self.current_solutions = [self.best_solution]
+    def initialize(self, num_solutions=10) -> Tuple[List[Solution], Solution]:
+        current_solutions, best_solution = yield_potential_solutions(self.domain, self.fitness_function, 1)
+        return current_solutions, best_solution
 
-    def iterate(self) -> None:
-        """
-        Perform one iteration of the simulated annealing algorithm.
-        """
+    def iterate(self, solutions: List[Solution]) -> Tuple[List[Solution], Solution]:
+        neighbor = deepcopy(solutions[0])
+        neighbor.mutate(alteration_limit=self.alteration_limit)
+        neighbor.evaluate(self.fitness_function)
 
-        best_neighbor = deepcopy(self.best_solution)
-        best_neighbor.mutate(alteration_limit=self.alteration_limit)
-        best_neighbor.evaluate(self.fitness_function)
+        current_fitness = solutions[0].get_fitness()
+        neighbor_fitness = neighbor.get_fitness()
+        delta = current_fitness - neighbor_fitness
 
         # Acceptance criteria for simulated annealing
-        exploration_rate = calculate_exploration_rate(self.best_solution.fitness, best_neighbor.fitness,
-                                                                    self.initial_temp)
-        if best_neighbor < self.best_solution or exploration_rate > random.random():
-            self.best_solution = deepcopy(best_neighbor)
+        exploration_rate = calculate_exploration_rate(self.best_solution.fitness, neighbor.fitness,
+                                                      self.initial_temp)
 
-        self.current_solutions = [self.best_solution]
+        partial_best_solution = deepcopy(self.best_solution)
+
+        if delta < 0 or exploration_rate > random.random():
+            solutions[0] = deepcopy(neighbor)
+            if current_fitness > neighbor_fitness:
+                partial_best_solution = deepcopy(neighbor)
 
         # Update temperature
         self.initial_temp *= self.cooling_rate
 
+        return solutions, partial_best_solution
+
     def stopping_criterion(self) -> bool:
-        """
-        Check if the stopping criterion has been reached.
-
-        Returns:
-            bool: True if the stopping criterion has been reached, False otherwise.
-        """
-        return self.current_iteration >= self.n_iterations
-
-    def post_iteration(self) -> None:
-        """
-        Additional processing after each generation.
-        """
-        super().post_iteration()
-        print(f'[{self.current_iteration}] {self.best_solution}')
-        if self.logger:
-            self.logger.writer.add_scalar('DSA/Population Size',
-                                len(self.current_solutions),
-                                self.current_iteration)
+        return self.current_iteration >= self.max_iterations
 
 
 
