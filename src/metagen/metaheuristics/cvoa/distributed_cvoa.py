@@ -28,7 +28,7 @@ from metagen.framework import Domain
 from metagen.framework.solution import Solution
 from metagen.framework.solution.bounds import SolutionClass
 from metagen.metaheuristics.base import Metaheuristic
-from metagen.metaheuristics.distributed_suite import IndividualState, PandemicState, StrainProperties, \
+from metagen.metaheuristics.distributed_tools import IndividualState, PandemicState, StrainProperties, \
     distributed_cvoa_new_infected_population
 
 
@@ -233,7 +233,7 @@ class DistributedCVOA(Metaheuristic):
             # If the current individual is common the number of infected ones will be in
             # (0, MAX_SUPERSPREADING_RATE)
             n_infected = random.randint(0, self.strain_properties.spreading_rate)
-            # n_infected = random.randint(0, self.__MAX_SUPERSPREADING_RATE)
+            # n_infected = rs.randint(0, self.__MAX_SUPERSPREADING_RATE)
 
         # ** 2. Determine the travel distance. **
         if random.random() < self.strain_properties.p_travel:

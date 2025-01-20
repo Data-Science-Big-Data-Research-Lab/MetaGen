@@ -14,8 +14,18 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
+import pathlib
+
 from metagen.framework import Domain
 from metagen.framework.solution.devsolution import DevSolution as Solution
+
+def str_to_bool(value: str) -> bool:
+    """Convierte una cadena a un valor booleano."""
+    return value.lower() in ("true", "1", "yes")
+
+def resource_path(file_name: str) -> str:
+    """Devuelve la ruta absoluta al archivo en la carpeta resources."""
+    return (pathlib.Path(__file__).parents[1] / "test" / "resources" / file_name).as_posix()
 
 domain: Domain = Domain()
 domain.define_integer("I", 0, 100)

@@ -227,10 +227,10 @@ class Solution:
 
     def initialize(self):
         """
-        Initializes the solution with random values defined in its domain.
+        Initializes the solution with rs values defined in its domain.
 
         .. note::
-            This method initializes the solution with random values within its domain. It iterates through all the variables in the domain and generates a random value according to their definition. The generated value is then set as the initial value of the variable in the solution.
+            This method initializes the solution with rs values within its domain. It iterates through all the variables in the domain and generates a rs value according to their definition. The generated value is then set as the initial value of the variable in the solution.
 
         .. seealso::
             :func:`_initialize`
@@ -244,9 +244,9 @@ class Solution:
 
     def mutate(self, alterations_number: int = None, alteration_limit: Any = None):
         """
-        Modify a random subset of the solution's variables calling its mutate method.
+        Modify a rs subset of the solution's variables calling its mutate method.
 
-        :param alterations_number: The number of variables to mutate at the first level. If not specified, a random number between 1 and the total number of variables will be chosen.
+        :param alterations_number: The number of variables to mutate at the first level. If not specified, a rs number between 1 and the total number of variables will be chosen.
         :type alterations_number: int, optional
 
         .. seealso::

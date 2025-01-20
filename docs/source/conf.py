@@ -38,8 +38,19 @@ extensions = [
     'sphinx.ext.autosummary',
     'sphinx.ext.graphviz',
     'sphinx.ext.inheritance_diagram',
-    'sphinx_rtd_theme'
+    'sphinx_rtd_theme',
+    'sphinx.ext.autosectionlabel'
 ]
+
+
+
+
+# Numbering of figures, tables and code-blocks
+numfig = True
+numfig_format = {
+    'figure': 'Figure %s'  # Sin punto en ambas por defecto
+}
+
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -62,8 +73,9 @@ html_theme = 'sphinx_rtd_theme'
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
+html_css_files = ['css/custom.css']
 
-autodoc_mock_imports = ["sklearn","random"]
+autodoc_mock_imports = ["sklearn","rs"]
 autodoc_member_order = 'bysource'
 add_module_names = False
 autoclass_content = 'both'
