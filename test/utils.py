@@ -23,6 +23,22 @@ def str_to_bool(value: str) -> bool:
     """Convierte una cadena a un valor booleano."""
     return value.lower() in ("true", "1", "yes")
 
+def safe_int(value: str) -> int:
+    """Convierte valores '-' o en blanco a un entero predeterminado."""
+    return int(value) if value.strip() and value != '-' else 0
+
+def safe_float(value: str) -> float:
+    """Convierte valores '-' o en blanco a un flotante predeterminado."""
+    return float(value) if value.strip() and value != '-' else 0.0
+
+def safe_str(value: str) -> str:
+    """Convierte valores '-' a una cadena vacía."""
+    return value if value.strip() and value != '-' else ""
+
+def safe_str_to_bool(value: str) -> bool:
+    """Convierte valores '-' a False."""
+    return str_to_bool(value) if value.strip() and value != '-' else False
+
 def resource_path(file_name: str) -> str:
     """Devuelve la ruta absoluta al archivo en la carpeta resources."""
     return (pathlib.Path(__file__).parents[1] / "test" / "resources" / file_name).as_posix()

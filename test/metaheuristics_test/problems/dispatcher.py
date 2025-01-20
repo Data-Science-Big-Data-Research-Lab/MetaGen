@@ -32,8 +32,8 @@ from .sklearn_catalog import (get_knn_classifier_domain, knn_classifier_fitness,
                              get_support_vector_classifier_domain, support_vector_classifier_fitness,
                              get_support_vector_regressor_domain, support_vector_regressor_fitness)
 from .math_catalog import (get_x_minus_15_raised_to_2_domain,
-                          x_minus_15_raised_to_2_fitness,
-                          get_x_raised_to_2_domain, x_raised_to_2_fitness)
+                           x_minus_15_raised_to_2_fitness,
+                           get_x_raised_to_2_domain, x_raised_to_2_fitness, equation_domain, equation_fitness)
 
 from .tensorflow_catalog import (lstm_domain, lstm_fitness)
 
@@ -59,6 +59,9 @@ def problem_dispatcher(example: str, connector=BaseConnector()) -> Tuple[Domain,
     elif example == "math-2":
         problem_definition = get_x_minus_15_raised_to_2_domain
         fitness_function = x_minus_15_raised_to_2_fitness
+    elif example == "math-3":
+        problem_definition = equation_domain
+        fitness_function = equation_fitness
     elif example == "rd-c":
         problem_definition = get_random_forest_classifier_domain
         fitness_function = random_forest_classifier_fitness
