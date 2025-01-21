@@ -2,8 +2,6 @@ import heapq
 from copy import deepcopy
 from typing import Callable, Tuple, List, cast
 
-import ray
-
 from metagen.framework import Domain, Solution
 from metagen.framework.solution.tools import yield_potential_solutions
 from metagen.metaheuristics.base import Metaheuristic
@@ -22,11 +20,16 @@ class Memetic(Metaheuristic):
                  distributed: bool = False, log_dir: str = "logs/MM",
                  distribution_level:int =0) -> None:
         super().__init__(domain, fitness_function, population_size, distributed, log_dir)
+
         self.mutation_rate = mutation_rate
         self.max_generations = max_iterations
         self.neighbor_population_size = neighbor_population_size
         self.alteration_limit = alteration_limit
-        self.distribution_level = distribution_level
+
+        if not distributed:
+            self.distribution_level = 0
+        else:
+            self.distribution_level = distribution_level
 
     def initialize(self, num_solutions=10) -> Tuple[List[Solution], Solution]:
         current_solutions, best_solution = yield_potential_solutions(self.domain, self.fitness_function, num_solutions)

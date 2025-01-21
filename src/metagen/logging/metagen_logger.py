@@ -2,14 +2,19 @@ import logging
 import os
 from datetime import datetime
 
-import ray
+
+def get_metagen_logger(level: int=logging.INFO, console_output: bool=True, distributed: bool=False):
+    logger = logging.getLogger('metagen_logger')
+    if not logger.handlers:
+        if distributed:
+            metagen_logger_setup(level, console_output, "metagen_logs/remotes")
+        else:
+            metagen_logger_setup(level, console_output, "metagen_logs/local")
+    return logger
 
 
-def get_metagen_logger():
-    return logging.getLogger('metagen_logger')
 
-
-def metagen_logger_setup(level: int=logging.INFO, console_output: bool=True):
+def metagen_logger_setup(level: int, console_output: bool, log_dir:str):
     logger = logging.getLogger('metagen_logger')
     logger.setLevel(level)
 
@@ -17,18 +22,7 @@ def metagen_logger_setup(level: int=logging.INFO, console_output: bool=True):
         console_handler = yield_console_handler(level)
         logger.addHandler(console_handler)
 
-    file_handler = yield_file_handler("metagen_logs/local", "metagen", level)
-    logger.addHandler(file_handler)
-
-def metagen_remote_logger_setup(level: int=logging.INFO, console_output: bool=True):
-    logger = logging.getLogger('metagen_logger')
-    logger.setLevel(level)
-
-    if console_output:
-        console_handler = yield_console_handler(level)
-        logger.addHandler(console_handler)
-
-    file_handler = yield_file_handler("metagen_logs/remotes", ray.get_runtime_context().get_worker_id(), level)
+    file_handler = yield_file_handler(log_dir, "metagen", level)
     logger.addHandler(file_handler)
 
 
