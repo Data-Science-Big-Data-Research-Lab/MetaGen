@@ -43,7 +43,7 @@ class TabuSearch(Metaheuristic):
     def iterate(self, solutions: List[Solution]) -> Tuple[List[Solution], Solution]:
 
         current_solutions, best_solution = local_search_with_tabu(self.best_solution, self.fitness_function, len(solutions), self.alteration_limit,
-                               list(self.tabu_list))
+                                                                  list(self.tabu_list))
 
         if not current_solutions:
             current_solutions = solutions

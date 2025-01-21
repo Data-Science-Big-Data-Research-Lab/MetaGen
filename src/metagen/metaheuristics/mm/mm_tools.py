@@ -99,14 +99,3 @@ def distributed_local_search(solution: Solution, fitness_function: Callable[[Sol
     neighbourhood = ray.get(futures)
     best_neighbour = min(neighbourhood, key=lambda sol: sol.get_fitness())
     return best_neighbour
-
-
-
-
-
-
-
-
-
-
-
