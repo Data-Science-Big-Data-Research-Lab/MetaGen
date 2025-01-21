@@ -1,6 +1,3 @@
-# src/metagen/utils/tensorboard_logger.py
-
-
 from tensorboardX import SummaryWriter
 from datetime import datetime
 import uuid
