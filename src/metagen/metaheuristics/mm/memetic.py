@@ -10,15 +10,13 @@ from metagen.metaheuristics.ga.ga_tools import yield_two_children
 from metagen.metaheuristics.mm.mm_tools import local_search_of_two_children
 
 
-
-
 class Memetic(Metaheuristic):
 
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float], population_size: int = 10,
                  max_iterations: int = 20, mutation_rate: float = 0.1,
                  neighbor_population_size: int = 10, alteration_limit: float = 1.0,
                  distributed: bool = False, log_dir: str = "logs/MM",
-                 distribution_level:int =0) -> None:
+                 distribution_level: int = 0) -> None:
         super().__init__(domain, fitness_function, population_size, distributed, log_dir)
 
         self.mutation_rate = mutation_rate
@@ -47,8 +45,9 @@ class Memetic(Metaheuristic):
             father = cast(GASolution, best_parents[0])
             mother = cast(GASolution, best_parents[1])
             child1, child2 = yield_two_children((father, mother), self.mutation_rate, self.fitness_function)
-            lc_child1, lc_child2 = local_search_of_two_children((child1, child2), self.fitness_function, self.neighbor_population_size,
-                                              self.alteration_limit, self.distribution_level)
+            lc_child1, lc_child2 = local_search_of_two_children((child1, child2), self.fitness_function,
+                                                                self.neighbor_population_size,
+                                                                self.alteration_limit, self.distribution_level)
 
             current_solutions.extend([lc_child1, lc_child2])
 
@@ -61,12 +60,5 @@ class Memetic(Metaheuristic):
 
         return current_solutions, best_solution
 
-
     def stopping_criterion(self) -> bool:
         return self.current_iteration >= self.max_generations
-
-
-
-
-
-
