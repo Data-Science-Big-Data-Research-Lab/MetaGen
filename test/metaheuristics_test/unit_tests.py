@@ -276,8 +276,6 @@ def test_metaheuristic(active: bool, metaheuristic:str, problem: str,
     np.random.seed(seed)
     initial_best = float('inf')
 
-    logging.Logger("metagen_logger")
-    metagen_logger_setup(logging.INFO)
     get_metagen_logger().info(message)
 
     random.seed(seed)

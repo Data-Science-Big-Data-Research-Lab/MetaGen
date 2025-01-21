@@ -66,10 +66,10 @@ class Metaheuristic(ABC):
         futures = []
 
         if population_size > 0:
-            get_metagen_logger().debug(
-                f"[{self.current_iteration}] Distributing the iteration with {ray.available_resources().get('CPU', 0)} CPUs -- {distribution}")
+            get_metagen_logger().info(
+                f"[ITERATION {self.current_iteration}] Distributing with {ray.available_resources().get('CPU', 0)} CPUs -- {distribution}")
         else:
-            get_metagen_logger().debug(
+            get_metagen_logger().info(
                 f"Distributing the initialization with {ray.available_resources().get('CPU', 0)} CPUs -- {distribution}")
 
         for count in distribution:
