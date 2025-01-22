@@ -14,6 +14,6 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-from .cvoa import CVOA, cvoa_launcher
+from .local_launcher import cvoa_launcher
 
-__all__ = ["CVOA", "cvoa_launcher"]
+__all__ = ["cvoa_launcher"]

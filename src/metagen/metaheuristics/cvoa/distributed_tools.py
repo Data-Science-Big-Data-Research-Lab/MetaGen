@@ -1,17 +1,15 @@
 import random
 from copy import deepcopy
-from typing import Callable, Set, NamedTuple
-
+from typing import Callable, Set, Tuple
 import ray
-
 from metagen.framework import Solution, Domain
+from metagen.metaheuristics.cvoa.common_tools import IndividualState, StrainProperties, \
+    compute_n_infected_travel_distance
 from metagen.metaheuristics.distributed_tools import assign_load_equally
 
-IndividualState = NamedTuple("IndividualState", [("recovered", bool), ("dead", bool), ("isolated", bool)])
-
-
+# Remote pandemic state (ray support)
 @ray.remote
-class PandemicState:
+class RemotePandemicState:
     def __init__(self, initial_individual: Solution):
         self.recovered: Set[Solution] = set()
         self.deaths: Set[Solution] = set()
@@ -71,18 +69,7 @@ class PandemicState:
         }
 
 
-class StrainProperties(NamedTuple):
-    strain_id: str = "Strain#1"
-    pandemic_duration: int = 10
-    spreading_rate: int = 5
-    min_superspreading_rate: int = 6
-    max_superspreading_rate: int = 15
-    social_distancing: int = 7
-    p_isolation: float = 0.5
-    p_travel: float = 0.1
-    p_re_infection: float = 0.001
-    p_superspreader: float = 0.1
-    p_die: float = 0.05
+
 
 
 def distributed_cvoa_new_infected_population(global_state, domain: Domain,
@@ -138,21 +125,6 @@ def cvoa_remote_yield_infected_population_from_a_carrier(global_state, domain: D
     return cvoa_local_yield_infected_population_from_a_carrier(global_state, domain, fitness_function,
                                                                strain_properties, carrier, superspreaders, time,
                                                                update_isolated)
-
-
-def compute_n_infected_travel_distance(domain: Domain, strain_properties: StrainProperties, carrier: Solution,
-                                       superspreaders: Set[Solution]) -> Tuple[int, int]:
-    if carrier in superspreaders:
-        n_infected = random.randint(strain_properties.min_superspreading_rate,
-                                    strain_properties.max_superspreading_rate)
-    else:
-        n_infected = random.randint(0, strain_properties.spreading_rate)
-    if random.random() < strain_properties.p_travel:
-        travel_distance = random.randint(0, len(domain.get_core().variable_list()))
-    else:
-        travel_distance = 1
-
-    return n_infected, travel_distance
 
 
 def local_infect_individuals(global_state, fitness_function: Callable[[Solution], float],

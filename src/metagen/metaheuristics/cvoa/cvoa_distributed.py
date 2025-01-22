@@ -28,8 +28,8 @@ from metagen.framework import Domain
 from metagen.framework.solution import Solution
 from metagen.framework.solution.bounds import SolutionClass
 from metagen.metaheuristics.base import Metaheuristic
-from metagen.metaheuristics.distributed_tools import IndividualState, PandemicState, StrainProperties, \
-    distributed_cvoa_new_infected_population
+from metagen.metaheuristics.cvoa.common_tools import StrainProperties, IndividualState
+from metagen.metaheuristics.cvoa.distributed_tools import distributed_cvoa_new_infected_population, RemotePandemicState
 
 
 class DistributedCVOA(Metaheuristic):
@@ -221,30 +221,7 @@ class DistributedCVOA(Metaheuristic):
         self.infected.update(new_infected_population)
 
 
-    def compute_n_infected_travel_distance(self, individual: Solution) -> Tuple[int, int]:
 
-        # ** 1. Determine the number of infections. **
-        if individual in self.superspreaders:
-            # If the current individual is superspreader the number of infected ones will be in
-            # (MIN_SUPERSPREADING_RATE, MAX_SUPERSPREADING_RATE)
-            n_infected = random.randint(self.strain_properties.min_superspreading_rate,
-                                        self.strain_properties.max_superspreading_rate)
-        else:
-            # If the current individual is common the number of infected ones will be in
-            # (0, MAX_SUPERSPREADING_RATE)
-            n_infected = random.randint(0, self.strain_properties.spreading_rate)
-            # n_infected = rs.randint(0, self.__MAX_SUPERSPREADING_RATE)
-
-        # ** 2. Determine the travel distance. **
-        if random.random() < self.strain_properties.p_travel:
-            # If the current individual is a traveler, the travel distance will be in
-            # (0, number of variable defined in the problem)
-            travel_distance = random.randint(0, len(self.domain.get_core().variable_list()))
-        else:
-            # Otherwise the travel distance will be 1.
-            travel_distance = 1
-
-        return n_infected, travel_distance
 
 
     def infect_individuals(self, carrier_individual: Solution, travel_distance: int, n_infected:int) -> Set[Solution]:
@@ -312,18 +289,6 @@ class DistributedCVOA(Metaheuristic):
             r0 = new_infections / recovered
         report = "\tNew infected = " + str(new_infections) + ", Recovered = " + str(recovered) + ", R0 = " + str(r0)
         return report
-
-    def infect(self, individual: Solution, travel_distance:int) -> Solution:
-        """ The individual infects another one located at a specific distance from it.
-
-        :returns: The newly infected individual.
-        :rtype: :py:class:`~metagen.framework.Solution`
-        """
-        infected = copy.deepcopy(individual)
-        infected.mutate(travel_distance)
-        infected.evaluate(self.fitness_function)
-        return infected
-
 
     def update_pandemic_global_state(self) -> None:
         """ It updates the specific strain death and superspreader's sets and the global death and recovered sets.
@@ -510,7 +475,7 @@ def cvoa_launcher(strains: List[StrainProperties], domain: Domain, fitness_funct
 
     # Initialize the global state
     solution_type: type[SolutionClass] = domain.get_connector().get_type(domain.get_core())
-    global_state = PandemicState.remote(solution_type(domain, connector=domain.get_connector()))
+    global_state = RemotePandemicState.remote(solution_type(domain, connector=domain.get_connector()))
 
     t1 = time()
     futures = [run_strain.remote(global_state, domain, fitness_function, strain_properties, verbose, update_isolated, log_dir) for strain_properties in strains]
