@@ -4,6 +4,7 @@ import numpy as np
 from scipy.stats import norm
 from metagen.framework import Domain, Solution
 from copy import deepcopy
+from metagen.framework.domain.literals import I
 
 class TPE(Metaheuristic):
     """
@@ -87,13 +88,19 @@ class TPE(Metaheuristic):
             p_best = norm.pdf(new_solution[var], mu_best, sigma_best)
             p_worst = norm.pdf(new_solution[var], mu_worst, sigma_worst)
 
+            var_type = self.domain.get_core().get(var).get_attributes()[0]
             minumum = self.domain.get_core().get(var).get_attributes()[1]
             maximum = self.domain.get_core().get(var).get_attributes()[2]
 
+            new_value = None
+            
             if p_best / (p_best + p_worst) > np.random.rand():
-                new_solution[var] = np.clip(np.random.normal(mu_best, sigma_best), minumum, maximum).item()
+                new_value = np.clip(np.random.normal(mu_best, sigma_best), minumum, maximum).item()
             else:
-                new_solution[var] = np.clip(np.random.normal(mu_worst, sigma_worst), minumum, maximum).item()
+                new_value = np.clip(np.random.normal(mu_worst, sigma_worst), minumum, maximum).item()
+
+            if var_type == I:
+                new_solution[var] = int(new_value)
 
         return new_solution
 

@@ -21,12 +21,12 @@ from typing import List, Tuple, Optional, Callable
 from metagen.framework import Domain, Solution
 from copy import deepcopy
 
-from ..logging.metagen_logger import get_metagen_logger
+from metagen.logging.metagen_logger import get_metagen_logger
 
 IS_RAY_INSTALLED = is_package_installed("ray")
 
 if is_package_installed("tensorboard"):
-    from metagen.logging import TensorBoardLogger
+    from metagen.logging.tensorboard_logger import TensorBoardLogger
 
 if IS_RAY_INSTALLED:
     import ray
@@ -55,6 +55,7 @@ class Metaheuristic(ABC):
         self.current_iteration = 0
         self.best_solution: Optional[Solution] = None
         self.current_solutions: List[Solution] = []
+        self.best_solution_fitnesses: List[float] = []
 
 
 
@@ -164,6 +165,7 @@ class Metaheuristic(ABC):
         """
         get_metagen_logger().debug(f'[ITERATION {self.current_iteration}] POPULATION ({len(self.current_solutions)}): {self.current_solutions}')
         get_metagen_logger().info(f'[ITERATION {self.current_iteration}] BEST SOLUTION: {self.best_solution}')
+        self.best_solution_fitnesses.append(self.best_solution.get_fitness())
         if self.logger: 
             # Log iteration metrics
             self.logger.writer.add_scalar('Population Size',
