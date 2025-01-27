@@ -34,79 +34,79 @@ from metagen.metaheuristics.distributed_tools import IndividualState, PandemicSt
 
 class DistributedCVOA(Metaheuristic):
     """
+    Distributed Coronavirus Optimization Algorithm (CVOA) for optimization problems.
 
-    This class implements the *CVOA* algorithm. It uses the :py:class:`~metagen.framework.Solution` class as an
-    abstraction of an individual for the meta-heuristic.
+    This class implements a distributed version of the CVOA algorithm which models the spread
+    of a virus in a population to solve optimization problems. It uses Ray for distributed
+    computing and supports multiple virus strains running in parallel.
 
-    It solves an optimization problem defined by a :py:class:`~metagen.framework.Domain` object and an
-    implementation of a fitness function.
+    The algorithm models:
+    - Infection spread between solutions
+    - Super-spreader events
+    - Social distancing effects
+    - Recovery and death of solutions
+    - Travel between different regions of the search space
 
-    By instantiate :py:class:`~metagen.metaheuristics.CVOA` object, i.e. a strain, the configuration parameters must be provided.
+    :param global_state: The global state of the pandemic
+    :type global_state: PandemicState
+    :param domain: The problem domain that defines the solution space
+    :type domain: Domain
+    :param fitness_function: Function to evaluate solutions
+    :type fitness_function: Callable[[Solution], float]
+    :param strain_properties: Properties defining the virus strain behavior
+    :type strain_properties: StrainProperties
+    :param verbose: Verbosity option, defaults to True
+    :type verbose: bool, optional
+    :param update_isolated: Whether to update isolated solutions, defaults to False
+    :type update_isolated: bool, optional
+    :param log_dir: Directory for logging, defaults to "logs/DCVOA"
+    :type log_dir: str, optional
 
-    This class supports multiple strain execution by means of multy-threading. Each strain
-    (:py:class:`~metagen.metaheuristics.CVOA` object) will execute its *CVOA* algorithm (:py:meth:`~metagen.metaheuristics.CVOA.cvoa`)
-    in a thread and, finally, the best :py:class:`~metagen.framework.Solution` (i.e. the best fitness function
-    is obtained).
-
-    To launch a multi-strain execution, this module provides the :py:meth:`~metagen.metaheuristics.cvoa_launcher`
-    method.
-
-    :param strain_id: The strain name
-    :param pandemic_duration: The pandemic duration, defaults to 10
-    :param spreading_rate: The spreading rate, defaults to 6
-    :param min_super_spreading_rate: The minimum super spreading rate, defaults to 6
-    :param max_super_spreading_rate: The maximum super spreading rate, defaults to 15
-    :param social_distancing: The distancing stablished between the individuals, defaults to 10
-    :param p_isolation: The probability of an individual being isolated, defaults to 0.7
-    :param p_travel: The probability that an individual will travel, defaults to 0.1
-    :param p_re_infection: The probability of an individual being re-infected, defaults to 0.0014
-    :param p_superspreader: The probability of an individual being a super-spreader, defaults to 0.1
-    :param p_die: The probability that an individual will die, defaults to 0.05
-    :param verbose: The verbosity option, defaults to True
-    :type strain_id: str
-    :type pandemic_duration: int
-    :type spreading_rate: int
-    :type min_super_spreading_rate: int
-    :type max_super_spreading_rate: int
-    :type social_distancing: int
-    :type p_isolation: float
-    :type p_travel: float
-    :type p_re_infection: float
-    :type p_superspreader: float
-    :type p_die: float
-    :type verbose: bool
-
+    :ivar strain_properties: Properties of the virus strain
+    :vartype strain_properties: StrainProperties
+    :ivar global_state: Distributed state tracking pandemic progression
+    :vartype global_state: PandemicState
+    :ivar superspreaders: Set of solutions identified as superspreaders
+    :vartype superspreaders: Set[Solution]
+    :ivar time: Current iteration in the pandemic simulation
+    :vartype time: int
 
     **Code example**
 
     .. code-block:: python
 
-        from metagen.framework import Domain, Solution
-        from metagen.metaheuristics import CVOA, cvoa_launcher
+        from metagen.framework import Domain
+        from metagen.metaheuristics.cvoa import DistributedCVOA, StrainProperties
+        
+        # Define the problem domain
         domain = Domain()
-        multithread = True
-
         domain.defineInteger(0, 1)
-
+        
+        # Define the fitness function
         fitness_function = ...
 
-        if multithread: # For multiple thread excecution
+        # Configure virus strain properties
+        strain = StrainProperties(
+            strain_id="Strain1",
+            pandemic_duration=100,
+            spreading_rate=6,
+            min_superspreading_rate=6,
+            max_superspreading_rate=15,
+            social_distancing=10,
+            p_isolation=0.7,
+            p_travel=0.1,
+            p_re_infection=0.0014,
+            p_superspreader=0.1,
+            p_die=0.05
+        )
 
-            CVOA.initialize_pandemic(domain, fitness_function)
-            strain1 = CVOA("Strain1", pandemic_duration=100)
-            strain2 = CVOA("Strain2",  pandemic_duration=100)
-            ...
-
-            strains = [strain1, strain2, ...]
-            optimal_solution = cvoa_launcher(strains)
-        else: # For individual thread excecution
-
-            CVOA.initialize_pandemic(domain, fitness_function)
-            search = CVOA(pandemic_duration=100)
-            optimal_solution = search.run()
+        # Create and run the algorithm
+        algorithm = DistributedCVOA(global_state, domain, fitness_function, strain_properties=strain)
+        optimal_solution = algorithm.run()
     """
 
-    def __init__(self, global_state, domain, fitness_function, strain_properties:StrainProperties = StrainProperties(), verbose=True, update_isolated=False,
+    def __init__(self, global_state, domain: Domain, fitness_function: Callable[[Solution], float],
+                 strain_properties: StrainProperties = StrainProperties(), verbose=True, update_isolated=False,
                  log_dir="logs/DCVOA"):
 
         # 1. Initialize the base class.
@@ -125,7 +125,7 @@ class DistributedCVOA(Metaheuristic):
 
         # 4.1. Logical condition to ctrl the epidemic (main iteration).
         # If True, the iteration continues. When there are no infected individuals, the epidemic finishes.
-        self.epidemic:bool = True
+        self.epidemic: bool = True
 
         # 4.2. The current iteration. The iteration counter will be initially set to 0.
         self.time: int = 0
@@ -141,16 +141,24 @@ class DistributedCVOA(Metaheuristic):
         self.worst_superspreader = self.solution_type(self.domain, connector=self.domain.get_connector())
 
         # 5. Main strain sets: infected, superspreaders, infected superspreaders and deaths.
-        self.infected:Set[Solution] = set()
-        self.superspreaders:Set[Solution] = set()
-        self.infected_superspreaders:Set[Solution] = set()
-        self.dead:Set[Solution] = set()
+        self.infected: Set[Solution] = set()
+        self.superspreaders: Set[Solution] = set()
+        self.infected_superspreaders: Set[Solution] = set()
+        self.dead: Set[Solution] = set()
 
 
     def initialize(self) -> None:
+        """
+        Initialize the pandemic simulation with a random solution.
+
+        Creates an initial population of solutions and identifies potential superspreaders
+        based on the strain properties.
+
+        :return: None
+        """
 
         # 1. Yield the patient zero (pz).
-        pz:Solution = self.solution_type(self.domain, connector=self.domain.get_connector())
+        pz: Solution = self.solution_type(self.domain, connector=self.domain.get_connector())
         pz.evaluate(self.fitness_function)
         self.verbosity(f'[{self.strain_properties.strain_id}] Patient zero: {pz}')
 
@@ -163,6 +171,17 @@ class DistributedCVOA(Metaheuristic):
 
 
     def iterate(self) -> None:
+        """
+        Execute one iteration of the pandemic simulation.
+
+        In each iteration:
+        1. New infections are spread through the population
+        2. Some solutions may recover or die
+        3. Superspreader events may occur
+        4. Solutions may travel to new regions
+
+        :return: None
+        """
 
         # 1. Spreading the disease.
         self.propagate_disease()
@@ -179,27 +198,47 @@ class DistributedCVOA(Metaheuristic):
         self.current_iteration = self.time
         self.current_solutions = self.infected
 
+
     def stopping_criterion(self) -> bool:
+        """
+        Check if the pandemic simulation should stop.
+
+        The simulation stops when the current time reaches the pandemic duration
+        specified in the strain properties.
+
+        :return: True if the pandemic duration is reached, False otherwise
+        :rtype: bool
+        """
 
         # When the strain is stopped?
 
         # First condition: When there are no infected individuals
-        first_condition:bool = self.epidemic == False
+        first_condition: bool = self.epidemic == False
 
         # Second condition: When the pandemic duration has been reached
-        second_condition:bool = self.time > self.strain_properties.pandemic_duration
+        second_condition: bool = self.time > self.strain_properties.pandemic_duration
 
         # Third condition: When the best individual has been found and the time is greater than 1
         third_condition = self.best_founded and self.time > 1
 
         return first_condition or second_condition or third_condition
 
+
     def post_execution(self) -> None:
+        """
+        Post-execution processing.
+
+        :return: None
+        """
         self.verbosity(f'[{self.strain_properties.strain_id}] Converged after {self.time} iterations with best individual: {self.best_solution}')
         super().post_execution()
 
+
     def propagate_disease(self) -> None:
-        """ It spreads the disease through the individuals of the population.
+        """
+        Spread the disease through the individuals of the population.
+
+        :return: None
         """
 
         # 1. Before the new propagation, update the strain (superspreader, death) and global (death, recovered) sets.
@@ -215,13 +254,20 @@ class DistributedCVOA(Metaheuristic):
         self.verbosity(f'[{self.strain_properties.strain_id}] Iteration #{self.time} - {self.r0_report(len(new_infected_population))}'
                        f'- Best strain individual: {self.best_solution} , Best global individual: {ray.get(self.global_state.get_best_individual.remote())} ')
 
-
         # 5. Update the infected strain population for the next iteration
         self.infected.clear()
         self.infected.update(new_infected_population)
 
 
     def compute_n_infected_travel_distance(self, individual: Solution) -> Tuple[int, int]:
+        """
+        Compute the number of infected individuals and travel distance for a given solution.
+
+        :param individual: The solution to compute the number of infected individuals and travel distance for
+        :type individual: Solution
+        :return: A tuple containing the number of infected individuals and travel distance
+        :rtype: Tuple[int, int]
+        """
 
         # ** 1. Determine the number of infections. **
         if individual in self.superspreaders:
@@ -247,9 +293,21 @@ class DistributedCVOA(Metaheuristic):
         return n_infected, travel_distance
 
 
-    def infect_individuals(self, carrier_individual: Solution, travel_distance: int, n_infected:int) -> Set[Solution]:
+    def infect_individuals(self, carrier_individual: Solution, travel_distance: int, n_infected: int) -> Set[Solution]:
+        """
+        Infect new individuals based on the carrier individual and travel distance.
 
-        infected_population:Set[Solution] = set()
+        :param carrier_individual: The individual that will infect new individuals
+        :type carrier_individual: Solution
+        :param travel_distance: The distance that the new individuals will be infected
+        :type travel_distance: int
+        :param n_infected: The number of new individuals to infect
+        :type n_infected: int
+        :return: A set of newly infected individuals
+        :rtype: Set[Solution]
+        """
+
+        infected_population: Set[Solution] = set()
 
         for _ in range(0, n_infected):
 
@@ -275,17 +333,21 @@ class DistributedCVOA(Metaheuristic):
                             self.global_state.isolate_individual_conditional_state.remote(new_infected_individual,
                                                                                           IndividualState(True, True,
                                                                                                           True)))
+
+
         return infected_population
 
 
     def update_new_infected_population(self, new_infected_population: Set[Solution],
                                        new_infected_individual: Solution) -> None:
-        """ It updates the next infected population with a new infected individual.
+        """
+        Update the newly infected population with a new individual.
 
-        :param new_infected_population: The population of the next iteration.
-        :param new_infected_individual: The new infected individual that will be inserted into the netx iteration set.
-        :type new_infected_population: set of :py:class:`~metagen.framework.Solution`
-        :type new_infected_individual: :py:class:`~metagen.framework.Solution`
+        :param new_infected_population: The newly infected population
+        :type new_infected_population: Set[Solution]
+        :param new_infected_individual: The new individual to add to the population
+        :type new_infected_individual: Solution
+        :return: None
         """
 
         # Get the global individual state.
@@ -306,6 +368,15 @@ class DistributedCVOA(Metaheuristic):
 
 
     def r0_report(self, new_infections: int) -> str:
+        """
+        Generate a report on the current R0 value.
+
+        :param new_infections: The number of new infections
+        :type new_infections: int
+        :return: A string report on the current R0 value
+        :rtype: str
+        """
+
         recovered = ray.get(self.global_state.get_recovered_len.remote())
         r0 = new_infections
         if recovered != 0:
@@ -313,12 +384,19 @@ class DistributedCVOA(Metaheuristic):
         report = "\tNew infected = " + str(new_infections) + ", Recovered = " + str(recovered) + ", R0 = " + str(r0)
         return report
 
-    def infect(self, individual: Solution, travel_distance:int) -> Solution:
-        """ The individual infects another one located at a specific distance from it.
 
-        :returns: The newly infected individual.
-        :rtype: :py:class:`~metagen.framework.Solution`
+    def infect(self, individual: Solution, travel_distance: int) -> Solution:
         """
+        Infect a new individual based on the given individual and travel distance.
+
+        :param individual: The individual that will infect a new individual
+        :type individual: Solution
+        :param travel_distance: The distance that the new individual will be infected
+        :type travel_distance: int
+        :return: The newly infected individual
+        :rtype: Solution
+        """
+
         infected = copy.deepcopy(individual)
         infected.mutate(travel_distance)
         infected.evaluate(self.fitness_function)
@@ -326,7 +404,10 @@ class DistributedCVOA(Metaheuristic):
 
 
     def update_pandemic_global_state(self) -> None:
-        """ It updates the specific strain death and superspreader's sets and the global death and recovered sets.
+        """
+        Update the pandemic global state.
+
+        :return: None
         """
 
         # A percentage, p_superspreader, of the infected individuals in the strain (infected) will be superspreaders.
@@ -369,14 +450,16 @@ class DistributedCVOA(Metaheuristic):
         # Remove the global dead individuals from the global recovered set.
         ray.get(self.global_state.update_recovered_with_deaths.remote())
 
-    def update_recovered_death_strain(self, to_insert: Solution, remaining:int) -> bool:
-        """ It updates the specific strain death set and the global recovered set.
 
-        :param to_insert: The individual that has to be inserted in the death set.
-        :param remaining: The number of individuals remaining to be added in the death set.
-        :type to_insert: :py:class:`~metagen.framework.Solution`
+    def update_recovered_death_strain(self, to_insert: Solution, remaining: int) -> bool:
+        """
+        Update the recovered and death sets for the strain.
+
+        :param to_insert: The individual to insert into the recovered or death set
+        :type to_insert: Solution
+        :param remaining: The number of individuals remaining to insert
         :type remaining: int
-        :returns: True, if the individual has been successfully inserted in the death set; otherwise False.
+        :return: True if the individual was inserted, False otherwise
         :rtype: bool
         """
 
@@ -390,20 +473,21 @@ class DistributedCVOA(Metaheuristic):
 
         return dead
 
-    # TODO: Método muy chungo, tocar lo menos posible
-    def insert_into_set_strain(self, bag: Set[Solution], to_insert:Solution, remaining:int, ty:str) -> bool:
-        """ Insert an individual in the strain sets (death or superspreader).
 
-        :param bag: The set where the individual has to be inserted.
-        :param to_insert: The individual that has to be inserted.
-        :param remaining: The number of individuals remaining to be added in the set.
-        :param ty: The set where the individual will be inserted ('s' if it is the superspreader set, 'd' if it is the
-        death set.
-        :type bag: set of :py:class:`~metagen.framework.Solution`
-        :type to_insert: :py:class:`~metagen.framework.Solution`
+    # TODO: Método muy chungo, tocar lo menos posible
+    def insert_into_set_strain(self, bag: Set[Solution], to_insert: Solution, remaining: int, ty: str) -> bool:
+        """
+        Insert an individual into a set for the strain.
+
+        :param bag: The set to insert the individual into
+        :type bag: Set[Solution]
+        :param to_insert: The individual to insert
+        :type to_insert: Solution
+        :param remaining: The number of individuals remaining to insert
         :type remaining: int
+        :param ty: The type of set to insert into ('s' for superspreaders, 'd' for deaths)
         :type ty: str
-        :returns: True, if the individual has been successfully inserted; otherwise False
+        :return: True if the individual was inserted, False otherwise
         :rtype: bool
         """
 
@@ -458,9 +542,12 @@ class DistributedCVOA(Metaheuristic):
 
         return inserted
 
+
     def post_iteration(self) -> None:
         """
-        Additional processing after each generation.
+        Post-iteration processing.
+
+        :return: None
         """
         super().post_iteration()
         print(f'[{self.current_iteration}] {self.best_solution}')
@@ -470,8 +557,13 @@ class DistributedCVOA(Metaheuristic):
 
 
     def __str__(self):
-        """ String representation of a :py:class:`~metagen.metaheuristics.CVOA` object (a strain).
         """
+        String representation of a DistributedCVOA object.
+
+        :return: A string representation of the object
+        :rtype: str
+        """
+
         res = ""
         res += self.strain_properties.strain_id + "\n"
         res += "Max time = " + str(self.strain_properties.pandemic_duration) + "\n"
@@ -494,15 +586,53 @@ class DistributedCVOA(Metaheuristic):
 
 
 @ray.remote
-def run_strain(global_state, domain:Domain, fitness_function: Callable[[Solution],float], strain_properties:StrainProperties,
-               verbose:bool=True, update_isolated:bool=False, log_dir:str="logs/CVOA") -> Solution:
-    strain = DistributedCVOA(global_state, domain,fitness_function, strain_properties, verbose, update_isolated, log_dir)
-    return strain.run()
+def run_strain(global_state, domain: Domain, fitness_function: Callable[[Solution], float], strain_properties: StrainProperties,
+               verbose: bool = True, update_isolated: bool = False, log_dir: str = "logs/CVOA") -> Solution:
+    """
+    Run a strain of the Distributed CVOA algorithm.
 
+    :param global_state: The global state of the pandemic
+    :type global_state: PandemicState
+    :param domain: The problem domain that defines the solution space
+    :type domain: Domain
+    :param fitness_function: Function to evaluate solutions
+    :type fitness_function: Callable[[Solution], float]
+    :param strain_properties: Properties defining the virus strain behavior
+    :type strain_properties: StrainProperties
+    :param verbose: Verbosity option, defaults to True
+    :type verbose: bool, optional
+    :param update_isolated: Whether to update isolated solutions, defaults to False
+    :type update_isolated: bool, optional
+    :param log_dir: Directory for logging, defaults to "logs/CVOA"
+    :type log_dir: str, optional
+    :return: The best solution found by the strain
+    :rtype: Solution
+    """
+
+    strain = DistributedCVOA(global_state, domain, fitness_function, strain_properties, verbose, update_isolated, log_dir)
+    return strain.run()
 
 
 def cvoa_launcher(strains: List[StrainProperties], domain: Domain, fitness_function: Callable[[Solution], float],
                   verbose: bool = True, update_isolated: bool = False, log_dir: str = "logs/DCVOA") -> Solution:
+    """
+    Launch the Distributed CVOA algorithm with multiple strains.
+
+    :param strains: List of strain properties
+    :type strains: List[StrainProperties]
+    :param domain: The problem domain that defines the solution space
+    :type domain: Domain
+    :param fitness_function: Function to evaluate solutions
+    :type fitness_function: Callable[[Solution], float]
+    :param verbose: Verbosity option, defaults to True
+    :type verbose: bool, optional
+    :param update_isolated: Whether to update isolated solutions, defaults to False
+    :type update_isolated: bool, optional
+    :param log_dir: Directory for logging, defaults to "logs/DCVOA"
+    :type log_dir: str, optional
+    :return: The best solution found by the algorithm
+    :rtype: Solution
+    """
 
     # Initialize Ray
     if not ray.is_initialized():
@@ -532,6 +662,5 @@ def cvoa_launcher(strains: List[StrainProperties], domain: Domain, fitness_funct
 
     print("\n********** Performance **********")
     print("Execution time: " + str(timedelta(milliseconds=t2 - t1)))
-
 
     return best_solution

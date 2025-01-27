@@ -4,7 +4,7 @@ Solution
     :depth: 4
 
 =================
-Solution
+Solution class
 =================
 
 .. currentmodule:: metagen.framework
