@@ -1,8 +1,5 @@
 from copy import deepcopy
 from typing import Callable, Tuple, List
-
-import ray
-
 from metagen.framework import Domain
 from metagen.metaheuristics.base import Metaheuristic
 from metagen.metaheuristics.ga import GASolution

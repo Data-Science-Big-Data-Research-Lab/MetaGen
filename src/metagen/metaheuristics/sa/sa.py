@@ -30,15 +30,19 @@ from metagen.metaheuristics.base import Metaheuristic
 def calculate_exploration_rate(best_solution_fitness: float, neighbor_fitness: float,
                                initial_temp: float) -> float:
     """
-    Calculate the exploration rate for simulated annealing.
+    Calculate the exploration rate for simulated annealing using the Metropolis criterion.
 
-    Args:
-        best_solution_fitness (float): Fitness of the best solution.
-        neighbor_fitness (float): Fitness of the best neighbor.
-        initial_temp (float): Current temperature.
+    The exploration rate determines the probability of accepting a worse solution
+    based on the current temperature and the difference in fitness values.
 
-    Returns:
-        float: The exploration rate.
+    :param best_solution_fitness: Fitness of the current best solution
+    :type best_solution_fitness: float
+    :param neighbor_fitness: Fitness of the neighbor solution being considered
+    :type neighbor_fitness: float
+    :param initial_temp: Current temperature in the annealing process
+    :type initial_temp: float
+    :return: Probability of accepting the neighbor solution
+    :rtype: float
     """
     MAX_EXPONENT = 700  # This is a safe value to avoid overflow in most cases
     exponent_value = (best_solution_fitness - neighbor_fitness) / initial_temp
@@ -46,36 +50,44 @@ def calculate_exploration_rate(best_solution_fitness: float, neighbor_fitness: f
     return math.exp(exponent_value)
 
 
-
 class SA(Metaheuristic):
     """
-    Simulated annealing (SA) class for optimization problems.
+    Simulated Annealing (SA) algorithm for optimization problems.
     
-    :param domain: The domain representing the problem space.
-    :type domain: Domain
-    :param fitness_func: The fitness function used to evaluate solutions.
-    :type fitness_func: Callable[[Solution], float]
-    :param n_iterations: The number of generations to run the algorithm (default is 50).
-    :type max_iterations: int, optional
-    :param alteration_limit: The alteration performed over every the solution to generate the neighbor.
-    :type alteration_limit: any, optional
-    :param initial_temp: The initial temperature for the annealing.
-    :type initial_temp: float, optional
-    :param cooling_rate: Meassures the speed of the cooling procedure.
-    :type cooling_rate: float, optional
+    This class implements the Simulated Annealing metaheuristic which uses temperature-based
+    probabilistic acceptance of worse solutions to escape local optima. The temperature
+    gradually decreases according to a cooling schedule, reducing the probability of
+    accepting worse solutions over time.
 
-    :ivar max_iterations: The number of generations to run the algorithm.
-    :vartype n_iterations: int
-    :ivar domain: The domain representing the problem space.
-    :vartype domain: Domain
-    :ivar alteration_limit: The alteration performed over every the solution to generate the neighbor.
-    :vartype alteration_limit: any
-    :ivar fitness_func: The fitness function used to evaluate solutions.
-    :vartype fitness_func: Callable[[Solution], float]
-    :ivar initial_temp: The initial temperature for the annealing.
+    :param domain: The problem domain that defines the solution space
+    :type domain: Domain
+    :param fitness_function: Function to evaluate solutions
+    :type fitness_function: Callable[[Solution], float]
+    :param max_iterations: Maximum number of iterations to run, defaults to 20
+    :type max_iterations: int, optional
+    :param alteration_limit: Maximum proportion of solution to alter when generating neighbors, defaults to 0.1
+    :type alteration_limit: float, optional
+    :param initial_temp: Initial temperature for annealing process, defaults to 50.0
+    :type initial_temp: float, optional
+    :param cooling_rate: Rate at which temperature decreases, defaults to 0.99
+    :type cooling_rate: float, optional
+    :param neighbor_population_size: Number of neighbors to generate in each iteration, defaults to 1
+    :type neighbor_population_size: int, optional
+    :param distributed: Whether to use distributed computation, defaults to False
+    :type distributed: bool, optional
+    :param log_dir: Directory for logging, defaults to "logs/SA"
+    :type log_dir: str, optional
+
+    :ivar max_iterations: Maximum number of iterations
+    :vartype max_iterations: int
+    :ivar alteration_limit: Maximum proportion of solution to alter
+    :vartype alteration_limit: float
+    :ivar initial_temp: Current temperature in the annealing process
     :vartype initial_temp: float
-    :ivar cooling_rate: Meassures the speed of the cooling procedure.
+    :ivar cooling_rate: Rate of temperature decrease
     :vartype cooling_rate: float
+    :ivar neighbor_population_size: Number of neighbors per iteration
+    :vartype neighbor_population_size: int
     """
 
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float], max_iterations: int = 20,
@@ -83,17 +95,26 @@ class SA(Metaheuristic):
                  cooling_rate: float = 0.99, neighbor_population_size: int = 1, distributed=False,
                  log_dir: str = "logs/SA") -> None:
         """
-        Initialize the distributed simulated annealing algorithm.
+        Initialize the Simulated Annealing algorithm.
 
-        Args:
-            domain: The problem domain
-            fitness_func: Function to evaluate solutions
-            log_dir: Directory for logging
-            n_iterations: Number of iterations (default: 50)
-            alteration_limit: Maximum alteration for generating a neighbor (default: 0.1)
-            initial_temp: Initial temperature (default: 50.0)
-            cooling_rate: Cooling rate for the annealing (default: 0.99)
-            neighbor_population_size: Number of neighbors to consider in each iteration (default: 10)
+        :param domain: The problem domain that defines the solution space
+        :type domain: Domain
+        :param fitness_function: Function to evaluate solutions
+        :type fitness_function: Callable[[Solution], float]
+        :param max_iterations: Maximum number of iterations to run, defaults to 20
+        :type max_iterations: int, optional
+        :param alteration_limit: Maximum proportion of solution to alter when generating neighbors, defaults to 0.1
+        :type alteration_limit: float, optional
+        :param initial_temp: Initial temperature for annealing process, defaults to 50.0
+        :type initial_temp: float, optional
+        :param cooling_rate: Rate at which temperature decreases, defaults to 0.99
+        :type cooling_rate: float, optional
+        :param neighbor_population_size: Number of neighbors to generate in each iteration, defaults to 1
+        :type neighbor_population_size: int, optional
+        :param distributed: Whether to use distributed computation, defaults to False
+        :type distributed: bool, optional
+        :param log_dir: Directory for logging, defaults to "logs/SA"
+        :type log_dir: str, optional
         """
         super().__init__(domain, fitness_function, distributed=distributed, log_dir=log_dir)
         self.max_iterations = max_iterations
@@ -102,37 +123,63 @@ class SA(Metaheuristic):
         self.cooling_rate = cooling_rate
         self.neighbor_population_size = neighbor_population_size
 
-    def initialize(self, num_solutions=10) -> Tuple[List[Solution], Solution]:
-        current_solutions, best_solution = yield_potential_solutions(self.domain, self.fitness_function, 1)
+    def initialize(self, num_solutions: int = 1) -> Tuple[List[Solution], Solution]:
+        """
+        Initialize the Simulated Annealing algorithm with random solutions.
+
+        :param num_solutions: Number of initial solutions to generate, defaults to 1
+        :type num_solutions: int, optional
+        :return: A tuple containing the list of solutions and the best solution found
+        :rtype: Tuple[List[Solution], Solution]
+        """
+        current_solutions, best_solution = yield_potential_solutions(self.domain, self.fitness_function, num_solutions)
         return current_solutions, best_solution
 
     def iterate(self, solutions: List[Solution]) -> Tuple[List[Solution], Solution]:
-        neighbor = deepcopy(solutions[0])
-        neighbor.mutate(alteration_limit=self.alteration_limit)
+        """
+        Execute one iteration of the Simulated Annealing algorithm.
+
+        In each iteration, a neighbor solution is generated and may be accepted based on
+        the Metropolis criterion and current temperature. The temperature is then decreased
+        according to the cooling schedule.
+
+        :param solutions: Current population of solutions
+        :type solutions: List[Solution]
+        :return: A tuple containing the updated population and the best solution found
+        :rtype: Tuple[List[Solution], Solution]
+        """
+        current_solution = deepcopy(solutions[0])
+        best_solution = deepcopy(self.best_solution)
+
+        # Generate neighbor
+        neighbor = deepcopy(current_solution)
+        neighbor.mutate(self.alteration_limit)
         neighbor.evaluate(self.fitness_function)
 
-        current_fitness = solutions[0].get_fitness()
-        neighbor_fitness = neighbor.get_fitness()
-        delta = current_fitness - neighbor_fitness
+        # Calculate acceptance probability
+        if neighbor.get_fitness() < current_solution.get_fitness():
+            current_solution = neighbor
+            if neighbor.get_fitness() < best_solution.get_fitness():
+                best_solution = neighbor
+        else:
+            exploration_rate = calculate_exploration_rate(current_solution.get_fitness(),
+                                                         neighbor.get_fitness(), self.initial_temp)
+            if random.random() < exploration_rate:
+                current_solution = neighbor
 
-        # Acceptance criteria for simulated annealing
-        exploration_rate = calculate_exploration_rate(self.best_solution.fitness, neighbor.fitness,
-                                                      self.initial_temp)
-
-        partial_best_solution = deepcopy(self.best_solution)
-
-        if delta < 0 or exploration_rate > random.random():
-            solutions[0] = deepcopy(neighbor)
-            if current_fitness > neighbor_fitness:
-                partial_best_solution = deepcopy(neighbor)
-
-        # Update temperature
+        # Cool down
         self.initial_temp *= self.cooling_rate
 
-        return solutions, partial_best_solution
+        return [current_solution], best_solution
 
     def stopping_criterion(self) -> bool:
+        """
+        Check if the algorithm should stop.
+
+        The algorithm stops when the current iteration reaches the maximum number
+        of iterations.
+
+        :return: True if the maximum number of iterations is reached, False otherwise
+        :rtype: bool
+        """
         return self.current_iteration >= self.max_iterations
-
-
-

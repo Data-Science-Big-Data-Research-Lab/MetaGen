@@ -48,7 +48,7 @@ where ``TYPE`` represents any type defined previously, while args are the specif
 The details of the definition are described in the `Core`_.
 
 =================
-Domain
+Domain class
 =================
 
 .. currentmodule:: metagen.framework
