@@ -33,16 +33,22 @@ class GAStructure(types.Structure):
     """
     Represents the custom Structure type for the Genetic Algorithm (GA).
     
-    Methods:
-        mutate(): Modify the Structure by performing an action selected randomly from three options. Inherited from :py:class:`~metagen.framework.solution.Structure`.
-        _resize(): Resizes the vector based on the definition provided at initialization. Inherited from :py:class:`~metagen.framework.solution.Structure`.
-        _alterate(): Randomly alters a certain number of elements in the vector by calling their `mutate` method. Inherited from :py:class:`~metagen.framework.solution.Structure`.
-        crossover(other: GAStructure) -> Tuple[GAStructure, GAStructure]: Performs crossover operation with another GAStructure instance.
+    This class extends the base Structure type to add genetic algorithm specific operations
+    like crossover.
+
+    :ivar connector: The connector used to link different types
+    :vartype connector: BaseConnector
     """
 
     def crossover(self, other: GAStructure) -> Tuple[GAStructure, GAStructure]:
         """
-         Performs crossover operation with another GAStructure instance by randomly modifying list positions. Note that this operation does not support an `DynamicStructureDefinition`.
+        Performs crossover operation with another GAStructure instance.
+
+        :param other: Another GAStructure instance to perform crossover with
+        :type other: GAStructure
+        :return: A tuple containing two new GAStructure instances (children)
+        :rtype: Tuple[GAStructure, GAStructure]
+        :raises NotImplementedError: If the definition is a DynamicStructureDefinition
         """
 
         child1 = GAStructure(self.get_definition(), connector=self.connector)
@@ -68,14 +74,22 @@ class GASolution(Solution):
     """
     Represents a Solution type for the Genetic Algorithm (GA).
 
-    Methods:
-        mutate(alterations_number: int = None): Modify a rs subset of the solution's variables calling its mutate method. Inherited from :py:class:`~metagen.framework.solution.Solution`.
-        crossover(other: GASolution) -> Tuple[GASolution, GASolution]: Performs crossover operation with another GASolution instance.
+    This class extends the base Solution type to add genetic algorithm specific operations
+    like crossover between solutions.
+
+    :ivar connector: The connector used to link different types
+    :vartype connector: BaseConnector
     """
 
     def crossover(self, other: GASolution) -> Tuple[GASolution, GASolution]:
         """
-        Performs crossover operation with another GASolution instance by randomly exchanging variables.
+        Performs crossover operation with another GASolution instance.
+
+        :param other: Another GASolution instance to perform crossover with
+        :type other: GASolution
+        :return: A tuple containing two new GASolution instances (children)
+        :rtype: Tuple[GASolution, GASolution]
+        :raises AssertionError: If the solutions have different variable keys
         """
         assert self.get_variables().keys() == other.get_variables().keys()
 
@@ -120,22 +134,23 @@ class GASolution(Solution):
 
 class GAConnector(BaseConnector):
     """
-    Represents the custom Connector for the Genetic Algorithm (GA) which link the following classes:
+    Represents the custom Connector for the Genetic Algorithm (GA).
 
-    * `BaseDefinition` - `GASolution` - `dict`
-    * `IntegerDefinition` - `types.Integer` - `int`
-    * `RealDefinition` - `types.Real` - `float`
-    * `CategoricalDefinition` - `types.Categorical` - `str`
-    * `StaticStructureDefinition`- `GAStructure` - `list`
+    This connector links the following classes:
+    * BaseDefinition - GASolution - dict
+    * IntegerDefinition - types.Integer - int
+    * RealDefinition - types.Real - float
+    * CategoricalDefinition - types.Categorical - str
+    * StaticStructureDefinition - GAStructure - list
 
-    Note that the `Solution` and `Structure` original classes has been replaced by the custom classes. Therefore, when instantiating an `StaticStructureDefinition`, the `GAStructure` will be employed.
-
-    Methods:
-        __init__(): Initializes the GAConnector instance.
+    The Solution and Structure original classes have been replaced by custom GA classes.
+    When instantiating a StaticStructureDefinition, the GAStructure will be employed.
     """
 
     def __init__(self) -> None:
-
+        """
+        Initialize the GAConnector with predefined type mappings for GA operations.
+        """
         super().__init__()
 
         self.register(BaseDefinition, GASolution, dict)
@@ -145,7 +160,20 @@ class GAConnector(BaseConnector):
         self.register(StaticStructureDefinition, (GAStructure, "static"), list)
 
 
-def yield_two_children(parents: Tuple[GASolution, GASolution], mutation_rate: float, fitness_function:Callable[[Solution], float]) -> Tuple[GASolution, GASolution]:
+def yield_two_children(parents: Tuple[GASolution, GASolution], mutation_rate: float, 
+                      fitness_function: Callable[[Solution], float]) -> Tuple[GASolution, GASolution]:
+    """
+    Generate two children solutions through crossover and mutation operations.
+
+    :param parents: A tuple containing two parent solutions
+    :type parents: Tuple[GASolution, GASolution]
+    :param mutation_rate: The probability of mutation occurring in each child
+    :type mutation_rate: float
+    :param fitness_function: Function to evaluate the fitness of solutions
+    :type fitness_function: Callable[[Solution], float]
+    :return: A tuple containing two new solutions (children)
+    :rtype: Tuple[GASolution, GASolution]
+    """
 
     child1, child2 = parents[0].crossover(parents[1])
 
@@ -158,4 +186,3 @@ def yield_two_children(parents: Tuple[GASolution, GASolution], mutation_rate: fl
     child2.evaluate(fitness_function)
 
     return child1, child2
-

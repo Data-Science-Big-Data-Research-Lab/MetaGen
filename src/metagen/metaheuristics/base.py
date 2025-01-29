@@ -21,29 +21,51 @@ from typing import List, Tuple, Optional, Callable
 from metagen.framework import Domain, Solution
 from copy import deepcopy
 
-from ..logging.metagen_logger import get_metagen_logger
+from metagen.logging.metagen_logger import get_metagen_logger
 
 IS_RAY_INSTALLED = is_package_installed("ray")
 
 if is_package_installed("tensorboard"):
-    from metagen.logging import TensorBoardLogger
+    from metagen.logging.tensorboard_logger import TensorBoardLogger
 
 if IS_RAY_INSTALLED:
     import ray
     from .distributed_tools import assign_load_equally, call_distributed
-
 class Metaheuristic(ABC):
     """
     Abstract base class for metaheuristic algorithms.
+
+    :param domain: The problem domain.
+    :type domain: Domain
+    :param fitness_function: Function to evaluate solutions.
+    :type fitness_function: Callable[[Solution], float]
+    :param population_size: The size of the population (default is 1).
+    :type population_size: int, optional
+    :param distributed: Whether to use distributed computation (default is False).
+    :type distributed: bool, optional
+    :param log_dir: Directory for logging (default is "logs").
+    :type log_dir: str, optional
+
+    :ivar domain: The problem domain.
+    :vartype domain: Domain
+    :ivar fitness_function: Function to evaluate solutions.
+    :vartype fitness_function: Callable[[Solution], float]
+    :ivar population_size: The size of the population.
+    :vartype population_size: int
+    :ivar distributed: Whether distributed computation is enabled.
+    :vartype distributed: bool
+    :ivar logger: Logger instance for TensorBoard, if available.
+    :vartype logger: Optional[TensorBoardLogger]
+    :ivar current_iteration: The current iteration of the algorithm.
+    :vartype current_iteration: int
+    :ivar best_solution: The best solution found so far.
+    :vartype best_solution: Optional[Solution]
+    :ivar current_solutions: The current population of solutions.
+    :vartype current_solutions: List[Solution]
+    :ivar best_solution_fitnesses: List of fitness values of the best solutions per iteration.
+    :vartype best_solution_fitnesses: List[float]
     """
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float], population_size=1, distributed=False, log_dir: str = "logs") -> None:
-        """
-        Initialize the metaheuristic.
-        
-        Args:
-            domain: The problem domain
-            fitness_function: Function to evaluate solutions
-        """
         super().__init__()
 
         self.domain = domain
@@ -55,10 +77,17 @@ class Metaheuristic(ABC):
         self.current_iteration = 0
         self.best_solution: Optional[Solution] = None
         self.current_solutions: List[Solution] = []
-
-
+        self.best_solution_fitnesses: List[float] = []
 
     def _launch_distributed_method(self, method: Callable) -> Tuple[List[Solution], Solution]:
+        """
+        Launch a distributed method using Ray.
+
+        :param method: The method to distribute.
+        :type method: Callable
+        :return: A tuple containing the population and the best individual.
+        :rtype: Tuple[List[Solution], Solution]
+        """
         distribution = assign_load_equally(
             len(self.current_solutions) if len(self.current_solutions) > 0 else self.population_size)
         population = deepcopy(self.current_solutions)
@@ -89,8 +118,10 @@ class Metaheuristic(ABC):
     def _initialize(self) -> Tuple[List[Solution], Solution]:
         """
         Private function to initialize the population/solutions for the metaheuristic.
-        """
 
+        :return: A tuple containing the population and the best individual.
+        :rtype: Tuple[List[Solution], Solution]
+        """
         if self.distributed:
             if not IS_RAY_INSTALLED:
                 raise ImportError("Ray must be installed to use distributed initialization")
@@ -107,6 +138,9 @@ class Metaheuristic(ABC):
     def _iterate(self) -> Tuple[List[Solution], Solution]:
         """
         Private function to execute one iteration of the metaheuristic.
+
+        :return: A tuple containing the population and the best individual.
+        :rtype: Tuple[List[Solution], Solution]
         """
         if self.distributed:
             if not IS_RAY_INSTALLED:
@@ -132,7 +166,12 @@ class Metaheuristic(ABC):
     def initialize(self, num_solutions=10) -> Tuple[List[Solution], Solution]:
         """
         Initialize the population/solutions for the metaheuristic.
-        Must set self.current_solutions and self.best_solution
+        Must set self.current_solutions and self.best_solution.
+
+        :param num_solutions: The number of solutions to initialize.
+        :type num_solutions: int
+        :return: A tuple containing the population and the best individual.
+        :rtype: Tuple[List[Solution], Solution]
         """
         pass
 
@@ -147,6 +186,11 @@ class Metaheuristic(ABC):
     def iterate(self, solutions: List[Solution]) -> Tuple[List[Solution], Solution]:
         """
         Execute one iteration of the metaheuristic.
+
+        :param solutions: The current population of solutions.
+        :type solutions: List[Solution]
+        :return: A tuple containing the updated population and the best individual.
+        :rtype: Tuple[List[Solution], Solution]
         """
         pass
 
@@ -154,6 +198,9 @@ class Metaheuristic(ABC):
         """
         Check if the algorithm should stop.
         Override this method to implement custom stopping criteria.
+
+        :return: True if the algorithm should stop, False otherwise.
+        :rtype: bool
         """
         return False
 
@@ -164,6 +211,7 @@ class Metaheuristic(ABC):
         """
         get_metagen_logger().debug(f'[ITERATION {self.current_iteration}] POPULATION ({len(self.current_solutions)}): {self.current_solutions}')
         get_metagen_logger().info(f'[ITERATION {self.current_iteration}] BEST SOLUTION: {self.best_solution}')
+        self.best_solution_fitnesses.append(self.best_solution.get_fitness())
         if self.logger: 
             # Log iteration metrics
             self.logger.writer.add_scalar('Population Size',
@@ -188,34 +236,28 @@ class Metaheuristic(ABC):
     def run(self) -> Solution:
         """
         Execute the metaheuristic algorithm.
+
+        :return: The best solution found.
+        :rtype: Solution
         """
         if self.distributed and IS_RAY_INSTALLED and not ray.is_initialized():
             ray.init()
 
-        # Pre-execution callback
         self.pre_execution()
 
-        # Initialize the algorithm
         self._initialize()
 
-        # Main loop
         while not self.stopping_criterion():
-            # Pre-iteration callback
             self.pre_iteration()
 
-            # Execute one iteration
             self._iterate()
 
-            # Post-iteration callback
             self.post_iteration()
                     
-            # Increment iteration counter
             self.current_iteration += 1
 
-        # Post-execution callback
         self.post_execution()
 
-        # Finalize Ray if necessary
         if self.distributed and IS_RAY_INSTALLED and ray.is_initialized():
                 ray.shutdown()
 

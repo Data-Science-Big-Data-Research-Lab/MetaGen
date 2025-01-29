@@ -1,3 +1,19 @@
+"""
+    Copyright (C) 2023 David Gutierrez Avilés and Manuel Jesús Jiménez Navarro
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""
 from tensorboardX import SummaryWriter
 from datetime import datetime
 import uuid
@@ -7,9 +23,44 @@ import numpy as np
 from metagen.framework import Solution
 
 class TensorBoardLogger:
-    """Base class for TensorBoard logging in metaheuristics"""
-    
+    """
+    Base class for TensorBoard logging in metaheuristics.
+
+    This class provides a basic implementation for logging optimization experiments
+    using TensorBoard, allowing detailed monitoring of optimization processes,
+    solution evolution, and performance metrics.
+
+    :param log_dir: Directory to store TensorBoard log files, defaults to "logs"
+    :type log_dir: str, optional
+
+    :ivar run_id: Unique identifier for the current experiment run
+    :vartype run_id: str
+    :ivar log_dir: Directory for storing TensorBoard log files
+    :vartype log_dir: str
+    :ivar writer: TensorBoard SummaryWriter instance
+    :vartype writer: tensorboardX.SummaryWriter
+
+    **Code Example**
+
+    .. code-block:: python
+
+        from metagen.logging.tensorboard_logger import TensorBoardLogger
+
+        # Create a TensorBoard logger for an experiment
+        logger = TensorBoardLogger(log_dir="./tb_logs")
+        
+        # Log metrics and other data
+        logger.log_iteration(iteration=10, potential_solutions=potential_solutions, best_solution=best_solution)
+        logger.log_final_results(best_solution=best_solution)
+    """
+
     def __init__(self, log_dir: str = "logs"):
+        """
+        Initialize the TensorBoard Logger.
+
+        :param log_dir: Directory to store TensorBoard log files, defaults to "logs"
+        :type log_dir: str, optional
+        """
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
         self.run_id = f"{timestamp}_{uuid.uuid4().hex[:6]}"
         self.log_dir = os.path.join(log_dir, self.run_id)
@@ -18,6 +69,13 @@ class TensorBoardLogger:
     def _log_solution_components(self, solutions: List[Solution], iteration: int, prefix: str = '') -> None:
         """
         Recursively log all components of solutions to TensorBoard.
+
+        :param solutions: List of solutions to log
+        :type solutions: List[Solution]
+        :param iteration: Current iteration number
+        :type iteration: int
+        :param prefix: Prefix for logging, defaults to ''
+        :type prefix: str, optional
         """
         if not solutions:
             return
@@ -50,9 +108,15 @@ class TensorBoardLogger:
     def log_iteration(self, iteration: int, potential_solutions: List[Solution], 
                      best_solution: Solution) -> None:
         """
-        Log metrics for the current iteration
-        """
+        Log metrics for the current iteration.
 
+        :param iteration: Current iteration number
+        :type iteration: int
+        :param potential_solutions: List of potential solutions
+        :type potential_solutions: List[Solution]
+        :param best_solution: Best solution found so far
+        :type best_solution: Solution
+        """
         # Log fitness statistics
         iteration_fitnesses = [ps.get_fitness() for ps in potential_solutions]
         len_iter_fit = len(iteration_fitnesses)
@@ -73,7 +137,10 @@ class TensorBoardLogger:
 
     def log_final_results(self, best_solution: Solution) -> None:
         """
-        Log final results and metadata
+        Log final results and metadata.
+
+        :param best_solution: Best solution found
+        :type best_solution: Solution
         """
         self.writer.add_text('Run Information', 
                             f'Run ID: {self.run_id}\n'
@@ -96,4 +163,3 @@ class TensorBoardLogger:
         self.__dict__.update(state)
 
         self.writer = SummaryWriter(self.log_dir)
-

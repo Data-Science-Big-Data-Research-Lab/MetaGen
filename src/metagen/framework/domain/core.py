@@ -31,11 +31,17 @@ class Base(ABC):
     """
     Abstract base class for metagen definitions with a common interface.
 
+    .. note::
+        This class is abstract and should not be instantiated directly.
+
     """
 
     def __init__(self, meta_type: METAGEN_TYPE):
         """
         Initializes a new instance assigning the metagen internal type.
+
+        :param meta_type: The metagen internal type.
+        :type meta_type: METAGEN_TYPE
         """
         self._meta_type: METAGEN_TYPE = meta_type
 
@@ -43,6 +49,11 @@ class Base(ABC):
     def check_value(self, value: Any) -> bool:
         """
         Abstract method to check the validity of the values in the definition.
+
+        :param value: The value to be checked.
+        :type value: Any
+        :return: True if the value is valid, False otherwise.
+        :rtype: bool
         """
         pass
 
@@ -50,12 +61,18 @@ class Base(ABC):
     def get_attributes(self) -> Attributes:
         """
         Abstract method to obtain the internal attributes which constitutes the definition.
+
+        :return: The internal attributes of the definition.
+        :rtype: Attributes
         """
         pass
 
     def get_type(self) -> METAGEN_TYPE:
         """
         Return the internal type of the definition which can be one of: I, R, C, D or S.
+
+        :return: The internal type of the definition.
+        :rtype: METAGEN_TYPE
         """
         return self._meta_type
 
@@ -94,7 +111,6 @@ class IntegerDefinition(Base):
 
         :raises ValueError: If the `min_value`, `max_value` or `step` values do not meet the integer range requirements.
         """
-
         Preconditions.Integer.range(min_value, max_value, step)
         Base.__init__(self, I)
         self.__min_value: int = min_value
@@ -116,7 +132,6 @@ class IntegerDefinition(Base):
 
         :param value: The value to be checked.
         :type value: Any
-
         :return: True if the value is a valid integer within the range of the IntegerDefinition instance, False otherwise.
         :rtype: bool
         """
@@ -196,7 +211,6 @@ class RealDefinition(Base):
 
         :param value: The value to be checked.
         :type value: Any
-
         :return: True if the value is a valid real number within the range of the RealDefinition instance, False otherwise.
         :rtype: bool
         """

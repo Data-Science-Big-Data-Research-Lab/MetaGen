@@ -9,18 +9,62 @@ from metagen.metaheuristics.base import Metaheuristic
 from copy import deepcopy
 
 class TabuSearch(Metaheuristic):
+    """
+    Tabu Search Algorithm for optimization problems.
+
+    This class implements the Tabu Search metaheuristic which uses a memory structure (tabu list)
+    to avoid revisiting recently explored solutions. The algorithm explores the neighborhood of
+    the current solution while maintaining a list of forbidden (tabu) solutions.
+
+    :param domain: The problem's domain to explore
+    :type domain: Domain
+    :param fitness_function: Function to evaluate solutions
+    :type fitness_function: Callable[[Solution], float]
+    :param population_size: Size of the population (neighborhood) to maintain, defaults to 10
+    :type population_size: int, optional
+    :param max_iterations: Maximum number of iterations to run, defaults to 10
+    :type max_iterations: int, optional
+    :param tabu_size: Maximum size of the tabu list, defaults to 5
+    :type tabu_size: int, optional
+    :param alteration_limit: Maximum proportion of solution to alter in local search, defaults to 1.0
+    :type alteration_limit: float, optional
+    :param distributed: Whether to use distributed computation, defaults to False
+    :type distributed: bool, optional
+    :param log_dir: Directory for logging, defaults to "logs/TS"
+    :type log_dir: str, optional
+
+    :ivar max_iterations: Maximum number of iterations to run
+    :vartype max_iterations: int
+    :ivar tabu_size: Maximum size of the tabu list
+    :vartype tabu_size: int
+    :ivar tabu_list: List of recently visited solutions that are forbidden
+    :vartype tabu_list: Deque[Solution]
+    :ivar alteration_limit: Maximum proportion of solution to alter in local search
+    :vartype alteration_limit: float
+    """
 
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
                  population_size: int = 10, max_iterations: int = 10, tabu_size: int = 5, alteration_limit: float = 1.0,
                  distributed=False, log_dir: str = "logs/TS"):
         """
-        Tabu Search Algorithm for optimization problems.
+        Initialize the Tabu Search algorithm.
 
-        Args:
-            domain (Domain): The problem's domain to explore.
-            max_iterations (int): The maximum number of iterations.
-            tabu_size (int): Maximum size of the ts list.
-            aspiration_criteria (callable, optional): Function to override ts restrictions.
+        :param domain: The problem's domain to explore
+        :type domain: Domain
+        :param fitness_function: Function to evaluate solutions
+        :type fitness_function: Callable[[Solution], float]
+        :param population_size: Size of the population (neighborhood) to maintain, defaults to 10
+        :type population_size: int, optional
+        :param max_iterations: Maximum number of iterations to run, defaults to 10
+        :type max_iterations: int, optional
+        :param tabu_size: Maximum size of the tabu list, defaults to 5
+        :type tabu_size: int, optional
+        :param alteration_limit: Maximum proportion of solution to alter in local search, defaults to 1.0
+        :type alteration_limit: float, optional
+        :param distributed: Whether to use distributed computation, defaults to False
+        :type distributed: bool, optional
+        :param log_dir: Directory for logging, defaults to "logs/TS"
+        :type log_dir: str, optional
         """
         super().__init__(domain, fitness_function, population_size, distributed, log_dir)
         self.max_iterations = max_iterations
@@ -29,8 +73,17 @@ class TabuSearch(Metaheuristic):
         self.alteration_limit: float = alteration_limit
 
     def initialize(self, num_solutions: int=10) -> Tuple[List[Solution], Solution]:
-        """Initialize the Tabu Search algorithm."""
+        """
+        Initialize the Tabu Search algorithm.
 
+        Creates an initial solution and explores its neighborhood while respecting
+        the tabu list constraints.
+
+        :param num_solutions: Number of solutions in the neighborhood, defaults to 10
+        :type num_solutions: int, optional
+        :return: A tuple containing the neighborhood solutions and the initial solution
+        :rtype: Tuple[List[Solution], Solution]
+        """
         solution_type: type[Solution] = self.domain.get_connector().get_type(self.domain.get_core())
         first_solution = solution_type(self.domain, connector=self.domain.get_connector())
         first_solution.evaluate(self.fitness_function)
@@ -39,9 +92,19 @@ class TabuSearch(Metaheuristic):
 
         return current_neighborhood, first_solution
 
-
     def iterate(self, solutions: List[Solution]) -> Tuple[List[Solution], Solution]:
+        """
+        Execute one iteration of the Tabu Search algorithm.
 
+        Explores the neighborhood of the current best solution while respecting
+        the tabu list constraints. The best solution found is added to the tabu list
+        to prevent cycling.
+
+        :param solutions: Current population of solutions
+        :type solutions: List[Solution]
+        :return: A tuple containing the new neighborhood solutions and the best solution found
+        :rtype: Tuple[List[Solution], Solution]
+        """
         current_solutions, best_solution = local_search_with_tabu(self.best_solution, self.fitness_function, len(solutions), self.alteration_limit,
                                                                   list(self.tabu_list))
 
@@ -54,8 +117,12 @@ class TabuSearch(Metaheuristic):
         return current_solutions, best_solution
 
     def stopping_criterion(self) -> bool:
+        """
+        Check if the algorithm should stop.
+
+        The algorithm stops when the current iteration reaches the maximum number of iterations.
+
+        :return: True if the maximum number of iterations is reached, False otherwise
+        :rtype: bool
+        """
         return self.current_iteration >= self.max_iterations
-
-
-
-
