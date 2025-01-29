@@ -3,7 +3,13 @@
 Welcome to |metagen|!
 =====================
 
-|metagen| is a Python scientific package designed to provide users with a standard system for solution representation, methods to generate and modify these solutions, and a standard interface between the metaheuristic and potential users. These features make it easier for programmers to develop a metaheuristic and make it accessible to any user who wants to optimize a problem during the crucial hyperparameter tuning process in machine learning model production.
+|metagen| is a Python scientific package designed to provide users with a comprehensive system for:
+
+- Solution representation
+- Methods to generate and modify solutions
+- A standard interface between metaheuristics and potential users
+
+These features simplify the development of metaheuristics and make hyperparameter tuning more accessible in machine learning model production.
 
 .. figure:: images/overview.png
     :align: center
@@ -12,30 +18,55 @@ Welcome to |metagen|!
     :class: vspace
     :name: fig-overview
 
-    |metagen|'s overview.
+    |metagen|'s architectural overview.
 
-As shown in :numref:`fig-overview`, |metagen| provides users with two user profiles:
+Key Design Principles
+----------------------
 
-- **Developer**: It implements a metaheuristic using the |solution| class. This profile deploys the **Development use case (DUC)** in which it uses |metagen| to develop a new metaheuristic algorithm, simplifying the coding process and making it accessible to any user who wants to solve a problem.
-- **Solver**: It defines a problem using the tools offered by the |domain| class and implements a fitness function to optimize by using the |solution| class to get the values of the variables of a potential solution. Finally, it uses those elements (the |domain| and the fitness function) to solve a problem by applying a metaheuristic. This use case is called **Solving use case (SUC)**. The metaheuristic, used by the *Solver* to solve the problem, can be included in |metagen| (i.e., *Random Search*, *CVOA*, *Genetic Algorithm*, etc or be implemented by a third party (the *Developer*). The *Solver* only needs to know how a class is instantiated and how a method is called.
+1. **Abstraction**: Separate problem definition from solution exploration
+2. **Flexibility**: Support for diverse optimization strategies
+3. **Extensibility**: Easy integration of custom algorithms and problem domains
+4. **Usability**: Intuitive interfaces for developers and researchers
 
-For more details, please refer to the :doc:`understanding_metagen/index` section.
+Use Cases
+----------
+- Machine Learning Hyperparameter Tuning
+- Deep Learning Architecture Optimization
+- Scientific Computational Problems
+- Engineering Design Optimization
 
-Main features
+User Profiles
 -------------
 
-- **User-friendly development**: Developers do not need in-depth knowledge of Object-Oriented programming to create new metaheuristics.
-- **Standard interface**: It provides a standard interface that isolates the developer from the end user, facilitating seamless development.
-- **Dynamic optimization of deep learning architectures**: Tools for dynamically adjusting deep learning model architectures, including layers and hyperparameters, during execution.
-- **Python-type hints**: The use of Python's typing features simplifies the development process and debugging.
-- **User-friendly problem domain definition**: It  simplifies the representation of problem domains by eliminating the need for complex object-oriented artifacts and using intuitive methods to define search spaces.
-- **Implemented metaheuristics**: It offers a robust selection of algorithms, providing flexibility for solving various optimization problems. The current implemented metaheuristics are listed below.
+|metagen| supports two primary user profiles:
 
-.. csv-table:: Current implemented metaheuristics
-   :header: "Metaheuristic", "Run class/method"
-   :widths: auto
-   :file: current_metaheuristics.csv
+Developer Profile
+^^^^^^^^^^^^^^^^^
 
+- Implements metaheuristics using the |solution| class
+- Follows the **Development Use Case (DUC)**
+- Simplifies algorithm development process
+- Makes metaheuristic implementation accessible to a broader audience
+
+Solver Profile
+^^^^^^^^^^^^^^
+
+- Defines problem using |domain| class tools
+- Implements fitness function for optimization
+- Uses |solution| class to explore potential solutions
+- Follows the **Solving Use Case (SUC)**
+- Can use built-in or third-party metaheuristics
+
+Key Features
+------------
+
+- **Intuitive Development**: Lowers the barrier to creating new metaheuristics
+- **Standardized Interface**: Isolates developer from end-user complexities
+- **Dynamic Optimization**: Tools for adjusting deep learning architectures
+- **Type Hints**: Leverages Python's typing for improved development experience
+- **Flexible Problem Definition**: Easy-to-use domain configuration
+
+For more details, explore the :doc:`understanding_metagen/index` section.
 
 Installation
 -------------
@@ -45,6 +76,29 @@ using pip:
 .. code-block:: console
 
    (.venv) $ pip install pymetagen-datalabupo
+
+
+Quick Example
+--------------
+
+.. code-block:: python
+
+    from metagen.framework import Domain
+    from metagen.metaheuristics import RandomSearch
+
+    # Define problem domain
+    domain = Domain()
+    domain.defineInteger('x', -10, 10)
+    domain.defineReal('y', -5, 5)
+
+    # Define fitness function
+    def fitness_function(solution):
+        x, y = solution['x'], solution['y']
+        return x**2 + y**2
+
+    # Run optimization
+    search = RandomSearch(domain, fitness_function)
+    best_solution = search.run()
 
 Index
 -----
@@ -58,4 +112,3 @@ Index
     distributed_execution/index
     advanced_topics/index
     api
-

@@ -18,13 +18,10 @@
 .. |define_integer_in_group| replace:: :class:`define_integer_in_group <metagen.framework.Domain.define_integer_in_group>`
 .. |define_categorical_in_group| replace:: :class:`define_categorical_in_group <metagen.framework.Domain.define_categorical_in_group>`
 .. |define_real_in_group| replace:: :class:`define_real_in_group <metagen.framework.Domain.define_real_in_group>`
+.. |set_structure_to_variable| replace:: :class:`set_structure_to_variable <metagen.framework.Domain.set_structure_to_variable>`
 
 
-
-
-
-
-.. |rs| replace:: :class:`RS <metagen.metaheuristics.random.random_search.RandomSearch>`
+.. |rs| replace:: :class:`RS <metagen.metaheuristics.rs.random_search.RandomSearch>`
 .. |sa| replace:: :class:`SA <metagen.framework.metaheuristics.sa.sa.SA>`
 .. |ts| replace:: :class:`TS <metagen.framework.metaheuristics.tabu.tabu.TabuSearch>`
 .. |mm| replace:: :class:`MM <metagen.framework.metaheuristics.memetic.memetic.Memetic>`
