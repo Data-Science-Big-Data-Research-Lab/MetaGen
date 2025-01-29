@@ -12,7 +12,8 @@ from metagen.metaheuristics.cvoa.cvoa_local import CVOA
 from metagen.metaheuristics.cvoa.local_tools import LocalPandemicState
 
 
-def run_strain(global_state, domain:Domain, fitness_function: Callable[[Solution],float], strain_properties:StrainProperties, update_isolated:bool=False, log_dir:str="logs/CVOA") -> Solution:
+def run_strain(global_state:LocalPandemicState, domain:Domain, fitness_function: Callable[[Solution],float],
+               strain_properties:StrainProperties, update_isolated:bool=False, log_dir:str="logs/CVOA") -> Solution:
     strain = CVOA(global_state, domain,fitness_function, strain_properties, update_isolated, log_dir)
     return strain.run()
 
