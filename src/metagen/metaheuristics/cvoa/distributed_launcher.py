@@ -20,8 +20,8 @@ def run_strain(global_state:RemotePandemicState, domain:Domain, fitness_function
 
 
 
-def cvoa_launcher(strains: List[StrainProperties], domain: Domain, fitness_function: Callable[[Solution], float],
-                  update_isolated: bool = False, log_dir: str = "logs/DCVOA") -> Solution:
+def distributed_cvoa_launcher(strains: List[StrainProperties], domain: Domain, fitness_function: Callable[[Solution], float],
+                              update_isolated: bool = False, log_dir: str = "logs/DCVOA") -> Solution:
 
     # Initialize Ray
     if not ray.is_initialized():

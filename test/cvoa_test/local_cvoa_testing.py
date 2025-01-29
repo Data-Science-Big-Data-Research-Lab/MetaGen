@@ -1,5 +1,3 @@
-import logging
-
 from metagen.framework import Solution
 from metagen.logging.metagen_logger import get_metagen_logger, set_metagen_logger_level_console_output, DETAILED_INFO
 from metagen.metaheuristics import cvoa_launcher

@@ -14,20 +14,17 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-import copy
-import logging
+
 import math
 import random
-from datetime import timedelta
-from time import time
-from typing import Callable, Set, List, Type, NamedTuple, Tuple
+from typing import Callable, Set, List, Tuple
 
 import ray
 
 from metagen.framework import Domain
 from metagen.framework.solution import Solution
 from metagen.framework.solution.bounds import SolutionClass
-from metagen.logging.metagen_logger import get_metagen_logger
+from metagen.logging.metagen_logger import get_metagen_logger, set_metagen_logger_level_console_output, DETAILED_INFO
 from metagen.metaheuristics.base import Metaheuristic
 from metagen.metaheuristics.cvoa.common_tools import StrainProperties, IndividualState, insert_into_set_strain, infect
 from metagen.metaheuristics.cvoa.distributed_tools import distributed_cvoa_new_infected_population, RemotePandemicState
@@ -83,6 +80,9 @@ class DistributedCVOA(Metaheuristic):
                  strain_properties: StrainProperties = StrainProperties(), update_isolated=False,
                  log_dir="logs/DCVOA"):
 
+        get_metagen_logger(level=DETAILED_INFO,distributed=True)
+
+
         # 1. Initialize the base class.
         super().__init__(domain, fitness_function, log_dir=log_dir)
 
@@ -124,7 +124,7 @@ class DistributedCVOA(Metaheuristic):
         # 1. Yield the patient zero (pz).
         pz: Solution = self.solution_type(self.domain, connector=self.domain.get_connector())
         pz.evaluate(self.fitness_function)
-        get_metagen_logger().detailed_info(f'[{self.strain_properties.strain_id}] Patient zero: {pz}')
+        get_metagen_logger(distributed=True).detailed_info(f'[{self.strain_properties.strain_id}] Patient zero: {pz}')
 
         # 2. Add the patient zero to the strain-specific infected set.
         self.infected.add(pz)
@@ -152,7 +152,7 @@ class DistributedCVOA(Metaheuristic):
         # 1.3. Then, add the best individual of the strain to the next population.
         new_infected_population.add(self.best_strain_solution)
 
-        get_metagen_logger().detailed_info(
+        get_metagen_logger(distributed=True).detailed_info(
             f'[{self.strain_properties.strain_id}] Iteration #{self.time} - {self.r0_report(len(new_infected_population))}'
             f'- Best strain individual: {self.best_strain_solution} , Best global individual: {ray.get(self.global_state.get_best_individual.remote())} ')
 
@@ -163,10 +163,10 @@ class DistributedCVOA(Metaheuristic):
         # 2. Stop if no new infected individuals.
         if not self.infected:
             self.epidemic = False
-            get_metagen_logger().detailed_info(
+            get_metagen_logger(distributed=True).detailed_info(
                 f'[{self.strain_properties.strain_id}] No new infected individuals at {self.time}')
 
-        get_metagen_logger().detailed_info(
+        get_metagen_logger(distributed=True).detailed_info(
             f'[{self.strain_properties.strain_id}] Iteration #{self.time} - {self.r0_report(len(new_infected_population))}'
             f'- Best strain individual: {self.best_strain_solution} , Best global individual: {ray.get(self.global_state.get_best_individual.remote())}')
 
@@ -222,7 +222,7 @@ class DistributedCVOA(Metaheuristic):
                 if individual.get_fitness() < ray.get(self.global_state.get_best_individual.remote()).get_fitness():
                     ray.get(self.global_state.update_best_individual.remote(individual))
                     self.best_strain_solution_found = True
-                    get_metagen_logger().detailed_info(
+                    get_metagen_logger(distributed=True).detailed_info(
                         f'[{self.strain_properties.strain_id}] New global best individual found at {self.time}! ({individual})')
 
                 # 3.1.4. If the current individual is better than the current strain one, a new strain the best individual is
@@ -308,7 +308,7 @@ class DistributedCVOA(Metaheuristic):
         return first_condition or second_condition or third_condition
 
     def post_execution(self) -> None:
-        get_metagen_logger().detailed_info(
+        get_metagen_logger(distributed=True).detailed_info(
             f'[{self.strain_properties.strain_id}] Converged after {self.time} iterations with best individual: {self.best_strain_solution}')
         super().post_execution()
 

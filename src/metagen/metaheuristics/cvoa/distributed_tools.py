@@ -1,6 +1,6 @@
 import random
 from copy import deepcopy
-from typing import Callable, Set, Tuple
+from typing import Callable, Set
 import ray
 from metagen.framework import Solution, Domain
 from metagen.metaheuristics.cvoa.common_tools import IndividualState, StrainProperties, \
