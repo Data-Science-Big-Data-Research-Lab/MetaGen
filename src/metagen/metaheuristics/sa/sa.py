@@ -153,7 +153,7 @@ class SA(Metaheuristic):
 
         # Generate neighbor
         neighbor = deepcopy(current_solution)
-        neighbor.mutate(self.alteration_limit)
+        neighbor.mutate(alteration_limit=self.alteration_limit)
         neighbor.evaluate(self.fitness_function)
 
         # Calculate acceptance probability
