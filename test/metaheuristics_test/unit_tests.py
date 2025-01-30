@@ -6,7 +6,7 @@ import pytest
 import ray
 from pytest_csv_params.decorator import csv_params
 
-from metagen.logging.metagen_logger import get_metagen_logger, metagen_logger_setup
+from metagen.logging.metagen_logger import metagen_logger, set_metagen_logger_level
 from metagen.metaheuristics import RandomSearch, SA, TabuSearch, GA, GAConnector, SSGA
 from metagen.metaheuristics.mm.memetic import Memetic
 from metaheuristics_test.metaheuristic_factory import get_metaheuristic
@@ -18,13 +18,8 @@ import warnings
 warnings.filterwarnings("ignore", module="sklearn")
 
 @pytest.fixture(autouse=True)
-def reset_logger():
-    logger = logging.getLogger('metagen_logger')
-    yield
-    # Remove all handlers associated with the logger
-    for handler in logger.handlers[:]:
-        logger.removeHandler(handler)
-        handler.close()
+def configure_logger():
+    set_metagen_logger_level(logging.DEBUG)
 
 
 @csv_params(data_file=resource_path("rs_parameters.csv"),
@@ -37,9 +32,7 @@ def test_rs(problem: str, population_size: int, max_iterations:int, distributed:
     np.random.seed(seed)
     initial_best = float('inf')
 
-    logging.Logger("metagen_logger")
-    metagen_logger_setup()
-    get_metagen_logger().info('Running Random Search')
+    metagen_logger.info('Running Random Search')
 
     if distributed:
         ray.init(num_cpus=4)
@@ -51,7 +44,7 @@ def test_rs(problem: str, population_size: int, max_iterations:int, distributed:
     np.random.seed(seed)
     solution = algorithm.run()
 
-    get_metagen_logger().info(f"Solution found: {solution}")
+    metagen_logger.info(f"Solution found: {solution}")
 
     assert solution is not None
     assert hasattr(solution, 'fitness')
@@ -63,20 +56,18 @@ def test_rs(problem: str, population_size: int, max_iterations:int, distributed:
             id_col="ID#",
             data_casts={"problem":str,
                         "max_iterations":int,
-                        "alteration_limit": float, "initial_temp": float,
+                        "alteration_limit": int, "initial_temp": float,
                         "cooling_rate": float, "neighbor_population_size": int,
                         "distributed":str_to_bool, "log_dir":str,"seed": int})
 
-def test_sa(problem: str, max_iterations:int, alteration_limit: float, initial_temp: float,
+def test_sa(problem: str, max_iterations:int, alteration_limit: int, initial_temp: float,
             cooling_rate: float, neighbor_population_size: int, distributed:bool, log_dir:str, seed: int) -> None:
 
     random.seed(seed)
     np.random.seed(seed)
     initial_best = float('inf')
 
-    logging.Logger("metagen_logger")
-    metagen_logger_setup()
-    get_metagen_logger().info('Running Simulated Annealing')
+    metagen_logger.info('Running Simulated Annealing')
 
     if distributed:
         print('ray init')
@@ -90,7 +81,7 @@ def test_sa(problem: str, max_iterations:int, alteration_limit: float, initial_t
     np.random.seed(seed)
 
     solution = algorithm.run()
-    get_metagen_logger().info(f"Solution found: {solution}")
+    metagen_logger.info(f"Solution found: {solution}")
 
     assert solution is not None
     assert hasattr(solution, 'fitness')
@@ -109,9 +100,7 @@ def test_ts(problem: str, population_size: int, max_iterations:int, tabu_size:in
     np.random.seed(seed)
     initial_best = float('inf')
 
-    logging.Logger("metagen_logger")
-    metagen_logger_setup()
-    get_metagen_logger().info('Running Tabu Search')
+    metagen_logger.info('Running Tabu Search')
 
     if distributed:
         ray.init(num_cpus=4)
@@ -124,7 +113,7 @@ def test_ts(problem: str, population_size: int, max_iterations:int, tabu_size:in
     np.random.seed(seed)
     solution = algorithm.run()
 
-    get_metagen_logger().info(f"Solution found: {solution}")
+    metagen_logger.info(f"Solution found: {solution}")
 
     assert solution is not None
     assert hasattr(solution, 'fitness')
@@ -142,9 +131,7 @@ def test_ga(problem: str, population_size: int, max_iterations:int, mutation_rat
     np.random.seed(seed)
     initial_best = float('inf')
 
-    logging.Logger("metagen_logger")
-    metagen_logger_setup(logging.DEBUG)
-    get_metagen_logger().info('Running Genetic Algorithm')
+    metagen_logger.info('Running Genetic Algorithm')
 
     if distributed:
         ray.init(num_cpus=4)
@@ -157,7 +144,7 @@ def test_ga(problem: str, population_size: int, max_iterations:int, mutation_rat
     np.random.seed(seed)
     solution = algorithm.run()
 
-    get_metagen_logger().info(f"Solution found: {solution}")
+    metagen_logger.info(f"Solution found: {solution}")
 
     assert solution is not None
     assert hasattr(solution, 'fitness')
@@ -174,9 +161,7 @@ def test_ssga(problem: str, population_size: int, max_iterations:int, mutation_r
     np.random.seed(seed)
     initial_best = float('inf')
 
-    logging.Logger("metagen_logger")
-    metagen_logger_setup(logging.DEBUG)
-    get_metagen_logger().info('Running Steady State Genetic Algorithm')
+    metagen_logger.info('Running Steady State Genetic Algorithm')
 
     if distributed:
         ray.init(num_cpus=4)
@@ -189,7 +174,7 @@ def test_ssga(problem: str, population_size: int, max_iterations:int, mutation_r
     np.random.seed(seed)
     solution = algorithm.run()
 
-    get_metagen_logger().info(f"Solution found: {solution}")
+    metagen_logger.info(f"Solution found: {solution}")
 
     assert solution is not None
     assert hasattr(solution, 'fitness')
@@ -215,9 +200,7 @@ def test_mm(active: bool, problem: str, population_size: int, max_iterations: in
     np.random.seed(seed)
     initial_best = float('inf')
 
-    logging.Logger("metagen_logger")
-    metagen_logger_setup(logging.INFO)
-    get_metagen_logger().info(f'Running Memetic Algorithm')
+    metagen_logger.info(f'Running Memetic Algorithm')
 
     if distributed:
         ray.init(num_cpus=4)
@@ -232,7 +215,7 @@ def test_mm(active: bool, problem: str, population_size: int, max_iterations: in
     np.random.seed(seed)
     solution = algorithm.run()
 
-    get_metagen_logger().info(f"Solution found: {solution}")
+    metagen_logger.info(f"Solution found: {solution}")
 
     assert solution is not None
     assert hasattr(solution, 'fitness')
@@ -276,13 +259,13 @@ def test_metaheuristic(active: bool, metaheuristic:str, problem: str,
     np.random.seed(seed)
     initial_best = float('inf')
 
-    get_metagen_logger().info(message)
+    metagen_logger.info(message)
 
     random.seed(seed)
     np.random.seed(seed)
     solution = algorithm.run()
 
-    get_metagen_logger().info(f"Solution found: {solution}")
+    metagen_logger.info(f"Solution found: {solution}")
 
     assert solution is not None
     assert hasattr(solution, 'fitness')

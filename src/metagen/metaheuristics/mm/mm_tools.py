@@ -4,7 +4,7 @@ from typing import Tuple, Callable, List
 import ray
 
 from metagen.framework import Solution
-from metagen.logging.metagen_logger import get_metagen_logger
+from metagen.logging.metagen_logger import get_remote_metagen_logger
 from metagen.metaheuristics.distributed_tools import assign_load_equally
 
 
@@ -28,7 +28,7 @@ def distributed_population_local_search(population: List[Solution], fitness_func
 
     distribution = assign_load_equally(len(population))
 
-    get_metagen_logger(distributed=True).debug(f"[LEVEL 1] Distributed local search of a population of {len(population)} individuals with {ray.available_resources().get('CPU', 0)} CPUs -- {distribution}")
+    get_remote_metagen_logger().debug(f"[LEVEL 1] Distributed local search of a population of {len(population)} individuals with {ray.available_resources().get('CPU', 0)} CPUs -- {distribution}")
 
     futures = []
     for count in distribution:
@@ -88,7 +88,7 @@ def distributed_local_search(solution: Solution, fitness_function: Callable[[Sol
                              , alteration_limit: float) -> Solution:
     distribution = assign_load_equally(neighbor_population_size)
 
-    get_metagen_logger(distributed=True).debug(
+    get_remote_metagen_logger().debug(
         f"[LEVEL 2] Distributed local search of an individual with {neighbor_population_size} neighbours,"
         f" with {ray.available_resources().get('CPU', 0)} CPUs -- {distribution}")
 
