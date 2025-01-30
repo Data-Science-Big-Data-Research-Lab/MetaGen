@@ -85,68 +85,6 @@ def get_remote_metagen_logger(level: int=logging.CRITICAL) -> logging.Logger:
     return logger
 
 
-
-
 metagen_logger = logging.getLogger('metagen_logger')
 metagen_logger.setLevel(logging.INFO)
 add_console_handler(metagen_logger)
-
-
-
-
-
-
-
-
-
-
-# def get_metagen_logger(level: int=logging.INFO, console_output: bool=True, distributed: bool=False):
-#     logger = logging.getLogger('metagen_logger')
-#     if not logger.handlers:
-#         if distributed:
-#             metagen_logger_setup(level, console_output, "metagen_logs/remotes")
-#         else:
-#             metagen_logger_setup(level, console_output, "metagen_logs/local")
-#     else:
-#         if not logger_has_filehandler():
-#             if distributed:
-#                 set_metagen_logger_file_handler(level,"metagen_logs/remotes")
-#             else:
-#                 set_metagen_logger_file_handler(level,"metagen_logs/local")
-#     return logger
-#
-# def metagen_logger_setup(level: int, console_output: bool, log_dir:str):
-#     logger = logging.getLogger('metagen_logger')
-#     set_metagen_logger_level_console_output(level, console_output)
-#     set_metagen_logger_file_handler(level, log_dir)
-#     logger.setLevel(level)
-#
-# def set_metagen_logger_level_console_output(level: int = logging.DEBUG, console_output: bool=True):
-#     logger = logging.getLogger('metagen_logger')
-#     logger.setLevel(level)
-#     if console_output:
-#         console_handler = yield_console_handler(level)
-#         logger.addHandler(console_handler)
-#
-# def set_metagen_logger_file_handler (level: int, log_dir: str):
-#     logger = logging.getLogger('metagen_logger')
-#     if level == logging.DEBUG:
-#         file_handler = yield_file_handler(log_dir, "metagen_debug", level)
-#         logger.addHandler(file_handler)
-#
-# def yield_file_handler(log_dir: str, file_prefix: str, level: int):
-#         os.makedirs(log_dir, exist_ok=True)
-#         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-#         log_file = os.path.join(log_dir, f"{file_prefix}_{timestamp}.log")
-#         file_handler = logging.FileHandler(log_file)
-#         file_handler.setLevel(level)
-#         file_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-#         file_handler.setFormatter(file_formatter)
-#         return file_handler
-
-
-
-
-
-
-
