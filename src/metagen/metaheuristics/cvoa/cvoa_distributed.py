@@ -79,9 +79,12 @@ class DistributedCVOA(Metaheuristic):
 
     def __init__(self, global_state: RemotePandemicState, domain: Domain, fitness_function: Callable[[Solution], float],
                  strain_properties: StrainProperties = StrainProperties(), update_isolated=False,
-                 log_dir="logs/DCVOA"):
+                 log_dir="logs/DCVOA", detailed_info=False):
 
-        self.remote_logger = get_remote_metagen_logger(DETAILED_INFO)
+        if detailed_info:
+            self.remote_logger = get_remote_metagen_logger(DETAILED_INFO)
+        else:
+            self.remote_logger = get_remote_metagen_logger()
 
 
         # 1. Initialize the base class.
