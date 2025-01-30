@@ -3,7 +3,7 @@ import random
 from typing import NamedTuple, Set, Tuple, Callable
 
 from metagen.framework import Domain, Solution
-from metagen.logging.metagen_logger import get_metagen_logger
+from metagen.logging.metagen_logger import metagen_logger
 
 
 # Strain Properties
@@ -118,9 +118,9 @@ def insert_into_set_strain(strain_worst_superspreader:Solution, strain_best_dead
         # This action adds more diversification to the metaheuristic.
         elif ty == 'd':
             if to_insert < best_dead:
-                get_metagen_logger().debug("bag: %s", str(bag))
-                get_metagen_logger().debug("__bestDeadIndividualStrain: %s", str(best_dead))
-                get_metagen_logger().debug("contains?: %s", str(best_dead in bag))
+                metagen_logger.debug("bag: %s", str(bag))
+                metagen_logger.debug("__bestDeadIndividualStrain: %s", str(best_dead))
+                metagen_logger.debug("contains?: %s", str(best_dead in bag))
                 bag.remove(best_dead)
                 bag.add(to_insert)
                 inserted = True

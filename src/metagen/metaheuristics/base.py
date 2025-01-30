@@ -21,7 +21,7 @@ from typing import List, Tuple, Optional, Callable
 from metagen.framework import Domain, Solution
 from copy import deepcopy
 
-from metagen.logging.metagen_logger import get_metagen_logger
+from metagen.logging.metagen_logger import metagen_logger
 
 IS_RAY_INSTALLED = is_package_installed("ray")
 
@@ -95,10 +95,10 @@ class Metaheuristic(ABC):
         futures = []
 
         if population_size > 0:
-            get_metagen_logger().info(
+            metagen_logger.info(
                 f"[ITERATION {self.current_iteration}] Distributing with {ray.available_resources().get('CPU', 0)} CPUs -- {distribution}")
         else:
-            get_metagen_logger().info(
+            metagen_logger.info(
                 f"Distributing the initialization with {ray.available_resources().get('CPU', 0)} CPUs -- {distribution}")
 
         for count in distribution:
@@ -209,8 +209,8 @@ class Metaheuristic(ABC):
         Callback executed after each iteration.
         Override this method to add custom post-iteration processing.
         """
-        get_metagen_logger().debug(f'[ITERATION {self.current_iteration}] POPULATION ({len(self.current_solutions)}): {self.current_solutions}')
-        get_metagen_logger().info(f'[ITERATION {self.current_iteration}] BEST SOLUTION: {self.best_solution}')
+        metagen_logger.debug(f'[ITERATION {self.current_iteration}] POPULATION ({len(self.current_solutions)}): {self.current_solutions}')
+        metagen_logger.info(f'[ITERATION {self.current_iteration}] BEST SOLUTION: {self.best_solution}')
         self.best_solution_fitnesses.append(self.best_solution.get_fitness())
         if self.logger: 
             # Log iteration metrics

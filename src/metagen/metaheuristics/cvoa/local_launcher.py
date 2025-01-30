@@ -5,7 +5,7 @@ from typing import Callable, List
 
 from metagen.framework import Domain, Solution
 from metagen.framework.solution.bounds import SolutionClass
-from metagen.logging.metagen_logger import get_metagen_logger
+from metagen.logging.metagen_logger import metagen_logger
 
 from metagen.metaheuristics.cvoa.common_tools import StrainProperties
 from metagen.metaheuristics.cvoa.cvoa_local import CVOA
@@ -45,7 +45,7 @@ def cvoa_launcher(strains: List[StrainProperties], domain: Domain, fitness_funct
             + f"Execution time: {timedelta(milliseconds=t2 - t1)}\n"
     )
 
-    get_metagen_logger().info(output)
+    metagen_logger.info(output)
 
 
     return best_solution

@@ -1,4 +1,4 @@
 ID#,problem,max_iterations,alteration_limit,initial_temp,cooling_rate,neighbor_population_size,distributed,log_dir,seed
-1,dummy-1,20,0.1,50,0.99,10,False,logs/sa,0
-2,sgd-r,20,0.1,50,0.99,10,False,logs/sa,1
+1,dummy-1,20,1,50,0.99,10,False,logs/sa,0
+2,dummy-2,20,2,50,0.99,10,False,logs/sa,1
 

@@ -91,7 +91,7 @@ class SA(Metaheuristic):
     """
 
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float], max_iterations: int = 20,
-                 alteration_limit: float = 0.1, initial_temp: float = 50.0,
+                 alteration_limit: int = 1, initial_temp: float = 50.0,
                  cooling_rate: float = 0.99, neighbor_population_size: int = 1, distributed=False,
                  log_dir: str = "logs/SA") -> None:
         """

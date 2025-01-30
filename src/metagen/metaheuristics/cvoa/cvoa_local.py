@@ -22,7 +22,8 @@ from typing import Set, List, Tuple, Callable
 from metagen.framework import Domain
 from metagen.framework.solution import Solution
 from metagen.framework.solution.bounds import SolutionClass
-from metagen.logging.metagen_logger import get_metagen_logger
+from metagen.logging.metagen_logger import metagen_logger
+
 from metagen.metaheuristics.base import Metaheuristic
 from metagen.metaheuristics.cvoa.common_tools import StrainProperties, IndividualState, \
     compute_n_infected_travel_distance, infect, insert_into_set_strain
@@ -148,7 +149,7 @@ class CVOA(Metaheuristic):
         # 1. Yield the patient zero (pz).
         pz: Solution = self.solution_type(self.domain, connector=self.domain.get_connector())
         pz.evaluate(self.fitness_function)
-        get_metagen_logger().detailed_info(
+        metagen_logger.detailed_info(
             f'[{self.strain_properties.strain_id}, {threading.get_ident()}] Patient zero: {pz}')
 
         # 2. Add the patient zero to the strain-specific infected set.
@@ -189,10 +190,10 @@ class CVOA(Metaheuristic):
         # 2. Stop if no new infected individuals.
         if not self.infected:
             self.epidemic = False
-            get_metagen_logger().detailed_info(
+            metagen_logger.detailed_info(
                 f'[{self.strain_properties.strain_id}, {threading.get_ident()}] No new infected individuals at {self.time}')
 
-        get_metagen_logger().detailed_info(
+        metagen_logger.detailed_info(
             f'[{self.strain_properties.strain_id}, {threading.get_ident()}] Iteration #{self.time} - {self.r0_report(len(new_infected_population))}'
             f' - Best strain individual: {self.best_strain_solution} , Best global individual: {self.global_state.get_best_individual()} ')
 
@@ -250,7 +251,7 @@ class CVOA(Metaheuristic):
                 if individual.get_fitness() < self.global_state.get_best_individual().get_fitness():
                     self.global_state.update_best_individual(individual)
                     self.best_strain_solution_found = True
-                    get_metagen_logger().detailed_info(
+                    metagen_logger.detailed_info(
                         f'[{self.strain_properties.strain_id}, {threading.get_ident()}] New global best individual found at {self.time}! ({individual})')
 
                 # 3.1.4. If the current individual is better than the current strain one, a new strain the best individual is
@@ -334,7 +335,7 @@ class CVOA(Metaheuristic):
         return first_condition or second_condition or third_condition
 
     def post_execution(self) -> None:
-        get_metagen_logger().detailed_info(
+        metagen_logger.detailed_info(
             f'[{self.strain_properties.strain_id}, {threading.get_ident()}] Pandemic finished at {self.time} with best individual: {self.best_strain_solution}')
         super().post_execution()
 

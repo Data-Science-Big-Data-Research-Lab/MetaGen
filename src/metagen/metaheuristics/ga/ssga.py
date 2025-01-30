@@ -23,7 +23,7 @@ from metagen.framework import Domain, Solution
 from .ga_tools import GASolution, yield_two_children
 from metagen.metaheuristics.base import Metaheuristic
 from ...framework.solution.tools import yield_potential_solutions
-from ...logging.metagen_logger import get_metagen_logger
+from ...logging.metagen_logger import metagen_logger
 
 
 class SSGA(Metaheuristic):
@@ -85,7 +85,7 @@ class SSGA(Metaheuristic):
                     solutions[solutions.index(worst)] = best_two[i]
             best_solution = heapq.nsmallest(1, solutions, key=lambda sol: sol.get_fitness())[0]
         else:
-            get_metagen_logger().info(f'[ITERATION {self.current_iteration}] Both children are the same, skipping iteration')
+            metagen_logger.info(f'[ITERATION {self.current_iteration}] Both children are the same, skipping iteration')
 
         return solutions, best_solution
 

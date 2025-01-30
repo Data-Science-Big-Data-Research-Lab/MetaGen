@@ -4,7 +4,6 @@ from collections.abc import Callable
 from typing import List, Tuple, Deque
 
 from metagen.framework.solution.tools import local_search_with_tabu
-from metagen.logging.metagen_logger import get_metagen_logger
 from metagen.metaheuristics.base import Metaheuristic
 from copy import deepcopy
 
