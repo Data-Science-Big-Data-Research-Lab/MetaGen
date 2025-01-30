@@ -39,7 +39,7 @@ The MetaGen supported definitions are defined in Equation 3. The definitions of 
 
    Def^{I|R} = \langle Min, Max \rangle \qquad (3a)\\
    Def^{C} = \{L_1, L_2,...,L_i,...,L_{P}\} \qquad (3b)\\
-   Def^{G} = \{E_1 = Def^{B}_1, E_2 = Def^{B}_2,...,E_j = Def^{B}_j,...,E_{Q} = Def^{B}_{Q}\} \qquqquad (3c)\\
+   Def^{G} = \{E_1 = Def^{B}_1, E_2 = Def^{B}_2,...,E_j = Def^{B}_j,...,E_{Q} = Def^{B}_{Q}\} \qquad (3c)\\
    Def^{D} = \langle LN_{min}, LN_{max}, Def^{B|G} \rangle  \qquad (3d)\\
    Def^{S} = \langle LN, Def^{B|G} \rangle \qquad (3e)
 
