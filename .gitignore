@@ -12,3 +12,5 @@ licenseadd.sh
 *.eps
 logs/
 *.xlsx
+*.csv
+*.tex

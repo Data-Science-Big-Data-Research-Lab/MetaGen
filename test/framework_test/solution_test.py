@@ -21,7 +21,9 @@ import pytest
 from pytest_csv_params.decorator import csv_params
 from os import path
 
-sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from utils import solution, resource_path
 
 
