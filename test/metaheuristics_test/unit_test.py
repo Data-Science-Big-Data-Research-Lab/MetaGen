@@ -9,6 +9,12 @@ from pytest_csv_params.decorator import csv_params
 from metagen.logging.metagen_logger import metagen_logger, set_metagen_logger_level
 from metagen.metaheuristics import RandomSearch, SA, TabuSearch, GA, GAConnector, SSGA
 from metagen.metaheuristics.mm.memetic import Memetic
+
+
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from metaheuristics_test.metaheuristic_factory import get_metaheuristic
 from metaheuristics_test.problems.dispatcher import problem_dispatcher
 from utils import resource_path, str_to_bool, safe_str_to_bool, safe_str, safe_int, safe_float
@@ -43,6 +49,9 @@ def test_rs(problem: str, population_size: int, max_iterations:int, distributed:
     random.seed(seed)
     np.random.seed(seed)
     solution = algorithm.run()
+
+    if distributed:
+        ray.shutdown()
 
     metagen_logger.info(f"Solution found: {solution}")
 
@@ -83,6 +92,9 @@ def test_sa(problem: str, max_iterations:int, alteration_limit: int, initial_tem
     solution = algorithm.run()
     metagen_logger.info(f"Solution found: {solution}")
 
+    if distributed:
+        ray.shutdown()
+
     assert solution is not None
     assert hasattr(solution, 'fitness')
     assert solution.fitness < float('inf')
@@ -112,6 +124,9 @@ def test_ts(problem: str, population_size: int, max_iterations:int, tabu_size:in
     random.seed(seed)
     np.random.seed(seed)
     solution = algorithm.run()
+
+    if distributed:
+        ray.shutdown()
 
     metagen_logger.info(f"Solution found: {solution}")
 
@@ -144,6 +159,9 @@ def test_ga(problem: str, population_size: int, max_iterations:int, mutation_rat
     np.random.seed(seed)
     solution = algorithm.run()
 
+    if distributed:
+        ray.shutdown()
+
     metagen_logger.info(f"Solution found: {solution}")
 
     assert solution is not None
@@ -166,13 +184,15 @@ def test_ssga(problem: str, population_size: int, max_iterations:int, mutation_r
     if distributed:
         ray.init(num_cpus=4)
 
-
     problem_definition, fitness_function = problem_dispatcher(problem,GAConnector())
     algorithm = SSGA(problem_definition, fitness_function, population_size, max_iterations, mutation_rate, distributed, log_dir)
 
     random.seed(seed)
     np.random.seed(seed)
     solution = algorithm.run()
+
+    if distributed:
+        ray.shutdown()
 
     metagen_logger.info(f"Solution found: {solution}")
 
@@ -215,6 +235,9 @@ def test_mm(active: bool, problem: str, population_size: int, max_iterations: in
     np.random.seed(seed)
     solution = algorithm.run()
 
+    if distributed:
+        ray.shutdown()
+
     metagen_logger.info(f"Solution found: {solution}")
 
     assert solution is not None
@@ -253,7 +276,7 @@ def test_metaheuristic(active: bool, metaheuristic:str, problem: str,
                                   mutation_rate=mutation_rate, distribution_level=distribution_level)
 
     if distributed:
-        ray.init(num_cpus=4)
+        ray.init(num_cpus=4, ignore_reinit_error=True)
 
     random.seed(seed)
     np.random.seed(seed)
@@ -264,6 +287,9 @@ def test_metaheuristic(active: bool, metaheuristic:str, problem: str,
     random.seed(seed)
     np.random.seed(seed)
     solution = algorithm.run()
+
+    if distributed:
+        ray.shutdown()
 
     metagen_logger.info(f"Solution found: {solution}")
 
