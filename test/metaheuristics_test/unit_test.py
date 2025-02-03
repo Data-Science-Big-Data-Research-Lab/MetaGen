@@ -104,33 +104,65 @@ def test_sa(problem: str, max_iterations:int, alteration_limit: int, initial_tem
 
 @csv_params(data_file=resource_path("ts_parameters.csv"),
             id_col="ID#",
-            data_casts={"problem":str,"population_size": int, "max_iterations":int,
-                        "tabu_size":int, "alteration_limit": float,
-                        "distributed":str_to_bool, "log_dir":str,"seed": int})
-def test_ts(problem: str, population_size: int, max_iterations:int, tabu_size:int, alteration_limit:float, distributed:bool, log_dir:str, seed: int) -> None:
+            data_casts={"problem": str, "population_size": int, "warmup_iterations": int, "max_iterations": int,
+                        "tabu_size": int, "alteration_limit": float, "distributed": str_to_bool, "log_dir": str, "seed": int})
+def test_ts(problem: str, population_size: int, warmup_iterations: int, max_iterations: int,
+            tabu_size: int, alteration_limit: float, distributed: bool, log_dir: str, seed: int) -> None:
+    """
+    Test for Tabu Search.
 
+    This function initializes the Tabu Search algorithm with parameters from a CSV file,
+    runs the optimization process, and verifies that the solution is valid.
+
+    :param problem: The problem to solve.
+    :param population_size: The size of the neighborhood population.
+    :param warmup_iterations: Number of warmup iterations before starting the main search.
+    :param max_iterations: The maximum number of iterations.
+    :param tabu_size: The size of the tabu list.
+    :param alteration_limit: Maximum proportion of a solution to alter.
+    :param distributed: Whether to use distributed computation.
+    :param log_dir: Directory for logging.
+    :param seed: Random seed for reproducibility.
+    """
+
+    # Set random seeds for reproducibility
     random.seed(seed)
     np.random.seed(seed)
     initial_best = float('inf')
 
     metagen_logger.info('Running Tabu Search')
 
+    # Initialize Ray if using distributed execution
+    ray_initialized = False
     if distributed:
         ray.init(num_cpus=4)
+        ray_initialized = True
 
+    gamma_config = GammaConfig(
+        gamma_function="sampled_based",
+        minimum=0.1,
+        maximum=0.3
+    )
 
+    # gamma_config = None
+
+    # Get problem definition and fitness function
     problem_definition, fitness_function = problem_dispatcher(problem)
-    algorithm = TabuSearch(problem_definition, fitness_function, population_size, max_iterations, tabu_size, alteration_limit, distributed, log_dir)
 
-    random.seed(seed)
-    np.random.seed(seed)
+    # Initialize Tabu Search algorithm
+    algorithm = TabuSearch(problem_definition, fitness_function, population_size, warmup_iterations,
+                           max_iterations, tabu_size, alteration_limit, gamma_config, distributed, log_dir)
+
+    # Run the optimization algorithm
     solution = algorithm.run()
 
-    if distributed:
+    # Shut down Ray if it was initialized
+    if ray_initialized:
         ray.shutdown()
 
     metagen_logger.info(f"Solution found: {solution}")
 
+    # Assertions to ensure the solution is valid
     assert solution is not None
     assert hasattr(solution, 'fitness')
     assert solution.fitness < float('inf')
