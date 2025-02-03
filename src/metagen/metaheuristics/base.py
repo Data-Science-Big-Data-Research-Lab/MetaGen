@@ -16,12 +16,15 @@
 """
 
 from abc import ABC, abstractmethod
+
+from .gamma_schedules import GAMMA_FUNCTIONS, gamma_linear
 from .import_helper import is_package_installed
 from typing import List, Tuple, Optional, Callable
 from metagen.framework import Domain, Solution
 from copy import deepcopy
 
 from metagen.logging.metagen_logger import metagen_logger
+from ..framework.solution.tools import random_exploration
 
 IS_RAY_INSTALLED = is_package_installed("ray")
 
@@ -31,6 +34,8 @@ if is_package_installed("tensorboard"):
 if IS_RAY_INSTALLED:
     import ray
     from .distributed_tools import assign_load_equally, call_distributed
+
+
 class Metaheuristic(ABC):
     """
     Abstract base class for metaheuristic algorithms.
@@ -65,12 +70,16 @@ class Metaheuristic(ABC):
     :ivar best_solution_fitnesses: List of fitness values of the best solutions per iteration.
     :vartype best_solution_fitnesses: List[float]
     """
-    def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float], population_size=1, distributed=False, log_dir: str = "logs") -> None:
+
+    def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float], population_size=20,
+                 warmup_iterations: int = 0, distributed=False,
+                 log_dir: str = "logs") -> None:
         super().__init__()
 
         self.domain = domain
         self.fitness_function = fitness_function
         self.population_size = population_size
+        self.warmup_iterations = warmup_iterations
         self.distributed = distributed
         self.logger = TensorBoardLogger(log_dir=log_dir) if is_package_installed("tensorboard") else None
 
@@ -142,13 +151,19 @@ class Metaheuristic(ABC):
         :return: A tuple containing the population and the best individual.
         :rtype: Tuple[List[Solution], Solution]
         """
-        if self.distributed:
-            if not IS_RAY_INSTALLED:
-                raise ImportError("Ray must be installed to use distributed initialization")
-
-            population, best_individual = self._launch_distributed_method(self.iterate)
+        if self.current_iteration < self.warmup_iterations:
+            metagen_logger.debug(
+                f'[ITERATION {self.current_iteration}] Warmup iteration: {self.current_iteration}/{self.warmup_iterations}')
+            population, best_individual = random_exploration(
+                self.domain, self.fitness_function, len(self.current_solutions)
+            )
         else:
-            population, best_individual = self.iterate(self.current_solutions)
+            if self.distributed:
+                if not IS_RAY_INSTALLED:
+                    raise ImportError("Ray must be installed to use distributed initialization")
+                population, best_individual = self._launch_distributed_method(self.iterate)
+            else:
+                population, best_individual = self.iterate(self.current_solutions)
 
         self.current_solutions = population
         self.best_solution = best_individual
