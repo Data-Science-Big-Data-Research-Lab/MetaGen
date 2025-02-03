@@ -40,11 +40,13 @@ def test_rs(problem: str, population_size: int, max_iterations:int, distributed:
     initial_best = float('inf')
 
     metagen_logger.info('Running Random Search')
+    print(distributed)
 
     if distributed:
         ray.init(num_cpus=4)
 
     problem_definition, fitness_function = problem_dispatcher(problem)
+
     algorithm = RandomSearch(problem_definition, fitness_function, population_size, max_iterations, distributed, log_dir)
 
     random.seed(seed)

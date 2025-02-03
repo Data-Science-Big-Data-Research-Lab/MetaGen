@@ -77,7 +77,7 @@ class RandomSearch(Metaheuristic):
         :param log_dir: Directory for logging, defaults to "logs/RS"
         :type log_dir: str, optional
         """
-        super().__init__(domain, fitness_function, population_size, distributed, log_dir)
+        super().__init__(domain, fitness_function, population_size,0, distributed, log_dir)
         self.max_iterations = max_iterations
 
     def initialize(self, num_solutions=10) -> Tuple[List[Solution], Solution]:
