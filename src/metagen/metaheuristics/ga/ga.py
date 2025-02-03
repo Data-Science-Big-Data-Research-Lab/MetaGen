@@ -20,10 +20,9 @@ from metagen.framework import Domain, Solution
 from .ga_tools import GASolution, yield_two_children
 from metagen.metaheuristics.base import Metaheuristic
 from typing import Callable, List, Tuple, cast
-import random
 from copy import deepcopy
 
-from ...framework.solution.tools import random_exploration
+from metagen.metaheuristics.tools import random_exploration
 
 
 class GA(Metaheuristic):

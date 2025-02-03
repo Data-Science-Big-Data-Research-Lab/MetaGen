@@ -14,9 +14,8 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-import metagen.framework
 from metagen.framework import Domain, Solution
-from metagen.framework.solution.tools import random_exploration
+from metagen.metaheuristics.tools import random_exploration
 from metagen.metaheuristics.base import Metaheuristic
 from typing import List, Tuple, Callable
 from copy import deepcopy

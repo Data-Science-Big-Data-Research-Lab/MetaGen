@@ -23,7 +23,7 @@ from metagen.framework import Domain, Solution
 from copy import deepcopy
 
 from metagen.logging.metagen_logger import metagen_logger
-from ..framework.solution.tools import random_exploration
+from metagen.metaheuristics.tools import random_exploration
 
 IS_RAY_INSTALLED = is_package_installed("ray")
 
@@ -32,7 +32,7 @@ if is_package_installed("tensorboard"):
 
 if IS_RAY_INSTALLED:
     import ray
-    from .distributed_tools import assign_load_equally, call_distributed
+    from .distributed_tools import assign_load_equally, call_distributed, distributed_random_exploration
 
 
 class Metaheuristic(ABC):
@@ -151,11 +151,16 @@ class Metaheuristic(ABC):
         :rtype: Tuple[List[Solution], Solution]
         """
         if self.current_iteration < self.warmup_iterations:
-            metagen_logger.debug(
-                f'[ITERATION {self.current_iteration}] Warmup iteration: {self.current_iteration}/{self.warmup_iterations}')
-            population, best_individual = random_exploration(
-                self.domain, self.fitness_function, len(self.current_solutions)
-            )
+            if self.distributed:
+                if not IS_RAY_INSTALLED:
+                    raise ImportError("Ray must be installed to use distributed initialization")
+                metagen_logger.debug(
+                    f'[ITERATION {self.current_iteration}] Distributed warmup iteration: {self.current_iteration}/{self.warmup_iterations}')
+                population, best_individual = distributed_random_exploration(self.domain, self.fitness_function, len(self.current_solutions))
+            else:
+                metagen_logger.debug(
+                    f'[ITERATION {self.current_iteration}] Warmup iteration: {self.current_iteration}/{self.warmup_iterations}')
+                population, best_individual = random_exploration(self.domain, self.fitness_function, len(self.current_solutions))
         else:
             if self.distributed:
                 if not IS_RAY_INSTALLED:
