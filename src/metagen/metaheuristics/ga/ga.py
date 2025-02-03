@@ -23,7 +23,7 @@ from typing import Callable, List, Tuple, cast
 import random
 from copy import deepcopy
 
-from ...framework.solution.tools import yield_potential_solutions
+from ...framework.solution.tools import random_exploration
 
 
 class GA(Metaheuristic):
@@ -62,7 +62,7 @@ class GA(Metaheuristic):
     def initialize(self, num_solutions=10) -> Tuple[List[Solution], Solution]:
         """Initialize the population"""
         # current_solutions, best_solution = yield_ga_population(num_solutions, self.domain, self.fitness_function)
-        current_solutions, best_solution = yield_potential_solutions(self.domain, self.fitness_function, num_solutions)
+        current_solutions, best_solution = random_exploration(self.domain, self.fitness_function, num_solutions)
         return current_solutions, best_solution
 
     def iterate(self, solutions: List[Solution]) -> Tuple[List[Solution], Solution]:

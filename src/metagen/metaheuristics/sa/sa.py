@@ -15,7 +15,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 from metagen.framework import Domain, Solution
-from metagen.framework.solution.tools import yield_potential_solutions
+from metagen.framework.solution.tools import random_exploration
 from metagen.metaheuristics.base import Metaheuristic
 from collections.abc import Callable
 from copy import deepcopy
@@ -92,7 +92,8 @@ class SA(Metaheuristic):
 
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float], max_iterations: int = 20,
                  alteration_limit: int = 1, initial_temp: float = 50.0,
-                 cooling_rate: float = 0.99, neighbor_population_size: int = 1, distributed=False,
+                 cooling_rate: float = 0.99, neighbor_population_size: int = 1,
+                 warmup_iterations: int = 10, gamma_strategy: str = "linear", distributed=False,
                  log_dir: str = "logs/SA") -> None:
         """
         Initialize the Simulated Annealing algorithm.
@@ -132,7 +133,7 @@ class SA(Metaheuristic):
         :return: A tuple containing the list of solutions and the best solution found
         :rtype: Tuple[List[Solution], Solution]
         """
-        current_solutions, best_solution = yield_potential_solutions(self.domain, self.fitness_function, num_solutions)
+        current_solutions, best_solution = random_exploration(self.domain, self.fitness_function, num_solutions)
         return current_solutions, best_solution
 
     def iterate(self, solutions: List[Solution]) -> Tuple[List[Solution], Solution]:

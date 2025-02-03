@@ -22,7 +22,7 @@ from typing import List, Tuple, cast
 from metagen.framework import Domain, Solution
 from .ga_tools import GASolution, yield_two_children
 from metagen.metaheuristics.base import Metaheuristic
-from ...framework.solution.tools import yield_potential_solutions
+from ...framework.solution.tools import random_exploration
 from ...logging.metagen_logger import metagen_logger
 
 
@@ -60,7 +60,7 @@ class SSGA(Metaheuristic):
         self.max_iterations = max_iterations
 
     def initialize(self, num_solutions=10) -> Tuple[List[Solution], Solution]:
-        current_solutions, best_solution = yield_potential_solutions(self.domain, self.fitness_function, num_solutions)
+        current_solutions, best_solution = random_exploration(self.domain, self.fitness_function, num_solutions)
         return current_solutions, best_solution
 
     def iterate(self, solutions: List[Solution]) -> Tuple[List[Solution], Solution]:

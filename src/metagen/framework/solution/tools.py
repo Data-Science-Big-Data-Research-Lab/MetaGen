@@ -1,10 +1,10 @@
 from copy import deepcopy
-from typing import Callable, Tuple, List
+from typing import Callable, Tuple, List, Set
 
 from metagen.framework import Domain, Solution
 
 
-def yield_potential_solutions (domain: Domain, fitness_function: Callable[[Solution], float], num_solutions: int) \
+def random_exploration (domain: Domain, fitness_function: Callable[[Solution], float], num_solutions: int) \
                                                                             -> Tuple[List[Solution], Solution]:
 
     solution_type: type[Solution] = domain.get_connector().get_type(domain.get_core())
@@ -41,7 +41,7 @@ def local_search(solution: Solution, fitness_function: Callable[[Solution], floa
 
 def local_search_with_tabu (solution: Solution, fitness_function: Callable[[Solution], float],
                             neighbor_population_size: int, alteration_limit: float, tabu_list:List[Solution]) -> Tuple[List[Solution], Solution]:
-
+    tabu_set: Set[Solution] = set(tabu_list)
     best_neighbor = deepcopy(solution)
     neighborhood = []
 
@@ -50,7 +50,7 @@ def local_search_with_tabu (solution: Solution, fitness_function: Callable[[Solu
         neighbor.mutate(alteration_limit=alteration_limit)
         neighbor.evaluate(fitness_function)
 
-        if neighbor not in tabu_list:
+        if neighbor not in tabu_set:
             neighborhood.append(neighbor)
             if neighbor < best_neighbor:
                 best_neighbor = neighbor
