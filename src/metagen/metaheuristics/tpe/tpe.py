@@ -1,6 +1,6 @@
 import heapq
 
-from metagen.framework.solution.tools import random_exploration
+from metagen.metaheuristics.tools import random_exploration
 from metagen.metaheuristics.base import Metaheuristic
 from typing import Callable, List, Tuple, Optional
 import numpy as np
@@ -8,8 +8,7 @@ from scipy.stats import norm
 from metagen.framework import Domain, Solution
 from copy import deepcopy
 from metagen.framework.domain.literals import I
-from metagen.metaheuristics.gamma_schedules import GAMMA_FUNCTIONS, gamma_linear, gamma_sqrt, gamma_sample_based, \
-    GammaConfig, compute_gamma
+from metagen.metaheuristics.gamma_schedules import GammaConfig, compute_gamma
 
 
 class TPE(Metaheuristic):

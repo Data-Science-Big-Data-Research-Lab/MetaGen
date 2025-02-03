@@ -22,7 +22,7 @@ from typing import List, Tuple, cast
 from metagen.framework import Domain, Solution
 from .ga_tools import GASolution, yield_two_children
 from metagen.metaheuristics.base import Metaheuristic
-from ...framework.solution.tools import random_exploration
+from metagen.metaheuristics.tools import random_exploration
 from ...logging.metagen_logger import metagen_logger
 
 

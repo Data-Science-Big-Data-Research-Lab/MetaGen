@@ -138,13 +138,13 @@ def test_ts(problem: str, population_size: int, warmup_iterations: int, max_iter
         ray.init(num_cpus=4)
         ray_initialized = True
 
-    gamma_config = GammaConfig(
-        gamma_function="sampled_based",
-        minimum=0.1,
-        maximum=0.3
-    )
+    # gamma_config = GammaConfig(
+    #     gamma_function="sampled_based",
+    #     minimum=0.1,
+    #     maximum=0.3
+    # )
 
-    # gamma_config = None
+    gamma_config = None
 
     # Get problem definition and fitness function
     problem_definition, fitness_function = problem_dispatcher(problem)

@@ -3,7 +3,7 @@ from copy import deepcopy
 from typing import Callable, Tuple, List, cast
 
 from metagen.framework import Domain, Solution
-from metagen.framework.solution.tools import random_exploration
+from metagen.metaheuristics.tools import random_exploration
 from metagen.metaheuristics.base import Metaheuristic
 from metagen.metaheuristics.ga import GASolution
 from metagen.metaheuristics.ga.ga_tools import yield_two_children

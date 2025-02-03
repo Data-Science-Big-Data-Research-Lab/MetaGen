@@ -3,11 +3,11 @@ from metagen.framework import Domain, Solution
 from collections.abc import Callable
 from typing import List, Tuple, Deque, Optional
 
-from metagen.framework.solution.tools import local_search_with_tabu
+from metagen.metaheuristics.tools import local_search_with_tabu
 from metagen.metaheuristics.base import Metaheuristic
 from copy import deepcopy
 
-from metagen.metaheuristics.gamma_schedules import GAMMA_FUNCTIONS, gamma_linear, GammaConfig, compute_gamma
+from metagen.metaheuristics.gamma_schedules import GammaConfig, compute_gamma
 
 
 class TabuSearch(Metaheuristic):

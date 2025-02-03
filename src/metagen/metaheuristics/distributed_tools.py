@@ -1,6 +1,11 @@
-from typing import List, Callable
+from copy import deepcopy
+from typing import List, Callable, Tuple
 
 import ray
+
+from metagen.framework import Domain, Solution
+from metagen.metaheuristics.tools import random_exploration
+
 
 @ray.remote
 def call_distributed(function: Callable, *args, **kargs) -> None:
@@ -22,3 +27,24 @@ def assign_load_equally(neighbor_population_size: int) -> List[int]:
     remainder = neighbor_population_size % num_cpus
     distribution = [base_count + 1 if i < remainder else base_count for i in range(num_cpus)]
     return distribution
+
+
+@ray.remote
+def remote_random_exploration(domain: Domain, fitness_function: Callable[[Solution], float], num_solutions: int) \
+                                                                            -> Tuple[List[Solution], Solution]:
+    return random_exploration(domain, fitness_function, num_solutions)
+
+
+def distributed_random_exploration(domain: Domain, fitness_function: Callable[[Solution], float], num_solutions: int) \
+                                                                            -> Tuple[List[Solution], Solution]:
+    distribution = assign_load_equally(num_solutions)
+
+    futures = []
+    for count in distribution:
+        futures.append(remote_random_exploration.remote(domain, fitness_function, count))
+
+    remote_results = ray.get(futures)
+    population = [individual for subpopulation in remote_results for individual in subpopulation[0]]
+    best_individual = min([result[1] for result in remote_results], key=lambda sol: sol.get_fitness())
+
+    return population, best_individual
