@@ -90,11 +90,12 @@ class SA(Metaheuristic):
     :vartype neighbor_population_size: int
     """
 
-    def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float], max_iterations: int = 20,
+    def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
+                 warmup_iterations: int = 5,
+                 max_iterations: int = 20,
                  alteration_limit: int = 1, initial_temp: float = 50.0,
                  cooling_rate: float = 0.99, neighbor_population_size: int = 1,
-                 warmup_iterations: int = 10, gamma_strategy: str = "linear", distributed=False,
-                 log_dir: str = "logs/SA") -> None:
+                 distributed=False, log_dir: str = "logs/SA") -> None:
         """
         Initialize the Simulated Annealing algorithm.
 
@@ -117,7 +118,7 @@ class SA(Metaheuristic):
         :param log_dir: Directory for logging, defaults to "logs/SA"
         :type log_dir: str, optional
         """
-        super().__init__(domain, fitness_function, distributed=distributed, log_dir=log_dir)
+        super().__init__(domain, fitness_function, warmup_iterations=warmup_iterations,distributed=distributed, log_dir=log_dir)
         self.max_iterations = max_iterations
         self.alteration_limit = alteration_limit
         self.initial_temp = initial_temp

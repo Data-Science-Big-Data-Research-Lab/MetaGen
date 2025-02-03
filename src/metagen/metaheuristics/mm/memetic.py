@@ -63,13 +63,14 @@ class Memetic(Metaheuristic):
         best_solution = memetic.run()
     """
 
-    def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float], population_size: int = 10,
+    def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
+                 population_size: int = 10, warmup_iterations: int = 5,
                  max_iterations: int = 20, mutation_rate: float = 0.1,
                  neighbor_population_size: int = 10, alteration_limit: float = 1.0,
                  distributed: bool = False, log_dir: str = "logs/MM",
                  distribution_level: int = 0) -> None:
         """Initialize the Memetic Algorithm with the given parameters."""
-        super().__init__(domain, fitness_function, population_size, distributed, log_dir)
+        super().__init__(domain, fitness_function, population_size, warmup_iterations, distributed, log_dir)
 
         self.mutation_rate = mutation_rate
         self.max_generations = max_iterations

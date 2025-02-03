@@ -52,10 +52,11 @@ class SSGA(Metaheuristic):
     :ivar fitness_func: The fitness function used to evaluate solutions.
     :vartype fitness_func: Callable[[Solution], float]"""
 
-    def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float], population_size: int = 10,
+    def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
+                 population_size: int = 10,  warmup_iterations: int = 5,
                  max_iterations: int = 50, mutation_rate: float = 0.1,
                  distributed: bool = False, log_dir: str = "logs/SSGA"):
-        super().__init__(domain, fitness_function, population_size, distributed, log_dir)
+        super().__init__(domain, fitness_function, population_size, warmup_iterations, distributed, log_dir)
         self.mutation_rate = mutation_rate
         self.max_iterations = max_iterations
 
