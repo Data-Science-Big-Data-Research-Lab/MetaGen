@@ -7,7 +7,8 @@ import ray
 from pytest_csv_params.decorator import csv_params
 
 from metagen.logging.metagen_logger import metagen_logger, set_metagen_logger_level
-from metagen.metaheuristics import RandomSearch, SA, TabuSearch, GA, GAConnector, SSGA
+from metagen.metaheuristics import RandomSearch, SA, TabuSearch, GA, GAConnector, SSGA, TPE
+from metagen.metaheuristics.gamma_schedules import GammaConfig
 from metagen.metaheuristics.mm.memetic import Memetic
 
 
@@ -240,6 +241,69 @@ def test_mm(active: bool, problem: str, population_size: int, max_iterations: in
 
     metagen_logger.info(f"Solution found: {solution}")
 
+    assert solution is not None
+    assert hasattr(solution, 'fitness')
+    assert solution.fitness < float('inf')
+    assert solution.fitness <= initial_best
+
+@csv_params(data_file=resource_path("tpe_parameters.csv"),
+            id_col="ID#",
+            data_casts={"problem": str, "population_size": int, "max_iterations": int,
+                        "warmup_iterations": int, "candidate_pool_size": int,
+                        "distributed": str_to_bool, "log_dir": str, "seed": int})
+def test_tpe(problem: str, population_size: int, max_iterations: int, warmup_iterations: int,
+             candidate_pool_size: int, distributed: bool, log_dir: str, seed: int) -> None:
+    """
+    Test for Tree-structured Parzen Estimator (TPE) metaheuristic.
+
+    The test initializes the TPE algorithm with parameters provided in a CSV file,
+    runs the optimization process, and verifies that the solution is valid.
+
+    :param problem: The problem to solve.
+    :param population_size: The size of the population.
+    :param max_iterations: The maximum number of iterations.
+    :param warmup_iterations: Number of initial random exploration iterations.
+    :param candidate_pool_size: The number of candidates sampled in each iteration.
+    :param distributed: Whether to use distributed computation.
+    :param log_dir: Directory for logging.
+    :param seed: Random seed for reproducibility.
+    """
+
+    # Set random seeds for reproducibility
+    random.seed(seed)
+    np.random.seed(seed)
+    initial_best = float('inf')
+
+    metagen_logger.info('Running TPE')
+
+    # Initialize Ray if using distributed execution
+    if distributed:
+        ray.init(num_cpus=4)
+
+    gamma_config = GammaConfig(
+        gamma_function="sampled_based",
+        minimum=0.1,
+        maximum=0.3
+    )
+
+    # Get problem definition and fitness function
+    problem_definition, fitness_function = problem_dispatcher(problem)
+
+    # Initialize TPE algorithm
+    algorithm = TPE(problem_definition, fitness_function, population_size, max_iterations,
+                    warmup_iterations=warmup_iterations, candidate_pool_size=candidate_pool_size,
+                    gamma_config=gamma_config, distributed=distributed, log_dir=log_dir)
+
+    # Run the optimization algorithm
+    solution = algorithm.run()
+
+    # Shutdown Ray if it was used
+    if distributed:
+        ray.shutdown()
+
+    metagen_logger.info(f"Solution found: {solution}")
+
+    # Validate the solution
     assert solution is not None
     assert hasattr(solution, 'fitness')
     assert solution.fitness < float('inf')

@@ -3,7 +3,7 @@ from copy import deepcopy
 from typing import Callable, Tuple, List, cast
 
 from metagen.framework import Domain, Solution
-from metagen.framework.solution.tools import yield_potential_solutions
+from metagen.framework.solution.tools import random_exploration
 from metagen.metaheuristics.base import Metaheuristic
 from metagen.metaheuristics.ga import GASolution
 from metagen.metaheuristics.ga.ga_tools import yield_two_children
@@ -89,7 +89,7 @@ class Memetic(Metaheuristic):
         :return: A tuple containing the initial population and the best solution
         :rtype: Tuple[List[:py:class:`~metagen.framework.Solution`], :py:class:`~metagen.framework.Solution`]
         """
-        current_solutions, best_solution = yield_potential_solutions(self.domain, self.fitness_function, num_solutions)
+        current_solutions, best_solution = random_exploration(self.domain, self.fitness_function, num_solutions)
         return current_solutions, best_solution
 
     def iterate(self, solutions: List[GASolution]) -> Tuple[List[Solution], Solution]:

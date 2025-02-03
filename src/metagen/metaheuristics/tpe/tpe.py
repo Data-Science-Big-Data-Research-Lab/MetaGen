@@ -1,10 +1,16 @@
+import heapq
+
+from metagen.framework.solution.tools import random_exploration
 from metagen.metaheuristics.base import Metaheuristic
-from typing import Callable, List, Tuple
+from typing import Callable, List, Tuple, Optional
 import numpy as np
 from scipy.stats import norm
 from metagen.framework import Domain, Solution
 from copy import deepcopy
 from metagen.framework.domain.literals import I
+from metagen.metaheuristics.gamma_schedules import GAMMA_FUNCTIONS, gamma_linear, gamma_sqrt, gamma_sample_based, \
+    GammaConfig, compute_gamma
+
 
 class TPE(Metaheuristic):
     """
@@ -52,7 +58,8 @@ class TPE(Metaheuristic):
     """
 
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float], population_size: int = 10, 
-                 max_iterations: int = 50, gamma: float = 0.25, distributed=False, log_dir: str = "logs/TPE") -> None:
+                 max_iterations: int = 50, warmup_iterations:int = 10, candidate_pool_size: int = 5,
+                 gamma_config: Optional[GammaConfig] = None, distributed=False, log_dir: str = "logs/TPE") -> None:
         """
         Initialize the TPE algorithm.
 
@@ -71,9 +78,12 @@ class TPE(Metaheuristic):
         :param log_dir: Directory for logging, defaults to "logs/TPE"
         :type log_dir: str, optional
         """
-        super().__init__(domain, fitness_function, population_size, distributed=distributed, log_dir=log_dir)
+        super().__init__(domain, fitness_function, population_size, warmup_iterations, distributed=distributed, log_dir=log_dir)
         self.max_iterations = max_iterations
-        self.gamma = gamma
+        self.candidate_pool_size = candidate_pool_size
+        self.gamma_config = gamma_config if gamma_config else GammaConfig(
+            gamma_function="linear", minimum=0.1, maximum=0.3
+        )
 
     def initialize(self, num_solutions=10) -> Tuple[List[Solution], Solution]:
         """
@@ -84,45 +94,46 @@ class TPE(Metaheuristic):
         :return: A tuple containing the list of solutions and the best solution found
         :rtype: Tuple[List[Solution], Solution]
         """
-        solution_type: type[Solution] = self.domain.get_connector().get_type(self.domain.get_core())
-        best_solution = None
-        current_solutions = []
-        for _ in range(num_solutions):
-            individual = solution_type(self.domain, connector=self.domain.get_connector())
-            individual.evaluate(self.fitness_function)
-            current_solutions.append(individual)
-            if best_solution is None or individual.get_fitness() < best_solution.get_fitness():
-                best_solution = individual
-        
+
+        current_solutions, best_solution = random_exploration(self.domain, self.fitness_function, num_solutions)
         return current_solutions, best_solution
 
     def iterate(self, solutions: List[Solution]) -> Tuple[List[Solution], Solution]:
-        """
-        Execute one iteration of the TPE algorithm.
 
-        In each iteration, the algorithm:
-        1. Splits solutions into good and bad sets using gamma threshold
-        2. Fits probability models to both sets
-        3. Samples new solutions favoring regions with high probability of good solutions
+        # Seleccionar el número de mejores soluciones a considerar
+        # Obtener `gamma` de acuerdo con la estrategia configurada
+        gamma = compute_gamma(self.gamma_config, iteration=self.current_iteration,
+                              max_iterations=self.max_iterations, num_solutions=len(solutions))
 
-        :param solutions: Current population of solutions
-        :type solutions: List[Solution]
-        :return: A tuple containing the new population and the best solution found
-        :rtype: Tuple[List[Solution], Solution]
-        """
-        l = round(self.gamma * len(solutions))
-        best_solutions = sorted(solutions, key=lambda sol: sol.get_fitness())[:l]
-        worst_solutions = sorted(solutions, key=lambda sol: sol.get_fitness())[l:]
+        # Determinar el número de mejores soluciones a considerar
+        l = round(gamma * len(solutions))
 
+        # Seleccionar mejores y peores soluciones usando `heapq`
+        best_solutions = heapq.nsmallest(l, solutions, key=lambda sol: sol.get_fitness())
+        worst_solutions = heapq.nlargest(len(solutions) - l, solutions, key=lambda sol: sol.get_fitness())
+
+        # Generar nueva población
         new_solutions = [deepcopy(self.best_solution)]
-        
-        for _ in range(len(solutions)-1):
-            new_solution = self.sample_new_solution(best_solutions, worst_solutions)
-            new_solution.evaluate(self.fitness_function)
-            new_solutions.append(new_solution)
+        local_best = new_solutions[0]
 
-        best_solution = min(new_solutions, key=lambda sol: sol.get_fitness())
-        return new_solutions, best_solution
+        for _ in range(len(solutions) - 1):
+            best_candidate = self.sample_new_solution(best_solutions, worst_solutions)
+            best_candidate.evaluate(self.fitness_function)
+
+            for _ in range(self.candidate_pool_size - 1):
+                candidate = self.sample_new_solution(best_solutions, worst_solutions)
+                candidate.evaluate(self.fitness_function)
+
+                if candidate.get_fitness() < best_candidate.get_fitness():
+                    best_candidate = candidate
+
+            new_solutions.append(best_candidate)
+
+            if best_candidate.get_fitness() < local_best.get_fitness():
+                local_best = best_candidate
+
+        return new_solutions, local_best
+
 
     def sample_new_solution(self, best_solutions: List[Solution], worst_solutions: List[Solution]) -> Solution:
         """

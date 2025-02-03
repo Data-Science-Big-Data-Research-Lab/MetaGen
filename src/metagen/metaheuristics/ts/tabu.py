@@ -7,6 +7,9 @@ from metagen.framework.solution.tools import local_search_with_tabu
 from metagen.metaheuristics.base import Metaheuristic
 from copy import deepcopy
 
+from metagen.metaheuristics.gamma_schedules import GAMMA_FUNCTIONS, gamma_linear
+
+
 class TabuSearch(Metaheuristic):
     """
     Tabu Search Algorithm for optimization problems.
@@ -43,8 +46,9 @@ class TabuSearch(Metaheuristic):
     """
 
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
-                 population_size: int = 10, max_iterations: int = 10, tabu_size: int = 5, alteration_limit: float = 1.0,
-                 distributed=False, log_dir: str = "logs/TS"):
+                 population_size: int = 10, warmup_iterations:int = 5,
+                 max_iterations: int = 20, tabu_size: int = 5, alteration_limit: float = 1.0,
+                 gamma_strategy: str = "linear", distributed=False, log_dir: str = "logs/TS"):
         """
         Initialize the Tabu Search algorithm.
 
@@ -65,11 +69,12 @@ class TabuSearch(Metaheuristic):
         :param log_dir: Directory for logging, defaults to "logs/TS"
         :type log_dir: str, optional
         """
-        super().__init__(domain, fitness_function, population_size, distributed, log_dir)
+        super().__init__(domain, fitness_function, population_size, warmup_iterations, distributed, log_dir)
         self.max_iterations = max_iterations
         self.tabu_size = tabu_size
         self.tabu_list:Deque[Solution] = deque(maxlen=tabu_size)
         self.alteration_limit: float = alteration_limit
+        self.gamma_function = GAMMA_FUNCTIONS.get(gamma_strategy, gamma_linear)
 
     def initialize(self, num_solutions: int=10) -> Tuple[List[Solution], Solution]:
         """
@@ -104,14 +109,20 @@ class TabuSearch(Metaheuristic):
         :return: A tuple containing the new neighborhood solutions and the best solution found
         :rtype: Tuple[List[Solution], Solution]
         """
-        current_solutions, best_solution = local_search_with_tabu(self.best_solution, self.fitness_function, len(solutions), self.alteration_limit,
-                                                                  list(self.tabu_list))
+        # Ajustar dinámicamente el tamaño de la vecindad
+        l = round(self.gamma_function(len(solutions), self.current_iteration, self.max_iterations))
 
+        # Aplicar búsqueda local con tabú respetando el tamaño `l`
+        current_solutions, best_solution = local_search_with_tabu(
+            self.best_solution, self.fitness_function, l, self.alteration_limit, list(self.tabu_list)
+        )
+
+        # Si no se generan soluciones válidas, mantener la población anterior
         if not current_solutions:
             current_solutions = solutions
             best_solution = deepcopy(self.best_solution)
         else:
-            self.tabu_list.append(best_solution)
+            self.tabu_list.append(best_solution)  # Agregar mejor solución a la lista tabú
 
         return current_solutions, best_solution
 

@@ -16,7 +16,7 @@
 """
 import metagen.framework
 from metagen.framework import Domain, Solution
-from metagen.framework.solution.tools import yield_potential_solutions
+from metagen.framework.solution.tools import random_exploration
 from metagen.metaheuristics.base import Metaheuristic
 from typing import List, Tuple, Callable
 from copy import deepcopy
@@ -90,7 +90,7 @@ class RandomSearch(Metaheuristic):
         :return: A tuple containing the list of solutions and the best solution found
         :rtype: Tuple[List[Solution], Solution]
         """
-        current_solutions, best_solution = yield_potential_solutions(self.domain, self.fitness_function, num_solutions)
+        current_solutions, best_solution = random_exploration(self.domain, self.fitness_function, num_solutions)
         return current_solutions, best_solution
 
     def iterate(self, solutions: List[Solution]) -> Tuple[List[Solution], Solution]:
