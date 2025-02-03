@@ -17,7 +17,6 @@
 
 from abc import ABC, abstractmethod
 
-from .gamma_schedules import GAMMA_FUNCTIONS, gamma_linear
 from .import_helper import is_package_installed
 from typing import List, Tuple, Optional, Callable
 from metagen.framework import Domain, Solution
