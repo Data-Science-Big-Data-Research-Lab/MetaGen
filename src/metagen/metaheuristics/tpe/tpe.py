@@ -56,8 +56,8 @@ class TPE(Metaheuristic):
         optimal_solution = search.run()
     """
 
-    def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float], population_size: int = 10, 
-                 max_iterations: int = 50, warmup_iterations:int = 10, candidate_pool_size: int = 5,
+    def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
+                 max_iterations: int = 50, warmup_iterations:int = 10, candidate_pool_size: int = 24,
                  gamma_config: Optional[GammaConfig] = None, distributed=False, log_dir: str = "logs/TPE") -> None:
         """
         Initialize the TPE algorithm.
@@ -77,12 +77,10 @@ class TPE(Metaheuristic):
         :param log_dir: Directory for logging, defaults to "logs/TPE"
         :type log_dir: str, optional
         """
-        super().__init__(domain, fitness_function, population_size, warmup_iterations, distributed=distributed, log_dir=log_dir)
+        super().__init__(domain, fitness_function, warmup_iterations=warmup_iterations, distributed=distributed, log_dir=log_dir)
         self.max_iterations = max_iterations
         self.candidate_pool_size = candidate_pool_size
-        self.gamma_config = gamma_config if gamma_config else GammaConfig(
-            gamma_function="linear", minimum=0.1, maximum=0.3
-        )
+        self.gamma_config = gamma_config if gamma_config else GammaConfig(gamma_function="sampled_based")
 
     def initialize(self, num_solutions=10) -> Tuple[List[Solution], Solution]:
         """
@@ -94,44 +92,54 @@ class TPE(Metaheuristic):
         :rtype: Tuple[List[Solution], Solution]
         """
 
-        current_solutions, best_solution = random_exploration(self.domain, self.fitness_function, num_solutions)
-        return current_solutions, best_solution
+        solution_type: type[Solution] = self.domain.get_connector().get_type(self.domain.get_core())
+        first_solution = solution_type(self.domain, connector=self.domain.get_connector())
+        first_solution.evaluate(self.fitness_function)
+        return [first_solution], first_solution
 
     def iterate(self, solutions: List[Solution]) -> Tuple[List[Solution], Solution]:
+        """
+        Executes one iteration of the TPE algorithm.
 
-        # Seleccionar el número de mejores soluciones a considerar
-        # Obtener `gamma` de acuerdo con la estrategia configurada
+        - Computes gamma dynamically based on the configured strategy.
+        - Selects the top `l` best solutions based on gamma.
+        - Generates `candidate_pool_size` candidates and selects the best one.
+        - Accumulates solutions for future iterations.
+
+        :param solutions: List of solutions accumulated over iterations.
+        :type solutions: List[Solution]
+        :return: Tuple containing updated solutions list and the best solution found.
+        :rtype: Tuple[List[Solution], Solution]
+        """
+
+        # Compute gamma based on current iteration and accumulated solutions
         gamma = compute_gamma(self.gamma_config, iteration=self.current_iteration,
                               max_iterations=self.max_iterations, num_solutions=len(solutions))
 
-        # Determinar el número de mejores soluciones a considerar
-        l = round(gamma * len(solutions))
+        # Determine the number of best solutions to consider
+        l = max(1, round(gamma * len(solutions)))  # Ensure at least one solution is considered
 
-        # Seleccionar mejores y peores soluciones usando `heapq`
+        # Select the best and worst solutions using heapq for efficiency
         best_solutions = heapq.nsmallest(l, solutions, key=lambda sol: sol.get_fitness())
         worst_solutions = heapq.nlargest(len(solutions) - l, solutions, key=lambda sol: sol.get_fitness())
 
-        # Generar nueva población
-        new_solutions = [deepcopy(self.best_solution)]
-        local_best = new_solutions[0]
+        # Generate candidate solutions and select the best one
+        best_candidate = self.sample_new_solution(best_solutions, worst_solutions)
+        best_candidate.evaluate(self.fitness_function)
 
-        for _ in range(len(solutions) - 1):
-            best_candidate = self.sample_new_solution(best_solutions, worst_solutions)
-            best_candidate.evaluate(self.fitness_function)
+        for _ in range(self.candidate_pool_size - 1):
+            candidate = self.sample_new_solution(best_solutions, worst_solutions)
+            candidate.evaluate(self.fitness_function)
 
-            for _ in range(self.candidate_pool_size - 1):
-                candidate = self.sample_new_solution(best_solutions, worst_solutions)
-                candidate.evaluate(self.fitness_function)
+            if candidate.get_fitness() < best_candidate.get_fitness():
+                best_candidate = candidate  # Keep the best candidate
 
-                if candidate.get_fitness() < best_candidate.get_fitness():
-                    best_candidate = candidate
+        # Update the solutions list with the new best candidate
+        updated_solutions = solutions + [best_candidate]
 
-            new_solutions.append(best_candidate)
+        local_best = min(self.best_solution, best_candidate, key=lambda sol: sol.get_fitness())
 
-            if best_candidate.get_fitness() < local_best.get_fitness():
-                local_best = best_candidate
-
-        return new_solutions, local_best
+        return updated_solutions, local_best
 
 
     def sample_new_solution(self, best_solutions: List[Solution], worst_solutions: List[Solution]) -> Solution:
