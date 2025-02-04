@@ -118,8 +118,10 @@ class SA(Metaheuristic):
         self.max_iterations = max_iterations
         self.alteration_limit = alteration_limit
         self.initial_temp = initial_temp
+        self.current_temp = self.initial_temp
         self.cooling_rate = cooling_rate
         self.neighbor_population_size = neighbor_population_size
+        self.T_min = 1e-8
 
     def initialize(self, num_solutions: int = 1) -> Tuple[List[Solution], Solution]:
         """
@@ -137,11 +139,12 @@ class SA(Metaheuristic):
         """
         Execute one iteration of the Simulated Annealing algorithm.
 
-        In each iteration, a neighbor solution is generated and may be accepted based on
-        the Metropolis criterion and current temperature. The temperature is then decreased
-        according to the cooling schedule.
+        In each iteration, multiple neighbor solutions are generated, and the best one
+        is selected. The Metropolis criterion determines whether the selected neighbor
+        replaces the current solution based on the current temperature. The temperature
+        is then decreased according to the cooling schedule.
 
-        :param solutions: Current population of solutions
+        :param solutions: Current population of solutions (expected to have one solution in SA)
         :type solutions: List[Solution]
         :return: A tuple containing the updated population and the best solution found
         :rtype: Tuple[List[Solution], Solution]
@@ -149,35 +152,41 @@ class SA(Metaheuristic):
         current_solution = deepcopy(solutions[0])
         best_solution = deepcopy(self.best_solution)
 
-        # Generate neighbor
+        # Generate the first neighbor and initialize best_neighbor
         neighbor = deepcopy(current_solution)
         neighbor.mutate(alteration_limit=self.alteration_limit)
         neighbor.evaluate(self.fitness_function)
 
-        # Calculate acceptance probability
-        if neighbor.get_fitness() < current_solution.get_fitness():
-            current_solution = neighbor
-            if neighbor.get_fitness() < best_solution.get_fitness():
-                best_solution = neighbor
+        best_neighbor = neighbor
+        best_fitness = neighbor.get_fitness()
+
+        # Generate additional neighbors and update best_neighbor if needed
+        for _ in range(self.neighbor_population_size - 1):
+            neighbor.mutate(alteration_limit=self.alteration_limit)  # Reuse the same neighbor object
+            neighbor.evaluate(self.fitness_function)
+
+            if neighbor.get_fitness() < best_fitness:
+                best_neighbor = deepcopy(neighbor)
+                best_fitness = neighbor.get_fitness()
+
+        # Decide whether to accept the best neighbor
+        if best_fitness < current_solution.get_fitness():
+            current_solution = best_neighbor
+            if best_fitness < best_solution.get_fitness():
+                best_solution = best_neighbor
         else:
             exploration_rate = calculate_exploration_rate(current_solution.get_fitness(),
-                                                         neighbor.get_fitness(), self.initial_temp)
+                                                          best_fitness, self.current_temp)
             if random.random() < exploration_rate:
-                current_solution = neighbor
+                current_solution = best_neighbor
 
         # Cool down
-        self.initial_temp *= self.cooling_rate
+        self.current_temp *= self.cooling_rate
 
         return [current_solution], best_solution
 
     def stopping_criterion(self) -> bool:
         """
         Check if the algorithm should stop.
-
-        The algorithm stops when the current iteration reaches the maximum number
-        of iterations.
-
-        :return: True if the maximum number of iterations is reached, False otherwise
-        :rtype: bool
         """
-        return self.current_iteration >= self.max_iterations
+        return self.current_iteration >= self.max_iterations or self.current_temp <= self.T_min
