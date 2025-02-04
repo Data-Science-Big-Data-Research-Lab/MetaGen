@@ -53,10 +53,10 @@ class SSGA(Metaheuristic):
     :vartype fitness_func: Callable[[Solution], float]"""
 
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
-                 population_size: int = 10,  warmup_iterations: int = 0,
+                 population_size: int = 10,
                  max_iterations: int = 50, mutation_rate: float = 0.1,
                  distributed: bool = False, log_dir: str = "logs/SSGA"):
-        super().__init__(domain, fitness_function, population_size, warmup_iterations, distributed, log_dir)
+        super().__init__(domain, fitness_function, population_size=population_size, distributed=distributed, log_dir=log_dir)
         self.mutation_rate = mutation_rate
         self.max_iterations = max_iterations
 
