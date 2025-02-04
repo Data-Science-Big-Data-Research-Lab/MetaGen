@@ -1,13 +1,15 @@
 import heapq
+from collections import Counter, deque
 
-from metagen.metaheuristics.tools import random_exploration
+from scipy.optimize import minimize
+
 from metagen.metaheuristics.base import Metaheuristic
 from typing import Callable, List, Tuple, Optional
 import numpy as np
 from scipy.stats import norm
 from metagen.framework import Domain, Solution
 from copy import deepcopy
-from metagen.framework.domain.literals import I
+from metagen.framework.domain.literals import I, R, C
 from metagen.metaheuristics.gamma_schedules import GammaConfig, compute_gamma
 
 
@@ -81,6 +83,7 @@ class TPE(Metaheuristic):
         self.max_iterations = max_iterations
         self.candidate_pool_size = candidate_pool_size
         self.gamma_config = gamma_config if gamma_config else GammaConfig(gamma_function="sampled_based")
+        self.solution_history = deque()
 
     def initialize(self, num_solutions=10) -> Tuple[List[Solution], Solution]:
         """
@@ -95,33 +98,25 @@ class TPE(Metaheuristic):
         solution_type: type[Solution] = self.domain.get_connector().get_type(self.domain.get_core())
         first_solution = solution_type(self.domain, connector=self.domain.get_connector())
         first_solution.evaluate(self.fitness_function)
+        self.solution_history.append(first_solution)
         return [first_solution], first_solution
 
     def iterate(self, solutions: List[Solution]) -> Tuple[List[Solution], Solution]:
         """
-        Executes one iteration of the TPE algorithm.
-
-        - Computes gamma dynamically based on the configured strategy.
-        - Selects the top `l` best solutions based on gamma.
-        - Generates `candidate_pool_size` candidates and selects the best one.
-        - Accumulates solutions for future iterations.
-
-        :param solutions: List of solutions accumulated over iterations.
-        :type solutions: List[Solution]
-        :return: Tuple containing updated solutions list and the best solution found.
-        :rtype: Tuple[List[Solution], Solution]
+        Executes one iteration of the TPE algorithm while controlling solution history growth.
         """
 
-        # Compute gamma based on current iteration and accumulated solutions
+        # Compute gamma dynamically based on the configured strategy
         gamma = compute_gamma(self.gamma_config, iteration=self.current_iteration,
-                              max_iterations=self.max_iterations, num_solutions=len(solutions))
+                              max_iterations=self.max_iterations, num_solutions=len(self.solution_history))
 
         # Determine the number of best solutions to consider
-        l = max(1, round(gamma * len(solutions)))  # Ensure at least one solution is considered
+        l = max(1, round(gamma * len(self.solution_history)))  # Ensure at least one solution is considered
 
         # Select the best and worst solutions using heapq for efficiency
-        best_solutions = heapq.nsmallest(l, solutions, key=lambda sol: sol.get_fitness())
-        worst_solutions = heapq.nlargest(len(solutions) - l, solutions, key=lambda sol: sol.get_fitness())
+        best_solutions = heapq.nsmallest(l, self.solution_history, key=lambda sol: sol.get_fitness())
+        worst_solutions = heapq.nlargest(min(len(self.solution_history) - l, self.candidate_pool_size),
+                                         self.solution_history, key=lambda sol: sol.get_fitness())
 
         # Generate candidate solutions and select the best one
         best_candidate = self.sample_new_solution(best_solutions, worst_solutions)
@@ -134,29 +129,25 @@ class TPE(Metaheuristic):
             if candidate.get_fitness() < best_candidate.get_fitness():
                 best_candidate = candidate  # Keep the best candidate
 
-        # Update the solutions list with the new best candidate
-        updated_solutions = solutions + [best_candidate]
+        # Add new best candidate while controlling history size
+        self.solution_history.append(best_candidate)
+        self._limit_solution_history(gamma)
 
+        # Determine best solution so far
         local_best = min(self.best_solution, best_candidate, key=lambda sol: sol.get_fitness())
 
-        return updated_solutions, local_best
+        return list(self.solution_history), local_best
 
+    def _limit_solution_history(self, gamma: float):
+        """
+        Ensures the solution history does not grow indefinitely.
+        Keeps only the last `gamma * max_iterations` solutions.
+        """
+        max_history_size = max(1, round(gamma * self.max_iterations))
+        while len(self.solution_history) > max_history_size:
+            self.solution_history.popleft()  # Remove oldest solutions
 
     def sample_new_solution(self, best_solutions: List[Solution], worst_solutions: List[Solution]) -> Solution:
-        """
-        Sample a new solution based on probability models of good and bad solutions.
-
-        For each variable, the method:
-        1. Fits normal distributions to values from good and bad solutions
-        2. Samples new values with higher probability from good regions
-
-        :param best_solutions: List of solutions considered good
-        :type best_solutions: List[Solution]
-        :param worst_solutions: List of solutions considered bad
-        :type worst_solutions: List[Solution]
-        :return: A newly sampled solution
-        :rtype: Solution
-        """
         solution_type: type[Solution] = self.domain.get_connector().get_type(self.domain.get_core())
         new_solution = solution_type(self.domain, connector=self.domain.get_connector())
 
@@ -164,25 +155,53 @@ class TPE(Metaheuristic):
             best_values = [sol[var] for sol in best_solutions]
             worst_values = [sol[var] for sol in worst_solutions]
 
-            mu_best, sigma_best = norm.fit(best_values)
-            mu_worst, sigma_worst = norm.fit(worst_values)
+            var_definition = self.domain.get_core().get(var)
+            var_type = var_definition.get_type()
 
-            p_best = norm.pdf(new_solution[var], mu_best, sigma_best)
-            p_worst = norm.pdf(new_solution[var], mu_worst, sigma_worst)
-
-            var_type = self.domain.get_core().get(var).get_attributes()[0]
-            minumum = self.domain.get_core().get(var).get_attributes()[1]
-            maximum = self.domain.get_core().get(var).get_attributes()[2]
-
+            # Inicializar valores predeterminados
+            minimum, maximum, categories = None, None, None
             new_value = None
-            
-            if p_best / (p_best + p_worst) > np.random.rand():
-                new_value = np.clip(np.random.normal(mu_best, sigma_best), minumum, maximum).item()
-            else:
-                new_value = np.clip(np.random.normal(mu_worst, sigma_worst), minumum, maximum).item()
 
-            if var_type == I:
-                new_value = int(new_value)
+            if var_type == I:  # Variables enteras
+                _, minimum, maximum, step = var_definition.get_attributes()
+                unique, counts = np.unique(best_values, return_counts=True)
+                probabilities = counts / counts.sum() if len(unique) > 1 else None
+
+                new_value = np.random.choice(unique,
+                                             p=probabilities) if probabilities is not None else np.random.randint(
+                    minimum, maximum + 1)
+
+            elif var_type == R:  # Variables continuas
+                _, minimum, maximum, _ = var_definition.get_attributes()
+                mu_best, sigma_best = norm.fit(best_values)
+                mu_worst, sigma_worst = norm.fit(worst_values)
+
+                p_best = norm.pdf(new_solution[var], mu_best, sigma_best)
+                p_worst = norm.pdf(new_solution[var], mu_worst, sigma_worst)
+
+                if p_best / (p_best + p_worst) > np.random.rand():
+                    new_value = np.clip(np.random.normal(mu_best, sigma_best), minimum, maximum).item()
+                else:
+                    new_value = np.clip(np.random.normal(mu_worst, sigma_worst), minimum, maximum).item()
+
+            elif var_type == C:  # Variables categóricas
+                _, categories = var_definition.get_attributes()
+                unique, counts = np.unique(best_values, return_counts=True)
+                probabilities = counts / counts.sum() if len(unique) > 1 else None
+
+                new_value = np.random.choice(unique,
+                                             p=probabilities) if probabilities is not None else np.random.choice(
+                    categories)
+
+            # Asegurar que no sea NaN ni None
+            if new_value is None or (isinstance(new_value, float) and np.isnan(new_value)):
+                if var_type == I:
+                    new_value = np.random.randint(minimum, maximum + 1)
+                elif var_type == R:
+                    new_value = np.random.uniform(minimum, maximum)
+                elif var_type == C:
+                    new_value = np.random.choice(categories)
+
             new_solution[var] = new_value
 
         return new_solution
