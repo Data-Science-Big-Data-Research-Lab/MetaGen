@@ -36,7 +36,7 @@ from .math_catalog import (get_x_minus_15_raised_to_2_domain,
                            x_minus_15_raised_to_2_fitness,
                            get_x_raised_to_2_domain, x_raised_to_2_fitness, equation_domain, equation_fitness)
 
-# from .tensorflow_catalog import (nn_fitness, get_nn_domain)
+from .tensorflow_catalog import (nn_fitness, get_nn_domain)
 
 
 
@@ -87,9 +87,9 @@ def problem_dispatcher(example: str, connector=BaseConnector()) -> Tuple[Domain,
     elif example == "sgd-r":
         problem_definition = get_sgd_regressor_domain
         fitness_function = sgd_regressor_fitness
-    # elif example == "nn":
-    #     problem_definition = get_nn_domain
-    #     fitness_function = nn_fitness
+    elif example == "nn":
+        problem_definition = get_nn_domain
+        fitness_function = nn_fitness
     else:
         problem_definition = get_x_raised_to_2_domain
         fitness_function = x_minus_15_raised_to_2_fitness
