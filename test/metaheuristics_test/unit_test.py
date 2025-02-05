@@ -31,23 +31,27 @@ def configure_logger():
 
 @csv_params(data_file=resource_path("rs_parameters.csv"),
             id_col="ID#",
-            data_casts={"problem":str,"population_size": int, "max_iterations":int,
-                        "distributed":str_to_bool, "log_dir":str,"seed": int})
-def test_rs(problem: str, population_size: int, max_iterations:int, distributed:bool, log_dir:str, seed: int) -> None:
+            data_casts={"active":safe_str_to_bool,"problem":safe_str,"population_size": safe_int, "max_iterations":safe_int,
+                        "distributed":safe_str_to_bool, "log_dir":safe_str,"seed": safe_int})
+def test_rs(active: bool, problem: str, population_size: int, max_iterations:int, distributed:bool, log_dir:str, seed: int) -> None:
+
+    if not active:
+        pytest.skip('Skipped')
 
     random.seed(seed)
     np.random.seed(seed)
     initial_best = float('inf')
 
-    metagen_logger.info('Running Random Search')
-    print(distributed)
+    metagen_logger.setLevel(logging.INFO)
 
     if distributed:
         ray.init(num_cpus=4)
 
     problem_definition, fitness_function = problem_dispatcher(problem)
 
-    algorithm = RandomSearch(problem_definition, fitness_function, population_size, max_iterations, distributed, log_dir)
+    algorithm = RandomSearch(problem_definition, fitness_function,
+                             population_size=population_size, max_iterations=max_iterations,
+                             distributed=distributed, log_dir=log_dir)
 
     random.seed(seed)
     np.random.seed(seed)
@@ -56,7 +60,7 @@ def test_rs(problem: str, population_size: int, max_iterations:int, distributed:
     if distributed:
         ray.shutdown()
 
-    metagen_logger.info(f"Solution found: {solution}")
+    print(f"Solution found: {solution}")
 
     assert solution is not None
     assert hasattr(solution, 'fitness')
