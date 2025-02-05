@@ -1,0 +1,3 @@
+ID#,problem,max_iterations,warmup_iterations,candidate_pool_size,distributed,log_dir,seed
+1,dummy-3,10,5,24,False,logs/tpe,0
+1,sgd-r,50,10,24,False,logs/tpe,1
