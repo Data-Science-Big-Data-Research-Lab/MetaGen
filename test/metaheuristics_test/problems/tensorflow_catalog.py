@@ -40,42 +40,42 @@ def get_nn_domain(connector = BaseConnector()) -> Domain:
 
 
 
-scaler_x = StandardScaler()
-scaler_y = StandardScaler()
-
-x, y = make_regression(n_samples=1000, n_features=24)
-
-x, y = make_regression(n_samples=1000, n_features=24)
-x = normalize(x)
-xs_train, ys_train, xs_val, ys_val = train_test_split(x, y,
-                            test_size=0.33, random_state=42)
-
-
-
-
-
-def build_neural_network(solution: Solution) -> tf.keras.Sequential():
-    model = tf.keras.Sequential()
-
-    for i, layer in enumerate(solution["arch"]):
-        neurons = layer["neurons"]
-        activation = layer["activation"]
-        dropout = layer["dropout"]
-        rs = True
-        if i == len(solution["arch"]):
-            rs = False
-        model.add(tf.keras.layers.LSTM(neurons, activation=activation, return_sequences=rs))
-        model.add(tf.keras.layers.Dropout(dropout))
-    model.add(tf.keras.layers.Dense(1))
-    # Model compilation
-    learning_rate = solution["learning_rate"]
-    ema = solution["ema"].value
-    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate, use_ema=ema),
-                loss="mean_squared_error", metrics=[tf.keras.metrics.MAPE])
-    return model
-
-def nn_fitness(solution: Solution) -> float:
-    model = build_neural_network(solution)
-    model.fit(x_train, y_train, epochs=10, batch_size=1024)
-    mape = model.evaluate(x_val, y_val)[1]
-    return mape
+# scaler_x = StandardScaler()
+# scaler_y = StandardScaler()
+#
+# x, y = make_regression(n_samples=1000, n_features=24)
+#
+# x, y = make_regression(n_samples=1000, n_features=24)
+# x = normalize(x)
+# xs_train, ys_train, xs_val, ys_val = train_test_split(x, y,
+#                             test_size=0.33, random_state=42)
+#
+#
+#
+#
+#
+# def build_neural_network(solution: Solution) -> tf.keras.Sequential():
+#     model = tf.keras.Sequential()
+#
+#     for i, layer in enumerate(solution["arch"]):
+#         neurons = layer["neurons"]
+#         activation = layer["activation"]
+#         dropout = layer["dropout"]
+#         rs = True
+#         if i == len(solution["arch"]):
+#             rs = False
+#         model.add(tf.keras.layers.LSTM(neurons, activation=activation, return_sequences=rs))
+#         model.add(tf.keras.layers.Dropout(dropout))
+#     model.add(tf.keras.layers.Dense(1))
+#     # Model compilation
+#     learning_rate = solution["learning_rate"]
+#     ema = solution["ema"].value
+#     model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate, use_ema=ema),
+#                 loss="mean_squared_error", metrics=[tf.keras.metrics.MAPE])
+#     return model
+#
+# def nn_fitness(solution: Solution) -> float:
+#     model = build_neural_network(solution)
+#     model.fit(x_train, y_train, epochs=10, batch_size=1024)
+#     mape = model.evaluate(x_val, y_val)[1]
+#     return mape

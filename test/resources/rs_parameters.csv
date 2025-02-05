@@ -1,5 +1,5 @@
 active,ID#,problem,population_size,max_iterations,distributed,log_dir,seed
-False,1,dummy-3,20,10,False,logs/rs,0
+True,1,dummy-3,20,10,False,logs/rs,0
 False,2,math-3,20,10,False,logs/rs,1
 False,3,sgd-c,20,10,False,logs/rs,2
 False,4,lstm,20,10,False,logs/rs,3
