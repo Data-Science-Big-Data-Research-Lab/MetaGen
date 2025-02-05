@@ -1,8 +1,8 @@
 .. include:: ../aliases.rst
 
-========================
+=============================
 Implementing Metaheuristics
-========================
+=============================
 
 MetaGen provides a flexible framework for developing and integrating new metaheuristic algorithms. Developers can implement metaheuristics in different ways depending on their needs and the level of integration required with the framework.
 

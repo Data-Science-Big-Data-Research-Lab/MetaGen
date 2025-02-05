@@ -10,3 +10,4 @@ Advanced Topics
     framework
     metaheuristic_types
     interface
+    extending_framework
