@@ -76,23 +76,24 @@ class TabuSearch(Metaheuristic):
         self.alteration_limit: float = alteration_limit
         self.gamma_config = gamma_config
 
-    def initialize(self, num_solutions: int=10) -> Tuple[List[Solution], Solution]:
+    def initialize(self, num_solutions: int = 10) -> Tuple[List[Solution], Solution]:
         """
-        Initialize the Tabu Search algorithm.
+        Initializes the Tabu Search algorithm.
 
         Creates an initial solution and explores its neighborhood while respecting
         the tabu list constraints.
-
-        :param num_solutions: Number of solutions in the neighborhood, defaults to 10
-        :type num_solutions: int, optional
-        :return: A tuple containing the neighborhood solutions and the initial solution
-        :rtype: Tuple[List[Solution], Solution]
         """
         solution_type: type[Solution] = self.domain.get_connector().get_type(self.domain.get_core())
         first_solution = solution_type(self.domain, connector=self.domain.get_connector())
         first_solution.evaluate(self.fitness_function)
 
-        current_neighborhood = local_search_with_tabu(first_solution, self.fitness_function, num_solutions, self.alteration_limit, list(self.tabu_list))[0]
+        # Aplicar búsqueda local con tabú
+        current_neighborhood, _ = local_search_with_tabu(
+            first_solution, self.fitness_function, num_solutions - 1, self.alteration_limit, list(self.tabu_list)
+        )
+
+        # Asegurar que el tamaño de la población es exactamente `num_solutions`
+        current_neighborhood.append(first_solution)
 
         return current_neighborhood, first_solution
 
@@ -113,10 +114,10 @@ class TabuSearch(Metaheuristic):
         # Si hay configuración de gamma, calcular `l` dinámicamente
         if self.gamma_config:
             gamma = compute_gamma(self.gamma_config, iteration=self.current_iteration,
-                                  max_iterations=self.max_iterations, num_solutions=len(solutions))
+                                  max_iterations=self.max_iterations, num_solutions=max(1, len(solutions)))
             l = max(1, round(gamma * len(solutions)))  # Asegurar al menos 1 vecino
         else:
-            l = len(solutions)  # Sin gamma, se mantiene el número total de individuos
+            l = max(1, len(solutions))  # Sin gamma, aseguramos al menos 1 vecino para evitar problemas
 
         # Aplicar búsqueda local con tabú respetando el tamaño `l`
         current_solutions, best_solution = local_search_with_tabu(
@@ -128,7 +129,8 @@ class TabuSearch(Metaheuristic):
             current_solutions = solutions
             best_solution = deepcopy(self.best_solution)
         else:
-            self.tabu_list.append(best_solution)  # Agregar mejor solución a la lista tabú
+            if best_solution not in self.tabu_list:
+                self.tabu_list.append(best_solution)
 
         return current_solutions, best_solution
 

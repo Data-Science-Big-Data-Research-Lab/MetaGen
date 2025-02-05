@@ -25,7 +25,7 @@ author = 'David Gutiérrez Avilés, José Francisco Torres, Manuel Jesús Jimén
 # The full version, including alpha/beta/rc tags
 release = '1.0.0'
 
-
+autosectionlabel_prefix_document = True
 # -- General configuration ---------------------------------------------------
 
 # Add any Sphinx extension module names here, as strings. They can be

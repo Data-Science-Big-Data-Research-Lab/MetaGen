@@ -60,7 +60,7 @@ class RandomSearch(Metaheuristic):
         search = RandomSearch(domain, fitness_function, population_size=50, max_iterations=100)
         optimal_solution = search.run()
     """
-    def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float], population_size = 1, max_iterations: int = 20, distributed = False, log_dir: str = "logs/RS") -> None:
+    def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float], population_size = 10, max_iterations: int = 20, distributed = False, log_dir: str = "logs/RS") -> None:
         """
         Initialize the RandomSearch algorithm.
 
@@ -77,7 +77,7 @@ class RandomSearch(Metaheuristic):
         :param log_dir: Directory for logging, defaults to "logs/RS"
         :type log_dir: str, optional
         """
-        super().__init__(domain, fitness_function, population_size,0, distributed, log_dir)
+        super().__init__(domain, fitness_function, population_size, distributed=distributed, log_dir=log_dir)
         self.max_iterations = max_iterations
 
     def initialize(self, num_solutions=10) -> Tuple[List[Solution], Solution]:

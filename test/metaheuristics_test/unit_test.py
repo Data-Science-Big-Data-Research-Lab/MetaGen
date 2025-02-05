@@ -282,10 +282,10 @@ def test_mm(active: bool, problem: str, population_size: int, max_iterations: in
 
 @csv_params(data_file=resource_path("tpe_parameters.csv"),
             id_col="ID#",
-            data_casts={"problem": str, "population_size": int, "max_iterations": int,
-                        "warmup_iterations": int, "candidate_pool_size": int,
-                        "distributed": str_to_bool, "log_dir": str, "seed": int})
-def test_tpe(problem: str, population_size: int, max_iterations: int, warmup_iterations: int,
+            data_casts={"problem": safe_str, "max_iterations": safe_int,
+                        "warmup_iterations": safe_int, "candidate_pool_size": safe_int,
+                        "distributed": str_to_bool, "log_dir": safe_str, "seed": safe_int})
+def test_tpe(problem: str, max_iterations: int, warmup_iterations: int,
              candidate_pool_size: int, distributed: bool, log_dir: str, seed: int) -> None:
     """
     Test for Tree-structured Parzen Estimator (TPE) metaheuristic.
@@ -314,19 +314,13 @@ def test_tpe(problem: str, population_size: int, max_iterations: int, warmup_ite
     if distributed:
         ray.init(num_cpus=4)
 
-    gamma_config = GammaConfig(
-        gamma_function="sampled_based",
-        minimum=0.1,
-        maximum=0.3
-    )
-
     # Get problem definition and fitness function
     problem_definition, fitness_function = problem_dispatcher(problem)
 
     # Initialize TPE algorithm
-    algorithm = TPE(problem_definition, fitness_function, population_size, max_iterations,
+    algorithm = TPE(problem_definition, fitness_function, max_iterations=max_iterations,
                     warmup_iterations=warmup_iterations, candidate_pool_size=candidate_pool_size,
-                    gamma_config=gamma_config, distributed=distributed, log_dir=log_dir)
+                    distributed=distributed, log_dir=log_dir)
 
     # Run the optimization algorithm
     solution = algorithm.run()

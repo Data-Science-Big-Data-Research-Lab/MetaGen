@@ -143,6 +143,41 @@ class Metaheuristic(ABC):
 
         return population, best_individual
 
+    def _warmup(self) -> None:
+        """
+        Executes the warmup phase before the main optimization loop.
+
+        Generates `warmup_iterations` random solutions and updates the best solution found.
+        This step ensures a good initial exploration of the search space before starting
+        the main optimization process.
+        """
+        if self.warmup_iterations > 0:
+            metagen_logger.info(f"Starting warmup phase with {self.warmup_iterations} iterations.")
+
+            for warmup_step in range(self.warmup_iterations):
+                if self.distributed:
+                    if not IS_RAY_INSTALLED:
+                        raise ImportError("Ray must be installed to use distributed execution")
+                    metagen_logger.debug(
+                        f'[WARMUP {warmup_step + 1}/{self.warmup_iterations}] Distributed warmup step.'
+                    )
+                    _, best_candidate = distributed_random_exploration(self.domain, self.fitness_function,
+                                                                       self.population_size)
+                else:
+                    metagen_logger.debug(
+                        f'[WARMUP {warmup_step + 1}/{self.warmup_iterations}] Warmup step.'
+                    )
+                    _, best_candidate = random_exploration(self.domain, self.fitness_function, self.population_size)
+
+                # Store only the best solution found in each warmup iteration
+                self.current_solutions.append(deepcopy(best_candidate))
+
+                # Update the global best solution
+                if self.best_solution is None or best_candidate.get_fitness() < self.best_solution.get_fitness():
+                    self.best_solution = deepcopy(best_candidate)
+
+            metagen_logger.info(f"Warmup phase completed. Proceeding to optimization.")
+
     def _iterate(self) -> Tuple[List[Solution], Solution]:
         """
         Private function to execute one iteration of the metaheuristic.
@@ -150,24 +185,12 @@ class Metaheuristic(ABC):
         :return: A tuple containing the population and the best individual.
         :rtype: Tuple[List[Solution], Solution]
         """
-        if self.current_iteration < self.warmup_iterations:
-            if self.distributed:
-                if not IS_RAY_INSTALLED:
+        if self.distributed:
+            if not IS_RAY_INSTALLED:
                     raise ImportError("Ray must be installed to use distributed initialization")
-                metagen_logger.debug(
-                    f'[ITERATION {self.current_iteration}] Distributed warmup iteration: {self.current_iteration}/{self.warmup_iterations}')
-                population, best_individual = distributed_random_exploration(self.domain, self.fitness_function, len(self.current_solutions))
-            else:
-                metagen_logger.debug(
-                    f'[ITERATION {self.current_iteration}] Warmup iteration: {self.current_iteration}/{self.warmup_iterations}')
-                population, best_individual = random_exploration(self.domain, self.fitness_function, len(self.current_solutions))
+            population, best_individual = self._launch_distributed_method(self.iterate)
         else:
-            if self.distributed:
-                if not IS_RAY_INSTALLED:
-                    raise ImportError("Ray must be installed to use distributed initialization")
-                population, best_individual = self._launch_distributed_method(self.iterate)
-            else:
-                population, best_individual = self.iterate(self.current_solutions)
+            population, best_individual = self.iterate(self.current_solutions)
 
         self.current_solutions = population
         self.best_solution = best_individual
@@ -263,6 +286,8 @@ class Metaheuristic(ABC):
             ray.init()
 
         self.pre_execution()
+
+        self._warmup()
 
         self._initialize()
 
