@@ -7,6 +7,8 @@ The CVOA (Coronavirus Optimization Algorithm) module implements a novel metaheur
     :members:
     :show-inheritance:
 
+.. _cvoa_submodules_section:
+
 Submodules
 ----------
 

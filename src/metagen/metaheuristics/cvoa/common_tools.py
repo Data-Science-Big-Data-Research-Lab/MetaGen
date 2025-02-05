@@ -65,17 +65,23 @@ def infect(individual: Solution, fitness_function: Callable[[Solution],float],tr
 def insert_into_set_strain(strain_worst_superspreader:Solution, strain_best_dead:Solution,bag: Set[Solution], to_insert: Solution, remaining: int, ty: str) -> Tuple[Solution, Solution, bool]:
     """ Insert an individual in the strain sets (death or superspreader).
 
-        :param bag: The set where the individual has to be inserted.
-        :param to_insert: The individual that has to be inserted.
-        :param remaining: The number of individuals remaining to be added in the set.
-        :param ty: The set where the individual will be inserted ('s' if it is the superspreader set, 'd' if it is the
-        death set.
-        :type bag: set of :py:class:`~metagen.framework.Solution`
-        :type to_insert: :py:class:`~metagen.framework.Solution`
-        :type remaining: int
-        :type ty: str
-        :returns: True, if the individual has been successfully inserted; otherwise False
-        :rtype: bool
+    :param bag: The set where the individual has to be inserted.
+    :type bag: set of :py:class:`~metagen.framework.Solution`
+
+    :param to_insert: The individual that has to be inserted.
+    :type to_insert: :py:class:`~metagen.framework.Solution`
+
+    :param remaining: The number of individuals remaining to be added in the set.
+    :type remaining: int
+
+    :param ty: The set where the individual will be inserted ('s' if it is the superspreader set, 'd' if it is the death set).
+    :type ty: str
+
+    :returns: A tuple containing:
+        - The updated worst superspreader in the strain.
+        - The updated best dead in the strain.
+        - A boolean indicating whether the individual was successfully inserted.
+    :rtype: Tuple[:py:class:`~metagen.framework.Solution`, :py:class:`~metagen.framework.Solution`, bool]
     """
     worst_superspreader = copy.deepcopy(strain_worst_superspreader)
     best_dead = copy.deepcopy(strain_best_dead)

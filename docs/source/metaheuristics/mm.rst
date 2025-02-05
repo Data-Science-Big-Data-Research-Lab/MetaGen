@@ -7,6 +7,8 @@ The Memetic Algorithm module implements a hybrid metaheuristic that combines gen
     :members:
     :show-inheritance:
 
+.. _mm_submodules_section:
+
 Submodules
 ------------
 
