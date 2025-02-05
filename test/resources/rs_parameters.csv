@@ -1,9 +1,9 @@
 active,ID#,problem,population_size,max_iterations,distributed,log_dir,seed
-True,1,dummy-3,20,10,False,logs/rs,0
+False,1,dummy-3,20,10,False,logs/rs,0
 False,2,math-3,20,10,False,logs/rs,1
 False,3,sgd-c,20,10,False,logs/rs,2
-False,4,lstm,20,10,False,logs/rs,3
+True,4,nn,20,10,False,logs/rs,3
 False,5,dummy-3,20,10,True,logs/rs,0
 False,6,math-3,20,10,True,logs/rs,1
 False,7,sgd-c,20,10,True,logs/rs,2
-False,8,lstm,20,10,True,logs/rs,3
+False,8,nn,20,10,True,logs/rs,3
