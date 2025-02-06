@@ -20,7 +20,7 @@ from metagen.framework.connector import BaseConnector
 
 from .dummy_catalog import (get_dummy1_domain, get_dummy2_domain,
                             get_dummy3_domain, dummy1_fitness,
-                            dummy2_fitness, dummy3_fitness)
+                            dummy2_fitness, dummy3_fitness, get_dummy4_domain, dummy4_fitness)
 
 
 from .sklearn_catalog import (get_knn_classifier_domain, knn_classifier_fitness,
@@ -54,6 +54,9 @@ def problem_dispatcher(example: str, connector=BaseConnector()) -> Tuple[Domain,
     elif example == "dummy-3":
         problem_definition = get_dummy3_domain
         fitness_function = dummy3_fitness
+    elif example == "dummy-4":
+        problem_definition = get_dummy4_domain
+        fitness_function = dummy4_fitness
     elif example == "math-1":
         problem_definition = get_x_raised_to_2_domain
         fitness_function = x_raised_to_2_fitness
