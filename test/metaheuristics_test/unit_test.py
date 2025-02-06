@@ -107,7 +107,6 @@ def test_sa(active: bool, problem: str, warmup_iterations:int, max_iterations:in
     assert solution.fitness < float('inf')
     assert solution.fitness <= initial_best
 
-
 @csv_params(data_file=resource_path("ts_parameters.csv"),
             id_col="ID#",
             data_casts={"active":safe_str_to_bool, "problem": safe_str, "population_size": safe_int,
@@ -117,22 +116,6 @@ def test_sa(active: bool, problem: str, warmup_iterations:int, max_iterations:in
 def test_ts(active:bool, problem: str, population_size: int, warmup_iterations: int, max_iterations: int,
             tabu_size: int, alteration_limit: float, gamma: str, gamma_min:float, gamma_max:float, gamma_alpha:float,
             distributed: bool, log_dir: str, seed: int, logging_level:int) -> None:
-    """
-    Test for Tabu Search.
-
-    This function initializes the Tabu Search algorithm with parameters from a CSV file,
-    runs the optimization process, and verifies that the solution is valid.
-
-    :param problem: The problem to solve.
-    :param population_size: The size of the neighborhood population.
-    :param warmup_iterations: Number of warmup iterations before starting the main search.
-    :param max_iterations: The maximum number of iterations.
-    :param tabu_size: The size of the tabu list.
-    :param alteration_limit: Maximum proportion of a solution to alter.
-    :param distributed: Whether to use distributed computation.
-    :param log_dir: Directory for logging.
-    :param seed: Random seed for reproducibility.
-    """
 
     if not active:
         pytest.skip('Skipped')
@@ -159,6 +142,7 @@ def test_ts(active:bool, problem: str, population_size: int, warmup_iterations: 
     # Get problem definition and fitness function
     problem_definition, fitness_function = problem_dispatcher(problem)
 
+    print(tabu_size)
     # Initialize Tabu Search algorithm
     algorithm = TabuSearch(problem_definition, fitness_function, population_size=population_size,
                            warmup_iterations=warmup_iterations,
@@ -312,21 +296,6 @@ def test_mm(active: bool, problem: str, population_size: int, max_iterations: in
 def test_tpe(active:bool, problem: str, max_iterations: int, warmup_iterations: int,
              candidate_pool_size: int, gamma: str, gamma_min:float, gamma_max:float, gamma_alpha:float,
              distributed: bool, log_dir: str, seed: int, logging_level:int) -> None:
-    """
-    Test for Tree-structured Parzen Estimator (TPE) metaheuristic.
-
-    The test initializes the TPE algorithm with parameters provided in a CSV file,
-    runs the optimization process, and verifies that the solution is valid.
-
-    :param problem: The problem to solve.
-    :param population_size: The size of the population.
-    :param max_iterations: The maximum number of iterations.
-    :param warmup_iterations: Number of initial random exploration iterations.
-    :param candidate_pool_size: The number of candidates sampled in each iteration.
-    :param distributed: Whether to use distributed computation.
-    :param log_dir: Directory for logging.
-    :param seed: Random seed for reproducibility.
-    """
 
     if not active:
         pytest.skip('Skipped')
@@ -374,7 +343,6 @@ def test_tpe(active:bool, problem: str, max_iterations: int, warmup_iterations: 
     assert hasattr(solution, 'fitness')
     assert solution.fitness < float('inf')
     assert solution.fitness <= initial_best
-
 
 @csv_params(data_file=resource_path("metaheuristic_parameters.csv"),
             id_col="ID#",

@@ -109,8 +109,6 @@ class BaseType(ABC):
         :rtype: int, float
         """
 
-        res = -1
-
         left_value = value - (value % step)
         right_value = (value + step) - (value % step)
 

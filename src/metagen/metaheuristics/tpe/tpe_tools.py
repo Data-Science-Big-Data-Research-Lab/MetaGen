@@ -20,7 +20,7 @@ def sample_from_values(tpe_type, best_values, worst_values):
 
     value = 0
 
-    if p_best / (p_best + p_worst) > np.random.rand():
+    if p_best / (p_best + p_worst + 1e-16) > np.random.rand():
         value = np.clip(np.random.normal(mu_best, sigma_best), min_value, max_value).item()
     else:
         value = np.clip(np.random.normal(mu_worst, sigma_worst), min_value, max_value).item()
