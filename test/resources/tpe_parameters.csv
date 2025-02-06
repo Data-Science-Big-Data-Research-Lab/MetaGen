@@ -1,3 +1,9 @@
-ID#,problem,max_iterations,warmup_iterations,candidate_pool_size,distributed,log_dir,seed
-1,dummy-3,10,5,24,False,logs/tpe,0
-1,sgd-r,50,10,24,False,logs/tpe,1
+active,ID#,problem,max_iterations,warmup_iterations,candidate_pool_size,gamma,gamma_min,gamma_max,gamma_alpha,distributed,log_dir,seed,logging_level
+True,1,dummy-2,10,5,24,-,0.1,0.3,5.0,False,logs/tpe,1,20
+True,2,math-3,20,5,24,linear,0.1,0.3,5.0,False,logs/tpe,2,20
+True,3,sgd-r,50,10,24,exponential,0.1,0.3,5.0,False,logs/tpe,3,20
+False,4,s-nn,20,5,24,sqrt,0.1,0.3,5.0,False,logs/tpe,4,20
+True,5,dummy-2,10,5,24,-,0.1,0.3,5.0,True,logs/tpe,5,20
+True,6,math-3,20,5,24,linear,0.1,0.3,5.0,True,logs/tpe,6,20
+True,7,sgd-r,50,10,24,exponential,0.1,0.3,5.0,True,logs/tpe,7,20
+False,8,s-nn,20,5,24,sqrt,0.1,0.3,5.0,True,logs/tpe,8,20

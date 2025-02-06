@@ -24,16 +24,12 @@ import warnings
 
 warnings.filterwarnings("ignore", module="sklearn")
 
-@pytest.fixture(autouse=True)
-def configure_logger():
-    set_metagen_logger_level(logging.DEBUG)
-
-
 @csv_params(data_file=resource_path("rs_parameters.csv"),
             id_col="ID#",
             data_casts={"active":safe_str_to_bool,"problem":safe_str,"population_size": safe_int, "max_iterations":safe_int,
-                        "distributed":safe_str_to_bool, "log_dir":safe_str,"seed": safe_int})
-def test_rs(active: bool, problem: str, population_size: int, max_iterations:int, distributed:bool, log_dir:str, seed: int) -> None:
+                        "distributed":safe_str_to_bool, "log_dir":safe_str,"seed": safe_int, "logging_level":safe_int})
+def test_rs(active: bool, problem: str, population_size: int, max_iterations:int, distributed:bool,
+            log_dir:str, seed: int, logging_level:int) -> None:
 
     if not active:
         pytest.skip('Skipped')
@@ -42,7 +38,7 @@ def test_rs(active: bool, problem: str, population_size: int, max_iterations:int
     np.random.seed(seed)
     initial_best = float('inf')
 
-    metagen_logger.setLevel(logging.INFO)
+    metagen_logger.setLevel(logging_level)
 
     if distributed:
         ray.init(num_cpus=4)
@@ -73,10 +69,10 @@ def test_rs(active: bool, problem: str, population_size: int, max_iterations:int
             data_casts={"active":safe_str_to_bool, "problem":safe_str, "warmup_iterations":safe_int,
                         "max_iterations":safe_int, "alteration_limit": safe_int, "initial_temp": safe_float,
                         "cooling_rate": safe_float, "neighbor_population_size": safe_int,
-                        "distributed":safe_str_to_bool, "log_dir":str,"seed": safe_int})
+                        "distributed":safe_str_to_bool, "log_dir":str,"seed": safe_int, "logging_level":safe_int})
 
 def test_sa(active: bool, problem: str, warmup_iterations:int, max_iterations:int, alteration_limit: int, initial_temp: float,
-            cooling_rate: float, neighbor_population_size: int, distributed:bool, log_dir:str, seed: int) -> None:
+            cooling_rate: float, neighbor_population_size: int, distributed:bool, log_dir:str, seed: int, logging_level:int) -> None:
 
     if not active:
         pytest.skip('Skipped')
@@ -85,7 +81,7 @@ def test_sa(active: bool, problem: str, warmup_iterations:int, max_iterations:in
     np.random.seed(seed)
     initial_best = float('inf')
 
-    metagen_logger.setLevel(logging.INFO)
+    metagen_logger.setLevel(logging_level)
 
     if distributed:
         print('ray init')
@@ -119,10 +115,10 @@ def test_sa(active: bool, problem: str, warmup_iterations:int, max_iterations:in
             data_casts={"active":safe_str_to_bool, "problem": safe_str, "population_size": safe_int,
                         "warmup_iterations": safe_int, "max_iterations": safe_int, "tabu_size": safe_int,
                         "alteration_limit": safe_float,"gamma":safe_str, "gamma_min": safe_float, "gamma_max": safe_float,"gamma_alpha": safe_float,
-                        "distributed": safe_str_to_bool,"log_dir": safe_str, "seed": safe_int})
+                        "distributed": safe_str_to_bool,"log_dir": safe_str, "seed": safe_int, "logging_level":safe_int})
 def test_ts(active:bool, problem: str, population_size: int, warmup_iterations: int, max_iterations: int,
             tabu_size: int, alteration_limit: float, gamma: str, gamma_min:float, gamma_max:float, gamma_alpha:float,
-            distributed: bool, log_dir: str, seed: int) -> None:
+            distributed: bool, log_dir: str, seed: int, logging_level:int) -> None:
     """
     Test for Tabu Search.
 
@@ -147,7 +143,7 @@ def test_ts(active:bool, problem: str, population_size: int, warmup_iterations: 
     np.random.seed(seed)
     initial_best = float('inf')
 
-    metagen_logger.setLevel(logging.INFO)
+    metagen_logger.setLevel(logging_level)
 
     if distributed:
         print('ray init')
@@ -189,10 +185,11 @@ def test_ts(active:bool, problem: str, population_size: int, warmup_iterations: 
 
 @csv_params(data_file=resource_path("ga_parameters.csv"),
             id_col="ID#",
-            data_casts={"active":safe_str_to_bool, "problem":safe_str,"population_size": safe_int, "max_iterations":safe_int,
-                        "mutation_rate": safe_float,
-                        "distributed":safe_str_to_bool, "log_dir":safe_str,"seed": safe_int})
-def test_ga(active:bool, problem: str, population_size: int, max_iterations:int, mutation_rate:float, distributed:bool, log_dir:str, seed: int) -> None:
+            data_casts={"active":safe_str_to_bool, "problem":safe_str,"population_size": safe_int,
+                        "max_iterations":safe_int, "mutation_rate": safe_float,"distributed":safe_str_to_bool,
+                        "log_dir":safe_str,"seed": safe_int, "logging_level":safe_int})
+def test_ga(active:bool, problem: str, population_size: int, max_iterations:int, mutation_rate:float,
+            distributed:bool, log_dir:str, seed: int, logging_level:int) -> None:
 
 
     if not active:
@@ -202,7 +199,7 @@ def test_ga(active:bool, problem: str, population_size: int, max_iterations:int,
     np.random.seed(seed)
     initial_best = float('inf')
 
-    metagen_logger.setLevel(logging.INFO)
+    metagen_logger.setLevel(logging_level)
 
     if distributed:
         ray.init(num_cpus=4)
@@ -229,8 +226,9 @@ def test_ga(active:bool, problem: str, population_size: int, max_iterations:int,
 @csv_params(data_file=resource_path("ga_parameters.csv"),
             id_col="ID#",
             data_casts={"active":safe_str_to_bool, "problem":str,"population_size": int, "max_iterations":int, "mutation_rate": float,
-                        "distributed":str_to_bool, "log_dir":str,"seed": int})
-def test_ssga(active:bool, problem: str, population_size: int, max_iterations:int, mutation_rate:float, distributed:bool, log_dir:str, seed: int) -> None:
+                        "distributed":str_to_bool, "log_dir":str,"seed": int, "logging_level":safe_int})
+def test_ssga(active:bool, problem: str, population_size: int, max_iterations:int, mutation_rate:float,
+              distributed:bool, log_dir:str, seed: int, logging_level:int) -> None:
 
     if not active:
         pytest.skip('Skipped')
@@ -239,7 +237,7 @@ def test_ssga(active:bool, problem: str, population_size: int, max_iterations:in
     np.random.seed(seed)
     initial_best = float('inf')
 
-    metagen_logger.setLevel(logging.INFO)
+    metagen_logger.setLevel(logging_level)
 
     if distributed:
         ray.init(num_cpus=4)
@@ -268,12 +266,12 @@ def test_ssga(active:bool, problem: str, population_size: int, max_iterations:in
             id_col="ID#",
             data_casts={"active": safe_str_to_bool, "problem": safe_str, "population_size": safe_int, "max_iterations": safe_int, "mutation_rate": float,
                         "neighbor_population_size": safe_int, "alteration_limit": safe_float,
-                        "distributed": safe_str_to_bool, "log_dir": safe_str, "distribution_level": safe_int, "seed": safe_int})
+                        "distributed": safe_str_to_bool, "log_dir": safe_str, "distribution_level": safe_int, "seed": safe_int, "logging_level":safe_int})
 def test_mm(active: bool, problem: str, population_size: int, max_iterations: int, mutation_rate: float,
             neighbor_population_size: int, alteration_limit: float,
             distributed: bool, log_dir: str,
             distribution_level: int,
-            seed: int) -> None:
+            seed: int, logging_level:int) -> None:
 
     if not active:
         pytest.skip('Skipped')
@@ -282,7 +280,7 @@ def test_mm(active: bool, problem: str, population_size: int, max_iterations: in
     np.random.seed(seed)
     initial_best = float('inf')
 
-    metagen_logger.setLevel(logging.INFO)
+    metagen_logger.setLevel(logging_level)
 
     if distributed:
         ray.init(num_cpus=4)
@@ -312,9 +310,11 @@ def test_mm(active: bool, problem: str, population_size: int, max_iterations: in
             id_col="ID#",
             data_casts={"active": safe_str_to_bool, "problem": safe_str, "max_iterations": safe_int,
                         "warmup_iterations": safe_int, "candidate_pool_size": safe_int,
-                        "distributed": safe_str_to_bool, "log_dir": safe_str, "seed": safe_int})
+                        "gamma":safe_str, "gamma_min": safe_float, "gamma_max": safe_float,"gamma_alpha": safe_float,
+                        "distributed": safe_str_to_bool, "log_dir": safe_str, "seed": safe_int, "logging_level":safe_int})
 def test_tpe(active:bool, problem: str, max_iterations: int, warmup_iterations: int,
-             candidate_pool_size: int, distributed: bool, log_dir: str, seed: int) -> None:
+             candidate_pool_size: int, gamma: str, gamma_min:float, gamma_max:float, gamma_alpha:float,
+             distributed: bool, log_dir: str, seed: int, logging_level:int) -> None:
     """
     Test for Tree-structured Parzen Estimator (TPE) metaheuristic.
 
@@ -334,7 +334,7 @@ def test_tpe(active:bool, problem: str, max_iterations: int, warmup_iterations: 
     if not active:
         pytest.skip('Skipped')
 
-    metagen_logger.setLevel(logging.INFO)
+    metagen_logger.setLevel(logging_level)
 
     # Set random seeds for reproducibility
     random.seed(seed)
@@ -345,13 +345,23 @@ def test_tpe(active:bool, problem: str, max_iterations: int, warmup_iterations: 
     if distributed:
         ray.init(num_cpus=4)
 
+    if gamma != '':
+        gamma_config = GammaConfig(
+            gamma_function=gamma,
+            minimum=gamma_min,
+            maximum=gamma_max,
+            alpha=gamma_alpha
+        )
+    else:
+        gamma_config = None
+
     # Get problem definition and fitness function
     problem_definition, fitness_function = problem_dispatcher(problem)
 
     # Initialize TPE algorithm
     algorithm = TPE(problem_definition, fitness_function, max_iterations=max_iterations,
                     warmup_iterations=warmup_iterations, candidate_pool_size=candidate_pool_size,
-                    distributed=distributed, log_dir=log_dir)
+                    gamma_config=gamma_config,distributed=distributed, log_dir=log_dir)
 
     # Run the optimization algorithm
     solution = algorithm.run()
@@ -375,18 +385,18 @@ def test_tpe(active:bool, problem: str, max_iterations: int, warmup_iterations: 
                         "population_size": safe_int, "max_iterations": safe_int,
                         "tabu_size": safe_int, "alteration_limit": safe_float, "initial_temp": safe_float, "cooling_rate": safe_float,
                         "neighbor_population_size": safe_int, "mutation_rate": safe_float,
-                        "distributed": safe_str_to_bool, "log_dir": safe_str, "distribution_level": safe_int, "seed": safe_int})
+                        "distributed": safe_str_to_bool, "log_dir": safe_str, "distribution_level": safe_int, "seed": safe_int, "logging_level":safe_int})
 
 def test_metaheuristic(active: bool, metaheuristic:str, problem: str,
                        population_size: int, max_iterations: int,
                        tabu_size: int, alteration_limit: float, initial_temp: float, cooling_rate: float,
                        neighbor_population_size: int, mutation_rate: float,
-                       distributed: bool, log_dir: str, distribution_level: int, seed: int) -> None:
+                       distributed: bool, log_dir: str, distribution_level: int, seed: int, logging_level:int) -> None:
 
     if not active:
         pytest.skip('Skipped')
 
-    metagen_logger.setLevel(logging.INFO)
+    metagen_logger.setLevel(logging_level)
 
     if metaheuristic == 'mm' or metaheuristic == 'ssga' or metaheuristic == 'ga':
         problem_definition, fitness_function = problem_dispatcher(problem, GAConnector())

@@ -25,7 +25,21 @@ import tensorflow as tf
 from metagen.framework import Domain, Solution, BaseConnector
 
 
-def get_nn_domain(connector = BaseConnector()) -> Domain:
+def get_static_nn_domain(connector = BaseConnector()) -> Domain:
+    nn_domain = Domain(connector)
+    nn_domain.define_real("learning_rate", 0.0, 0.000001)
+    nn_domain.define_categorical("ema", [True, False])
+    nn_domain.define_static_structure("arch", 5)
+    nn_domain.define_group("layer")
+    nn_domain.define_integer_in_group("layer", "neurons", 25, 300)
+    nn_domain.define_categorical_in_group("layer", "activation", ["relu", "sigmoid", "softmax", "tanh"])
+    nn_domain.define_real_in_group("layer", "dropout", 0.0, 0.45)
+    nn_domain.set_structure_to_variable("arch", "layer")
+    return nn_domain
+
+
+
+def get_dynamic_nn_domain(connector = BaseConnector()) -> Domain:
     nn_domain = Domain(connector)
     nn_domain.define_real("learning_rate", 0.0, 0.000001)
     nn_domain.define_categorical("ema", [True, False])
