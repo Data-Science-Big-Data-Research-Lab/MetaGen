@@ -1,9 +1,9 @@
 active,ID#,problem,population_size,warmup_iterations,max_iterations,tabu_size,alteration_limit,gamma,gamma_min,gamma_max,gamma_alpha,distributed,log_dir,seed
-True,1,dummy-3,20,5,10,5,1.2,sampled_based,0.1,0.3,5.0,False,logs/ts,0
+True,1,dummy-3,20,5,10,5,1.2,-,0.1,0.3,5.0,False,logs/ts,0
 True,2,math-3,20,5,10,5,1.2,sampled_based,0.1,0.3,5.0,False,logs/ts,1
-True,3,sgd-r,20,5,10,5,1.2,sampled_based,0.1,0.3,5.0,False,logs/ts,2
+True,3,sgd-r,20,5,10,5,1.2,-,0.1,0.3,5.0,False,logs/ts,2
 False,4,nn,20,5,10,5,1.2,sampled_based,0.1,0.3,5.0,False,logs/ts,3
 True,1,dummy-3,20,5,10,5,1.2,sampled_based,0.1,0.3,5.0,True,logs/ts,4
-True,2,math-3,20,5,10,5,1.2,sampled_based,0.1,0.3,5.0,True,logs/ts,5
-True,3,sgd-r,20,5,10,5,1.2,sampled_based,0.1,0.3,5.0,True,logs/ts,6
+True,2,math-3,20,5,10,5,1.2,-,0.1,0.3,5.0,True,logs/ts,5
+True,3,sgd-r,20,5,10,5,1.2,-,0.1,0.3,5.0,True,logs/ts,6
 False,4,nn,20,5,10,5,1.2,sampled_based,0.1,0.3,5.0,True,logs/ts,7

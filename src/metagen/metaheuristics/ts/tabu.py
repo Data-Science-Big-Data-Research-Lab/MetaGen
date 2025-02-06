@@ -111,6 +111,7 @@ class TabuSearch(Metaheuristic):
         """
         # Ajustar dinámicamente el tamaño de la vecindad
         # Si hay configuración de gamma, calcular `l` dinámicamente
+
         if self.gamma_config:
             gamma = compute_gamma(self.gamma_config, iteration=self.current_iteration,
                                   max_iterations=self.max_iterations, num_solutions=max(1, len(solutions)))

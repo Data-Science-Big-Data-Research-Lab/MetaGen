@@ -147,13 +147,13 @@ def test_ts(active:bool, problem: str, population_size: int, warmup_iterations: 
     np.random.seed(seed)
     initial_best = float('inf')
 
-    metagen_logger.setLevel(logging.DEBUG)
+    metagen_logger.setLevel(logging.INFO)
 
     if distributed:
         print('ray init')
         ray.init(num_cpus=4)
 
-    if gamma != ' ':
+    if gamma != '':
         gamma_config = GammaConfig(
             gamma_function=gamma,
             minimum=gamma_min,
@@ -189,22 +189,28 @@ def test_ts(active:bool, problem: str, population_size: int, warmup_iterations: 
 
 @csv_params(data_file=resource_path("ga_parameters.csv"),
             id_col="ID#",
-            data_casts={"problem":str,"population_size": int, "max_iterations":int, "mutation_rate": float,
-                        "distributed":str_to_bool, "log_dir":str,"seed": int})
-def test_ga(problem: str, population_size: int, max_iterations:int, mutation_rate:float, distributed:bool, log_dir:str, seed: int) -> None:
+            data_casts={"active":safe_str_to_bool, "problem":safe_str,"population_size": safe_int, "max_iterations":safe_int,
+                        "mutation_rate": safe_float,
+                        "distributed":safe_str_to_bool, "log_dir":safe_str,"seed": safe_int})
+def test_ga(active:bool, problem: str, population_size: int, max_iterations:int, mutation_rate:float, distributed:bool, log_dir:str, seed: int) -> None:
+
+
+    if not active:
+        pytest.skip('Skipped')
 
     random.seed(seed)
     np.random.seed(seed)
     initial_best = float('inf')
 
-    metagen_logger.info('Running Genetic Algorithm')
+    metagen_logger.setLevel(logging.INFO)
 
     if distributed:
         ray.init(num_cpus=4)
 
 
-    problem_definition, fitness_function = problem_dispatcher(problem,GAConnector())
-    algorithm = GA(problem_definition, fitness_function, population_size, max_iterations, mutation_rate, distributed, log_dir)
+    problem_definition, fitness_function = problem_dispatcher(problem, GAConnector())
+    algorithm = GA(problem_definition, fitness_function, population_size=population_size, max_iterations=max_iterations,
+                   mutation_rate=mutation_rate, distributed=distributed, log_dir=log_dir)
 
     random.seed(seed)
     np.random.seed(seed)
@@ -213,7 +219,7 @@ def test_ga(problem: str, population_size: int, max_iterations:int, mutation_rat
     if distributed:
         ray.shutdown()
 
-    metagen_logger.info(f"Solution found: {solution}")
+    print(f" ---- Solution found: {solution}")
 
     assert solution is not None
     assert hasattr(solution, 'fitness')
@@ -222,21 +228,25 @@ def test_ga(problem: str, population_size: int, max_iterations:int, mutation_rat
 
 @csv_params(data_file=resource_path("ga_parameters.csv"),
             id_col="ID#",
-            data_casts={"problem":str,"population_size": int, "max_iterations":int, "mutation_rate": float,
+            data_casts={"active":safe_str_to_bool, "problem":str,"population_size": int, "max_iterations":int, "mutation_rate": float,
                         "distributed":str_to_bool, "log_dir":str,"seed": int})
-def test_ssga(problem: str, population_size: int, max_iterations:int, mutation_rate:float, distributed:bool, log_dir:str, seed: int) -> None:
+def test_ssga(active:bool, problem: str, population_size: int, max_iterations:int, mutation_rate:float, distributed:bool, log_dir:str, seed: int) -> None:
+
+    if not active:
+        pytest.skip('Skipped')
 
     random.seed(seed)
     np.random.seed(seed)
     initial_best = float('inf')
 
-    metagen_logger.info('Running Steady State Genetic Algorithm')
+    metagen_logger.setLevel(logging.INFO)
 
     if distributed:
         ray.init(num_cpus=4)
 
-    problem_definition, fitness_function = problem_dispatcher(problem,GAConnector())
-    algorithm = SSGA(problem_definition, fitness_function, population_size, max_iterations, mutation_rate, distributed, log_dir)
+    problem_definition, fitness_function = problem_dispatcher(problem, GAConnector())
+    algorithm = SSGA(problem_definition, fitness_function, population_size=population_size, max_iterations=max_iterations,
+                   mutation_rate=mutation_rate, distributed=distributed, log_dir=log_dir)
 
     random.seed(seed)
     np.random.seed(seed)
@@ -245,7 +255,7 @@ def test_ssga(problem: str, population_size: int, max_iterations:int, mutation_r
     if distributed:
         ray.shutdown()
 
-    metagen_logger.info(f"Solution found: {solution}")
+    print(f" ---- Solution found: {solution}")
 
     assert solution is not None
     assert hasattr(solution, 'fitness')
@@ -256,14 +266,15 @@ def test_ssga(problem: str, population_size: int, max_iterations:int, mutation_r
 
 @csv_params(data_file=resource_path("mm_parameters.csv"),
             id_col="ID#",
-            data_casts={"active": str_to_bool, "problem": str, "population_size": int, "max_iterations": int, "mutation_rate": float,
-                        "neighbor_population_size": int, "alteration_limit": float,
-                        "distributed": str_to_bool, "log_dir": str, "distribution_level": int, "seed": int})
+            data_casts={"active": safe_str_to_bool, "problem": safe_str, "population_size": safe_int, "max_iterations": safe_int, "mutation_rate": float,
+                        "neighbor_population_size": safe_int, "alteration_limit": safe_float,
+                        "distributed": safe_str_to_bool, "log_dir": safe_str, "distribution_level": safe_int, "seed": safe_int})
 def test_mm(active: bool, problem: str, population_size: int, max_iterations: int, mutation_rate: float,
             neighbor_population_size: int, alteration_limit: float,
             distributed: bool, log_dir: str,
             distribution_level: int,
             seed: int) -> None:
+
     if not active:
         pytest.skip('Skipped')
 
@@ -271,16 +282,17 @@ def test_mm(active: bool, problem: str, population_size: int, max_iterations: in
     np.random.seed(seed)
     initial_best = float('inf')
 
-    metagen_logger.info(f'Running Memetic Algorithm')
+    metagen_logger.setLevel(logging.INFO)
 
     if distributed:
         ray.init(num_cpus=4)
 
     problem_definition, fitness_function = problem_dispatcher(problem, GAConnector())
-    algorithm = Memetic(problem_definition, fitness_function, population_size,
-                        max_iterations, mutation_rate, neighbor_population_size, alteration_limit,
-                        distributed, log_dir,
-                        distribution_level)
+    algorithm = Memetic(problem_definition, fitness_function, population_size=population_size,
+                        max_iterations=max_iterations, mutation_rate=mutation_rate,
+                        neighbor_population_size=neighbor_population_size, alteration_limit=alteration_limit,
+                        distributed=distributed, log_dir=log_dir,
+                        distribution_level=distribution_level)
 
     random.seed(seed)
     np.random.seed(seed)
@@ -289,7 +301,7 @@ def test_mm(active: bool, problem: str, population_size: int, max_iterations: in
     if distributed:
         ray.shutdown()
 
-    metagen_logger.info(f"Solution found: {solution}")
+    print(f" ---- Solution found: {solution}")
 
     assert solution is not None
     assert hasattr(solution, 'fitness')
@@ -298,10 +310,10 @@ def test_mm(active: bool, problem: str, population_size: int, max_iterations: in
 
 @csv_params(data_file=resource_path("tpe_parameters.csv"),
             id_col="ID#",
-            data_casts={"problem": safe_str, "max_iterations": safe_int,
+            data_casts={"active": safe_str_to_bool, "problem": safe_str, "max_iterations": safe_int,
                         "warmup_iterations": safe_int, "candidate_pool_size": safe_int,
-                        "distributed": str_to_bool, "log_dir": safe_str, "seed": safe_int})
-def test_tpe(problem: str, max_iterations: int, warmup_iterations: int,
+                        "distributed": safe_str_to_bool, "log_dir": safe_str, "seed": safe_int})
+def test_tpe(active:bool, problem: str, max_iterations: int, warmup_iterations: int,
              candidate_pool_size: int, distributed: bool, log_dir: str, seed: int) -> None:
     """
     Test for Tree-structured Parzen Estimator (TPE) metaheuristic.
@@ -319,12 +331,15 @@ def test_tpe(problem: str, max_iterations: int, warmup_iterations: int,
     :param seed: Random seed for reproducibility.
     """
 
+    if not active:
+        pytest.skip('Skipped')
+
+    metagen_logger.setLevel(logging.INFO)
+
     # Set random seeds for reproducibility
     random.seed(seed)
     np.random.seed(seed)
     initial_best = float('inf')
-
-    metagen_logger.info('Running TPE')
 
     # Initialize Ray if using distributed execution
     if distributed:
@@ -345,7 +360,7 @@ def test_tpe(problem: str, max_iterations: int, warmup_iterations: int,
     if distributed:
         ray.shutdown()
 
-    metagen_logger.info(f"Solution found: {solution}")
+    print(f" ---- Solution found: {solution}")
 
     # Validate the solution
     assert solution is not None
@@ -370,6 +385,8 @@ def test_metaheuristic(active: bool, metaheuristic:str, problem: str,
 
     if not active:
         pytest.skip('Skipped')
+
+    metagen_logger.setLevel(logging.INFO)
 
     if metaheuristic == 'mm' or metaheuristic == 'ssga' or metaheuristic == 'ga':
         problem_definition, fitness_function = problem_dispatcher(problem, GAConnector())
@@ -399,7 +416,7 @@ def test_metaheuristic(active: bool, metaheuristic:str, problem: str,
     if distributed:
         ray.shutdown()
 
-    metagen_logger.info(f"Solution found: {solution}")
+    print(f" ---- Solution found: {solution}")
 
     assert solution is not None
     assert hasattr(solution, 'fitness')
