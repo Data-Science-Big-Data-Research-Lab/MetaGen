@@ -40,7 +40,7 @@ def test_rs(active: bool, problem: str, population_size: int, max_iterations:int
     metagen_logger.setLevel(logging_level)
 
     if distributed:
-        ray.init(num_cpus=4)
+        ray.init(num_cpus=4, ignore_reinit_error=True)
 
     problem_definition, fitness_function = problem_dispatcher(problem)
 
@@ -83,8 +83,7 @@ def test_sa(active: bool, problem: str, warmup_iterations:int, max_iterations:in
     metagen_logger.setLevel(logging_level)
 
     if distributed:
-        print('ray init')
-        ray.init(num_cpus=4)
+        ray.init(num_cpus=4, ignore_reinit_error=True)
 
     problem_definition, fitness_function = problem_dispatcher(problem)
     algorithm = SA(problem_definition, fitness_function, warmup_iterations=warmup_iterations,
@@ -145,8 +144,7 @@ def test_ts(active:bool, problem: str, population_size: int, warmup_iterations: 
     metagen_logger.setLevel(logging_level)
 
     if distributed:
-        print('ray init')
-        ray.init(num_cpus=4)
+        ray.init(num_cpus=4, ignore_reinit_error=True)
 
     if gamma != '':
         gamma_config = GammaConfig(
@@ -201,7 +199,7 @@ def test_ga(active:bool, problem: str, population_size: int, max_iterations:int,
     metagen_logger.setLevel(logging_level)
 
     if distributed:
-        ray.init(num_cpus=4)
+        ray.init(num_cpus=4, ignore_reinit_error=True)
 
 
     problem_definition, fitness_function = problem_dispatcher(problem, GAConnector())
@@ -239,7 +237,7 @@ def test_ssga(active:bool, problem: str, population_size: int, max_iterations:in
     metagen_logger.setLevel(logging_level)
 
     if distributed:
-        ray.init(num_cpus=4)
+        ray.init(num_cpus=4, ignore_reinit_error=True)
 
     problem_definition, fitness_function = problem_dispatcher(problem, GAConnector())
     algorithm = SSGA(problem_definition, fitness_function, population_size=population_size, max_iterations=max_iterations,
@@ -282,7 +280,7 @@ def test_mm(active: bool, problem: str, population_size: int, max_iterations: in
     metagen_logger.setLevel(logging_level)
 
     if distributed:
-        ray.init(num_cpus=4)
+        ray.init(num_cpus=4, ignore_reinit_error=True)
 
     problem_definition, fitness_function = problem_dispatcher(problem, GAConnector())
     algorithm = Memetic(problem_definition, fitness_function, population_size=population_size,
@@ -342,7 +340,7 @@ def test_tpe(active:bool, problem: str, max_iterations: int, warmup_iterations: 
 
     # Initialize Ray if using distributed execution
     if distributed:
-        ray.init(num_cpus=4)
+        ray.init(num_cpus=4, ignore_reinit_error=True)
 
     if gamma != '':
         gamma_config = GammaConfig(

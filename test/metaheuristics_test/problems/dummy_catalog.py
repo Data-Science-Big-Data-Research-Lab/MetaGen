@@ -54,11 +54,9 @@ def get_dummy2_domain(connector = BaseConnector()) -> Domain:
     domain.define_categorical("CompC", ["F1", "F2", "F3", "F4"])
     domain.link_variable_to_group("L", "CompC")
 
-    domain.define_static_structure("VR", 3)
-    domain.set_structure_to_integer("VR", 0, 1)
-    domain.link_variable_to_group("L", "VR")
-
-
+    # domain.define_static_structure("VR", 3)
+    # domain.set_structure_to_integer("VR", 0, 1)
+    # domain.link_variable_to_group("L", "VR")
 
     return domain
 
