@@ -97,3 +97,17 @@ def get_dummy3_domain(connector = BaseConnector()) -> Domain:
 def dummy3_fitness(individual):
     r = individual["R"]
     return r + 2
+
+
+# dummy-4
+def get_dummy4_domain(connector=BaseConnector()) -> Domain:
+    domain = Domain(connector)
+    domain.define_integer("I", 1, 10, 1)
+    domain.define_real("R", 0.0, 5.0, 0.01)
+    domain.define_categorical("C", ["Label1", "Label2", "Label3"])
+    return domain
+
+
+def dummy4_fitness(individual):
+    r = individual["R"]
+    return r + 2
