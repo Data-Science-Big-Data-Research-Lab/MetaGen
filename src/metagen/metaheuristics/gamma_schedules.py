@@ -69,7 +69,7 @@ def gamma_sqrt(num_solutions: int) -> float:
     :return: Computed gamma value.
     """
     gamma = min(int(np.ceil(0.25 * np.sqrt(num_solutions))), 25) / num_solutions
-    metagen_logger(f"Sqrt gamma: num_solutions={num_solutions}, gamma={gamma}")
+    metagen_logger.debug(f"Sqrt gamma: num_solutions={num_solutions}, gamma={gamma}")
     return gamma
 
 # Dictionary of available gamma functions
