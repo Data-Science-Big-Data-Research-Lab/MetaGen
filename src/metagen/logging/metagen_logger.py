@@ -86,5 +86,5 @@ def get_remote_metagen_logger(level: int=logging.CRITICAL) -> logging.Logger:
 
 
 metagen_logger = logging.getLogger('metagen_logger')
-metagen_logger.setLevel(logging.INFO)
+metagen_logger.setLevel(logging.CRITICAL)
 add_console_handler(metagen_logger)

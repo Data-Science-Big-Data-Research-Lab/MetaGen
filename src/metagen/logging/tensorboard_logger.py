@@ -89,7 +89,7 @@ class TensorBoardLogger:
             
             if isinstance(value, dict):
                 # Recursively log nested dictionaries
-                nested_solutions = [s[key].value for s in solutions_dict]
+                nested_solutions = [s[key] for s in solutions_dict]
                 self._log_solution_components(nested_solutions, iteration, f"{prefix}{key}/")
             elif isinstance(value, (int, float)):
                 # Log numeric values as distribution/histogram
