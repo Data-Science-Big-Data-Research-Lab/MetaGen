@@ -60,7 +60,7 @@ def test_rs(active: bool, problem: str, population_size: int, max_iterations:int
     if distributed:
         ray.shutdown()
 
-    print(f"Solution found: {solution}")
+    print(f" ---- Solution found: {solution}")
 
     assert solution is not None
     assert hasattr(solution, 'fitness')
@@ -70,37 +70,43 @@ def test_rs(active: bool, problem: str, population_size: int, max_iterations:int
 
 @csv_params(data_file=resource_path("sa_parameters.csv"),
             id_col="ID#",
-            data_casts={"problem":str,
-                        "max_iterations":int,
-                        "alteration_limit": int, "initial_temp": float,
-                        "cooling_rate": float, "neighbor_population_size": int,
-                        "distributed":str_to_bool, "log_dir":str,"seed": int})
+            data_casts={"active":safe_str_to_bool, "problem":safe_str, "warmup_iterations":safe_int,
+                        "max_iterations":safe_int, "alteration_limit": safe_int, "initial_temp": safe_float,
+                        "cooling_rate": safe_float, "neighbor_population_size": safe_int,
+                        "distributed":safe_str_to_bool, "log_dir":str,"seed": safe_int})
 
-def test_sa(problem: str, max_iterations:int, alteration_limit: int, initial_temp: float,
+def test_sa(active: bool, problem: str, warmup_iterations:int, max_iterations:int, alteration_limit: int, initial_temp: float,
             cooling_rate: float, neighbor_population_size: int, distributed:bool, log_dir:str, seed: int) -> None:
+
+    if not active:
+        pytest.skip('Skipped')
 
     random.seed(seed)
     np.random.seed(seed)
     initial_best = float('inf')
 
-    metagen_logger.info('Running Simulated Annealing')
+    metagen_logger.setLevel(logging.INFO)
 
     if distributed:
         print('ray init')
         ray.init(num_cpus=4)
 
     problem_definition, fitness_function = problem_dispatcher(problem)
-    algorithm = SA(problem_definition, fitness_function, max_iterations, alteration_limit, initial_temp,
-                   cooling_rate, neighbor_population_size, distributed, log_dir)
+    algorithm = SA(problem_definition, fitness_function, warmup_iterations=warmup_iterations,
+                   max_iterations=max_iterations,
+                   alteration_limit=alteration_limit, initial_temp=initial_temp,
+                   cooling_rate=cooling_rate, neighbor_population_size=neighbor_population_size,
+                   distributed=distributed, log_dir=log_dir)
 
     random.seed(seed)
     np.random.seed(seed)
 
     solution = algorithm.run()
-    metagen_logger.info(f"Solution found: {solution}")
 
     if distributed:
         ray.shutdown()
+
+    print(f" ---- Solution found: {solution}")
 
     assert solution is not None
     assert hasattr(solution, 'fitness')
@@ -110,10 +116,13 @@ def test_sa(problem: str, max_iterations:int, alteration_limit: int, initial_tem
 
 @csv_params(data_file=resource_path("ts_parameters.csv"),
             id_col="ID#",
-            data_casts={"problem": str, "population_size": int, "warmup_iterations": int, "max_iterations": int,
-                        "tabu_size": int, "alteration_limit": float, "distributed": str_to_bool, "log_dir": str, "seed": int})
-def test_ts(problem: str, population_size: int, warmup_iterations: int, max_iterations: int,
-            tabu_size: int, alteration_limit: float, distributed: bool, log_dir: str, seed: int) -> None:
+            data_casts={"active":safe_str_to_bool, "problem": safe_str, "population_size": safe_int,
+                        "warmup_iterations": safe_int, "max_iterations": safe_int, "tabu_size": safe_int,
+                        "alteration_limit": safe_float,"gamma":safe_str, "gamma_min": safe_float, "gamma_max": safe_float,"gamma_alpha": safe_float,
+                        "distributed": safe_str_to_bool,"log_dir": safe_str, "seed": safe_int})
+def test_ts(active:bool, problem: str, population_size: int, warmup_iterations: int, max_iterations: int,
+            tabu_size: int, alteration_limit: float, gamma: str, gamma_min:float, gamma_max:float, gamma_alpha:float,
+            distributed: bool, log_dir: str, seed: int) -> None:
     """
     Test for Tabu Search.
 
@@ -131,42 +140,45 @@ def test_ts(problem: str, population_size: int, warmup_iterations: int, max_iter
     :param seed: Random seed for reproducibility.
     """
 
-    # Set random seeds for reproducibility
+    if not active:
+        pytest.skip('Skipped')
+
     random.seed(seed)
     np.random.seed(seed)
     initial_best = float('inf')
 
-    metagen_logger.info('Running Tabu Search')
+    metagen_logger.setLevel(logging.DEBUG)
 
-    # Initialize Ray if using distributed execution
-    ray_initialized = False
     if distributed:
+        print('ray init')
         ray.init(num_cpus=4)
-        ray_initialized = True
 
-    # gamma_config = GammaConfig(
-    #     gamma_function="sampled_based",
-    #     minimum=0.1,
-    #     maximum=0.3
-    # )
-
-    gamma_config = None
+    if gamma != ' ':
+        gamma_config = GammaConfig(
+            gamma_function=gamma,
+            minimum=gamma_min,
+            maximum=gamma_max,
+            alpha=gamma_alpha
+        )
+    else:
+        gamma_config = None
 
     # Get problem definition and fitness function
     problem_definition, fitness_function = problem_dispatcher(problem)
 
     # Initialize Tabu Search algorithm
-    algorithm = TabuSearch(problem_definition, fitness_function, population_size, warmup_iterations,
-                           max_iterations, tabu_size, alteration_limit, gamma_config, distributed, log_dir)
+    algorithm = TabuSearch(problem_definition, fitness_function, population_size=population_size,
+                           warmup_iterations=warmup_iterations,
+                           max_iterations=max_iterations, tabu_size=tabu_size, alteration_limit=alteration_limit,
+                           gamma_config=gamma_config, distributed=distributed, log_dir=log_dir)
 
     # Run the optimization algorithm
     solution = algorithm.run()
 
-    # Shut down Ray if it was initialized
-    if ray_initialized:
+    if distributed:
         ray.shutdown()
 
-    metagen_logger.info(f"Solution found: {solution}")
+    print(f" ---- Solution found: {solution}")
 
     # Assertions to ensure the solution is valid
     assert solution is not None
