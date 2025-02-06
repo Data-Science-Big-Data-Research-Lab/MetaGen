@@ -82,7 +82,7 @@ class Metaheuristic(ABC):
         self.distributed = distributed
         self.logger = TensorBoardLogger(log_dir=log_dir) if is_package_installed("tensorboard") else None
 
-        self.current_iteration = 0
+        self.current_iteration = -1
         self.best_solution: Optional[Solution] = None
         self.current_solutions: List[Solution] = []
         self.best_solution_fitnesses: List[float] = []
@@ -99,10 +99,9 @@ class Metaheuristic(ABC):
         distribution = assign_load_equally(
             len(self.current_solutions) if len(self.current_solutions) > 0 else self.population_size)
         population = deepcopy(self.current_solutions)
-        population_size = len(population)
         futures = []
 
-        if population_size > 0:
+        if self.current_iteration != -1:
             metagen_logger.info(
                 f"[ITERATION {self.current_iteration}] Distributing with {ray.available_resources().get('CPU', 0)} CPUs -- {distribution}")
         else:
@@ -111,7 +110,7 @@ class Metaheuristic(ABC):
 
         for count in distribution:
 
-            if len(population) > 0:
+            if self.current_iteration != -1:
                 futures.append(call_distributed.remote(method, population[:count]))
                 population = population[count:]
             else:
@@ -175,6 +174,7 @@ class Metaheuristic(ABC):
                 # Update the global best solution
                 if self.best_solution is None or best_candidate.get_fitness() < self.best_solution.get_fitness():
                     self.best_solution = deepcopy(best_candidate)
+
 
             metagen_logger.info(f"Warmup phase completed. Proceeding to optimization.")
 
@@ -290,6 +290,8 @@ class Metaheuristic(ABC):
         self._warmup()
 
         self._initialize()
+
+        self.current_iteration = 0
 
         while not self.stopping_criterion():
             self.pre_iteration()

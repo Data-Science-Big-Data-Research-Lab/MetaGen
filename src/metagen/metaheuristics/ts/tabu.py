@@ -87,7 +87,6 @@ class TabuSearch(Metaheuristic):
         first_solution = solution_type(self.domain, connector=self.domain.get_connector())
         first_solution.evaluate(self.fitness_function)
 
-        # Aplicar búsqueda local con tabú
         current_neighborhood, _ = local_search_with_tabu(
             first_solution, self.fitness_function, num_solutions - 1, self.alteration_limit, list(self.tabu_list)
         )
@@ -112,6 +111,7 @@ class TabuSearch(Metaheuristic):
         """
         # Ajustar dinámicamente el tamaño de la vecindad
         # Si hay configuración de gamma, calcular `l` dinámicamente
+
         if self.gamma_config:
             gamma = compute_gamma(self.gamma_config, iteration=self.current_iteration,
                                   max_iterations=self.max_iterations, num_solutions=max(1, len(solutions)))

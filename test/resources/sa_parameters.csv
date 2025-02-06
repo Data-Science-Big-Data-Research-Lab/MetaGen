@@ -1,4 +1,9 @@
-ID#,problem,max_iterations,alteration_limit,initial_temp,cooling_rate,neighbor_population_size,distributed,log_dir,seed
-1,dummy-1,20,1,50,0.99,10,False,logs/sa,0
-2,dummy-2,20,2,50,0.99,10,False,logs/sa,1
-
+active,ID#,problem,warmup_iterations,max_iterations,alteration_limit,initial_temp,cooling_rate,neighbor_population_size,distributed,log_dir,seed,logging_level
+False,1,dummy-3,5,20,5,50,0.99,10,False,logs/sa,1,20
+True,2,math-3,5,20,5,50,0.99,10,False,logs/sa,2,10
+False,3,sgd-c,5,20,5,50,0.99,10,False,logs/sa,3,20
+False,4,d-nn,5,20,5,50,0.99,10,False,logs/sa,4,20
+False,5,dummy-3,5,20,5,50,0.99,10,True,logs/sa,5,20
+False,6,math-3,5,20,5,50,0.99,10,True,logs/sa,6,20
+False,7,sgd-c,5,20,5,50,0.99,10,True,logs/sa,7,20
+False,8,d-nn,5,20,5,50,0.99,10,False,logs/sa,8,20
