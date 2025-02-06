@@ -18,9 +18,9 @@ from typing import Callable, Tuple
 from metagen.framework import Domain, Solution
 from metagen.framework.connector import BaseConnector
 
-from .dummy_catalog import (get_categorical_domain, get_vector_domain,
-                           get_all_types_domain, categorical_example_fitness,
-                           vector_example_fitness, all_types_fitness)
+from .dummy_catalog import (get_dummy1_domain, get_dummy2_domain,
+                            get_dummy3_domain, dummy1_fitness,
+                            dummy2_fitness, dummy3_fitness)
 
 
 from .sklearn_catalog import (get_knn_classifier_domain, knn_classifier_fitness,
@@ -36,7 +36,7 @@ from .math_catalog import (get_x_minus_15_raised_to_2_domain,
                            x_minus_15_raised_to_2_fitness,
                            get_x_raised_to_2_domain, x_raised_to_2_fitness, equation_domain, equation_fitness)
 
-from .tensorflow_catalog import (nn_fitness, get_nn_domain)
+from .tensorflow_catalog import (nn_fitness, get_dynamic_nn_domain, get_static_nn_domain)
 
 
 
@@ -46,14 +46,14 @@ def problem_dispatcher(example: str, connector=BaseConnector()) -> Tuple[Domain,
 
 
     if example == "dummy-1":
-        problem_definition = get_categorical_domain
-        fitness_function = categorical_example_fitness
+        problem_definition = get_dummy1_domain
+        fitness_function = dummy1_fitness
     elif example == "dummy-2":
-        problem_definition = get_vector_domain
-        fitness_function = vector_example_fitness
+        problem_definition = get_dummy2_domain
+        fitness_function = dummy2_fitness
     elif example == "dummy-3":
-        problem_definition = get_all_types_domain
-        fitness_function = all_types_fitness
+        problem_definition = get_dummy3_domain
+        fitness_function = dummy3_fitness
     elif example == "math-1":
         problem_definition = get_x_raised_to_2_domain
         fitness_function = x_raised_to_2_fitness
@@ -87,8 +87,11 @@ def problem_dispatcher(example: str, connector=BaseConnector()) -> Tuple[Domain,
     elif example == "sgd-r":
         problem_definition = get_sgd_regressor_domain
         fitness_function = sgd_regressor_fitness
-    elif example == "nn":
-        problem_definition = get_nn_domain
+    elif example == "s-nn":
+        problem_definition = get_static_nn_domain
+        fitness_function = nn_fitness
+    elif example == "d-nn":
+        problem_definition = get_dynamic_nn_domain
         fitness_function = nn_fitness
     else:
         problem_definition = get_x_raised_to_2_domain
