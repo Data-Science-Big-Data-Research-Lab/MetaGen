@@ -35,8 +35,8 @@ def get_metaheuristic(code:str,
         tabu_size = kwargs.get('tabu_size', 5)
         alteration_limit = kwargs.get('alteration_limit', 1.0)
         message = 'Running Tabu Search'
-        result = TabuSearch(domain, fitness_function, population_size, max_iterations, tabu_size, alteration_limit,
-                            distributed, log_dir)
+        result = TabuSearch(domain, fitness_function=fitness_function, population_size=population_size, max_iterations=max_iterations, tabu_size=tabu_size, 
+                            alteration_limit=alteration_limit, distributed=distributed, log_dir=log_dir)
 
     elif code == 'ga':
         population_size = kwargs.get('population_size', 10)

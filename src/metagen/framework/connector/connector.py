@@ -147,7 +147,7 @@ class BaseConnector:
                 solution_type = solution_type if inspect.isclass(
                     solution_type) else solution_type.__class__
 
-            if issubclass(solution_type if not isinstance(solution_type, tuple) else solution_type[0], types.BaseType):
+            if issubclass(solution_type if not isinstance(solution_type, tuple) else solution_type[0], (types.BaseType, types.Solution)):
                 return self._solution_to_builtin[solution_type]
             else:
                 raise ValueError(
