@@ -366,7 +366,11 @@ class Solution:
         res = "F = " + str(self.fitness) + "\t{"
         count = 1
         for variable in sorted(self.value):
-            res += str(variable) + " = " + str(self.value[variable])
+            if isinstance(self.value[variable], Solution):
+                res += str(variable) + " = " + str(self.value[variable].value)
+            else:
+                res += str(variable) + " = " + str(self.value[variable])
+
             if count < len(self.get_variables()):
                 res += " , "
             count += 1
