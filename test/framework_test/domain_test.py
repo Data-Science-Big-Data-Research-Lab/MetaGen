@@ -13,11 +13,11 @@ from metagen.framework.solution.literals import CATEGORICAL, INTEGER, REAL
 import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from utils import resource_path
+from utils import framework_parameters_resource_path
 
 
 @csv_params(
-    data_file=resource_path("integer_test.csv"),
+    data_file=framework_parameters_resource_path("integer_test.csv"),
     id_col="ID#",
     data_casts={
         "variable": str,
@@ -52,7 +52,7 @@ def test_define_integer_domain_positive(variable: str, minimum: int, maximum: in
 
 
 @csv_params(
-    data_file=resource_path("integer_test.csv"),
+    data_file=framework_parameters_resource_path("integer_test.csv"),
     id_col="ID#",
     data_casts={
         "variable": str,
@@ -82,7 +82,7 @@ def test_define_integer_domain_negative(variable: str, minimum: int, maximum: in
 
 # ******** REAL TESTS ********
 @csv_params(
-    data_file=resource_path("real_test.csv"),
+    data_file=framework_parameters_resource_path("real_test.csv"),
     id_col="ID#",
     data_casts={
         "variable": str,
@@ -116,7 +116,7 @@ def test_define_real_domain_positive(variable: str, minimum: float, maximum: flo
 
 
 @csv_params(
-    data_file=resource_path("real_test.csv"),
+    data_file=framework_parameters_resource_path("real_test.csv"),
     id_col="ID#",
     data_casts={
         "variable": str,
@@ -147,7 +147,7 @@ def test_define_real_domain_negative(variable: str, minimum: float, maximum: flo
 
 # ******** CATEGORICAL TESTS ********
 @csv_params(
-    data_file=resource_path("categorical_positive_test.csv"),
+    data_file=framework_parameters_resource_path("categorical_positive_test.csv"),
     id_col="ID#",
     data_casts={
         "variable": str,

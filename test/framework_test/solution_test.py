@@ -24,7 +24,7 @@ from os import path
 import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from utils import solution, resource_path
+from utils import solution, framework_parameters_resource_path
 
 
 def parse_input(type_col, value):
@@ -45,7 +45,7 @@ def parse_input(type_col, value):
 
 
 @csv_params(
-    data_file=resource_path("positive.csv"),
+    data_file=framework_parameters_resource_path("positive.csv"),
     data_casts={
         "variable": str,
         "type_var": str,
@@ -63,7 +63,7 @@ def test_set_raw_positive(variable: str, type_var: str, value: str) -> None:
     assert solution.is_available(variable)
 
 @csv_params(
-    data_file=resource_path("negative.csv"),
+    data_file=framework_parameters_resource_path("negative.csv"),
     data_casts={
         "variable": str,
         "type_var": str,
