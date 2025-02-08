@@ -39,9 +39,14 @@ def safe_str_to_bool(value: str) -> bool:
     """Convierte valores '-' a False."""
     return str_to_bool(value) if value.strip() and value != '-' else False
 
-def resource_path(file_name: str) -> str:
-    """Devuelve la ruta absoluta al archivo en la carpeta resources."""
-    return (pathlib.Path(__file__).parents[1] / "test" / "resources" / file_name).as_posix()
+def metaheuristic_parameters_resource_path(file_name: str) -> str:
+    """Devuelve la ruta absoluta al archivo en la carpeta test_parameters."""
+    return (pathlib.Path(__file__).parents[1] / "test" / "test_parameters" / "metaheuristic_parameters" / file_name).as_posix()
+
+def framework_parameters_resource_path(file_name: str) -> str:
+    """Devuelve la ruta absoluta al archivo en la carpeta test_parameters."""
+    return (pathlib.Path(__file__).parents[1] / "test" / "test_parameters" / "framework_parameters" / file_name).as_posix()
+
 
 domain: Domain = Domain()
 domain.define_integer("I", 0, 100)

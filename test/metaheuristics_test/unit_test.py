@@ -17,13 +17,13 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 from metaheuristics_test.metaheuristic_factory import get_metaheuristic
 from metaheuristics_test.problems.dispatcher import problem_dispatcher
-from utils import resource_path, str_to_bool, safe_str_to_bool, safe_str, safe_int, safe_float
+from utils import metaheuristic_parameters_resource_path, str_to_bool, safe_str_to_bool, safe_str, safe_int, safe_float
 
 import warnings
 
 warnings.filterwarnings("ignore", module="sklearn")
 
-@csv_params(data_file=resource_path("rs_parameters.csv"),
+@csv_params(data_file=metaheuristic_parameters_resource_path("rs.csv"),
             id_col="ID#",
             data_casts={"active":safe_str_to_bool,"problem":safe_str,"population_size": safe_int, "max_iterations":safe_int,
                         "distributed":safe_str_to_bool, "log_dir":safe_str,"seed": safe_int, "logging_level":safe_int})
@@ -63,7 +63,7 @@ def test_rs(active: bool, problem: str, population_size: int, max_iterations:int
     assert solution.fitness <= initial_best
 
 
-@csv_params(data_file=resource_path("sa_parameters.csv"),
+@csv_params(data_file=metaheuristic_parameters_resource_path("sa.csv"),
             id_col="ID#",
             data_casts={"active":safe_str_to_bool, "problem":safe_str, "warmup_iterations":safe_int,
                         "max_iterations":safe_int, "alteration_limit": safe_int, "initial_temp": safe_float,
@@ -107,7 +107,7 @@ def test_sa(active: bool, problem: str, warmup_iterations:int, max_iterations:in
     assert solution.fitness < float('inf')
     assert solution.fitness <= initial_best
 
-@csv_params(data_file=resource_path("ts_parameters.csv"),
+@csv_params(data_file=metaheuristic_parameters_resource_path("ts.csv"),
             id_col="ID#",
             data_casts={"active":safe_str_to_bool, "problem": safe_str, "population_size": safe_int,
                         "warmup_iterations": safe_int, "max_iterations": safe_int, "tabu_size": safe_int,
@@ -164,7 +164,7 @@ def test_ts(active:bool, problem: str, population_size: int, warmup_iterations: 
     assert solution.fitness <= initial_best
 
 
-@csv_params(data_file=resource_path("ga_parameters.csv"),
+@csv_params(data_file=metaheuristic_parameters_resource_path("ga.csv"),
             id_col="ID#",
             data_casts={"active":safe_str_to_bool, "problem":safe_str,"population_size": safe_int,
                         "max_iterations":safe_int, "mutation_rate": safe_float,"distributed":safe_str_to_bool,
@@ -204,7 +204,7 @@ def test_ga(active:bool, problem: str, population_size: int, max_iterations:int,
     assert solution.fitness < float('inf')
     assert solution.fitness <= initial_best
 
-@csv_params(data_file=resource_path("ga_parameters.csv"),
+@csv_params(data_file=metaheuristic_parameters_resource_path("ga.csv"),
             id_col="ID#",
             data_casts={"active":safe_str_to_bool, "problem":str,"population_size": int, "max_iterations":int, "mutation_rate": float,
                         "distributed":str_to_bool, "log_dir":str,"seed": int, "logging_level":safe_int})
@@ -243,7 +243,7 @@ def test_ssga(active:bool, problem: str, population_size: int, max_iterations:in
 
 
 
-@csv_params(data_file=resource_path("mm_parameters.csv"),
+@csv_params(data_file=metaheuristic_parameters_resource_path("mm.csv"),
             id_col="ID#",
             data_casts={"active": safe_str_to_bool, "problem": safe_str, "population_size": safe_int, "max_iterations": safe_int, "mutation_rate": float,
                         "neighbor_population_size": safe_int, "alteration_limit": safe_float,
@@ -287,7 +287,7 @@ def test_mm(active: bool, problem: str, population_size: int, max_iterations: in
     assert solution.fitness < float('inf')
     assert solution.fitness <= initial_best
 
-@csv_params(data_file=resource_path("tpe_parameters.csv"),
+@csv_params(data_file=metaheuristic_parameters_resource_path("tpe.csv"),
             id_col="ID#",
             data_casts={"active": safe_str_to_bool, "problem": safe_str, "max_iterations": safe_int,
                         "warmup_iterations": safe_int, "candidate_pool_size": safe_int,
@@ -344,7 +344,7 @@ def test_tpe(active:bool, problem: str, max_iterations: int, warmup_iterations: 
     assert solution.fitness < float('inf')
     assert solution.fitness <= initial_best
 
-@csv_params(data_file=resource_path("metaheuristic_parameters.csv"),
+@csv_params(data_file=metaheuristic_parameters_resource_path("global.csv"),
             id_col="ID#",
             data_casts={"active": safe_str_to_bool, "metaheuristic":safe_str, "problem": safe_str,
                         "population_size": safe_int, "max_iterations": safe_int,

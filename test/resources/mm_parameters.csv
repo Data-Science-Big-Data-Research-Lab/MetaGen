@@ -1,9 +1,0 @@
-active,ID#,problem,population_size,max_iterations,mutation_rate,neighbor_population_size,alteration_limit,distributed,log_dir,distribution_level,seed,logging_level
-True,1,dummy-2,20,40,0.25,10,0.2,False,logs/mm,0,1,20
-True,2,math-3,20,40,0.25,10,0.2,False,logs/mm,0,2,20
-True,3,sgd-r,20,10,0.25,10,0.2,False,logs/mm,0,3,20
-False,4,s-nn,20,10,0.25,10,0.2,False,logs/mm,0,4,20
-True,5,dummy-2,20,40,0.25,10,0.2,True,logs/mm,2,5,20
-True,6,math-3,20,40,0.25,10,0.2,True,logs/mm,1,6,20
-True,7,sgd-r,20,10,0.25,10,0.2,True,logs/mm,1,7,20
-False,8,s-nn,20,10,0.25,10,0.2,True,logs/mm,0,8,20
