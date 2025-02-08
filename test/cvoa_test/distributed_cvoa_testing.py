@@ -9,6 +9,7 @@ from metaheuristics_test.problems.dispatcher import problem_dispatcher
 
 
 def main():
+
     domain, fitness = problem_dispatcher("math-3")
 
     strain1: StrainProperties = StrainProperties("Strain#1", pandemic_duration=5)
@@ -17,13 +18,13 @@ def main():
 
     set_metagen_logger_level(DETAILED_INFO)
 
-    metagen_logger.info(f"Running distributed CVOA")
+    print(f"Running distributed CVOA")
 
     ray.init(num_cpus=4)
 
     solution: Solution = distributed_cvoa_launcher([strain1, strain2], domain, fitness)
 
-    metagen_logger.info(f"Best solution found: {solution}")
+    print(f" ----- Best solution found: {solution}")
 
 if __name__ == "__main__":
     main()
