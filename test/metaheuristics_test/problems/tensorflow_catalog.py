@@ -52,12 +52,13 @@ def get_dynamic_nn_domain(connector = BaseConnector()) -> Domain:
     return nn_domain
 
 
+# Generación de datos
 x, y = make_regression(n_samples=1000, n_features=24)
 scaler_x = StandardScaler()
 scaler_y = StandardScaler()
 
 x = scaler_x.fit_transform(x)
-y = scaler_y.fit_transform(y.reshape(-1, 1))
+y = scaler_y.fit_transform(y.reshape(-1, 1)).astype(np.float32)
 
 xs_train, xs_val, ys_train, ys_val = train_test_split(x, y, test_size=0.33, random_state=42)
 
@@ -67,34 +68,39 @@ x_val = np.reshape(xs_val, (xs_val.shape[0], xs_val.shape[1], 1))
 y_val = np.reshape(ys_val, (ys_val.shape[0], 1))
 
 
-def build_neural_network(solution: Solution) -> tf.keras.Sequential():
-    # Architecture building
+# Definición del modelo
+def build_neural_network(solution: dict) -> tf.keras.Sequential:
     model = tf.keras.Sequential()
     for i, layer in enumerate(solution["arch"]):
         neurons = layer["neurons"]
         activation = layer["activation"]
         dropout = layer["dropout"]
-        rs = True
-        if i == len(solution["arch"]):
-            rs = False
+
+        return_sequences = i < len(solution["arch"]) - 1  # Última capa LSTM sin return_sequences
+
         model.add(tf.keras.layers.LSTM(neurons,
-                                activation=activation,
-                                return_sequences=rs))
+                                       activation=activation,
+                                       return_sequences=return_sequences))
         model.add(tf.keras.layers.Dropout(dropout))
+
     model.add(tf.keras.layers.Dense(1, activation="tanh"))
-    # Model compilation
+
+    # Compilación
     learning_rate = solution["learning_rate"]
     ema = solution["ema"]
-    model.compile(optimizer=
-                    tf.keras.optimizers.Adam(
-                            learning_rate=learning_rate,
-                            use_ema=ema),
-                  loss="mean_squared_error",
-                  metrics=[tf.keras.metrics.MAPE])
+    model.compile(optimizer=tf.keras.optimizers.Adam(
+        learning_rate=learning_rate,
+        use_ema=ema),
+        loss="mean_squared_error",
+        metrics=[tf.keras.metrics.MAE])  # Cambiado MAPE → MAE para evitar problemas
     return model
 
-def nn_fitness(solution: Solution) -> float:
+
+def nn_fitness(solution: dict) -> float:
     model = build_neural_network(solution)
-    model.fit(x_train, y_train, epochs=10, batch_size=1024)
-    mape = model.evaluate(x_val, y_val)[1]
-    return mape
+
+    batch_size = min(1024, x_train.shape[0])  # Evita batch_size mayor que el dataset
+    model.fit(x_train, y_train, epochs=10, batch_size=batch_size, verbose=0)
+
+    mae = model.evaluate(x_val, y_val, verbose=0)[1]  # Obtiene MAE
+    return mae
