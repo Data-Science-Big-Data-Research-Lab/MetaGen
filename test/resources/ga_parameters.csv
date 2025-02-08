@@ -1,9 +1,9 @@
 active,ID#,problem,population_size,max_iterations,mutation_rate,distributed,log_dir,seed,logging_level
 False,1,dummy-2,20,10,0.25,False,logs/gs,1,20
-True,2,math-3,20,10,0.25,False,logs/gs,2,20
-True,3,sgd-r,20,10,0.25,False,logs/gs,3,20
-False,4,s-nn,20,10,0.25,False,logs/gs,4,20
+False,2,math-3,20,10,0.25,False,logs/gs,2,20
+False,3,sgd-r,20,10,0.25,False,logs/gs,3,20
+True,4,s-nn,20,10,0.25,False,logs/gs,4,20
 False,5,dummy-2,20,10,0.25,True,logs/gs,5,20
-True,6,math-3,20,10,0.25,True,logs/gs,6,20
-True,7,sgd-r,20,10,0.25,True,logs/gs,7,20
-False,8,s-nn,20,10,0.25,False,logs/gs,8,20
+False,6,math-3,20,10,0.25,True,logs/gs,6,20
+False,7,sgd-r,20,10,0.25,True,logs/gs,7,20
+False,8,s-nn,20,10,0.25,True,logs/gs,8,20
