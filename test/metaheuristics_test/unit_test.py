@@ -346,53 +346,71 @@ def test_tpe(active:bool, problem: str, max_iterations: int, warmup_iterations: 
 
 @csv_params(data_file=metaheuristic_parameters_resource_path("global.csv"),
             id_col="ID#",
-            data_casts={"active": safe_str_to_bool, "metaheuristic":safe_str, "problem": safe_str,
+            data_casts={"active": safe_str_to_bool, "metaheuristic": safe_str, "problem": safe_str,
                         "population_size": safe_int, "max_iterations": safe_int,
-                        "tabu_size": safe_int, "alteration_limit": safe_float, "initial_temp": safe_float, "cooling_rate": safe_float,
-                        "neighbor_population_size": safe_int, "mutation_rate": safe_float,
-                        "distributed": safe_str_to_bool, "log_dir": safe_str, "distribution_level": safe_int, "seed": safe_int, "logging_level":safe_int})
+                        "tabu_size": safe_int, "alteration_limit": safe_float, "initial_temp": safe_float,
+                        "cooling_rate": safe_float, "neighbor_population_size": safe_int, "mutation_rate": safe_float,
+                        "candidate_pool_size": safe_int, "gamma": safe_str, "gamma_min": safe_float, "gamma_max": safe_float,
+                        "gamma_alpha": safe_float, "distributed": safe_str_to_bool, "log_dir": safe_str,
+                        "distribution_level": safe_int, "seed": safe_int, "logging_level": safe_int})
 
-def test_metaheuristic(active: bool, metaheuristic:str, problem: str,
+def test_metaheuristic(active: bool, metaheuristic: str, problem: str,
                        population_size: int, max_iterations: int,
                        tabu_size: int, alteration_limit: float, initial_temp: float, cooling_rate: float,
-                       neighbor_population_size: int, mutation_rate: float,
-                       distributed: bool, log_dir: str, distribution_level: int, seed: int, logging_level:int) -> None:
+                       neighbor_population_size: int, mutation_rate: float, candidate_pool_size: int,
+                       gamma: str, gamma_min: float, gamma_max: float, gamma_alpha: float,
+                       distributed: bool, log_dir: str, distribution_level: int, seed: int, logging_level: int) -> None:
 
     if not active:
         pytest.skip('Skipped')
 
+    # Configuración de logging
     metagen_logger.setLevel(logging_level)
 
-    if metaheuristic == 'mm' or metaheuristic == 'ssga' or metaheuristic == 'ga':
-        problem_definition, fitness_function = problem_dispatcher(problem, GAConnector())
-    else:
-        problem_definition, fitness_function = problem_dispatcher(problem)
-
-    message, algorithm = get_metaheuristic(metaheuristic, problem_definition, fitness_function, distributed, log_dir,
-                                  population_size=population_size, max_iterations=max_iterations,
-                                  tabu_size=tabu_size, alteration_limit=alteration_limit,
-                                  initial_temp=initial_temp, cooling_rate=cooling_rate,
-                                  neighbor_population_size=neighbor_population_size,
-                                  mutation_rate=mutation_rate, distribution_level=distribution_level)
-
-    if distributed:
-        ray.init(num_cpus=4, ignore_reinit_error=True)
-
+    # Configuración de la semilla para reproducibilidad
     random.seed(seed)
     np.random.seed(seed)
     initial_best = float('inf')
 
+    # Obtener la definición del problema y la función de fitness
+    if metaheuristic in ['mm', 'ssga', 'ga']:
+        problem_definition, fitness_function = problem_dispatcher(problem, GAConnector())
+    else:
+        problem_definition, fitness_function = problem_dispatcher(problem)
+
+    # Inicializar Ray si es necesario
+    if distributed:
+        ray.init(num_cpus=4, ignore_reinit_error=True)
+
+    # Obtener el algoritmo correspondiente usando la nueva función `get_metaheuristic`
+    message, algorithm = get_metaheuristic(metaheuristic, problem_definition, fitness_function,
+                                           distributed, log_dir,
+                                           population_size=population_size, max_iterations=max_iterations,
+                                           tabu_size=tabu_size, alteration_limit=alteration_limit,
+                                           initial_temp=initial_temp, cooling_rate=cooling_rate,
+                                           neighbor_population_size=neighbor_population_size,
+                                           mutation_rate=mutation_rate, candidate_pool_size=candidate_pool_size,
+                                           gamma=gamma, gamma_min=gamma_min, gamma_max=gamma_max, gamma_alpha=gamma_alpha,
+                                           distribution_level=distribution_level)
+
+    # Registrar mensaje de inicio
     metagen_logger.info(message)
 
+    # Volver a inicializar la semilla antes de ejecutar el algoritmo
     random.seed(seed)
     np.random.seed(seed)
+
+    # Ejecutar el algoritmo
     solution = algorithm.run()
 
+    # Apagar Ray si fue usado
     if distributed:
         ray.shutdown()
 
+    # Mostrar el resultado
     print(f" ---- Solution found: {solution}")
 
+    # Verificar que la solución es válida
     assert solution is not None
     assert hasattr(solution, 'fitness')
     assert solution.fitness < float('inf')
