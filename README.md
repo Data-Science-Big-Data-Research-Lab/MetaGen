@@ -3,7 +3,6 @@
 [![Python](https://img.shields.io/badge/python->=3.12-orange)](https://pypi.org/project/pymetagen-datalabupo/) 
 [![Latest Release](https://img.shields.io/github/v/release/DataLabUPO/MetaGen)](https://github.com/DataLabUPO/MetaGen/releases) 
 [![Documentation](https://img.shields.io/badge/view-Documentation-blue)](https://pymetagen.readthedocs.io) 
-[![CI](https://circleci.com/gh/DataLabUPO/MetaGen.svg?style=svg)](https://circleci.com/gh/DataLabUPO/MetaGen)
 
 ## 🚀 Why MetaGen?
 
@@ -15,7 +14,7 @@ MetaGen simplifies the development of **metaheuristics** and the **optimization 
 ✔ **Hyperparameter Optimization Tools** – Supports both layer and architecture-level tuning in deep learning.  
 ✔ **Standardized Interface** – Ensures compatibility between metaheuristic developers and end users.  
 ✔ **Dynamic Architecture Optimization** – Adapts model structures dynamically during execution.  
-✔ **Seamless Integration** – Compatible with `scikit-learn`, `tensorflow`, `keras`, and other ML libraries.  
+✔ **Seamless Integration** – Compatible with `scikit-learn`, `tensorflow`, `pytorch`, and other ML libraries.  
 ✔ **Built-in Metaheuristics** – Pre-implemented algorithms ready to use.  
 ✔ **Performance Analysis Tools** – Integrated visualization tools for analyzing metaheuristic performance.  
 ✔ **Scalable and Distributed Execution** – Metaheuristics can run efficiently across multiple nodes.  

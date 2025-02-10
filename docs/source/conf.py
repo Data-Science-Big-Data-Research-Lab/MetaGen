@@ -17,7 +17,6 @@ sys.path.insert(0, f'{pathlib.Path(__file__).parents[2].resolve().as_posix()}/sr
 
 import sys
 
-print(sys.version)
 project = 'MetaGen'
 copyright = '2023, David Gutiérrez Avilés, José Francisco Torres, Manuel Jesús Jiménez-Navarro, and Francisco Martínez-Álvarez'
 author = 'David Gutiérrez Avilés, José Francisco Torres, Manuel Jesús Jiménez-Navarro, and Francisco Martínez-Álvarez'
