@@ -16,6 +16,6 @@
 """
 from .ga import GA
 from .ssga import SSGA
-from .ga_types import GAConnector, GASolution, GAStructure
+from .ga_tools import GAConnector, GASolution, GAStructure
 
 __all__ = ["GA", "SSGA", "GASolution", "GAStructure", "GAConnector"]

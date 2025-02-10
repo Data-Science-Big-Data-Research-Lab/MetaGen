@@ -1,0 +1,9 @@
+active,ID#,problem,population_size,max_iterations,distributed,log_dir,seed,logging_level
+True,1,dummy-3,20,10,False,logs/rs,1,20
+True,2,math-3,20,10,False,logs/rs,2,10
+True,3,sgd-c,20,10,False,logs/rs,3,20
+False,4,d-nn,20,10,False,logs/rs,4,20
+True,5,dummy-3,20,10,True,logs/rs,5,10
+True,6,math-3,20,10,True,logs/rs,6,20
+True,7,sgd-c,20,10,True,logs/rs,7,20
+False,8,d-nn,20,10,True,logs/rs,8,20

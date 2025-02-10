@@ -24,36 +24,25 @@ from metagen.framework.solution.bounds import BaseTypeClass
 
 
 class BaseConnector:
-
     """
     A connector class that maps domain types to solution types and provides type conversion functions.
 
-    :ivar _domain_to_solution: A dictionary mapping domain types to solution types.
-    :vartype _domain_to_solution: Dict[BaseClass, BaseTypeClass]
-    :ivar _solution_to_domain: A dictionary mapping solution types to domain types.
-    :vartype _solution_to_domain: Dict[BaseTypeClass, BaseClass]
-    :ivar _solution_to_builtin: A dictionary mapping solution types to built-in types.
-    :vartype _solution_to_builtin: Dict[BaseTypeClass, Any]
-    :ivar _builtin_to_solution: A dictionary mapping built-in types to solution types.
-    :vartype _builtin_to_solution: Dict[Any, BaseTypeClass]
-
-    :meth:`__init__`:
-        Initializes the BaseConnector object.
-
-    :meth:`register`:
-        Registers a domain type, solution type, and built-in type.
-
-    :meth:`get_type`:
-        Retrieves the solution type based on the input definition.
-
-    :meth:`get_definition`:
-        Retrieves the domain type based on the input solution type.
-
-    :meth:`get_builtin`:
-        Retrieves the built-in type based on the input solution type.
+    :param _domain_to_solution: A dictionary mapping domain types to solution types.
+    :type _domain_to_solution: Dict[BaseClass, BaseTypeClass]
+    :param _solution_to_domain: A dictionary mapping solution types to domain types.
+    :type _solution_to_domain: Dict[BaseTypeClass, BaseClass]
+    :param _solution_to_builtin: A dictionary mapping solution types to built-in types.
+    :type _solution_to_builtin: Dict[BaseTypeClass, Any]
+    :param _builtin_to_solution: A dictionary mapping built-in types to solution types.
+    :type _builtin_to_solution: Dict[Any, BaseTypeClass]
     """
 
     def __init__(self) -> None:
+        """
+        Initializes the BaseConnector object.
+
+        :return: None
+        """
 
         self._domain_to_solution: Dict[BaseClass, BaseTypeClass] = {}
         self._solution_to_domain: Dict[BaseTypeClass, BaseClass] = {}
@@ -80,6 +69,7 @@ class BaseConnector:
         :type solution_type: type[BaseTypeClass | `types.Solution`] or Tuple[type[BaseTypeClass | `types.Solution`], str]
         :param builtin_type: The built-in type to register.
         :type builtin_type: type[int | float | str | list | dict]
+        :return: None
         """
 
         self._domain_to_solution[domain_type] = solution_type
@@ -150,9 +140,14 @@ class BaseConnector:
         :raises ValueError: If the solution type is not registered in the connector.
         """
         try:
-            solution_type = solution_type if inspect.isclass(
-                solution_type) else solution_type.__class__
-            if issubclass(solution_type, types.BaseType):
+            if isinstance(solution_type, tuple):
+                solution_type = solution_type if inspect.isclass(
+                    solution_type[0]) else (solution_type[0].__class__, solution_type[1])
+            else:   
+                solution_type = solution_type if inspect.isclass(
+                    solution_type) else solution_type.__class__
+
+            if issubclass(solution_type if not isinstance(solution_type, tuple) else solution_type[0], (types.BaseType, types.Solution)):
                 return self._solution_to_builtin[solution_type]
             else:
                 raise ValueError(

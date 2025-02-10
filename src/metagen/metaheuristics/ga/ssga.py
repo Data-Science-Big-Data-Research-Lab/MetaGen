@@ -14,15 +14,19 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-import random
+import heapq
 from collections.abc import Callable
-from typing import List
+from copy import deepcopy
+from typing import List, Tuple, cast
 
-from metagen.framework import Domain
-from .ga_types import GASolution
+from metagen.framework import Domain, Solution
+from .ga_tools import GASolution, yield_two_children
+from metagen.metaheuristics.base import Metaheuristic
+from metagen.metaheuristics.tools import random_exploration
+from ...logging.metagen_logger import metagen_logger
 
 
-class SSGA:
+class SSGA(Metaheuristic):
     """
     Steady State Genetic Algorithm (SSGA) class for optimization problems which is a variant of the Genetic Algorithm (GA) with population replacement.
     
@@ -48,96 +52,43 @@ class SSGA:
     :ivar fitness_func: The fitness function used to evaluate solutions.
     :vartype fitness_func: Callable[[Solution], float]"""
 
-    def __init__(self, domain: Domain, fitness_func: Callable[[GASolution], float], population_size: int = 10, mutation_rate: float = 0.1, n_iterations: int = 50) -> None:
-    
-        self.population_size: int = population_size
-        self.mutation_rate: float = mutation_rate
-        self.n_iterations: int = n_iterations
-        self.domain: Domain = domain
-        self.fitness_func: Callable[[GASolution], float] = fitness_func
-        self.population: List[GASolution] = []
+    def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
+                 population_size: int = 10,
+                 max_iterations: int = 50, mutation_rate: float = 0.1,
+                 distributed: bool = False, log_dir: str = "logs/SSGA"):
+        super().__init__(domain, fitness_function, population_size=population_size, distributed=distributed, log_dir=log_dir)
+        self.mutation_rate = mutation_rate
+        self.max_iterations = max_iterations
 
-        self.initialize()
+    def initialize(self, num_solutions=10) -> Tuple[List[Solution], Solution]:
+        current_solutions, best_solution = random_exploration(self.domain, self.fitness_function, num_solutions)
+        return current_solutions, best_solution
 
-    def initialize(self):
+    def iterate(self, solutions: List[Solution]) -> Tuple[List[Solution], Solution]:
         """
-        Initialize the population of solutions by creating and evaluating initial solutions.
+        Iterate the algorithm for one generation.
         """
-        self.population = []
-        solution_type: type[GASolution] = self.domain.get_connector().get_type(
-            self.domain.get_core())
+        best_parents = heapq.nsmallest(2, solutions, key=lambda sol: sol.get_fitness())
 
-        for _ in range(self.population_size):
-            solution = solution_type(
-                self.domain, connector=self.domain.get_connector())
-            solution.evaluate(self.fitness_func)
-            self.population.append(solution)
-        
-        self.population = sorted(self.population, key=lambda sol: sol.fitness)
+        father = cast(GASolution, best_parents[0])
+        mother = cast(GASolution, best_parents[1])
 
+        child1, child2 = yield_two_children((father,mother), self.mutation_rate, self.fitness_function)
 
-    def select_parents(self) -> List[GASolution]:
-        """
-        Select the top two parents from the population based on their fitness values.
+        best_solution = deepcopy(self.best_solution)
 
-        :return: The selected parent solutions.
-        :rtype: List[Solution]
-        """
+        if child1 != child2:
+            worst_parents = heapq.nlargest(2, solutions, key=lambda sol: sol.get_fitness())
+            candidates = [worst_parents[0], worst_parents[1], child1, child2]
+            best_two = heapq.nsmallest(2, candidates, key=lambda sol: sol.get_fitness())
+            for i, worst in enumerate(worst_parents):
+                if worst in solutions:
+                    solutions[solutions.index(worst)] = best_two[i]
+            best_solution = heapq.nsmallest(1, solutions, key=lambda sol: sol.get_fitness())[0]
+        else:
+            metagen_logger.info(f'[ITERATION {self.current_iteration}] Both children are the same, skipping iteration')
 
-        parents = self.population[:2]
-        return parents
-    
-    def replace_wost(self, child) -> None:
-        """
-        Replace the solution in the population with worst fitness.
+        return solutions, best_solution
 
-        :return: The selected parent solutions.
-        :rtype: List[Solution]
-        """
-
-        worst_solution = self.population[-1]
-
-        if worst_solution.fitness > child.fitness:
-            self.population[-1] = child
-        
-        self.population = sorted(self.population, key=lambda sol: sol.fitness)
-
-    def run(self) -> GASolution:
-        """
-        Run the steady-satate genetic algorithm for the specified number of generations and return the best solution found.
-
-        :return: The best solution found by the genetic algorithm.
-        :rtype: Solution
-        """
-
-        current_iteration = 0
-
-
-        while current_iteration <= self.n_iterations:
-
-            parent1, parent2 = self.select_parents()
-
-            child1, child2 = parent1.crossover(parent2)
-
-            if random.uniform(0, 1) <= self.mutation_rate:
-                child1.mutate()
-
-            if random.uniform(0, 1) <= self.mutation_rate:
-                child2.mutate()
-            
-            if child1 == child2:
-                continue
-
-            child1.evaluate(self.fitness_func)
-            child2.evaluate(self.fitness_func)
-
-            self.replace_wost(child1)
-            self.replace_wost(child2)
-            
-            current_iteration += 1
-
-        best_individual = min(
-            self.population, key=lambda sol: sol.get_fitness())
-        
-        return best_individual
-
+    def stopping_criterion(self) -> bool:
+        return self.current_iteration >= self.max_iterations

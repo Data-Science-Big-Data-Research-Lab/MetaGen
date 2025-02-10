@@ -1,102 +1,75 @@
-Welcome to Metagen's documentation!
-=====================================
+.. include:: aliases.rst
 
-Introduction
-==============
-MetaGen is a Python scientific package designed to provide users with a standard system for solution representation, methods to generate and modify these solutions, and a standard interface between the metaheuristic and potential users. These features make it easier for programmers to develop a metaheuristic and make it accessible to any user who wants to optimize a problem during the crucial hyperparameter tuning process in machine learning model production.
+Welcome to |metagen|!
+=====================
 
-.. image:: images/overview.png
-  :align: center
-  :width: 400
-  :alt: MetaGen's overview
+|metagen| is a Python scientific package designed to provide users with a comprehensive system for:
 
-As is shown in the previous figure, MetaGen has two main use cases that depend on two user profiles:
+- Solution representation
+- Methods to generate and modify solutions
+- A standard interface between metaheuristics and potential users
 
-* [DUC] Development Use Case: MetaGen is used by a developer to program a new metaheuristic algorithm, simplifying the development process and making it accessible to any user who wants to optimize a problem.
-* [SUC] Solving Use Case: MetaGen is used by a solver to define an optimization problem and use a metaheuristic to find the best hyperparameter configuration for a specific machine or deep learning model.
+These features simplify the development of metaheuristics and make hyperparameter tuning more accessible in machine learning model production.
 
-.. image:: images/duc.png
-  :align: center
-  :width: 400
-  :alt: Development Use Case
+.. figure:: images/overview.png
+    :align: center
+    :width: 400
+    :alt: MetaGen's overview
+    :class: vspace
+    :name: fig-overview
 
-The core of MetaGen is located in the metagen.framework package; it contains the logic to support both use cases. This package includes two classes, Domain and Solution. As shown in Figure \ref{img.duc, metagen.framework provides a developer with a standard system for potential solution representation through the Solution class and methods to generate and modify these solutions. Additionally, the Domain class provides a standard interface between the metaheuristic and its potential users (solvers), ensuring that the values of generated or modified solutions fall within the specified range.
+    |metagen|'s architectural overview.
 
-.. image:: images/suc.png
-  :align: center
-  :width: 400
-  :alt: Solving Use Case
+Key Design Principles
+----------------------
 
-The Solving Use Case figure shows how the metagen.framework package helps a solver to define its own hyperparameter application domains by setting the range of variable values through the Domain class and to define a fitness function using the standard interface with potential solutions treated by the metaheuristic, provided by the Solution class. The metagen.metaheuristics package includes four developed metaheuristics: Random Search \cite{Bergstra2012, Genetic Algorithm Alhijawi2023, and Coronavirus Optimization Algorithm \cite{martinez-cvoa. A solver defines a problem using the Domain class and solves it with one of these available metaheuristics (or another implemented by a third-party developer).
+1. **Abstraction**: Separate problem definition from solution exploration
+2. **Flexibility**: Support for diverse optimization strategies
+3. **Extensibility**: Easy integration of custom algorithms and problem domains
+4. **Usability**: Intuitive interfaces for developers and researchers
 
+Use Cases
+----------
+- Machine Learning Hyperparameter Tuning
+- Deep Learning Architecture Optimization
+- Scientific Computational Problems
+- Engineering Design Optimization
 
-Formal context
-===============
-The formal context of MetaGen is outlined in Equation 1. The *solver* defines a problem :math:`P` and uses the metaheuristic :math:`M`, created by the *developer*, to find an optimal solution :math:`S_{opt}` (Equation (1a)). A problem :math:`P` is composed of a domain :math:`D` and a fitness function :math:`F` (Equation (1b)). A domain is a set of variables and their corresponding value range, which the metaheuristic optimizes through the fitness function. A solution is an assignment of valid values to all variables within the domain. All potential solutions to a problem are part of the search space, and the metaheuristic explores, modifies, and evaluates the search space using the fitness function.
+User Profiles
+-------------
 
-**Equation 1:**
+|metagen| supports two primary user profiles:
 
-.. math::
+Developer Profile
+^^^^^^^^^^^^^^^^^
 
-   M(P) = S_{opt} \qquad (1a)\\ 
-   P = \langle D,F \rangle \qquad (1b)
+- Implements metaheuristics using the |solution| class
+- Follows the **Development Use Case (DUC)**
+- Simplifies algorithm development process
+- Makes metaheuristic implementation accessible to a broader audience
 
-Domain and solution
--------------------
+Solver Profile
+^^^^^^^^^^^^^^
 
-The formal definition of a domain :math:`D` is given by Equation (2a). It is a set of :math:`N` variable definitions, :math:`V_i \models Def^{T}`, where :math:`V_i` represents the name of the variable, and :math:`Def^{T}` is its definition of type :math:`T` as specified in Eq. (2b). There are six different types of variables, namely :math:`INTEGER` (:math:`I`), :math:`REAL` (:math:`R`), :math:`CATEGORICAL` (:math:`C`), :math:`GROUP` (:math:`G`), :math:`DYNAMIC` (:math:`D`) and, :math:`STATIC` (:math:`S`). The alias :math:`BASIC` (:math:`B`) is defined as the combination of :math:`INTEGER`, :math:`REAL`, and :math:`CATEGORICAL` in Eq. (2c).
+- Defines problem using |domain| class tools
+- Implements fitness function for optimization
+- Uses |solution| class to explore potential solutions
+- Follows the **Solving Use Case (SUC)**
+- Can use built-in or third-party metaheuristics
 
-**Equation 2:**
+Key Features
+------------
 
-.. math::
+- **Intuitive Development**: Lowers the barrier to creating new metaheuristics
+- **Standardized Interface**: Isolates developer from end-user complexities
+- **Dynamic Optimization**: Tools for adjusting deep learning architectures
+- **Type Hints**: Leverages Python's typing for improved development experience
+- **Flexible Problem Definition**: Easy-to-use domain configuration
 
-   D =  \{Var_1 \models Def^{T}_1, Var_2 \models Def^{T}_2,...,Var_i \models Def^{T}_i,...,Var^{T}_{N} \models Def_{N}\} \qquad (2a)\\
-   T  \epsilon  \{INTEGER(I), REAL(R), CATEGORICAL(C),\\
-   , GROUP(G), DYNAMIC(D), STATIC(S)\} \qquad (2b)\\
-   BASIC (B)  \epsilon  \{INTEGER(I), REAL(R), CATEGORICAL(C)\} \qquad (2c)
-
-The MetaGen supported definitions are defined in Equation 3. The definitions of :math:`INTEGER` and :math:`REAL` represent a value in the range of integers :math:`\mathbb{Z}` and real numbers :math:`\mathbb{R}`, respectively, in the range :math:`[Min, Max]` as shown in Eq. (3a). The :math:`CATEGORICAL` definition represents a set of :math:`P` unique labels, as described in Eq. (3b). The :math:`GROUP` definition represents a set of :math:`Q` elements, each defined by a basic definition :math:`Def^B`, as given in Eq. (3c). The :math:`DYNAMIC` definition represents a sequence of :math:`BASIC` or :math:`GROUP` values of length in the range :math:`[LN_{min}, LN_{max}]` as specified in Eq. (3d). Finally, the :math:`STATIC` definition is a sequence of :math:`BASIC` or :math:`GROUP` values with a fixed length, :math:`LN` as specified in Eq. (3e).
-
-**Equation 3:**
-
-.. math::
-
-   Def^{I|R} = \langle Min, Max \rangle \qquad (3a)\\
-   Def^{C} = \{L_1, L_2,...,L_i,...,L_{P}\} \qquad (3b)\\
-   Def^{G} = \{E_1 = Def^{B}_1, E_2 = Def^{B}_2,...,E_j = Def^{B}_j,...,E_{Q} = Def^{B}_{Q}\} \qquad (3c)\\
-   Def^{D} = \langle LN_{min}, LN_{max}, Def^{B|G} \rangle  \qquad (3d)\\
-   Def^{S} = \langle LN, Def^{B|G} \rangle \qquad (3e)
-
-A collection of example problems can be found in the next table to support the formal definition. The problem :math:`P_1` is composed of a domain with an :math:`INTEGER` variable :math:`x` that moves within the interval :math:`[-10, 10]`, and the function to be optimized is :math:`f(x)=x+5`. Similarly, the problem :math:`P_2` has a domain consisting of a :math:`REAL` variable :math:`x` that moves within the interval :math:`[0.0, 1.0]`, and the objective function is :math:`f(x)=x^5`.
-
-**Sample problems**
-
-.. list-table:: Sample Problems
-   :widths: 10 40 50
-   :header-rows: 1
-
-   * - :math:`P_{ID}`
-     - Domain 
-     - Function
-   * - :math:`P_1`
-     - :math:`x \models Def^{I} = \langle -10, 10\rangle`
-     - :math:`x+5`
-   * - :math:`P_2`
-     - :math:`x \models Def^{R} = \langle 0.0, 1.0\rangle`
-     - :math:`x^2`
-   * - :math:`P_3`
-     - :math:`Alpha \models Def^{R} = \langle 0.0001, 0.001\rangle` :math:`Iterations \models Def^{I} = \langle 5, 200\rangle` :math:`Loss \models Def^{C} = \{squared\:error, huber, epsilon\:insensitive\}`
-     - :math:`Regression(Alpha, Iterations, Loss)`
-   * - :math:`P_4`
-     - :math:`Learning\;rate \models Def^{R} = \langle 0.0, 0.000001\rangle` :math:`Ema \models Def^{C} = \{True, False\}` :math:`Arch \models Def^{D} = \langle 2,10,\,Def^{G} = \{Neurons \models Def^{I} = \langle 25, 300\rangle, Activation \models Def^{C} = \{relu, sigmoid, softmax, tanh\}, Dropout \models Def^{R} = \langle 0.0, 0.45\rangle\}\rangle`
-     - :math:`LSTM(Learning\;rate, Ema, Arch)`
-
-Problems :math:`P_3` and :math:`P_4` are examples of the target of the MetaGen framework, which is hyperparameter optimization for machine learning models. Problem :math:`P_3` illustrates the optimization of a linear regression model. The objective function is the performance of a model that has been trained with the :math:`Alpha`, :math:`Iterations`, and :math:`Loss` hyperparameters. :math:`Alpha` represents the regularization term that the model uses to prevent overfitting and is typically set to a value close to zero. The :math:`Iterations` hyperparameter controls the number of times the linear model should be re-calculated before reaching an error tolerance. Finally, the :math:`Loss` hyperparameter sets the function used during training to measure the performance of the linear model in each iteration. The domain of problem :math:`P_3` consists of the :math:`Alpha` variable, which is a :math:`REAL` value defined in the interval :math:`[0.0001, 0.001]`, the :math:`Iterations` variable, which is an :math:`INTEGER` defined in the interval :math:`[5, 200]`, and the :math:`Loss` variable, which is a :math:`CATEGORY` and can be set to :math:`squared\:error`, :math:`huber` or :math:`epsilon\:insensitive`.
-
-The problem :math:`P_4` represents a hyperparameter optimization problem for a Long Short-Term Memory (LSTM) deep learning architecture. The objective is to determine the best configuration of the network in terms of the number of layers and the optimal hyperparameters for each layer. There are two common properties that apply to all layers of the architecture: the optimizer, which is stochastic gradient descent, and the control of the optimizer, which is through the learning rate and exponential moving average (EMA) parameters. The stochastic gradient descent is an iterative method used to optimize the network's performance, and the learning rate parameter mod
+For more details, explore the :doc:`understanding_metagen/index` section.
 
 Installation
-==============
+-------------
 
 using pip:
 
@@ -104,11 +77,38 @@ using pip:
 
    (.venv) $ pip install pymetagen-datalabupo
 
+
+Quick Example
+--------------
+
+.. code-block:: python
+
+    from metagen.framework import Domain
+    from metagen.metaheuristics import RandomSearch
+
+    # Define problem domain
+    domain = Domain()
+    domain.defineInteger('x', -10, 10)
+    domain.defineReal('y', -5, 5)
+
+    # Define fitness function
+    def fitness_function(solution):
+        x, y = solution['x'], solution['y']
+        return x**2 + y**2
+
+    # Run optimization
+    search = RandomSearch(domain, fitness_function)
+    best_solution = search.run()
+
 Index
-=========
+-----
 
 .. toctree::
+    :maxdepth: 2
 
-    use_cases
+    understanding_metagen/index
+    metagen_in_action/index
+    performance_tracking/index
+    distributed_execution/index
+    advanced_topics/index
     api
-
