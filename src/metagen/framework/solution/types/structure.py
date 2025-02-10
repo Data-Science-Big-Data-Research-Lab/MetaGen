@@ -304,5 +304,5 @@ class Structure(BaseType):
         :return: A string representation of the values in the Structure.
         :rtype: str
         """
-        str_values = [str(v) for v in self.value]
+        str_values = [str(v.value if isinstance(v, Solution) else v) for v in self.value]
         return str(str_values)
