@@ -31,44 +31,64 @@ if TYPE_CHECKING:
 
 
 class Solution:
+    """
+    Base abstract class representing a solution in an optimization problem.
+
+    This class provides a generic framework for representing and manipulating
+    solutions in various optimization algorithms. It supports key operations
+    such as fitness evaluation, mutation, crossover, and variable management.
+
+    :param definition: The Domain of the solution. If the definition is an instance of Base the connector must be provided.
+    :type definition: Domain | BaseDefinition
+    :param best: If True the individual will be built with the best fitness function; otherwise the worst, defaults to False.
+    :type best: bool
+    :param connector: The connector to be used by the class, if None the definition must be a Domain instance.
+    :type connector: BaseConnector
+
+    :ivar connector: The connector used by the Solution.
+    :vartype connector: BaseConnector
+    :ivar value: The defined variables which constitutes the solution.
+    :vartype value: Dict[str, BaseType]
+    :ivar fitness: The fitness value of the Solution.
+    :vartype fitness: float
+    :ivar __definition: The defined Domain from the solution.
+    :vartype __definition: BaseDefinition
+
+    **Example**
+
+    .. code-block:: python
+
+        >>> from metagen.framework import Domain, Solution
+        >>> domain = Domain()
+        >>> domain.define_integer('example', 0, 10)
+        >>> best_solution  = Solution(domain, best=True)
+        >>> best_solution.fitness
+        0.0
+        >>> best_solution
+        F = 0     {example = 3}
+        >>> worst_solution  = Solution(domain)
+        >>> worst_solution.fitness
+        1.7976931348623157e+308
+        >>> worst_solution
+        F = 1.7976931348623157e+308     {example = 5}
+        >>> boosted_solution = Solution(domain)
+        >>> boosted_solution
+        F = 1.7976931348623157e+308     {example = 1}
+    """
 
     def __init__(self, definition: Domain | BaseDefinition, best=False, connector=None):
-        """ 
+        """
         It is the default and unique, constructor builds an empty solution with the worst fitness value
         (:math:`best=False`, by default) or the best fitness value (:math:`best=False`). Furthermore, a
         :py:class:`~metagen.problem.facades.Domain` object can be passed to check the variable definitions internally and,
         therefore boost the Solution fucntionality.
 
-        **Example:**
-
-        .. code-block:: python
-
-            >>> from metagen.framework import Domain, Solution
-            >>> domain = Domain()
-            >>> domain.define_integer('example', 0, 10)
-            >>> best_solution  = Solution(domain, best=True)
-            >>> best_solution.fitness
-            0.0
-            >>> best_solution
-            F = 0     {example = 3}
-            >>> worst_solution  = Solution(domain)
-            >>> worst_solution.fitness
-            1.7976931348623157e+308
-            >>> worst_solution
-            F = 1.7976931348623157e+308     {example = 5}
-            >>> boosted_solution = Solution(domain)
-            >>> boosted_solution
-            F = 1.7976931348623157e+308     {example = 1}
-
         :param definition: The Domain of the solution. If the definition is an instance of Base the connector must be provided.
+        :type definition: Domain | BaseDefinition
         :param best: If True the individual will be built with the best fitness function; otherwise the worst, defaults to False.
-        :param connector: The connector to be used by the class, if None the definition must be a Domain instance.
-        :type definition: :py:class:`~metagen.framework.Domain`
         :type best: bool
-        :type connector: :py:class:`~metagen.framework.BaseConnector`
-        :vartype __definition: :py:class:`~metagen.problem.facades.Domain`
-        :vartype value: dict
-        :vartype fitness: float
+        :param connector: The connector to be used by the class, if None the definition must be a Domain instance.
+        :type connector: BaseConnector
         """
         self.connector = connector or definition.get_connector()
         self.__definition: BaseDefinition = definition.get_core(
@@ -80,18 +100,20 @@ class Solution:
         self.initialize()
 
     def get_variables(self) -> Dict[str, types.BaseType]:
-        """ It obtains the defined variables which constitutes the solution.
+        """
+        It obtains the defined variables which constitutes the solution.
 
         :returns: The defined variables.
-        :rtype: :py:class:`~metagen.control.legacy.SolStructure`
+        :rtype: Dict[str, BaseType]
         """
         return self.value
 
     def get_definition(self) -> BaseDefinition:
-        """ It obtains the defined Domain from the solution.
+        """
+        It obtains the defined Domain from the solution.
 
         :returns: The defined Domain.
-        :rtype: :py:class:`~metagen.problem.facades.Domain`
+        :rtype: BaseDefinition
         """
         return self.__definition
 
@@ -112,12 +134,10 @@ class Solution:
             :func:`_set_sub_solution`
             :func:`_set_value`
         """
-
         if isinstance(value, (int, float, str, list)):
             base_type_class: type[BaseTypeClass] = self.get_connector().get_type(
                 value)
             variable_definition: Base = self.get_definition().get(variable)
-
             variable_definition.check_value(value)
 
             type_value: types.BaseType = base_type_class(
@@ -227,10 +247,10 @@ class Solution:
 
     def initialize(self):
         """
-        Initializes the solution with random values defined in its domain.
+        Initializes the solution with rs values defined in its domain.
 
         .. note::
-            This method initializes the solution with random values within its domain. It iterates through all the variables in the domain and generates a random value according to their definition. The generated value is then set as the initial value of the variable in the solution.
+            This method initializes the solution with rs values within its domain. It iterates through all the variables in the domain and generates a rs value according to their definition. The generated value is then set as the initial value of the variable in the solution.
 
         .. seealso::
             :func:`_initialize`
@@ -244,9 +264,9 @@ class Solution:
 
     def mutate(self, alterations_number: int = None, alteration_limit: Any = None):
         """
-        Modify a random subset of the solution's variables calling its mutate method.
+        Modify a rs subset of the solution's variables calling its mutate method.
 
-        :param alterations_number: The number of variables to mutate at the first level. If not specified, a random number between 1 and the total number of variables will be chosen.
+        :param alterations_number: The number of variables to mutate at the first level. If not specified, a rs number between 1 and the total number of variables will be chosen.
         :type alterations_number: int, optional
 
         .. seealso::
@@ -344,7 +364,11 @@ class Solution:
         res = "F = " + str(self.fitness) + "\t{"
         count = 1
         for variable in sorted(self.value):
-            res += str(variable) + " = " + str(self.value[variable])
+            if isinstance(self.value[variable], Solution):
+                res += str(variable) + " = " + str(self.value[variable].value)
+            else:
+                res += str(variable) + " = " + str(self.value[variable])
+
             if count < len(self.get_variables()):
                 res += " , "
             count += 1

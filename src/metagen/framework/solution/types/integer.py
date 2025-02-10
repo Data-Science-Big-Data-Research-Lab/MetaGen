@@ -52,7 +52,7 @@ class Integer(BaseType):
 
     def initialize(self) -> None:
         """
-        Initialize the Integer variable with a random integer value in the defined ranges considering the step size.
+        Initialize the Integer variable with a rs integer value in the defined ranges considering the step size.
         """
         _, min_value, max_value, step = self.get_definition().get_attributes()
         step = step or 1
@@ -61,7 +61,7 @@ class Integer(BaseType):
 
     def mutate(self, alteration_limit: int=None) -> None:
         """
-        Modify the value of this Integer instance to a random category from its definition.
+        Modify the value of this Integer instance to a rs category from its definition.
 
         :param alteration_limit: The determined how much the mutation will alter the current value. If not provided, the mutation can replace the current value with any within the domain.
         """
@@ -74,9 +74,8 @@ class Integer(BaseType):
 
             min_value = limited_min_value if max_value > limited_min_value > min_value else min_value
             max_value = limited_max_value if max_value > limited_max_value > min_value else max_value
-            
 
-        random_integer = random.randrange(min_value, max_value + 1, step)
+        random_integer = random.randrange(int(min_value), int(max_value) + 1, step)
         self.set(random_integer)
 
     def set(self, value: Any) -> None:

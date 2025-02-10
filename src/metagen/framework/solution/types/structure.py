@@ -69,7 +69,7 @@ class Structure(BaseType):
 
     def initialize(self) -> None:
         """
-        Initializes the Structure according to the definition provided. If the definition is of type DynamicStructureDefinition, a random size is chosen within the min_size and max_size range (inclusive), with an optional step size. If the definition is of type StaticStructureDefinition, the provided size value is used instead. 
+        Initializes the Structure according to the definition provided. If the definition is of type DynamicStructureDefinition, a rs size is chosen within the min_size and max_size range (inclusive), with an optional step size. If the definition is of type StaticStructureDefinition, the provided size value is used instead.
 
         For each position in the Structure, a new instance of the BaseType class is created based on the base type provided by the definition. The `initialize()` method is then called on this instance to set a value for it, and the instance is appended to the Structure. 
 
@@ -99,9 +99,9 @@ class Structure(BaseType):
     def mutate(self, alteration_limit: Any = None) -> None:
         """
         Modify the Structure by performing an action selected randomly from three options:
-        1. Resizing: if the Structure definition is dynamic, resizes the vector to a new random size.
+        1. Resizing: if the Structure definition is dynamic, resizes the vector to a new rs size.
         2. Altering: modify the values of the vector. Note this option is the only one allowed for a static structure definition.
-        3. Resizing and Altering: if the Structure definition is dynamic, resizes the vector by calling and modify a random set of values of the vector.
+        3. Resizing and Altering: if the Structure definition is dynamic, resizes the vector by calling and modify a rs set of values of the vector.
 
         .. seealso::
             :meth:`_resize`
@@ -138,8 +138,8 @@ class Structure(BaseType):
     def _resize(self) -> None:
         """
         Resizes the vector based on the definition provided at initialization. The vector size can increase or decrease,
-        depending on the minimum, maximum, and step size defined in the definition. When increasing, a random set of values are included from the defined type. 
-        When decreasing, a random set of values are deleted from the structure.
+        depending on the minimum, maximum, and step size defined in the definition. When increasing, a rs set of values are included from the defined type.
+        When decreasing, a rs set of values are deleted from the structure.
         """
 
         current_size = len(self)
@@ -304,5 +304,5 @@ class Structure(BaseType):
         :return: A string representation of the values in the Structure.
         :rtype: str
         """
-        str_values = [str(v) for v in self.value]
+        str_values = [str(v.value if isinstance(v, Solution) else v) for v in self.value]
         return str(str_values)

@@ -11,6 +11,6 @@ Copyright.txt
 licenseadd.sh
 *.eps
 logs/
-*.csv
 *.xlsx
+*.csv
 *.tex

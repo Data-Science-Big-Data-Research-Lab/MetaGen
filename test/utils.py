@@ -14,8 +14,39 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
+import pathlib
+
 from metagen.framework import Domain
 from metagen.framework.solution.devsolution import DevSolution as Solution
+
+def str_to_bool(value: str) -> bool:
+    """Convierte una cadena a un valor booleano."""
+    return value.lower() in ("true", "1", "yes")
+
+def safe_int(value: str) -> int:
+    """Convierte valores '-' o en blanco a un entero predeterminado."""
+    return int(value) if value.strip() and value != '-' else 0
+
+def safe_float(value: str) -> float:
+    """Convierte valores '-' o en blanco a un flotante predeterminado."""
+    return float(value) if value.strip() and value != '-' else 0.0
+
+def safe_str(value: str) -> str:
+    """Convierte valores '-' a una cadena vacía."""
+    return value if value.strip() and value != '-' else ""
+
+def safe_str_to_bool(value: str) -> bool:
+    """Convierte valores '-' a False."""
+    return str_to_bool(value) if value.strip() and value != '-' else False
+
+def metaheuristic_parameters_resource_path(file_name: str) -> str:
+    """Devuelve la ruta absoluta al archivo en la carpeta test_parameters."""
+    return (pathlib.Path(__file__).parents[1] / "test" / "test_parameters" / "metaheuristic_parameters" / file_name).as_posix()
+
+def framework_parameters_resource_path(file_name: str) -> str:
+    """Devuelve la ruta absoluta al archivo en la carpeta test_parameters."""
+    return (pathlib.Path(__file__).parents[1] / "test" / "test_parameters" / "framework_parameters" / file_name).as_posix()
+
 
 domain: Domain = Domain()
 domain.define_integer("I", 0, 100)

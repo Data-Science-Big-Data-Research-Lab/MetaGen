@@ -2,7 +2,11 @@ Metaheuristics
 ===============
 
 .. toctree::
-    cvoa
+    base
     ga
     rs
     sa
+    tpe
+    tabu
+    cvoa
+    mm

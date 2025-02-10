@@ -1,0 +1,32 @@
+# documentation
+sphinx-rtd-theme
+
+# general requirements
+scipy
+numpy
+
+# optional requirements
+ray
+tensorboard
+tensorboardX
+tensorboard-data-server==0.7.2
+tensorboard-plugin-wit==1.8.1
+
+# test-requirements
+pytest==7.2.1
+pytest-csv-params==1.0.0
+pluggy==1.0.0
+scikit-learn
+# tensorflow macosx
+tensorflow-macos
+tensorflow-metal
+tensorflow==2.12.0
+
+#benchmark
+hyperopt
+optuna
+pandas
+matplotlib
+
+
+
