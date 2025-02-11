@@ -68,10 +68,6 @@ class Integer(BaseType):
         _, min_value, max_value, step = self.get_definition().get_attributes()
         step = step or 1
 
-        # print(f"Min value: {min_value}, Max value: {max_value}")
-
-        # TODO: hacer lo del alteration limit como porcentaje
-
         if alteration_limit != None:
             limited_min_value = self.get() - alteration_limit
             limited_max_value = self.get() + alteration_limit
