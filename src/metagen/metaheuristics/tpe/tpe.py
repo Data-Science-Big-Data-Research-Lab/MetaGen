@@ -1,15 +1,10 @@
 import heapq
-from collections import Counter, deque
-
-from scipy.optimize import minimize
+from collections import deque
 
 from metagen.metaheuristics.base import Metaheuristic
 from typing import Callable, List, Tuple, Optional
-import numpy as np
-from scipy.stats import norm
+
 from metagen.framework import Domain, Solution
-from copy import deepcopy
-from metagen.framework.domain.literals import I, R, C
 from metagen.metaheuristics.gamma_schedules import GammaConfig, compute_gamma
 from .tpe_tools import TPEConnector
 
