@@ -1,4 +1,4 @@
-# documentation
+# developtment documentation
 sphinx-rtd-theme
 # general requirements
 scipy
@@ -8,23 +8,19 @@ ray
 tensorboardX
 tensorboard-data-server
 tensorboard-plugin-wit
-#tensorboard
-# test-requirements
+# test
 pytest
 pytest-csv-params
 scikit-learn
 tensorflow
+# tensorflow-macos
+# tensorflow-metal
+# benchmark
 hyperopt
 optuna
 pandas
 matplotlib
 
-
-#pluggy==1.0.0
-#tensorflow macosx
-#tensorflow-macos
-#tensorflow-metal
-#benchmark
 
 
 
