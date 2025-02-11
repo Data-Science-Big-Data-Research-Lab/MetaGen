@@ -1,7 +1,7 @@
 Base Metaheuristic
 ========================
 
-.. automodule:: metagen.metaheuristics.base
+.. autoclass:: metagen.metaheuristics.base.Metaheuristic
     :members:
     :show-inheritance:
 

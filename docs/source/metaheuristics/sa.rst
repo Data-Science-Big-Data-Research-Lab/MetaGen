@@ -1,7 +1,7 @@
 Simulated annealing
 ========================
 
-.. automodule:: metagen.metaheuristics.sa.sa
+.. autoclass:: metagen.metaheuristics.SA
     :members:
     :show-inheritance:
 

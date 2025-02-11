@@ -34,15 +34,11 @@ extensions = [
     'sphinx.ext.duration',
     'sphinx.ext.autosummary',
     'sphinx.ext.autodoc',
-    'sphinx.ext.autosummary',
     'sphinx.ext.graphviz',
     'sphinx.ext.inheritance_diagram',
     'sphinx_rtd_theme',
     'sphinx.ext.autosectionlabel'
 ]
-
-
-
 
 # Numbering of figures, tables and code-blocks
 numfig = True

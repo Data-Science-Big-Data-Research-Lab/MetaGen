@@ -20,8 +20,9 @@ from metagen.metaheuristics.sa import SA
 from metagen.metaheuristics.ts import TabuSearch
 from metagen.metaheuristics.tpe import TPE
 from metagen.metaheuristics.rs import RandomSearch
+from metagen.metaheuristics.mm import Memetic
 
-__all__ = ["RandomSearch", "GA", "GA", "SSGA", "GAConnector", "SA", "TPE", "cvoa_launcher", "TabuSearch"]
+__all__ = ["RandomSearch", "GA", "Memetic", "SSGA", "GAConnector", "SA", "TPE", "cvoa_launcher", "TabuSearch"]
 
 
 
