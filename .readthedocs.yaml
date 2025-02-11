@@ -13,7 +13,7 @@ build:
   jobs:
     post_create_environment:
       - pip install sphinx_rtd_theme
-      - rm -r docs/source/build
+      - rm -r docs/build
       - rm -r build
       - rm -r ../../_readthedocs/html
 
