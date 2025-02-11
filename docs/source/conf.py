@@ -12,10 +12,13 @@ import sys
 from docutils.parsers.rst import directives
 from sphinx.ext.autosummary import Autosummary, get_documenter
 from sphinx.util.inspect import safe_getattr
+import mock
 
 sys.path.insert(0, f'{pathlib.Path(__file__).parents[2].resolve().as_posix()}/src')
 
-import sys
+MOCK_MODULES = ['numpy', 'scipy', 'matplotlib', 'matplotlib.pyplot', 'scipy.interpolate', 'tensorboard', 'tensorboardX', 'tensorboard-data-server', 'tensorboard-plugin-wit', 'ray']
+for mod_name in MOCK_MODULES:
+    sys.modules[mod_name] = mock.Mock()
 
 project = 'MetaGen'
 copyright = '2023, David Gutiérrez Avilés, José Francisco Torres, Manuel Jesús Jiménez-Navarro, and Francisco Martínez-Álvarez'
