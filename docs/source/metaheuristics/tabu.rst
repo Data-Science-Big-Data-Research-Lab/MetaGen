@@ -1,7 +1,7 @@
 Tabu Search
 ========================
 
-.. automodule:: metagen.metaheuristics.ts.tabu
+.. autoclass:: metagen.metaheuristics.TabuSearch
     :members:
     :show-inheritance:
 

@@ -1,7 +1,7 @@
 Random search
 ========================
 
-.. automodule:: metagen.metaheuristics.rs.random_search
+.. autoclass:: metagen.metaheuristics.RandomSearch
     :members:
     :show-inheritance:
 

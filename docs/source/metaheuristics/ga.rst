@@ -1,13 +1,13 @@
 Basic genetic algorithm
 ===========================
 
-.. automodule:: metagen.metaheuristics.ga
+.. autoclass:: metagen.metaheuristics.GA
     :members:
     :show-inheritance:
 
 Steady-state genetic algorithm
 ================================
 
-.. automodule:: metagen.metaheuristics.ga.ssga
+.. autoclass:: metagen.metaheuristics.SSGA
     :members:
     :show-inheritance:
