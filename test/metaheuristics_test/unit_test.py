@@ -5,7 +5,7 @@ import pytest
 import ray
 from pytest_csv_params.decorator import csv_params
 
-from metagen.logging.metagen_logger import metagen_logger, set_metagen_logger_level
+from metagen.logging.metagen_logger import metagen_logger
 from metagen.metaheuristics import RandomSearch, SA, TabuSearch, GA, GAConnector, SSGA, TPE
 from metagen.metaheuristics.gamma_schedules import GammaConfig
 from metagen.metaheuristics.mm.memetic import Memetic
@@ -23,7 +23,7 @@ import warnings
 
 warnings.filterwarnings("ignore", module="sklearn")
 
-"""@csv_params(data_file=metaheuristic_parameters_resource_path("rs.csv"),
+@csv_params(data_file=metaheuristic_parameters_resource_path("rs.csv"),
             id_col="ID#",
             data_casts={"active":safe_str_to_bool,"problem":safe_str,"population_size": safe_int, "max_iterations":safe_int,
                         "distributed":safe_str_to_bool, "log_dir":safe_str,"seed": safe_int, "logging_level":safe_int})
@@ -284,7 +284,7 @@ def test_mm(active: bool, problem: str, population_size: int, max_iterations: in
     assert solution is not None
     assert hasattr(solution, 'fitness')
     assert solution.fitness < float('inf')
-    assert solution.fitness <= initial_best"""
+    assert solution.fitness <= initial_best
 
 @csv_params(data_file=metaheuristic_parameters_resource_path("tpe.csv"),
             id_col="ID#",
@@ -342,7 +342,7 @@ def test_tpe(active:bool, problem: str, max_iterations: int, warmup_iterations: 
     assert hasattr(solution, 'fitness')
     assert solution.fitness < float('inf')
     assert solution.fitness <= initial_best
-"""
+
 @csv_params(data_file=metaheuristic_parameters_resource_path("global.csv"),
             id_col="ID#",
             data_casts={"active": safe_str_to_bool, "metaheuristic": safe_str, "problem": safe_str,
@@ -413,4 +413,4 @@ def test_metaheuristic(active: bool, metaheuristic: str, problem: str,
     assert solution is not None
     assert hasattr(solution, 'fitness')
     assert solution.fitness < float('inf')
-    assert solution.fitness <= initial_best"""
+    assert solution.fitness <= initial_best

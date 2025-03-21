@@ -189,4 +189,4 @@ class SA(Metaheuristic):
         """
         Check if the algorithm should stop.
         """
-        return self.current_iteration >= self.max_iterations or self.current_temp <= self.T_min
+        return self.current_iteration >= self.max_iterations

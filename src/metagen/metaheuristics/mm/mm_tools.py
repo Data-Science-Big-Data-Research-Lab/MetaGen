@@ -1,7 +1,11 @@
 from copy import deepcopy
 from typing import Tuple, Callable, List
+from metagen.metaheuristics.import_helper import is_package_installed
 
-import ray
+if is_package_installed("ray"):
+    import ray
+else:
+    raise ImportError("Ray is not installed. Please install it to use distributed MM.")
 
 from metagen.framework import Solution
 from metagen.logging.metagen_logger import get_remote_metagen_logger
