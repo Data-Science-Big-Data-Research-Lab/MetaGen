@@ -2,7 +2,12 @@ from datetime import timedelta
 from time import time
 from typing import Callable, List
 
-import ray
+from metagen.metaheuristics.import_helper import is_package_installed
+
+if is_package_installed("ray"):
+    import ray
+else:
+    raise ImportError("Ray is not installed. Please install it to use distributed CVOA.")
 
 from metagen.framework import Domain, Solution
 from metagen.framework.solution.bounds import SolutionClass

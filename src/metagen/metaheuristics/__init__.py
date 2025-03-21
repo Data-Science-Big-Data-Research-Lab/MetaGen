@@ -14,15 +14,22 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
+from metagen.metaheuristics.import_helper import is_package_installed
 from metagen.metaheuristics.cvoa import cvoa_launcher
 from metagen.metaheuristics.ga import GA, SSGA, GAConnector
 from metagen.metaheuristics.sa import SA
 from metagen.metaheuristics.ts import TabuSearch
 from metagen.metaheuristics.tpe import TPE
 from metagen.metaheuristics.rs import RandomSearch
-from metagen.metaheuristics.mm import Memetic
 
-__all__ = ["RandomSearch", "GA", "Memetic", "SSGA", "GAConnector", "SA", "TPE", "cvoa_launcher", "TabuSearch"]
+export = ["RandomSearch", "GA", "SSGA", "GAConnector", "SA", "TPE", "cvoa_launcher", "TabuSearch"]
+
+if is_package_installed("ray"):
+    from metagen.metaheuristics.mm import Memetic
+    export.append("Memetic")
+    
+
+__all__ = export
 
 
 

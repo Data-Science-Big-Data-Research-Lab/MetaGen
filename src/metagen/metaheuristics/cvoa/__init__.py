@@ -14,7 +14,15 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-from .distributed_launcher import distributed_cvoa_launcher
 from .local_launcher import cvoa_launcher
+from metagen.metaheuristics.import_helper import is_package_installed
 
-__all__ = ["cvoa_launcher", "distributed_cvoa_launcher"]
+if is_package_installed("ray"):
+    
+    from .distributed_launcher import distributed_cvoa_launcher
+    __all__ = ["cvoa_launcher", "distributed_cvoa_launcher"]
+
+else:
+    __all__ = ["cvoa_launcher"]
+
+
