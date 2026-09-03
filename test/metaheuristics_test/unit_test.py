@@ -2,6 +2,14 @@ import random
 
 import numpy as np
 import pytest
+
+# P-04: ray and tensorflow are optional extras. tensorflow is pulled in
+# transitively at import time by the problem dispatcher, so guard both here and
+# skip this whole module cleanly when either is missing, instead of aborting the
+# collection of the entire test suite.
+pytest.importorskip("ray")
+pytest.importorskip("tensorflow")
+
 import ray
 from pytest_csv_params.decorator import csv_params
 
