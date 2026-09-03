@@ -11,6 +11,9 @@ Copyright.txt
 licenseadd.sh
 *.eps
 logs/
+.DS_Store
+.claude/
+CLAUDE.md
 *.xlsx
 *.csv
 *.tex
