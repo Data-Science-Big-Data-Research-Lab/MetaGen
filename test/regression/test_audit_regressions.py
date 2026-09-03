@@ -15,7 +15,10 @@ esperados. Los detalles de cada hallazgo están en ``AUDIT.md``.
 """
 
 import importlib.util
+import pathlib
 import random
+import subprocess
+import sys
 
 import pytest
 
@@ -367,3 +370,29 @@ def test_f24_el_memetico_no_necesita_ray():
     if importlib.util.find_spec("ray") is not None:
         pytest.skip("Ray esta instalado: el fallo solo se observa sin Ray")
     import metagen.metaheuristics.mm.mm_tools  # noqa: F401
+
+
+def test_p04_la_suite_completa_se_recolecta_sin_los_extras_opcionales():
+    """P-04: ``pytest test`` abortaba en la recoleccion porque
+    ``test/metaheuristics_test/unit_test.py`` importa ``ray`` y, de forma
+    transitiva via el dispatcher, ``tensorflow``. Sin esos extras opcionales el
+    modulo debe saltarse limpiamente, no tumbar la recoleccion de toda la suite.
+    """
+    ray_presente = importlib.util.find_spec("ray") is not None
+    tf_presente = importlib.util.find_spec("tensorflow") is not None
+    if ray_presente and tf_presente:
+        pytest.skip(
+            "ray y tensorflow instalados: sin ningun extra ausente el fallo de "
+            "recoleccion no se observa"
+        )
+    repo_root = pathlib.Path(__file__).resolve().parents[2]
+    resultado = subprocess.run(
+        [sys.executable, "-m", "pytest", "--collect-only", "-q", "test"],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+    )
+    assert resultado.returncode == 0, (
+        "la recoleccion de `pytest test` aborto sin los extras opcionales "
+        f"(exit {resultado.returncode}):\n{resultado.stdout}{resultado.stderr}"
+    )

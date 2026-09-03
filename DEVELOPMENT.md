@@ -44,14 +44,15 @@ Dos ideas que conviene tener presentes:
 ```bash
 pip install -e .                                # instalar en editable
 pytest test/framework_test test/regression      # LA suite que debe estar verde
-pytest test                                     # falla al recolectar sin ray (P-04)
+pytest test                                     # recolecta; salta unit_test.py sin ray/tensorflow
 mypy src                                        # configurado en setup.cfg
 ```
 
-Usa siempre `pytest test/framework_test test/regression`. `pytest test` a secas
-aborta en la recolección porque `test/metaheuristics_test/unit_test.py` importa
-`ray` y `tensorflow`, que son extras opcionales; eso es el hallazgo P-04 y hasta
-que se arregle no es señal de nada.
+Usa `pytest test/framework_test test/regression` para la suite que debe estar
+verde. Desde P-04, `pytest test` ya recolecta: `test/metaheuristics_test/unit_test.py`
+depende de `ray` y `tensorflow` (extras opcionales, este último importado de forma
+transitiva vía el dispatcher) y se **salta limpiamente** cuando faltan, en vez de
+abortar la recolección de toda la suite.
 
 ## Cómo funcionan los tests de regresión
 
