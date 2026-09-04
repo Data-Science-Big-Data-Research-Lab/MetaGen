@@ -1,8 +1,9 @@
 # Auditoría de MetaGen
 
 Revisión completa de `src/metagen` sobre el commit `74f104e` (2025-03-21).
-46 hallazgos con identificadores estables. Los marcados **(R)** se reprodujeron
-ejecutando el paquete instalado en Python 3.11 sin Ray ni TensorFlow.
+47 hallazgos con identificadores estables: los 46 de la revisión inicial más
+`P-11`, añadido al montar el CI. Los marcados **(R)** se reprodujeron ejecutando el
+paquete instalado en Python 3.11 sin Ray ni TensorFlow.
 
 ## Cómo se usa este documento
 
@@ -30,7 +31,7 @@ Marcar aquí el hallazgo como `[x]` al cerrarlo.
 | `F-01`…`F-13` | 13 | Críticos: corrompen resultados o bloquean la ejecución |
 | `F-14`…`F-24` | 11 | Importantes: fallan en casos concretos o desperdician cómputo |
 | `A-01`…`A-12` | 12 | Algoritmia y diseño: decisiones discutibles, no bugs |
-| `P-01`…`P-10` | 10 | Empaquetado, tests y documentación |
+| `P-01`…`P-11` | 11 | Empaquetado, tests y documentación |
 
 Orden sugerido de ataque:
 
@@ -322,8 +323,20 @@ Aquí el código hace lo que dice hacer; lo discutible es qué dice hacer.
 - **[ ] P-03** `setup.cfg:8-10`, badges y enlace de Colab apuntan a `DataLabUPO/MetaGen`; el repo vive en `Data-Science-Big-Data-Research-Lab/MetaGen`. El badge de release no resuelve.
 - **[x] P-04 (R)** `pytest test` —el comando del README— **no llega a recolectar**: `test/metaheuristics_test/unit_test.py` importa `ray` y `tensorflow`, que son extras opcionales. Solo corren los 101 tests de `framework_test`. *Arreglo*: `pytest.importorskip("ray")` y `pytest.importorskip("tensorflow")` a nivel de módulo en `unit_test.py` (tensorflow se importa de forma transitiva vía el dispatcher, así que un `@pytest.mark.skipif` por test no basta: el fallo ocurre en tiempo de importación). Test: `test_p04_la_suite_completa_se_recolecta_sin_los_extras_opcionales`.
 - **[ ] P-05** Los tests de metaheurísticas solo comprueban `assert solution is not None`. Los cuatro bugs críticos pasan la suite. *Arreglo*: con semilla fija (A-06), tres aserciones por algoritmo: fitness final ≤ mejor inicial; mejor que una búsqueda aleatoria del mismo presupuesto; `best_solution_fitnesses` monótona no creciente.
-- **[ ] P-06** No hay `.github/workflows`. Con `mypy` ya configurado en `setup.cfg` y una suite que corre en 3 s, un workflow mínimo con matriz 3.10–3.12 captura buena parte de lo anterior.
+- **[x] P-06** No hay `.github/workflows`. Con `mypy` ya configurado en `setup.cfg` y una suite que corre en 3 s, un workflow mínimo con matriz 3.10–3.12 captura buena parte de lo anterior. *Cerrado*: `.github/workflows/ci.yml` con dos jobs, `tests` (matriz 3.10–3.12, bloqueante) y `types` (`mypy src`, informativo hasta que cierre `P-11`). Dos cosas salieron a la luz al montarlo: la suite necesita `pytest-csv-params`, que no declara ni `install_requires` ni ningún extra (ver `P-08`), y **el CI no instala los extras a propósito**, porque un entorno sin Ray es el único donde `F-24` es observable — en esta máquina su test se salta y por eso salen 20 xfailed en vez de 21.
 - **[ ] P-07** `.gitignore:14` excluye `*.csv` y `*.xlsx`, y los parámetros de test son CSV en `test/test_parameters/`. Cualquier fichero nuevo se queda fuera del commit sin aviso. *Arreglo*: `!test/test_parameters/**/*.csv`.
 - **[ ] P-08** Los extras de `setup.cfg` usan `;`, que en PEP 508 es el separador de **marcadores de entorno**, no de requisitos: `tensorboard = tensorboard; tensorboardX` se lee como «tensorboard, si el marcador tensorboardX». Comprobar qué instala `pip install pymetagen-datalabupo[all]`. Además hay tres `requirements*.txt` con criterios solapados. *Arreglo*: un requisito por línea y migrar la metadata a `pyproject.toml`.
 - **[ ] P-09** Falta `src/metagen/py.typed`: el paquete está anotado de arriba abajo pero sin el marcador PEP 561 mypy trata `metagen` como `Any`.
 - **[ ] P-10** Los ejemplos de las docstrings usan una API que no existe: `domain.defineInteger(0, 1)` en RS, TPE, Memetic y CVOA (el método es `define_integer(name, min, max)`), y el ejemplo de CVOA usa `CVOA.initialize_pandemic(...)` y `cvoa_launcher(strains)`, de una versión anterior. Son las páginas que publica readthedocs. *Arreglo*: actualizarlos y añadirlos como doctests.
+- **[ ] P-11** `mypy src` **no pasa limpio**: 14 errores en 10 ficheros, pese a que el proyecto se desarrolló con la condición de usar tipos. Por eso el job `types` del CI nace informativo (`continue-on-error: true`). Diez de los catorce no son deuda nueva, sino los mismos bugs que ya recoge la auditoría vistos por otra ventana:
+
+  | Causa | Errores | Se cierra con |
+  |---|---|---|
+  | `logging/metagen_logger.py:29, 69, 70` — parcheo de `Logger` y `Handler \| None` sin comprobar | 3 | `A-11` |
+  | `solution/types/base.py:117, 119, 122` — `int \| float` asignado a un `int` en `_closest_number` | 3 | `F-01` |
+  | `solution/types/structure.py:202` — `Function "BaseType" could always be true` | 1 | `F-05` |
+  | `metaheuristics/base.py:256`, `cvoa_local.py:259`, `cvoa_distributed.py:238` — `.get_fitness()` sobre `Any \| None` | 3 | Familia `F-14` / `A-10` |
+  | `base_solution.py:265`, `real.py:61`, `integer.py:62` — `Optional` implícito: `= None` en un parámetro no opcional | 3 | Propio de `P-11` |
+  | `tpe/tpe.py:88` — falta anotar `solution_history` | 1 | Propio de `P-11` |
+
+  *Arreglo*: cerrar los hallazgos de la tabla, resolver los cuatro restantes (`x: int \| None = None` y una anotación en TPE) y, cuando `mypy src` salga a cero, **quitar el `continue-on-error: true` del job `types`** para que la comprobación pase a bloquear. Conviene hacerlo junto con `P-09` (`py.typed`), que hoy hace que mypy trate `metagen` como `Any` desde fuera del paquete.

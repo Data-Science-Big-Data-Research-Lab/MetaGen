@@ -396,3 +396,57 @@ def test_p04_la_suite_completa_se_recolecta_sin_los_extras_opcionales():
         "la recoleccion de `pytest test` aborto sin los extras opcionales "
         f"(exit {resultado.returncode}):\n{resultado.stdout}{resultado.stderr}"
     )
+
+
+def test_p06_el_workflow_de_ci_ejecuta_la_suite_que_debe_estar_verde():
+    """P-06: no habia `.github/workflows`, asi que nada comprobaba la suite al
+    subir cambios.
+
+    Se comprueba el contenido del workflow, no solo su existencia. Tres cosas
+    tienen que seguir siendo ciertas o el CI deja de servir para lo que se monto:
+
+    - ejecuta la suite que debe estar verde;
+    - instala `pytest-csv-params`, que no declara ni `install_requires` ni
+      ningun extra (P-08) y sin el cual `solution_test.py` ni se recolecta;
+    - **no** instala los extras opcionales, porque un entorno sin Ray es el
+      unico donde F-24 es observable.
+
+    No se comprueba el `continue-on-error` del job de mypy a proposito: esa
+    linea desaparece al cerrar P-11.
+    """
+    repo_root = pathlib.Path(__file__).resolve().parents[2]
+    workflow = repo_root / ".github" / "workflows" / "ci.yml"
+    assert workflow.is_file(), f"no existe el workflow de CI en {workflow}"
+
+    texto = workflow.read_text(encoding="utf-8")
+
+    assert "pytest test/framework_test test/regression" in texto, (
+        "el workflow no ejecuta la suite que debe estar verde"
+    )
+
+    instalaciones = [
+        linea.strip()
+        for linea in texto.splitlines()
+        if "pip install" in linea
+    ]
+    assert any("pytest-csv-params" in linea for linea in instalaciones), (
+        "el CI no instala pytest-csv-params: framework_test/solution_test.py no "
+        "se llegaria a recolectar"
+    )
+
+    extras = [
+        linea
+        for linea in instalaciones
+        for extra in ("ray", "tensorflow", "[all]", "[distributed]")
+        if extra in linea
+    ]
+    assert not extras, (
+        "el CI instala extras opcionales y eso oculta F-24, que solo se observa "
+        f"sin Ray: {extras}"
+    )
+
+    for version in ("3.10", "3.11", "3.12"):
+        assert f'"{version}"' in texto, (
+            f"la matriz del CI no cubre Python {version}, dentro del "
+            "python_requires >=3.10 declarado en setup.cfg"
+        )

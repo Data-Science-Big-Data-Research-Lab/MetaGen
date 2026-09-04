@@ -7,8 +7,8 @@ Pablo de Olavide). Licencia: ver P-01 en `AUDIT.md` — hoy es contradictoria.
 ## Contexto de trabajo actual
 
 Estamos aplicando los arreglos de una auditoría de código. **Lee AUDIT.md antes
-de tocar nada**: contiene 46 hallazgos con identificadores estables (`F-01`…`F-24`
-críticos e importantes, `A-01`…`A-12` de diseño, `P-01`…`P-10` de proyecto), cada
+de tocar nada**: contiene 47 hallazgos con identificadores estables (`F-01`…`F-24`
+críticos e importantes, `A-01`…`A-12` de diseño, `P-01`…`P-11` de proyecto), cada
 uno con fichero:línea, diagnóstico y arreglo propuesto.
 
 ## Arquitectura
@@ -53,6 +53,26 @@ verde. Desde P-04, `pytest test` ya recolecta: `test/metaheuristics_test/unit_te
 depende de `ray` y `tensorflow` (extras opcionales, este último importado de forma
 transitiva vía el dispatcher) y se **salta limpiamente** cuando faltan, en vez de
 abortar la recolección de toda la suite.
+
+Ojo con `pytest-csv-params`: `framework_test/solution_test.py` lo necesita y no lo
+declara ni `install_requires` ni ningún extra (ver P-08). Sin él, ese módulo ni
+siquiera se recolecta.
+
+## Integración continua
+
+Desde P-06, `.github/workflows/ci.yml` corre en cada push y PR sobre `master` y
+`dev`, con dos jobs:
+
+- **`tests`** — matriz 3.10 / 3.11 / 3.12, **bloqueante**. Instala `pip install -e .`
+  más `pytest` y `pytest-csv-params`, y ejecuta la suite que debe estar verde.
+- **`types`** — `mypy src`, **informativo** (`continue-on-error: true`) mientras
+  P-11 siga abierto. Hoy son 14 errores; diez pertenecen a hallazgos ya conocidos
+  (F-01, F-05, A-11, familia F-14/A-10). Cuando el contador llegue a cero, quitar el
+  `continue-on-error` y la comprobación pasa a bloquear.
+
+El CI **no instala los extras a propósito**: un entorno sin Ray es el único donde
+`F-24` es observable. Allí la suite da `102 passed, 21 xfailed`; en una máquina con
+Ray instalado son 20 xfailed y 1 skipped.
 
 ## Cómo funcionan los tests de regresión
 
