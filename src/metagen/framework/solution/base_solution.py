@@ -16,7 +16,7 @@
 """
 from __future__ import annotations
 
-import sys
+import math
 from collections.abc import Callable
 from typing import TYPE_CHECKING, KeysView, ValuesView, Dict, Any
 
@@ -63,17 +63,17 @@ class Solution:
         >>> domain.define_integer('example', 0, 10)
         >>> best_solution  = Solution(domain, best=True)
         >>> best_solution.fitness
-        0.0
+        -inf
         >>> best_solution
-        F = 0     {example = 3}
+        F = -inf     {example = 3}
         >>> worst_solution  = Solution(domain)
         >>> worst_solution.fitness
-        1.7976931348623157e+308
+        inf
         >>> worst_solution
-        F = 1.7976931348623157e+308     {example = 5}
+        F = inf     {example = 5}
         >>> boosted_solution = Solution(domain)
         >>> boosted_solution
-        F = 1.7976931348623157e+308     {example = 1}
+        F = inf     {example = 1}
     """
 
     def __init__(self, definition: Domain | BaseDefinition, best=False, connector=None):
@@ -95,7 +95,10 @@ class Solution:
         ) if definition.__class__.__name__ == 'Domain' else definition
 
         self.value: Dict[str, types.BaseType] = {}
-        self.fitness: float = sys.float_info.min if best else sys.float_info.max
+        # Infinities, not sys.float_info: its .min is +2.2e-308, a positive number,
+        # so any objective able to go negative was already better than the
+        # "best possible" sentinel (F-14).
+        self.fitness: float = -math.inf if best else math.inf
 
         self.initialize()
 

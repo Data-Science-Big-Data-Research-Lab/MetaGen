@@ -63,7 +63,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ⬜ | `F-11` | La búsqueda local distribuida manda la misma porción a todos los workers |
 | ⬜ | `F-12` | Todos los `Domain` comparten el mismo conector por defecto |
 | ⬜ | `F-13` | TPE modifica el `Domain` que le pasa el usuario |
-| ⬜ | `F-14` | `sys.float_info.min` no es «menos infinito» |
+| ✅ | `F-14` | `sys.float_info.min` no es «menos infinito» |
 | ⬜ | `F-15` | `Solution.__hash__` no mira las variables |
 | ⬜ | `F-16` | Los mensajes de error de `Domain` salen mal formados |
 | ⬜ | `F-17` | Categorías duplicadas aceptadas, categoría única rechazada |
@@ -327,7 +327,7 @@ siempre. Comparar varias metaheurísticas en un bucle da resultados dependientes
 
 ## Importantes
 
-### [ ] F-14 (R) · `sys.float_info.min` no es «menos infinito»
+### [x] F-14 (R) · `sys.float_info.min` no es «menos infinito»
 `src/metagen/framework/solution/base_solution.py:98` · test: `test_f14_el_centinela_de_mejor_fitness_es_menor_que_cualquier_objetivo`
 
 Es `+2.2250738585072014e-308`. Cualquier objetivo que pueda ser negativo ya es «peor»
@@ -335,6 +335,22 @@ que el centinela «mejor posible». Las docstrings de `base_solution.py:65` y
 `devsolution.py:40` afirman que vale `0.0`, que tampoco es cierto. Causa de fondo de F-10.
 
 **Arreglo** `-math.inf` / `math.inf`, y corregir las dos docstrings.
+
+*Cerrado.* El centinela vive en un único sitio, `base_solution.py:98`, así que el
+cambio es esa línea más las docstrings. Estas afirmaban `0.0` para el mejor y
+`1.7976931348623157e+308` para el peor; ninguno de los dos valores era cierto y ahora
+son `-inf` e `inf`. Se corrigieron **seis** líneas de docstring, no dos: `base_solution.py`
+y `devsolution.py` repiten el ejemplo tres veces cada una.
+
+**Un test ajeno a la auditoría también codificaba el valor viejo:**
+`framework_test/alteration_test.py:44` comprobaba
+`solution.fitness == sys.float_info.max`. Se actualizó a `math.inf`: su intención
+—una solución recién creada arranca con el peor fitness posible— es la misma, solo
+tenía el número escrito a mano.
+
+Esto es la causa de fondo de `F-10` (*el «peor superspreader» de CVOA se inicializa al
+revés*), que sigue abierto: ahora `Solution(best=True)` sí devuelve algo menor que
+cualquier objetivo real, que es lo que aquel mecanismo necesitaba para funcionar.
 
 ### [ ] F-15 (R) · `Solution.__hash__` no mira las variables
 `base_solution.py:444` · tests: `test_f15_*`
