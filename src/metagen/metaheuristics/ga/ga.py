@@ -19,7 +19,7 @@ import heapq
 from metagen.framework import Domain, Solution
 from .ga_tools import GASolution, yield_two_children
 from metagen.metaheuristics.base import Metaheuristic
-from typing import Callable, List, Tuple, cast
+from typing import Optional, Callable, List, Tuple, cast
 from copy import deepcopy
 
 from metagen.metaheuristics.tools import random_exploration
@@ -54,8 +54,9 @@ class GA(Metaheuristic):
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
                  population_size: int = 20,
                  max_iterations: int = 50, mutation_rate: float = 0.1,
-                 distributed: bool = False, log_dir: str = "logs/GA"):
-        super().__init__(domain, fitness_function, population_size=population_size, distributed=distributed, log_dir=log_dir)
+                 distributed: bool = False, log_dir: str = "logs/GA",
+                 seed: Optional[int] = None):
+        super().__init__(domain, fitness_function, population_size=population_size, distributed=distributed, log_dir=log_dir, seed=seed)
         self.mutation_rate = mutation_rate
         self.max_iterations = max_iterations
 

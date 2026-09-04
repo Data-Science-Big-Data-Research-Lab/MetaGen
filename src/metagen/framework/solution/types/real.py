@@ -14,12 +14,12 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-import random
 from typing import Any
 
 from metagen.framework.domain import RealDefinition
 
 from .base import BaseType
+from metagen.framework.rng import get_rng
 
 
 class Real(BaseType):
@@ -53,7 +53,7 @@ class Real(BaseType):
         """
         _, min_value, max_value, step = self.get_definition().get_attributes()
 
-        random_real = random.uniform(min_value, max_value)
+        random_real = get_rng().uniform(min_value, max_value)
         if step is not None:
             random_real = self._closest_number(random_real, step)
         self.set(random_real)

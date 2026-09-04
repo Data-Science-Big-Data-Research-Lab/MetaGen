@@ -17,7 +17,7 @@
 import heapq
 from collections.abc import Callable
 from copy import deepcopy
-from typing import List, Tuple, cast
+from typing import Optional, List, Tuple, cast
 
 from metagen.framework import Domain, Solution
 from .ga_tools import GASolution, yield_two_children
@@ -55,8 +55,9 @@ class SSGA(Metaheuristic):
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
                  population_size: int = 10,
                  max_iterations: int = 50, mutation_rate: float = 0.1,
-                 distributed: bool = False, log_dir: str = "logs/SSGA"):
-        super().__init__(domain, fitness_function, population_size=population_size, distributed=distributed, log_dir=log_dir)
+                 distributed: bool = False, log_dir: str = "logs/SSGA",
+                 seed: Optional[int] = None):
+        super().__init__(domain, fitness_function, population_size=population_size, distributed=distributed, log_dir=log_dir, seed=seed)
         self.mutation_rate = mutation_rate
         self.max_iterations = max_iterations
 

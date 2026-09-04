@@ -1,9 +1,9 @@
 import copy
-import random
 from typing import NamedTuple, Set, Tuple, Callable
 
 from metagen.framework import Domain, Solution
 from metagen.logging.metagen_logger import metagen_logger
+from metagen.framework.rng import get_rng
 
 
 # Strain Properties
@@ -31,18 +31,18 @@ def compute_n_infected_travel_distance(domain: Domain, strain_properties: Strain
     if carrier in superspreaders:
         # If the current individual is superspreader the number of infected ones will be in
         # (MIN_SUPERSPREADING_RATE, MAX_SUPERSPREADING_RATE)
-        n_infected = random.randint(strain_properties.min_superspreading_rate,
+        n_infected = get_rng().randint(strain_properties.min_superspreading_rate,
                                     strain_properties.max_superspreading_rate)
     else:
         # If the current individual is common the number of infected ones will be in
         # (0, MAX_SUPERSPREADING_RATE)
-        n_infected = random.randint(0, strain_properties.spreading_rate)
+        n_infected = get_rng().randint(0, strain_properties.spreading_rate)
 
     # ** 2. Determine the travel distance. **
-    if random.random() < strain_properties.p_travel:
+    if get_rng().random() < strain_properties.p_travel:
         # If the current individual is a traveler, the travel distance will be in
         # (0, number of variable defined in the problem)
-        travel_distance = random.randint(0, len(domain.get_core().variable_list()))
+        travel_distance = get_rng().randint(0, len(domain.get_core().variable_list()))
     else:
         # Otherwise the travel distance will be 1.
         travel_distance = 1

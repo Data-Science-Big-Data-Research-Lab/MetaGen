@@ -15,7 +15,6 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 import math
-import random
 import threading
 from typing import Set, List, Tuple, Callable
 
@@ -28,6 +27,7 @@ from metagen.metaheuristics.base import Metaheuristic
 from metagen.metaheuristics.cvoa.common_tools import StrainProperties, IndividualState, \
     compute_n_infected_travel_distance, infect, insert_into_set_strain
 from metagen.metaheuristics.cvoa.local_tools import LocalPandemicState
+from metagen.framework.rng import get_rng
 
 
 class CVOA(Metaheuristic):
@@ -283,7 +283,7 @@ class CVOA(Metaheuristic):
             # the newly infected individual can be isolated or not.
             else:
                 new_infected_individual = infect(carrier_individual, self.fitness_function, 1)
-                if random.random() < self.strain_properties.p_isolation:
+                if get_rng().random() < self.strain_properties.p_isolation:
                     self.update_new_infected_population(infected_population, new_infected_individual)
                 else:
                     # If the new individual is isolated, and update_isolated is true, this is sent to the
@@ -315,7 +315,7 @@ class CVOA(Metaheuristic):
         # p_reinfection. If it can be reinfected, insert it into the new population and remove it from the global
         # recovered set.
         elif individual_state.recovered:
-            if random.random() < self.strain_properties.p_re_infection:
+            if get_rng().random() < self.strain_properties.p_re_infection:
                 new_infected_population.add(new_infected_individual)
                 self.global_state.get_infected_again(new_infected_individual)
 

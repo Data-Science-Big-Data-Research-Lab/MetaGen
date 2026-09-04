@@ -14,12 +14,12 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-import random
 from typing import Any
 
 from metagen.framework.domain import CategoricalDefinition
 
 from .base import BaseType
+from metagen.framework.rng import get_rng
 
 
 class Categorical(BaseType):
@@ -53,7 +53,7 @@ class Categorical(BaseType):
         Initialize the categorical variable with a rs category from the available categories.
         """
         _, categories = self.get_definition().get_attributes()
-        random_category = random.choice(categories)
+        random_category = get_rng().choice(categories)
 
         self.set(random_category)
 
@@ -63,7 +63,7 @@ class Categorical(BaseType):
         """
         _, categories = self.get_definition().get_attributes()
         current_category = self.get()
-        random_category = random.choice(
+        random_category = get_rng().choice(
             [category for category in categories if category != current_category])
         self.set(random_category)
 

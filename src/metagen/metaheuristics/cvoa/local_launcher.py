@@ -1,9 +1,10 @@
 from concurrent.futures.thread import ThreadPoolExecutor
 from datetime import timedelta
 from time import time
-from typing import Callable, List
+from typing import Callable, List, Optional
 
 from metagen.framework import Domain, Solution
+from metagen.framework.rng import set_seed
 from metagen.framework.solution.bounds import SolutionClass
 from metagen.logging.metagen_logger import metagen_logger
 
@@ -20,8 +21,31 @@ def run_strain(global_state:LocalPandemicState, domain:Domain, fitness_function:
 
 
 def cvoa_launcher(strains: List[StrainProperties], domain: Domain, fitness_function: Callable[[Solution], float],
-                  update_isolated: bool = False, log_dir: str = "logs/CVOA") -> Solution:
+                  update_isolated: bool = False, log_dir: str = "logs/CVOA",
+                  seed: Optional[int] = None) -> Solution:
+    """
+    Run a CVOA pandemic over the given strains and return the best solution.
 
+    :param strains: The strains taking part in the pandemic.
+    :type strains: List[StrainProperties]
+    :param domain: The problem domain.
+    :type domain: Domain
+    :param fitness_function: Function to evaluate solutions.
+    :type fitness_function: Callable[[Solution], float]
+    :param update_isolated: Whether to update the isolated population.
+    :type update_isolated: bool, optional
+    :param log_dir: Directory for logging.
+    :type log_dir: str, optional
+    :param seed: Seed for MetaGen's generators (default is None). Note that a
+        pandemic with more than one strain runs them in concurrent threads that
+        share those generators, so a seed makes a single-strain run reproducible
+        but does not pin down the interleaving of several strains.
+    :type seed: Optional[int], optional
+    :return: The best solution found across every strain.
+    :rtype: Solution
+    """
+    if seed is not None:
+        set_seed(seed)
 
     # Initialize the global state
     solution_type: type[SolutionClass] = domain.get_connector().get_type(domain.get_core())

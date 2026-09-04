@@ -1,6 +1,6 @@
 import heapq
 from copy import deepcopy
-from typing import Callable, Tuple, List, cast
+from typing import Optional, Callable, Tuple, List, cast
 
 from metagen.framework import Domain, Solution
 from metagen.metaheuristics.tools import random_exploration
@@ -68,9 +68,9 @@ class Memetic(Metaheuristic):
                  max_iterations: int = 20, mutation_rate: float = 0.1,
                  neighbor_population_size: int = 10, alteration_limit: float = 1.0,
                  distributed: bool = False, log_dir: str = "logs/MM",
-                 distribution_level: int = 0) -> None:
+                 distribution_level: int = 0, seed: Optional[int] = None) -> None:
         """Initialize the Memetic Algorithm with the given parameters."""
-        super().__init__(domain, fitness_function, population_size=population_size, distributed=distributed, log_dir=log_dir)
+        super().__init__(domain, fitness_function, population_size=population_size, distributed=distributed, log_dir=log_dir, seed=seed)
 
         self.mutation_rate = mutation_rate
         self.max_generations = max_iterations

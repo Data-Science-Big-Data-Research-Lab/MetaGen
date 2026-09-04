@@ -16,12 +16,12 @@
 """
 from __future__ import annotations
 
-import random
 import sys
 from collections.abc import Callable
 from typing import TYPE_CHECKING, KeysView, ValuesView, Dict, Any
 
 import metagen.framework.solution as types
+from metagen.framework.rng import get_rng
 
 if TYPE_CHECKING:
     from metagen.framework import BaseConnector, Domain
@@ -274,9 +274,9 @@ class Solution:
             :func:`initialize`
         """
         variables = self.get_variables().keys()
-        alterations_number = alterations_number or random.randint(
+        alterations_number = alterations_number or get_rng().randint(
             1, len(variables))
-        altered_variables = set(random.sample(
+        altered_variables = set(get_rng().sample(
             list(variables), alterations_number))
 
         for variable in altered_variables:

@@ -31,13 +31,20 @@ src/metagen/
   logging/        metagen_logger + TensorBoardLogger
 ```
 
-Dos ideas que conviene tener presentes:
+Tres ideas que conviene tener presentes:
 
 - **Todo minimiza.** Menor fitness es mejor, en todo el código. Cualquier comparación
   que vaya en el otro sentido es sospechosa (así se detectó F-02).
 - **El conector es el mecanismo de extensión.** GA y TPE registran sus propias
   subclases (`GAConnector`, `TPEConnector`). Un cambio en `BaseConnector` o en la
   jerarquía de tipos repercute en los dos.
+- **Nada en `src/` usa el RNG global.** Desde A-06, todo sorteo pasa por
+  `framework/rng.py`, que guarda dos generadores propios del paquete: un
+  `random.Random` y un `np.random.Generator` (TPE tira de NumPy, el resto de la
+  biblioteca estándar). Un `random.x(...)` nuevo en `src/` es un bug: usa
+  `get_rng()` o `get_numpy_rng()`. Para sembrar, `Metaheuristic(..., seed=N)` o
+  `set_seed(N)` directamente; en los tests, **nunca `random.seed()`**, que ya no
+  controla nada de la librería.
 
 ## Comandos
 
