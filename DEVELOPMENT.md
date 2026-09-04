@@ -7,7 +7,7 @@ Pablo de Olavide). Licencia: ver P-01 en `AUDIT.md` — hoy es contradictoria.
 ## Contexto de trabajo actual
 
 Estamos aplicando los arreglos de una auditoría de código. **Lee AUDIT.md antes
-de tocar nada**: contiene 47 hallazgos con identificadores estables (`F-01`…`F-24`
+de tocar nada**: contiene 48 hallazgos con identificadores estables (`F-01`…`F-25`
 críticos e importantes, `A-01`…`A-12` de diseño, `P-01`…`P-11` de proyecto), cada
 uno con fichero:línea, diagnóstico y arreglo propuesto.
 

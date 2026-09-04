@@ -1,9 +1,10 @@
 # Auditoría de MetaGen
 
 Revisión completa de `src/metagen` sobre el commit `74f104e` (2025-03-21).
-47 hallazgos con identificadores estables: los 46 de la revisión inicial más
-`P-11`, añadido al montar el CI. Los marcados **(R)** se reprodujeron ejecutando el
-paquete instalado en Python 3.11 sin Ray ni TensorFlow.
+48 hallazgos con identificadores estables: los 46 de la revisión inicial más
+`P-11`, añadido al montar el CI, y `F-25`, encontrado al medir el comportamiento
+real de las metaheurísticas para `P-05`. Los marcados **(R)** se reprodujeron
+ejecutando el paquete instalado en Python 3.11 sin Ray ni TensorFlow.
 
 ## Cómo se usa este documento
 
@@ -29,7 +30,7 @@ Marcar aquí el hallazgo como `[x]` al cerrarlo.
 | Bloque | Cantidad | Qué son |
 |---|---|---|
 | `F-01`…`F-13` | 13 | Críticos: corrompen resultados o bloquean la ejecución |
-| `F-14`…`F-24` | 11 | Importantes: fallan en casos concretos o desperdician cómputo |
+| `F-14`…`F-25` | 12 | Importantes: fallan en casos concretos o desperdician cómputo |
 | `A-01`…`A-12` | 12 | Algoritmia y diseño: decisiones discutibles, no bugs |
 | `P-01`…`P-11` | 11 | Empaquetado, tests y documentación |
 
@@ -294,6 +295,37 @@ La importación es de módulo, no de la rama distribuida. En una instalación es
 `Memetic` no existe en `metagen.metaheuristics`, pese a que el README lo anuncia.
 
 **Arreglo** Separar `mm_tools` (sin Ray) de `mm_distributed_tools` (con Ray).
+
+### [ ] F-25 (R) · SA se queda con el último vecino, no con el mejor
+`src/metagen/metaheuristics/sa/sa.py:161` · sin test todavía
+
+```python
+best_neighbor = neighbor          # alias, no una copia
+best_fitness  = neighbor.get_fitness()
+
+for _ in range(self.neighbor_population_size - 1):
+    neighbor.mutate(...)          # muta EL MISMO objeto
+    neighbor.evaluate(...)
+    if neighbor.get_fitness() < best_fitness:
+        best_neighbor = deepcopy(neighbor)   # aquí sí se copia
+```
+
+`best_neighbor` referencia el mismo objeto que el bucle sigue mutando, así que si el
+mejor vecino resulta ser **el primero**, `best_neighbor` acaba apuntando al último
+generado mientras `best_fitness` sigue anunciando el valor del primero. Reproducido
+aislando el patrón: SA acepta como mejora una solución creyendo que vale `7.7253`
+cuando su valor real es `24.7073`.
+
+Hay un segundo problema en el mismo bucle: los vecinos se generan **en cadena**,
+mutando acumulativamente el mismo objeto en vez de partir cada vez de
+`current_solution`. Es el mismo patrón que `A-03` reprocha a la búsqueda tabú, y se
+aleja del punto actual en lugar de explorar su vecindario.
+
+Con `neighbor_population_size=1`, el valor por defecto, el bucle no llega a
+ejecutarse y nada de esto se observa: por eso no aparece en las mediciones de `P-05`.
+
+**Arreglo** `best_neighbor = deepcopy(neighbor)` en la línea 161, y generar cada
+vecino desde `deepcopy(current_solution)` dentro del bucle.
 
 ---
 
