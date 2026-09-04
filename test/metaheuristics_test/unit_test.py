@@ -43,7 +43,6 @@ def test_rs(active: bool, problem: str, population_size: int, max_iterations:int
 
     random.seed(seed)
     np.random.seed(seed)
-    initial_best = float('inf')
 
     metagen_logger.setLevel(logging_level)
 
@@ -68,6 +67,9 @@ def test_rs(active: bool, problem: str, population_size: int, max_iterations:int
     assert solution is not None
     assert hasattr(solution, 'fitness')
     assert solution.fitness < float('inf')
+    # The best fitness the search had when it started. Comparing against
+    # float('inf'), as this did before P-05, asserted nothing at all.
+    initial_best = algorithm.best_solution_fitnesses[0]
     assert solution.fitness <= initial_best
 
 
@@ -86,7 +88,6 @@ def test_sa(active: bool, problem: str, warmup_iterations:int, max_iterations:in
 
     random.seed(seed)
     np.random.seed(seed)
-    initial_best = float('inf')
 
     metagen_logger.setLevel(logging_level)
 
@@ -113,6 +114,9 @@ def test_sa(active: bool, problem: str, warmup_iterations:int, max_iterations:in
     assert solution is not None
     assert hasattr(solution, 'fitness')
     assert solution.fitness < float('inf')
+    # The best fitness the search had when it started. Comparing against
+    # float('inf'), as this did before P-05, asserted nothing at all.
+    initial_best = algorithm.best_solution_fitnesses[0]
     assert solution.fitness <= initial_best
 
 @csv_params(data_file=metaheuristic_parameters_resource_path("ts.csv"),
@@ -130,7 +134,6 @@ def test_ts(active:bool, problem: str, population_size: int, warmup_iterations: 
 
     random.seed(seed)
     np.random.seed(seed)
-    initial_best = float('inf')
 
     metagen_logger.setLevel(logging_level)
 
@@ -168,6 +171,9 @@ def test_ts(active:bool, problem: str, population_size: int, warmup_iterations: 
     assert solution is not None
     assert hasattr(solution, 'fitness')
     assert solution.fitness < float('inf')
+    # The best fitness the search had when it started. Comparing against
+    # float('inf'), as this did before P-05, asserted nothing at all.
+    initial_best = algorithm.best_solution_fitnesses[0]
     assert solution.fitness <= initial_best
 
 
@@ -185,7 +191,6 @@ def test_ga(active:bool, problem: str, population_size: int, max_iterations:int,
 
     random.seed(seed)
     np.random.seed(seed)
-    initial_best = float('inf')
 
     metagen_logger.setLevel(logging_level)
 
@@ -209,6 +214,9 @@ def test_ga(active:bool, problem: str, population_size: int, max_iterations:int,
     assert solution is not None
     assert hasattr(solution, 'fitness')
     assert solution.fitness < float('inf')
+    # The best fitness the search had when it started. Comparing against
+    # float('inf'), as this did before P-05, asserted nothing at all.
+    initial_best = algorithm.best_solution_fitnesses[0]
     assert solution.fitness <= initial_best
 
 @csv_params(data_file=metaheuristic_parameters_resource_path("ga.csv"),
@@ -223,7 +231,6 @@ def test_ssga(active:bool, problem: str, population_size: int, max_iterations:in
 
     random.seed(seed)
     np.random.seed(seed)
-    initial_best = float('inf')
 
     metagen_logger.setLevel(logging_level)
 
@@ -246,6 +253,9 @@ def test_ssga(active:bool, problem: str, population_size: int, max_iterations:in
     assert solution is not None
     assert hasattr(solution, 'fitness')
     assert solution.fitness < float('inf')
+    # The best fitness the search had when it started. Comparing against
+    # float('inf'), as this did before P-05, asserted nothing at all.
+    initial_best = algorithm.best_solution_fitnesses[0]
     assert solution.fitness <= initial_best
 
 
@@ -266,7 +276,6 @@ def test_mm(active: bool, problem: str, population_size: int, max_iterations: in
 
     random.seed(seed)
     np.random.seed(seed)
-    initial_best = float('inf')
 
     metagen_logger.setLevel(logging_level)
 
@@ -292,6 +301,9 @@ def test_mm(active: bool, problem: str, population_size: int, max_iterations: in
     assert solution is not None
     assert hasattr(solution, 'fitness')
     assert solution.fitness < float('inf')
+    # The best fitness the search had when it started. Comparing against
+    # float('inf'), as this did before P-05, asserted nothing at all.
+    initial_best = algorithm.best_solution_fitnesses[0]
     assert solution.fitness <= initial_best
 
 @csv_params(data_file=metaheuristic_parameters_resource_path("tpe.csv"),
@@ -312,7 +324,6 @@ def test_tpe(active:bool, problem: str, max_iterations: int, warmup_iterations: 
     # Set random seeds for reproducibility
     random.seed(seed)
     np.random.seed(seed)
-    initial_best = float('inf')
 
     # Initialize Ray if using distributed execution
     if distributed:
@@ -349,6 +360,9 @@ def test_tpe(active:bool, problem: str, max_iterations: int, warmup_iterations: 
     assert solution is not None
     assert hasattr(solution, 'fitness')
     assert solution.fitness < float('inf')
+    # The best fitness the search had when it started. Comparing against
+    # float('inf'), as this did before P-05, asserted nothing at all.
+    initial_best = algorithm.best_solution_fitnesses[0]
     assert solution.fitness <= initial_best
 
 @csv_params(data_file=metaheuristic_parameters_resource_path("global.csv"),
@@ -371,15 +385,14 @@ def test_metaheuristic(active: bool, metaheuristic: str, problem: str,
     if not active:
         pytest.skip('Skipped')
 
-    # Configuración de logging
+    # Logging setup
     metagen_logger.setLevel(logging_level)
 
-    # Configuración de la semilla para reproducibilidad
+    # Seeding, for reproducibility
     random.seed(seed)
     np.random.seed(seed)
-    initial_best = float('inf')
 
-    # Obtener la definición del problema y la función de fitness
+    # Get the problem definition and the fitness function
     if metaheuristic in ['mm', 'ssga', 'ga']:
         problem_definition, fitness_function = problem_dispatcher(problem, GAConnector())
     else:
@@ -389,7 +402,7 @@ def test_metaheuristic(active: bool, metaheuristic: str, problem: str,
     if distributed:
         ray.init(num_cpus=4, ignore_reinit_error=True)
 
-    # Obtener el algoritmo correspondiente usando la nueva función `get_metaheuristic`
+    # Get the matching algorithm through the `get_metaheuristic` factory
     message, algorithm = get_metaheuristic(metaheuristic, problem_definition, fitness_function,
                                            distributed, log_dir,
                                            population_size=population_size, max_iterations=max_iterations,
@@ -407,7 +420,7 @@ def test_metaheuristic(active: bool, metaheuristic: str, problem: str,
     random.seed(seed)
     np.random.seed(seed)
 
-    # Ejecutar el algoritmo
+    # Run the algorithm
     solution = algorithm.run()
 
     # Apagar Ray si fue usado
@@ -417,8 +430,11 @@ def test_metaheuristic(active: bool, metaheuristic: str, problem: str,
     # Mostrar el resultado
     print(f" ---- Solution found: {solution}")
 
-    # Verificar que la solución es válida
+    # Check that the solution is valid
     assert solution is not None
     assert hasattr(solution, 'fitness')
     assert solution.fitness < float('inf')
+    # The best fitness the search had when it started. Comparing against
+    # float('inf'), as this did before P-05, asserted nothing at all.
+    initial_best = algorithm.best_solution_fitnesses[0]
     assert solution.fitness <= initial_best

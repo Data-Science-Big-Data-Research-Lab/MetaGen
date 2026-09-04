@@ -365,7 +365,31 @@ Aquí el código hace lo que dice hacer; lo discutible es qué dice hacer.
 - **[ ] P-02** README badge `>=3.12` vs texto `3.10+` vs `python_requires >=3.10`. El mínimo real es 3.10 (`itertools.pairwise`).
 - **[ ] P-03** `setup.cfg:8-10`, badges y enlace de Colab apuntan a `DataLabUPO/MetaGen`; el repo vive en `Data-Science-Big-Data-Research-Lab/MetaGen`. El badge de release no resuelve.
 - **[x] P-04 (R)** `pytest test` —el comando del README— **no llega a recolectar**: `test/metaheuristics_test/unit_test.py` importa `ray` y `tensorflow`, que son extras opcionales. Solo corren los 101 tests de `framework_test`. *Arreglo*: `pytest.importorskip("ray")` y `pytest.importorskip("tensorflow")` a nivel de módulo en `unit_test.py` (tensorflow se importa de forma transitiva vía el dispatcher, así que un `@pytest.mark.skipif` por test no basta: el fallo ocurre en tiempo de importación). Test: `test_p04_la_suite_completa_se_recolecta_sin_los_extras_opcionales`.
-- **[ ] P-05** Los tests de metaheurísticas solo comprueban `assert solution is not None`. Los cuatro bugs críticos pasan la suite. *Arreglo*: con semilla fija (A-06), tres aserciones por algoritmo: fitness final ≤ mejor inicial; mejor que una búsqueda aleatoria del mismo presupuesto; `best_solution_fitnesses` monótona no creciente.
+- **[x] P-05** Los tests de metaheurísticas solo comprueban `assert solution is not None`. Los cuatro bugs críticos pasan la suite. *Arreglo*: con semilla fija (A-06), tres aserciones por algoritmo: fitness final ≤ mejor inicial; mejor que una búsqueda aleatoria del mismo presupuesto; `best_solution_fitnesses` monótona no creciente.
+
+  *Cerrado.* El diagnóstico se quedaba corto: los tests sí tenían una cuarta aserción, `assert solution.fitness <= initial_best`, pero `initial_best = float('inf')` y no se actualizaba nunca, así que era una tautología con aspecto de comprobación. Corregida en los ocho tests de `unit_test.py` para comparar contra `best_solution_fitnesses[0]`.
+
+  Lo importante está en `test/metaheuristics_test/behavior_test.py`, nuevo y **sin dependencia de Ray ni TensorFlow**, así que sí se ejecuta en el CI —los de `unit_test.py` no llegan a correr casi nunca—. Cuatro propiedades sobre la esfera 2D, con 10 semillas fijas y umbral de 7 de 10 en las estadísticas.
+
+  Como consecuencia, **la suite verde pasa a ser `pytest test`** (el árbol completo, 4 s), en vez de `pytest test/framework_test test/regression`, que dejaba fuera el directorio de metaheurísticas. El workflow del CI y el test de `P-06` se actualizan en consecuencia.
+
+  Medición con presupuesto igualado —cada algoritmo contra muestreo aleatorio con **sus mismas evaluaciones**—, que es lo que da sentido a la comparación:
+
+  | Algoritmo | Evals | Gana al azar | Fitness medio | Azar |
+  |---|---|---|---|---|
+  | TabuSearch | 210 | 10/10 | 0.0016 | 0.1150 |
+  | TPE | 480 | 8/10 | 0.0137 | 0.0582 |
+  | RandomSearch | 145 | 5/10 | 0.1961 | 0.1707 |
+  | SSGA | 40 | 4/10 | 0.7562 | 0.6642 |
+  | GA | 160 | 4/10 | 0.4588 | 0.1707 |
+  | SA | 135 | **0/10** | **2.0045** | 0.1707 |
+
+  - **SA no optimiza**: con el mismo presupuesto saca 2.00 donde tirar dados saca 0.17. De sus 135 evaluaciones, unas 15 buscan algo; el resto las tiran `F-20` y `F-03`.
+  - **GA y SSGA** quedan por debajo del azar. En GA se ve en el código: `best_parents` se calcula fuera del bucle, así que los cinco cruces de cada generación usan la misma pareja (`A-01`), y encima la mitad de los hijos son clones (`F-04`).
+  - **RandomSearch queda excluida** de esa comprobación: es muestreo aleatorio, empatar consigo misma es lo correcto.
+  - **Memetic queda fuera** de todo el módulo porque no se puede importar sin Ray (`F-24`). Entra solo cuando se arregle.
+
+  Los tests de SA, GA y SSGA nacen `xfail(strict=True)` citando el hallazgo culpable: al arreglar `F-20`, `F-04` o `A-05` saltarán a `XPASS` avisando de que ya se puede quitar el marcador. Se comprobó además que estos resultados **son idénticos antes de `A-06`**, ejecutando el código en `1016e8a`: no son un efecto del cambio de semilla, que solo los ha hecho medibles.
 - **[x] P-06** No hay `.github/workflows`. Con `mypy` ya configurado en `setup.cfg` y una suite que corre en 3 s, un workflow mínimo con matriz 3.10–3.12 captura buena parte de lo anterior. *Cerrado*: `.github/workflows/ci.yml` con dos jobs, `tests` (matriz 3.10–3.12, bloqueante) y `types` (`mypy src`, informativo hasta que cierre `P-11`). Dos cosas salieron a la luz al montarlo: la suite necesita `pytest-csv-params`, que no declara ni `install_requires` ni ningún extra (ver `P-08`), y **el CI no instala los extras a propósito**, porque un entorno sin Ray es el único donde `F-24` es observable — en esta máquina su test se salta y por eso salen 20 xfailed en vez de 21.
 - **[ ] P-07** `.gitignore:14` excluye `*.csv` y `*.xlsx`, y los parámetros de test son CSV en `test/test_parameters/`. Cualquier fichero nuevo se queda fuera del commit sin aviso. *Arreglo*: `!test/test_parameters/**/*.csv`.
 - **[ ] P-08** Los extras de `setup.cfg` usan `;`, que en PEP 508 es el separador de **marcadores de entorno**, no de requisitos: `tensorboard = tensorboard; tensorboardX` se lee como «tensorboard, si el marcador tensorboardX». Comprobar qué instala `pip install pymetagen-datalabupo[all]`. Además hay tres `requirements*.txt` con criterios solapados. *Arreglo*: un requisito por línea y migrar la metadata a `pyproject.toml`.
