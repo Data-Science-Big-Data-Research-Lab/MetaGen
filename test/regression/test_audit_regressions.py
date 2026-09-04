@@ -15,6 +15,7 @@ esperados. Los detalles de cada hallazgo están en ``AUDIT.md``.
 """
 
 import importlib.util
+import os
 import pathlib
 import random
 import subprocess
@@ -437,6 +438,56 @@ def test_a06_semillas_distintas_dan_ejecuciones_distintas():
     otra = RandomSearch(dominio, fitness, population_size=5, max_iterations=4, seed=99).run()
     assert una.get_fitness() != otra.get_fitness(), (
         "dos semillas distintas han dado el mismo resultado: la semilla no se aplica"
+    )
+
+
+_GUION_F26 = """
+from metagen.framework import Domain, Solution
+from metagen.framework.rng import set_seed
+
+set_seed(7)
+dominio = Domain()
+for nombre in ("a", "b", "c", "d", "e", "f"):
+    dominio.define_real(nombre, -5.0, 5.0)
+solucion = Solution(dominio)
+for _ in range(5):
+    solucion.mutate()
+print([round(solucion[n], 6) for n in ("a", "b", "c", "d", "e", "f")])
+"""
+
+
+def test_f26_la_misma_semilla_reproduce_entre_procesos():
+    """F-26: Solution.mutate recorria un `set` de nombres de variable.
+
+    El orden de iteracion de un conjunto de cadenas sigue a sus hashes, que Python
+    aleatoriza en cada arranque, y ese orden decide que sorteo le toca a cada
+    variable. Por eso hay que cruzar la frontera del proceso para verlo: dentro de
+    una misma ejecucion el fallo es invisible.
+
+    Se fijan dos PYTHONHASHSEED distintos en vez de confiar en los aleatorios, para
+    que el test sea determinista y no acierte o falle por suerte. Se comparan las
+    variables una a una: un agregado como la suma no lo detecta, porque los valores
+    sorteados son los mismos y lo unico que cambia es a quien le toca cada uno.
+    """
+    salidas = []
+    for semilla_de_hash in ("0", "1"):
+        entorno = dict(os.environ, PYTHONHASHSEED=semilla_de_hash)
+        resultado = subprocess.run(
+            [sys.executable, "-c", _GUION_F26],
+            capture_output=True,
+            text=True,
+            env=entorno,
+        )
+        assert resultado.returncode == 0, (
+            f"el subproceso con PYTHONHASHSEED={semilla_de_hash} fallo:\n"
+            f"{resultado.stdout}{resultado.stderr}"
+        )
+        salidas.append(resultado.stdout.strip())
+
+    assert salidas[0] == salidas[1], (
+        "la misma semilla da resultados distintos en dos procesos:\n"
+        f"  PYTHONHASHSEED=0 -> {salidas[0]}\n"
+        f"  PYTHONHASHSEED=1 -> {salidas[1]}"
     )
 
 

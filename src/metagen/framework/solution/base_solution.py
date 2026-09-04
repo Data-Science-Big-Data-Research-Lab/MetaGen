@@ -276,8 +276,11 @@ class Solution:
         variables = self.get_variables().keys()
         alterations_number = alterations_number or get_rng().randint(
             1, len(variables))
-        altered_variables = set(get_rng().sample(
-            list(variables), alterations_number))
+        # Kept as the list sample() returns, not turned into a set: set iteration
+        # over strings follows their hashes, which Python randomizes per process,
+        # and the order decides which draw each variable gets (F-26).
+        altered_variables = get_rng().sample(
+            list(variables), alterations_number)
 
         for variable in altered_variables:
             value = self.get(variable)

@@ -1,9 +1,9 @@
 # Auditoría de MetaGen
 
 Revisión completa de `src/metagen` sobre el commit `74f104e` (2025-03-21).
-48 hallazgos con identificadores estables: los 46 de la revisión inicial más
-`P-11`, añadido al montar el CI, y `F-25`, encontrado al medir el comportamiento
-real de las metaheurísticas para `P-05`. Los marcados **(R)** se reprodujeron
+49 hallazgos con identificadores estables: los 46 de la revisión inicial más
+`P-11` (al montar el CI), `F-25` (al medir el comportamiento real de las
+metaheurísticas para `P-05`) y `F-26` (al verificar `F-04`). Los marcados **(R)** se reprodujeron
 ejecutando el paquete instalado en Python 3.11 sin Ray ni TensorFlow.
 
 ## Cómo se usa este documento
@@ -30,7 +30,7 @@ Marcar aquí el hallazgo como `[x]` al cerrarlo.
 | Bloque | Cantidad | Qué son |
 |---|---|---|
 | `F-01`…`F-13` | 13 | Críticos: corrompen resultados o bloquean la ejecución |
-| `F-14`…`F-25` | 12 | Importantes: fallan en casos concretos o desperdician cómputo |
+| `F-14`…`F-26` | 13 | Importantes: fallan en casos concretos o desperdician cómputo |
 | `A-01`…`A-12` | 12 | Algoritmia y diseño: decisiones discutibles, no bugs |
 | `P-01`…`P-11` | 11 | Empaquetado, tests y documentación |
 
@@ -345,6 +345,47 @@ ejecutarse y nada de esto se observa: por eso no aparece en las mediciones de `P
 **Arreglo** `best_neighbor = deepcopy(neighbor)` en la línea 161, y generar cada
 vecino desde `deepcopy(current_solution)` dentro del bucle.
 
+### [x] F-26 (R) · La semilla no reproduce entre procesos: `mutate` recorre un conjunto
+`src/metagen/framework/solution/base_solution.py:279` · test: `test_f26_la_misma_semilla_reproduce_entre_procesos`
+
+```python
+altered_variables = set(get_rng().sample(list(variables), alterations_number))
+
+for variable in altered_variables:      # <- se itera un CONJUNTO de cadenas
+    value = self.get(variable)
+    value.mutate(alteration_limit=alteration_limit)
+```
+
+`random.sample` ya devuelve elementos **únicos y en orden determinista**, así que el
+`set(...)` no aporta nada y sí quita: el orden de iteración de un conjunto de cadenas
+depende de sus hashes, y Python los **aleatoriza en cada arranque del intérprete**
+(PEP 456). Como cada variable consume sorteos al mutar, el orden decide qué valor le
+toca a cada una.
+
+Reproducido con el mismo `seed=7` y seis variables reales, variando solo
+`PYTHONHASHSEED`:
+
+```
+HASHSEED=0 -> [-3.557449, 1.306259, -2.103907, -4.534173, -3.822078,  3.584685]
+HASHSEED=1 -> [-2.103907, 1.306259, -3.557449, -4.534173,  3.584685, -3.822078]
+```
+
+Son los mismos valores permutados entre variables. Nótese que un estadístico agregado
+—una suma, una media— no lo detecta: hay que comparar variable a variable.
+
+**Esto invalida la garantía de `A-06`**: `seed=42` reproduce dentro del mismo proceso,
+pero **no entre ejecuciones distintas**, que es la reproducibilidad que importa para un
+experimento. Afecta a todo lo que llame a `Solution.mutate`, es decir, a todas las
+metaheurísticas. El artículo afirma promediar sobre 10 semillas; esas medias son
+correctas como medias, pero cada ejecución individual no es repetible.
+
+**Arreglo** Quitar el `set(...)` e iterar la lista que devuelve `sample`.
+
+*Cerrado.* Una línea. El test cruza la frontera del proceso a propósito —dentro de una
+misma ejecución el fallo es invisible— y fija dos `PYTHONHASHSEED` concretos en vez de
+confiar en los aleatorios, para que sea determinista y no acierte por suerte. Con esto
+la garantía de `A-06` se sostiene también entre ejecuciones.
+
 ---
 
 ## Algoritmia y diseño
@@ -363,6 +404,7 @@ Aquí el código hace lo que dice hacer; lo discutible es qué dice hacer.
   Consecuencias que conviene tener presentes:
 
   - **Sembrar MetaGen ya no toca el `random` del proceso**, ni al revés. Es la ventaja sobre un `random.seed()` global, y hay un test que lo protege.
+  - **La garantía solo valía dentro del mismo proceso hasta cerrar `F-26`.** Los tests de este hallazgo comprobaban dos ejecuciones seguidas en la misma sesión de Python, y ahí el fallo era invisible: `Solution.mutate` recorría un `set` de nombres de variable, cuyo orden depende de hashes que Python aleatoriza en cada arranque. Reproducibilidad entre ejecuciones distintas: ver `F-26`.
   - **Los siete helpers de la suite de regresión sembraban con `random.seed()`** y dejaron de ser deterministas al hacer este cambio: `test_f05_append_conserva_el_valor` llegó a pasar por azar (el entero aleatorio salió 7). Ahora siembran con `set_seed()`.
   - **NumPy cambia de algoritmo**: `default_rng()` (PCG64) en vez del Mersenne Twister de `np.random`. La secuencia de TPE ya no es la de la `0.2.0` publicada.
   - **Sigue sin resolverse la concurrencia**: las cepas de CVOA local corren en hilos que comparten los generadores, y los workers de Ray arrancan con su propio estado. Ambas firmas lo advierten en su docstring. Cerrarlo del todo exige un generador por instancia, que es la propuesta original de este hallazgo.
