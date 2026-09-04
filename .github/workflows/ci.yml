@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [master, dev]
+  pull_request:
+    branches: [master, dev]
+
+jobs:
+  tests:
+    name: tests (python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      # Report every interpreter, do not cancel the matrix on the first red one.
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install the package and the test tooling
+        # pytest-csv-params is a hard requirement of framework_test/solution_test.py
+        # but is declared nowhere in setup.cfg, so it has to be installed by hand
+        # (see P-08). The optional extras (ray, tensorflow) are deliberately left
+        # out: without them F-24 becomes observable and unit_test.py skips cleanly.
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install pytest pytest-csv-params
+
+      - name: Run the suite that must stay green
+        run: pytest test/framework_test test/regression -q -rxX
+
+  types:
+    name: mypy (informational)
+    runs-on: ubuntu-latest
+    # src does not type-check cleanly yet: 14 errors, most of them belonging to
+    # findings that are still open (F-01, F-05, F-14/A-10, A-11). This job reports
+    # them without gating the build. Once P-11 closes, drop this line to make the
+    # check blocking.
+    continue-on-error: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install the package and mypy
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install mypy
+
+      - name: Type-check the sources
+        run: mypy src
