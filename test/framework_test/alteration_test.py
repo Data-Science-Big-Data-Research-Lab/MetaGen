@@ -15,8 +15,8 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 import copy
+import math
 import random
-import sys
 
 import sys
 import os
@@ -41,7 +41,7 @@ def test_random_solution() -> None:
             assert solution[k] == v.value
             assert solution.get(k) == v
             assert solution.is_available(k)
-            assert solution.fitness == sys.float_info.max
+            assert solution.fitness == math.inf
 
         solution_copy = copy.deepcopy(solution)
 

@@ -112,10 +112,6 @@ def test_f18_una_estructura_estatica_se_identifica_como_static():
 # --------------------------------------------------------------------------
 
 
-@pytest.mark.xfail(
-    reason="F-14: sys.float_info.min es +2.2e-308, no menos infinito",
-    strict=True,
-)
 def test_f14_el_centinela_de_mejor_fitness_es_menor_que_cualquier_objetivo():
     dom = Domain()
     dom.define_integer("i", 0, 10)

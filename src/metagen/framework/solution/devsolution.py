@@ -38,17 +38,17 @@ class DevSolution(Solution):
 
         >>> best_solution  = Solution(domain, best=True)
         >>> best_solution.fitness
-        0.0
+        -inf
         >>> best_solution
-        F = 0     {example = 3}
+        F = -inf     {example = 3}
         >>> worst_solution  = Solution(domain)
         >>> worst_solution.fitness
-        1.7976931348623157e+308
+        inf
         >>> worst_solution
-        F = 1.7976931348623157e+308     {example = 5}
+        F = inf     {example = 5}
         >>> boosted_solution = Solution(domain)
         >>> boosted_solution
-        F = 1.7976931348623157e+308     {example = 1}
+        F = inf     {example = 1}
     """
 
     def check(self, variable, value=None):
