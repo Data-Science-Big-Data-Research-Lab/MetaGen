@@ -283,11 +283,6 @@ def test_f13_tpe_no_modifica_el_dominio_del_usuario():
     assert dom.get_connector() is conector_original
 
 
-@pytest.mark.xfail(
-    reason="F-03: _initialize sobrescribe self.best_solution sin comparar con el "
-    "resultado del warmup",
-    strict=True,
-)
 def test_f03_el_warmup_no_se_descarta():
     from metagen.metaheuristics import RandomSearch
 

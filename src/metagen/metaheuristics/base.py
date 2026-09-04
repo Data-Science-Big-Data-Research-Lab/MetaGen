@@ -102,8 +102,15 @@ class Metaheuristic(ABC):
         :return: A tuple containing the population and the best individual.
         :rtype: Tuple[List[Solution], Solution]
         """
-        distribution = assign_load_equally(
-            len(self.current_solutions) if len(self.current_solutions) > 0 else self.population_size)
+        # While initializing there is no population to split yet, so the load is
+        # population_size. Reading len(current_solutions) here would size the run
+        # after whatever _warmup() left behind, which is one entry per warmup
+        # round and has nothing to do with the population being built (F-03).
+        if self.current_iteration == -1:
+            distribution = assign_load_equally(self.population_size)
+        else:
+            distribution = assign_load_equally(
+                len(self.current_solutions) if len(self.current_solutions) > 0 else self.population_size)
         population = deepcopy(self.current_solutions)
         futures = []
 
@@ -144,7 +151,12 @@ class Metaheuristic(ABC):
             population, best_individual = self.initialize(self.population_size)
 
         self.current_solutions = population
-        self.best_solution = best_individual
+
+        # Merged rather than assigned: _warmup() runs first and may already hold a
+        # better solution, which a plain assignment would throw away along with
+        # every evaluation that produced it (F-03).
+        if self.best_solution is None or best_individual.get_fitness() < self.best_solution.get_fitness():
+            self.best_solution = best_individual
 
         return population, best_individual
 

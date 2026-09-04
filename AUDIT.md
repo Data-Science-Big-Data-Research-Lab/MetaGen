@@ -52,7 +52,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 |---|---|---|
 | ⬜ | `F-01` | Un real con `step` deja inalcanzable medio dominio |
 | ✅ | `F-02` | TPE toma la peor solución como mejor inicial |
-| ⬜ | `F-03` | La fase de warmup se calcula y se tira |
+| ✅ | `F-03` | La fase de warmup se calcula y se tira |
 | ✅ | `F-04` | El cruce del GA devolvía un hijo copia exacta del padre 1 |
 | ⬜ | `F-05` | `Structure` descarta el valor que se le asigna |
 | ⬜ | `F-06` | `Structure.set` e `insert` fallan con datos válidos |
@@ -156,7 +156,7 @@ Es decir, `best_solution_fitnesses[0]`, las curvas de TensorBoard y **cualquier 
 derivada del historial** —como una tasa de convergencia— partían de un punto peor que
 el real, lo que exagera la mejora aparente.
 
-### [ ] F-03 (R) · La fase de warmup se calcula y se tira
+### [x] F-03 (R) · La fase de warmup se calcula y se tira
 `src/metagen/metaheuristics/base.py:290-292` · test: `test_f03_el_warmup_no_se_descarta`
 
 `run()` llama a `_warmup()` y justo después a `_initialize()`, que sobrescribe
@@ -167,6 +167,39 @@ longitud igual al número de warmups, `_launch_distributed_method` reparte carga
 para ese tamaño y no para `population_size` (`base.py:99-100`).
 
 **Arreglo** En `_initialize`, fusionar en vez de sustituir.
+
+*Cerrado con la variante conservadora.* `_initialize` ya no asigna `best_solution`,
+lo fusiona: solo lo reemplaza si el suyo es mejor que el que dejó el warmup. Y el
+reparto distribuido usa `population_size` durante la inicialización, en vez de leer
+`len(current_solutions)`, que tras el warmup vale una entrada por ronda y no tiene
+nada que ver con la población que se está construyendo.
+
+**No se fusiona la población**, solo el mejor, aunque la propuesta original permitía
+ambas cosas. El motivo: las soluciones del warmup son las mejores de cada ronda y
+acabarían al principio de la lista, y como *SA usa `solutions[0]`, la primera, no la
+mejor* (`F-20`), esa primera pasaría a ser buena por casualidad y taparía `F-20` sin
+arreglarlo. Cuando `F-20` esté cerrado, fusionar la población es seguro.
+
+**El efecto en SA es enorme y conviene entenderlo bien:**
+
+| | Antes | Después |
+|---|---|---|
+| Fitness medio | 1.9112 | **0.1478** |
+| Gana al muestreo aleatorio | 1/10 | 6/10 |
+| Mejora sobre su propio inicio | 3/10 | **0/10** |
+
+Trece veces mejor, pero **no porque el recocido funcione ahora**: es que SA hace 5
+rondas de warmup sobre una población de 20, o sea unas 100 evaluaciones aleatorias que
+antes se tiraban enteras. Ahora se conserva la mejor de todas ellas.
+
+Lo dice la última fila: **SA ya no mejora nunca sobre su punto de partida**, cero de
+diez. Todo lo que reporta lo encontró el warmup; su fase de recocido no aporta nada
+encima. Es un diagnóstico más duro que el anterior, no más suave, y apunta a `F-20` y
+`F-25`.
+
+Ojo: SA queda en 6/10 frente al umbral de 7 de `behavior_test.py`. El margen es de
+uno, así que su `xfail` podría saltar a `XPASS` con cualquier cambio pequeño. Si pasa,
+es la alarma haciendo su trabajo: hay que mirar por qué, no subir el umbral.
 
 ### [x] F-04 (R) · El cruce del GA devuelve un hijo que es copia exacta del padre 1
 `src/metagen/metaheuristics/ga/ga_tools.py:130` · test: `test_f04_el_segundo_hijo_hereda_del_segundo_padre`
