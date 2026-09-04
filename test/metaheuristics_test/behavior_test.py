@@ -43,12 +43,11 @@ ALGORITHMS = ("RandomSearch", "SA", "TabuSearch", "GA", "SSGA", "TPE")
 
 _SA_REASON = ("F-20 and F-03: SA inherits a population of 20, keeps solutions[0] "
               "instead of the best one, and throws the warmup evaluations away")
-_GA_REASON = ("A-01 and F-04: best_parents is computed outside the loop, so every "
-              "crossover uses the same pair, and the else branch of the crossover "
-              "returns a child that is a copy of parent 1")
-_SSGA_REASON = ("A-05 and F-04: solutions.index(worst) replaces by value equality, "
-                "so with duplicates both replacements land on the same slot, on top "
-                "of the same broken crossover as GA")
+_GA_REASON = ("A-01: best_parents is computed outside the loop, so every crossover "
+              "of a generation uses the very same pair and the population collapses "
+              "to variations of two individuals")
+_SSGA_REASON = ("A-05: solutions.index(worst) replaces by value equality rather than "
+                "identity, so with duplicates both replacements land on the same slot")
 
 
 def _broken(name: str, reason: str):
