@@ -489,7 +489,7 @@ def test_p06_el_workflow_de_ci_ejecuta_la_suite_que_debe_estar_verde():
 
     texto = workflow.read_text(encoding="utf-8")
 
-    assert "pytest test/framework_test test/regression" in texto, (
+    assert "pytest test" in texto, (
         "el workflow no ejecuta la suite que debe estar verde"
     )
 

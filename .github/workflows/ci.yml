@@ -35,7 +35,9 @@ jobs:
           pip install pytest pytest-csv-params
 
       - name: Run the suite that must stay green
-        run: pytest test/framework_test test/regression -q -rxX
+        # The whole tree since P-05: metaheuristics_test/behavior_test.py has to
+        # run here, and unit_test.py skips cleanly without the optional extras.
+        run: pytest test -q -rxX
 
   types:
     name: mypy (informational)
