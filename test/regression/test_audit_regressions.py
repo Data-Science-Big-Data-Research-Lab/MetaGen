@@ -18,6 +18,7 @@ import importlib.util
 import os
 import pathlib
 import random
+import re
 import subprocess
 import sys
 
@@ -510,6 +511,38 @@ def test_a06_metagen_no_toca_el_generador_global_del_usuario():
 
     assert esperado == obtenido, (
         "ejecutar una metaheuristica ha alterado el estado del `random` global"
+    )
+
+
+def test_el_indice_de_audit_coincide_con_las_casillas():
+    """El indice de AUDIT.md tiene que cubrir todos los hallazgos y estar al dia.
+
+    No prueba codigo, protege el documento: el indice es una segunda copia del
+    estado de cada hallazgo y se desincronizaria en cuanto alguien cierre uno y
+    solo marque la casilla. Aqui salta en cuanto pasa.
+    """
+    repo_root = pathlib.Path(__file__).resolve().parents[2]
+    texto = (repo_root / "AUDIT.md").read_text(encoding="utf-8")
+
+    indice = {
+        m.group(2): m.group(1) == "✅"
+        for m in re.finditer(r"^\| (✅|⬜) \| `([FAP]-\d\d)` \|", texto, re.M)
+    }
+    casillas = {}
+    for m in re.finditer(r"^### \[([ x])\] (F-\d\d)", texto, re.M):
+        casillas[m.group(2)] = m.group(1) == "x"
+    for m in re.finditer(r"^- \*\*\[([ x])\] ([AP]-\d\d)", texto, re.M):
+        casillas[m.group(2)] = m.group(1) == "x"
+
+    assert casillas, "no se ha reconocido ninguna casilla en AUDIT.md"
+    assert set(indice) == set(casillas), (
+        f"faltan en el indice: {sorted(set(casillas) - set(indice))}; "
+        f"sobran en el indice: {sorted(set(indice) - set(casillas))}"
+    )
+    desacuerdos = {k: (indice[k], casillas[k]) for k in indice if indice[k] != casillas[k]}
+    assert not desacuerdos, (
+        "el indice y las casillas discrepan (indice, casilla): "
+        f"{desacuerdos}"
     )
 
 
