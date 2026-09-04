@@ -51,7 +51,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | | Código | Qué es |
 |---|---|---|
 | ⬜ | `F-01` | Un real con `step` deja inalcanzable medio dominio |
-| ⬜ | `F-02` | TPE toma la peor solución como mejor inicial |
+| ✅ | `F-02` | TPE toma la peor solución como mejor inicial |
 | ⬜ | `F-03` | La fase de warmup se calcula y se tira |
 | ✅ | `F-04` | El cruce del GA devolvía un hijo copia exacta del padre 1 |
 | ⬜ | `F-05` | `Structure` descarta el valor que se le asigna |
@@ -121,7 +121,7 @@ Además el redondeo va a múltiplos absolutos de `step`, no a la rejilla que arr
 `min_value + round((v - min_value) / step) * step`, recortando a `[min_value, max_value]`.
 `Real.initialize` tampoco recorta hoy y puede generar un valor que su propio `check()` rechaza.
 
-### [ ] F-02 (R) · TPE toma la peor solución como mejor inicial
+### [x] F-02 (R) · TPE toma la peor solución como mejor inicial
 `src/metagen/metaheuristics/tpe/tpe.py:111` · test: `test_f02_tpe_initialize_devuelve_la_mejor_solucion`
 
 ```python
@@ -133,6 +133,28 @@ Con fitness `[0.18, 2.06, 0.35, 11.60, 4.61, 5.52, 7.66, 0.03]`, `initialize` de
 Ese valor entra en `self.best_solution` y contamina el `min(...)` de cada iteración.
 
 **Arreglo** Invertir el operador, o reutilizar `random_exploration` como el resto de metaheurísticas.
+
+*Cerrado* invirtiendo el operador, no reutilizando `random_exploration`: ese ayudante
+no alimenta `self.solution_history`, que TPE necesita para su muestreo. Se comprobó que
+era la **única** comparación invertida del paquete; las otras quince comparan
+`candidato < mejor`, coherentes con minimizar.
+
+**El resultado final de TPE no cambia**, y conviene decirlo: media 0.0137 y 8 de 10
+victorias sobre el muestreo aleatorio, idénticas antes y después. La razón es que el
+`min(...)` de la primera iteración descarta enseguida esa peor solución, así que la
+contaminación es transitoria en cuanto el algoritmo mejora algo.
+
+Donde sí cambia es en **el historial de convergencia que se reporta**, porque su primer
+valor era el de la peor solución inicial en vez de la mejor:
+
+```
+semilla 2, sin arreglar:  el historial arranca en 1.7664
+semilla 2, arreglado:     arranca en 0.8576   (y ambos acaban en 0.0166)
+```
+
+Es decir, `best_solution_fitnesses[0]`, las curvas de TensorBoard y **cualquier métrica
+derivada del historial** —como una tasa de convergencia— partían de un punto peor que
+el real, lo que exagera la mejora aparente.
 
 ### [ ] F-03 (R) · La fase de warmup se calcula y se tira
 `src/metagen/metaheuristics/base.py:290-292` · test: `test_f03_el_warmup_no_se_descarta`

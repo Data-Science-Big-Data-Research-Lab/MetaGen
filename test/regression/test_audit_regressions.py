@@ -251,11 +251,6 @@ def _esfera_2d():
     return dom, lambda s: (s["x"] - 1.0) ** 2 + (s["y"] + 2.0) ** 2
 
 
-@pytest.mark.xfail(
-    reason="F-02: la comparacion de TPE.initialize esta invertida y devuelve la "
-    "peor solucion",
-    strict=True,
-)
 def test_f02_tpe_initialize_devuelve_la_mejor_solucion():
     from metagen.metaheuristics import TPE
 

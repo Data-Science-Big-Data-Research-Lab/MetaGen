@@ -109,7 +109,7 @@ class TPE(Metaheuristic):
             self.solution_history.append(solution)
             current_solutions.append(solution)
 
-            if best_solution is None or best_solution.get_fitness() < solution.get_fitness():
+            if best_solution is None or solution.get_fitness() < best_solution.get_fitness():
                 best_solution = solution
 
         return current_solutions, best_solution
