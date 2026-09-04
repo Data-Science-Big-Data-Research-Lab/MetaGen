@@ -43,6 +43,63 @@ Orden sugerido de ataque:
 5. Revisión de CVOA: `F-08`, `F-09`, `F-10`, `F-23`, `A-09`, `P-10`.
 6. Conversación de fondo: `A-01`, `A-02`, `A-03`.
 
+## Índice
+
+Qué es cada código, para no tener que buscarlo. ✅ cerrado, ⬜ abierto. **Al cerrar un
+hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
+
+| | Código | Qué es |
+|---|---|---|
+| ⬜ | `F-01` | Un real con `step` deja inalcanzable medio dominio |
+| ⬜ | `F-02` | TPE toma la peor solución como mejor inicial |
+| ⬜ | `F-03` | La fase de warmup se calcula y se tira |
+| ✅ | `F-04` | El cruce del GA devolvía un hijo copia exacta del padre 1 |
+| ⬜ | `F-05` | `Structure` descarta el valor que se le asigna |
+| ⬜ | `F-06` | `Structure.set` e `insert` fallan con datos válidos |
+| ⬜ | `F-07` | Importar MetaGen secuestra el `excepthook` del proceso |
+| ⬜ | `F-08` | Interbloqueo en CVOA con `update_isolated=True` |
+| ⬜ | `F-09` | `insert_into_set_strain` puede reventar con `KeyError` |
+| ⬜ | `F-10` | El «peor superspreader» de CVOA se inicializa al revés |
+| ⬜ | `F-11` | La búsqueda local distribuida manda la misma porción a todos los workers |
+| ⬜ | `F-12` | Todos los `Domain` comparten el mismo conector por defecto |
+| ⬜ | `F-13` | TPE modifica el `Domain` que le pasa el usuario |
+| ⬜ | `F-14` | `sys.float_info.min` no es «menos infinito» |
+| ⬜ | `F-15` | `Solution.__hash__` no mira las variables |
+| ⬜ | `F-16` | Los mensajes de error de `Domain` salen mal formados |
+| ⬜ | `F-17` | Categorías duplicadas aceptadas, categoría única rechazada |
+| ⬜ | `F-18` | Una estructura estática se identifica como dinámica |
+| ⬜ | `F-19` | Estructuras dinámicas: nunca alcanzan el máximo, revientan si min = max |
+| ⬜ | `F-20` | SA evalúa veinte soluciones iniciales para usar una, y no la mejor |
+| ⬜ | `F-21` | `run()` apaga Ray aunque no lo haya arrancado él |
+| ⬜ | `F-22` | TPE escribe valores fuera del dominio saltándose la validación |
+| ⬜ | `F-23` | CVOA se detiene en la primera mejora y reporta mal el tiempo |
+| ⬜ | `F-24` | El memético exige Ray aunque no se distribuya |
+| ⬜ | `F-25` | SA se queda con el último vecino, no con el mejor |
+| ✅ | `F-26` | La semilla no reproducía entre procesos: `mutate` recorría un conjunto |
+| ⬜ | `A-01` | Sin selección de padres: todos los cruces usan la misma pareja |
+| ⬜ | `A-02` | La búsqueda tabú es en realidad hill climbing |
+| ⬜ | `A-03` | El vecindario tabú se genera en cadena, no alrededor de la solución |
+| ⬜ | `A-04` | Random Search descarta el último individuo, no el peor |
+| ⬜ | `A-05` | SSGA sustituye por igualdad de valor, no por identidad |
+| ✅ | `A-06` | No había forma de fijar la semilla |
+| ⬜ | `A-07` | GA, SSGA y memético no validan que el dominio use `GAConnector` |
+| ⬜ | `A-08` | Los reales rechazan enteros y los enteros aceptan booleanos |
+| ⬜ | `A-09` | CVOA y las herramientas están duplicados, y ya divergen |
+| ⬜ | `A-10` | El elitismo depende de que cada subclase se acuerde |
+| ⬜ | `A-11` | El logger parchea `logging` globalmente y acumula handlers |
+| ⬜ | `A-12` | TensorBoard se activa solo por estar instalado, sin poder apagarlo |
+| ⬜ | `P-01` | Licencia contradictoria: MIT en PyPI frente a GPLv3 en el código |
+| ⬜ | `P-02` | La versión mínima de Python se contradice en tres sitios |
+| ⬜ | `P-03` | Enlaces y badges apuntan al repositorio antiguo |
+| ✅ | `P-04` | `pytest test` no llegaba a recolectar sin los extras opcionales |
+| ✅ | `P-05` | Los tests de metaheurísticas no comprobaban nada útil |
+| ✅ | `P-06` | No había integración continua |
+| ⬜ | `P-07` | `.gitignore` excluye los CSV de parámetros de test |
+| ⬜ | `P-08` | Los extras de `setup.cfg` usan `;`, que PEP 508 lee como otra cosa |
+| ⬜ | `P-09` | Falta `py.typed`: mypy trata `metagen` como `Any` desde fuera |
+| ⬜ | `P-10` | Los ejemplos de las docstrings usan una API que no existe |
+| ⬜ | `P-11` | `mypy src` no pasa limpio: 14 errores en 10 ficheros |
+
 ---
 
 ## Críticos
