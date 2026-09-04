@@ -50,7 +50,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 
 | | Código | Qué es |
 |---|---|---|
-| ⬜ | `F-01` | Un real con `step` deja inalcanzable medio dominio |
+| ✅ | `F-01` | Un real con `step` deja inalcanzable medio dominio |
 | ✅ | `F-02` | TPE toma la peor solución como mejor inicial |
 | ✅ | `F-03` | La fase de warmup se calcula y se tira |
 | ✅ | `F-04` | El cruce del GA devolvía un hijo copia exacta del padre 1 |
@@ -104,7 +104,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 
 ## Críticos
 
-### [ ] F-01 (R) · `_closest_number` deja inalcanzable medio dominio cuando hay `step`
+### [x] F-01 (R) · `_closest_number` deja inalcanzable medio dominio cuando hay `step`
 `src/metagen/framework/solution/types/base.py:121` · test: `test_f01_un_real_con_step_cubre_todo_su_dominio`
 
 ```python
@@ -120,6 +120,31 @@ Además el redondeo va a múltiplos absolutos de `step`, no a la rejilla que arr
 **Arreglo** Eliminar el suelo y anclar la rejilla al mínimo:
 `min_value + round((v - min_value) / step) * step`, recortando a `[min_value, max_value]`.
 `Real.initialize` tampoco recorta hoy y puede generar un valor que su propio `check()` rechaza.
+
+*Cerrado.* `_closest_number` pasa a ser un redondeo a rejilla con origen:
+`origin + round((value - origin) / step) * step`, sin suelo. `_generate_numerical`
+recibe ese origen y lo usa para recortar **al punto de rejilla más externo que quepa**
+en el intervalo, en vez de recortar al extremo, que devolvería un valor fuera de
+rejilla. Y `Real.initialize` delega en `_generate_numerical` en lugar de redondear por
+su cuenta, con lo que hereda el recorte que le faltaba.
+
+**El matiz que no estaba en el diagnóstico:** `Real.mutate` estrecha el intervalo con
+`alteration_limit`, así que anclar la rejilla en el extremo recibido la habría movido
+en cada mutación. El origen se captura **antes** de estrechar, de modo que la rejilla
+es siempre la del dominio. Comprobado: mutando 300 veces con límite 1.5 en `[-5, 5]`
+con paso 1, todos los valores caen en la rejilla.
+
+`Integer` no se ve afectado: usa `randrange(min, max + 1, step)`, que ya está anclado
+en el mínimo. `Structure._resize` sí pasa por aquí, y su origen por defecto —el
+extremo izquierdo, que es el tamaño mínimo— es el correcto.
+
+Se añadió `test_f01_la_rejilla_de_step_arranca_en_el_minimo` para la segunda mitad del
+hallazgo, que no tenía test: el existente solo cubría el suelo.
+
+Sobre la rama de reserva de `_generate_numerical`, para cuando el intervalo no contiene
+ningún punto de rejilla: **no es código muerto**. Se alcanza si el usuario fija a mano
+un valor fuera de rejilla y luego muta con un `alteration_limit` pequeño; ahí se
+recorta al intervalo, que es lo mejor disponible.
 
 ### [x] F-02 (R) · TPE toma la peor solución como mejor inicial
 `src/metagen/metaheuristics/tpe/tpe.py:111` · test: `test_f02_tpe_initialize_devuelve_la_mejor_solucion`

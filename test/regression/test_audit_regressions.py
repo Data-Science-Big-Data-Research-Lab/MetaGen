@@ -33,11 +33,6 @@ from metagen.framework.rng import set_seed
 # --------------------------------------------------------------------------
 
 
-@pytest.mark.xfail(
-    reason="F-01: el suelo `if result < step` de _closest_number hace inalcanzable "
-    "todo valor por debajo de step",
-    strict=True,
-)
 def test_f01_un_real_con_step_cubre_todo_su_dominio():
     set_seed(0)
     dom = Domain()
@@ -46,6 +41,25 @@ def test_f01_un_real_con_step_cubre_todo_su_dominio():
     assert min(valores) < 0.0, (
         f"un real en [-5, 5] con step 1 solo genera {sorted(valores)}: "
         "los valores negativos y el cero son inalcanzables"
+    )
+
+
+def test_f01_la_rejilla_de_step_arranca_en_el_minimo():
+    """F-01, segunda mitad: la rejilla se anclaba en el cero absoluto.
+
+    Redondear a multiplos absolutos de `step` deja fuera el propio minimo del
+    dominio cuando este no es multiplo del paso: `[0.05, 0.55]` con `step=0.1`
+    solo producia 0.1, 0.2... y nunca 0.05, que es un valor declarado valido.
+    """
+    set_seed(0)
+    dom = Domain()
+    dom.define_real("x", 0.05, 0.55, 0.1)
+    valores = {round(Solution(dom)["x"], 10) for _ in range(400)}
+    assert 0.05 in valores, (
+        f"el minimo del dominio es inalcanzable; solo se generan {sorted(valores)}"
+    )
+    assert valores <= {0.05, 0.15, 0.25, 0.35, 0.45, 0.55}, (
+        f"se han generado valores fuera de la rejilla: {sorted(valores)}"
     )
 
 

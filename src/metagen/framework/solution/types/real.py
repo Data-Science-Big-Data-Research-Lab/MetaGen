@@ -53,10 +53,10 @@ class Real(BaseType):
         """
         _, min_value, max_value, step = self.get_definition().get_attributes()
 
-        random_real = get_rng().uniform(min_value, max_value)
-        if step is not None:
-            random_real = self._closest_number(random_real, step)
-        self.set(random_real)
+        # Delegated instead of rounding here: this used to skip the clipping that
+        # _generate_numerical does, and could hand set() a value its own check()
+        # rejects (F-01).
+        self.set(self._generate_numerical(min_value, max_value, step))
 
     def mutate(self, alteration_limit: float = None) -> None:
         """
@@ -65,6 +65,10 @@ class Real(BaseType):
         :param alteration_limit: The determined how much the mutation will alter the current value. If not provided, the mutation can replace the current value with any within the domain.
         """
         _, min_value, max_value, step = self.get_definition().get_attributes()
+        # Kept before the alteration limit narrows the interval: the grid belongs to
+        # the domain, so anchoring it at a narrowed bound would put the mutated value
+        # off the grid every other call (F-01).
+        domain_min_value = min_value
 
         if alteration_limit != None:
             limited_min_value = self.get() - alteration_limit
@@ -73,7 +77,8 @@ class Real(BaseType):
             min_value = limited_min_value if max_value > limited_min_value > min_value else min_value
             max_value = limited_max_value if max_value > limited_max_value > min_value else max_value
 
-        self.set(self._generate_numerical(min_value, max_value, step))
+        self.set(self._generate_numerical(min_value, max_value, step,
+                                          origin=domain_min_value))
 
     def set(self, value: Any) -> None:
         """
