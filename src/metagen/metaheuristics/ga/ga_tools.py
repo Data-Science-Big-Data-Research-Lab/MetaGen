@@ -124,10 +124,10 @@ class GASolution(Solution):
                 child2.set(variable_name, copy(variable_child2))
             elif variable_name in variables_to_exchange:
                 child1.set(variable_name, copy(other.get(variable_name)))
-                child2.set(variable_name, copy(variable_value))
+                child2.set(variable_name, copy(self.get(variable_name)))
             else:
                 child1.set(variable_name, copy(self.get(variable_name)))
-                child2.set(variable_name, copy(variable_value))
+                child2.set(variable_name, copy(other.get(variable_name)))
 
         return child1, child2
 

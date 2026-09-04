@@ -89,7 +89,7 @@ para ese tamaño y no para `population_size` (`base.py:99-100`).
 
 **Arreglo** En `_initialize`, fusionar en vez de sustituir.
 
-### [ ] F-04 (R) · El cruce del GA devuelve un hijo que es copia exacta del padre 1
+### [x] F-04 (R) · El cruce del GA devuelve un hijo que es copia exacta del padre 1
 `src/metagen/metaheuristics/ga/ga_tools.py:130` · test: `test_f04_el_segundo_hijo_hereda_del_segundo_padre`
 
 ```python
@@ -103,6 +103,24 @@ De paso, `random.randint(1, len(basic_variables) - 1)` (línea 107) impide que s
 intercambien todas las variables.
 
 **Arreglo** `child2.set(variable_name, copy(other.get(variable_name)))`.
+
+*Cerrado.* Se hicieron explícitas las dos ramas, `self.get(...)` para un hijo y
+`other.get(...)` para el otro, en vez de reutilizar `variable_value`: esa variable
+del bucle venía de `self` y era justo lo que inducía el error. Hay una sola
+implementación del cruce, sin gemelo distribuido, compartida por GA, SSGA y el
+memético.
+
+**No se tocó** `randint(1, len(basic_variables) - 1)` de la línea 107, que la
+auditoría señala «de paso». Intercambiar *todas* las variables produce
+`hijo1 = padre2` e `hijo2 = padre1`, es decir, los padres otra vez y ningún material
+genético nuevo; excluir ese caso es defendible. Si se quiere permitir, es cambiar
+`- 1` por nada, pero como decisión de algoritmia, no como arreglo de este hallazgo.
+
+**El GA sigue sin ganar a la búsqueda aleatoria** después de este arreglo (3/10, media
+0.4602 frente a 0.1683). No es que el arreglo falle: es que `A-01` domina el
+resultado. Mientras `best_parents` se calcule fuera del bucle y los cinco cruces de
+cada generación usen la misma pareja, arreglar el clon no aporta diversidad. Los
+`xfail` de GA en `behavior_test.py` siguen justificados y ahora citan solo `A-01`.
 
 ### [ ] F-05 (R) · `Structure` descarta el valor que se le asigna
 `src/metagen/framework/solution/types/structure.py:197-208` · tests: `test_f05_*`

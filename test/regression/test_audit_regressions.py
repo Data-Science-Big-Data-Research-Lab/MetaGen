@@ -307,11 +307,6 @@ def test_f03_el_warmup_no_se_descarta():
     )
 
 
-@pytest.mark.xfail(
-    reason="F-04: la rama else de GASolution.crossover usa variable_value (de "
-    "self) para el hijo 2 en lugar de other.get(...)",
-    strict=True,
-)
 def test_f04_el_segundo_hijo_hereda_del_segundo_padre():
     from metagen.metaheuristics import GAConnector
     from metagen.metaheuristics.ga.ga_tools import GASolution
