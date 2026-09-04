@@ -17,10 +17,10 @@
 from metagen.framework import Domain, Solution
 from metagen.metaheuristics.tools import random_exploration
 import math
-import random
 from copy import deepcopy
-from typing import Callable, Tuple, List
+from typing import Optional, Callable, Tuple, List
 from metagen.metaheuristics.base import Metaheuristic
+from metagen.framework.rng import get_rng
 
 
 def calculate_exploration_rate(best_solution_fitness: float, neighbor_fitness: float,
@@ -91,7 +91,8 @@ class SA(Metaheuristic):
                  max_iterations: int = 20,
                  alteration_limit: int = 1, initial_temp: float = 50.0,
                  cooling_rate: float = 0.99, neighbor_population_size: int = 1,
-                 distributed=False, log_dir: str = "logs/SA") -> None:
+                 distributed=False, log_dir: str = "logs/SA",
+                 seed: Optional[int] = None) -> None:
         """
         Initialize the Simulated Annealing algorithm.
 
@@ -114,7 +115,7 @@ class SA(Metaheuristic):
         :param log_dir: Directory for logging, defaults to "logs/SA"
         :type log_dir: str, optional
         """
-        super().__init__(domain, fitness_function, warmup_iterations=warmup_iterations,distributed=distributed, log_dir=log_dir)
+        super().__init__(domain, fitness_function, warmup_iterations=warmup_iterations,distributed=distributed, log_dir=log_dir, seed=seed)
         self.max_iterations = max_iterations
         self.alteration_limit = alteration_limit
         self.initial_temp = initial_temp
@@ -177,7 +178,7 @@ class SA(Metaheuristic):
         else:
             exploration_rate = calculate_exploration_rate(current_solution.get_fitness(),
                                                           best_fitness, self.current_temp)
-            if random.random() < exploration_rate:
+            if get_rng().random() < exploration_rate:
                 current_solution = best_neighbor
 
         # Cool down

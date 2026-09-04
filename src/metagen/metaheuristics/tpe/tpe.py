@@ -61,7 +61,8 @@ class TPE(Metaheuristic):
 
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
                  max_iterations: int = 50, warmup_iterations:int = 10, candidate_pool_size: int = 24,
-                 gamma_config: Optional[GammaConfig] = None, distributed=False, log_dir: str = "logs/TPE") -> None:
+                 gamma_config: Optional[GammaConfig] = None, distributed=False, log_dir: str = "logs/TPE",
+                 seed: Optional[int] = None) -> None:
         """
         Initialize the TPE algorithm.
 
@@ -80,7 +81,7 @@ class TPE(Metaheuristic):
         :param log_dir: Directory for logging, defaults to "logs/TPE"
         :type log_dir: str, optional
         """
-        super().__init__(domain, fitness_function, warmup_iterations=warmup_iterations, distributed=distributed, log_dir=log_dir)
+        super().__init__(domain, fitness_function, warmup_iterations=warmup_iterations, distributed=distributed, log_dir=log_dir, seed=seed)
 
         self.max_iterations = max_iterations
         self.candidate_pool_size = candidate_pool_size

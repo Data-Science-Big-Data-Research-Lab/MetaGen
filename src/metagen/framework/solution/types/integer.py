@@ -14,12 +14,12 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-import random
 from typing import Any
 
 from metagen.framework.domain.core import IntegerDefinition
 
 from .base import BaseType
+from metagen.framework.rng import get_rng
 
 
 class Integer(BaseType):
@@ -56,7 +56,7 @@ class Integer(BaseType):
         """
         _, min_value, max_value, step = self.get_definition().get_attributes()
         step = step or 1
-        random_integer = random.randrange(min_value, max_value + 1, step)
+        random_integer = get_rng().randrange(min_value, max_value + 1, step)
         self.set(random_integer)
 
     def mutate(self, alteration_limit: int=None) -> None:
@@ -75,7 +75,7 @@ class Integer(BaseType):
             min_value = limited_min_value if max_value > limited_min_value > min_value else min_value
             max_value = limited_max_value if max_value > limited_max_value > min_value else max_value
 
-        random_integer = random.randrange(int(min_value), int(max_value) + 1, step)
+        random_integer = get_rng().randrange(int(min_value), int(max_value) + 1, step)
         self.set(random_integer)
 
     def set(self, value: Any) -> None:

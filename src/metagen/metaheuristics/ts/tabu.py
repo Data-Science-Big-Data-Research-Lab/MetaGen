@@ -48,7 +48,8 @@ class TabuSearch(Metaheuristic):
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
                  population_size: int = 10, warmup_iterations:int = 5,
                  max_iterations: int = 20, tabu_size: int = 5, alteration_limit: float = 1.0,
-                 gamma_config: Optional[GammaConfig] = None, distributed=False, log_dir: str = "logs/TS"):
+                 gamma_config: Optional[GammaConfig] = None, distributed=False, log_dir: str = "logs/TS",
+                 seed: Optional[int] = None):
         """
         Initialize the Tabu Search algorithm.
 
@@ -69,7 +70,7 @@ class TabuSearch(Metaheuristic):
         :param log_dir: Directory for logging, defaults to "logs/TS"
         :type log_dir: str, optional
         """
-        super().__init__(domain, fitness_function, population_size, warmup_iterations, distributed, log_dir)
+        super().__init__(domain, fitness_function, population_size, warmup_iterations, distributed, log_dir, seed=seed)
         self.max_iterations = max_iterations
         self.tabu_size = tabu_size
         self.tabu_list:Deque[Solution] = deque(maxlen=tabu_size)

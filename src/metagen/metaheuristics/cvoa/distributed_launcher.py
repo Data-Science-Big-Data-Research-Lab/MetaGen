@@ -1,6 +1,6 @@
 from datetime import timedelta
 from time import time
-from typing import Callable, List
+from typing import Callable, List, Optional
 
 from metagen.metaheuristics.import_helper import is_package_installed
 
@@ -10,6 +10,7 @@ else:
     raise ImportError("Ray is not installed. Please install it to use distributed CVOA.")
 
 from metagen.framework import Domain, Solution
+from metagen.framework.rng import set_seed
 from metagen.framework.solution.bounds import SolutionClass
 from metagen.logging.metagen_logger import metagen_logger
 from metagen.metaheuristics.cvoa.common_tools import StrainProperties
@@ -26,7 +27,30 @@ def run_strain(global_state:RemotePandemicState, domain:Domain, fitness_function
 
 
 def distributed_cvoa_launcher(strains: List[StrainProperties], domain: Domain, fitness_function: Callable[[Solution], float],
-                              update_isolated: bool = False, log_dir: str = "logs/DCVOA") -> Solution:
+                              update_isolated: bool = False, log_dir: str = "logs/DCVOA",
+                              seed: Optional[int] = None) -> Solution:
+    """
+    Run a distributed CVOA pandemic and return the best solution.
+
+    :param strains: The strains taking part in the pandemic.
+    :type strains: List[StrainProperties]
+    :param domain: The problem domain.
+    :type domain: Domain
+    :param fitness_function: Function to evaluate solutions.
+    :type fitness_function: Callable[[Solution], float]
+    :param update_isolated: Whether to update the isolated population.
+    :type update_isolated: bool, optional
+    :param log_dir: Directory for logging.
+    :type log_dir: str, optional
+    :param seed: Seed for MetaGen's generators in the driver process (default is
+        None). It does not reach the Ray workers, which each start from their own
+        state, so a distributed pandemic is not reproducible from it.
+    :type seed: Optional[int], optional
+    :return: The best solution found across every strain.
+    :rtype: Solution
+    """
+    if seed is not None:
+        set_seed(seed)
 
     # Initialize Ray
     if not ray.is_initialized():

@@ -14,7 +14,6 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-import random
 from typing import Any, cast, TYPE_CHECKING
 
 from metagen.framework.domain.core import (BaseStructureDefinition,
@@ -24,6 +23,7 @@ from metagen.framework.solution.literals import InputValue, SolVector
 from metagen.framework.solution import Solution
 
 from .base import BaseType
+from metagen.framework.rng import get_rng
 
 if TYPE_CHECKING:
     from metagen.framework.solution.bounds import BaseTypeClass
@@ -84,7 +84,7 @@ class Structure(BaseType):
         if isinstance(self.get_definition(), DynamicStructureDefinition):
             _, min_size, max_size, step_size, _ = self.get_definition().get_attributes()
 
-            size = random.randrange(min_size, max_size, step_size or 1)
+            size = get_rng().randrange(min_size, max_size, step_size or 1)
 
         elif isinstance(self.get_definition(), StaticStructureDefinition):
             _, size, _ = self.get_definition().get_attributes()
@@ -109,7 +109,7 @@ class Structure(BaseType):
         """
 
         if isinstance(self.get_definition(), DynamicStructureDefinition):
-            action = random.choice([1, 2, 3])
+            action = get_rng().choice([1, 2, 3])
         else:
             action = 2
 
@@ -161,7 +161,7 @@ class Structure(BaseType):
             n_deletions = 0
 
         for _ in range(n_deletions):
-            ri = random.choice(range(len(self)))
+            ri = get_rng().choice(range(len(self)))
             del self[ri]
 
     def _alterate(self, alteration_limit: Any=None) -> None:
@@ -170,8 +170,8 @@ class Structure(BaseType):
         """
 
         current_size = len(self)
-        number_of_changes = random.randint(1, current_size)
-        index_to_change = random.sample(
+        number_of_changes = get_rng().randint(1, current_size)
+        index_to_change = get_rng().sample(
             list(range(0, current_size)), number_of_changes)
 
         for i in index_to_change:

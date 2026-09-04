@@ -16,7 +16,6 @@
 """
 from __future__ import annotations
 
-import random
 from collections.abc import Callable
 from copy import copy
 from typing import Tuple, List, cast
@@ -27,6 +26,7 @@ from metagen.framework.domain import (BaseDefinition, CategoricalDefinition,
                                       DynamicStructureDefinition,
                                       IntegerDefinition, RealDefinition,
                                       StaticStructureDefinition)
+from metagen.framework.rng import get_rng
 
 
 class GAStructure(types.Structure):
@@ -55,8 +55,8 @@ class GAStructure(types.Structure):
         child2 = GAStructure(self.get_definition(), connector=self.connector)
 
         current_size = min(len(self), len(other))
-        number_of_changes = random.randint(1, current_size)
-        indexes_to_change = random.sample(
+        number_of_changes = get_rng().randint(1, current_size)
+        indexes_to_change = get_rng().sample(
             list(range(0, current_size)), number_of_changes)
 
         if isinstance(self.get_definition(), DynamicStructureDefinition):
@@ -104,10 +104,10 @@ class GASolution(Solution):
                 basic_variables.append(variable_name)
 
         if len(basic_variables) > 1:
-            n_variables_to_exchange = random.randint(
+            n_variables_to_exchange = get_rng().randint(
                 1, len(basic_variables) - 1)
 
-            variables_to_exchange = random.sample(
+            variables_to_exchange = get_rng().sample(
                 basic_variables, n_variables_to_exchange)
         else:
             variables_to_exchange = []
@@ -177,9 +177,9 @@ def yield_two_children(parents: Tuple[GASolution, GASolution], mutation_rate: fl
 
     child1, child2 = parents[0].crossover(parents[1])
 
-    if random.uniform(0, 1) <= mutation_rate:
+    if get_rng().uniform(0, 1) <= mutation_rate:
         child1.mutate()
-    if random.uniform(0, 1) <= mutation_rate:
+    if get_rng().uniform(0, 1) <= mutation_rate:
         child2.mutate()
 
     child1.evaluate(fitness_function)

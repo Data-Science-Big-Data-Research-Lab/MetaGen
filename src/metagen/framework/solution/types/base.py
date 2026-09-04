@@ -16,9 +16,9 @@
 """
 from __future__ import annotations
 
-import random
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any
+from metagen.framework.rng import get_rng
 
 if TYPE_CHECKING:
     from metagen.framework import BaseConnector
@@ -137,7 +137,7 @@ class BaseType(ABC):
         :rtype: int, float
         """
 
-        new_value = random.uniform(left, right)
+        new_value = get_rng().uniform(left, right)
         if step_size is not None:
             new_value = max(min(self._closest_number(
                 new_value, step_size), right), left)

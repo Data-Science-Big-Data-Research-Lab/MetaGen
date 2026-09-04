@@ -7,6 +7,7 @@ from metagen.framework.domain import (BaseDefinition, CategoricalDefinition,
                                       StaticStructureDefinition, DynamicStructureDefinition)
 from scipy.stats import norm
 import numpy as np
+from metagen.framework.rng import get_numpy_rng
 
 def sample_from_values(tpe_type, best_values, worst_values):
     _, min_value, max_value, step = tpe_type.get_definition().get_attributes()
@@ -22,12 +23,12 @@ def sample_from_values(tpe_type, best_values, worst_values):
         p_best = norm.pdf(tpe_type.value, mu_best, sigma_best)
         p_worst = norm.pdf(tpe_type.value, mu_worst, sigma_worst)
     
-        if p_best / (p_best + p_worst + 1e-16) > np.random.rand():
-            value = np.clip(np.random.normal(mu_best, sigma_best), min_value, max_value).item()
+        if p_best / (p_best + p_worst + 1e-16) > get_numpy_rng().random():
+            value = np.clip(get_numpy_rng().normal(mu_best, sigma_best), min_value, max_value).item()
         else:
-            value = np.clip(np.random.normal(mu_worst, sigma_worst), min_value, max_value).item()
+            value = np.clip(get_numpy_rng().normal(mu_worst, sigma_worst), min_value, max_value).item()
     else:
-        value = np.random.uniform(min_value, max_value + 1)
+        value = get_numpy_rng().uniform(min_value, max_value + 1)
 
     return value
 
@@ -51,7 +52,7 @@ class TPEInteger(types.Integer):
         value = round(sample_from_values(self, best_values, worst_values))
 
         if np.isnan(value) or value is None:
-            value = np.random.randint(min_value, max_value + 1)
+            value = get_numpy_rng().integers(min_value, max_value + 1)
         
         self.value = value
 
@@ -70,7 +71,7 @@ class TPEReal(types.Real):
         _, min_value, max_value, _ = self.get_definition().get_attributes()
         value = sample_from_values(self, best_values, worst_values)
         if np.isnan(value) or value is None:
-            value = np.random.uniform(min_value, max_value + 1)
+            value = get_numpy_rng().uniform(min_value, max_value + 1)
         
         self.value = value
 
@@ -87,7 +88,7 @@ class TPECategorical(types.Categorical):
         unique, counts = np.unique(best_values, return_counts=True)
         probabilities = counts / counts.sum() if len(unique) > 1 else None
 
-        self.value = np.random.choice(unique,p=probabilities) if probabilities is not None else np.random.choice(categories)
+        self.value = get_numpy_rng().choice(unique,p=probabilities) if probabilities is not None else get_numpy_rng().choice(categories)
 
 class TPEStructure(types.Structure):
     """

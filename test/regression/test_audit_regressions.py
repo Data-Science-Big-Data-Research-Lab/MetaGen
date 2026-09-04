@@ -23,6 +23,7 @@ import sys
 import pytest
 
 from metagen.framework import Domain, Solution
+from metagen.framework.rng import set_seed
 
 
 # --------------------------------------------------------------------------
@@ -36,7 +37,7 @@ from metagen.framework import Domain, Solution
     strict=True,
 )
 def test_f01_un_real_con_step_cubre_todo_su_dominio():
-    random.seed(0)
+    set_seed(0)
     dom = Domain()
     dom.define_real("x", -5.0, 5.0, 1.0)
     valores = {round(Solution(dom)["x"], 6) for _ in range(300)}
@@ -159,7 +160,7 @@ def test_f15_dos_soluciones_iguales_comparten_hash():
 
 
 def _estructura_estatica(longitud=3, semilla=4):
-    random.seed(semilla)
+    set_seed(semilla)
     dom = Domain()
     dom.define_static_structure("v", longitud)
     dom.set_structure_to_integer("v", 0, 100)
@@ -217,7 +218,7 @@ def test_f06_insert_inserta_en_la_lista():
     strict=True,
 )
 def test_f19_una_estructura_dinamica_alcanza_su_longitud_maxima():
-    random.seed(5)
+    set_seed(5)
     dom = Domain()
     dom.define_dynamic_structure("d", 2, 5)
     dom.set_structure_to_integer("d", 0, 10)
@@ -256,7 +257,7 @@ def _esfera_2d():
 def test_f02_tpe_initialize_devuelve_la_mejor_solucion():
     from metagen.metaheuristics import TPE
 
-    random.seed(1)
+    set_seed(1)
     dom = Domain()
     dom.define_real("x", -5.0, 5.0)
     tpe = TPE(
@@ -293,7 +294,7 @@ def test_f13_tpe_no_modifica_el_dominio_del_usuario():
 def test_f03_el_warmup_no_se_descarta():
     from metagen.metaheuristics import RandomSearch
 
-    random.seed(2)
+    set_seed(2)
     dom, fitness = _esfera_2d()
     algoritmo = RandomSearch(dom, fitness, population_size=2, max_iterations=1)
     algoritmo.warmup_iterations = 10
@@ -315,7 +316,7 @@ def test_f04_el_segundo_hijo_hereda_del_segundo_padre():
     from metagen.metaheuristics import GAConnector
     from metagen.metaheuristics.ga.ga_tools import GASolution
 
-    random.seed(3)
+    set_seed(3)
     dom = Domain(connector=GAConnector())
     for nombre in ("a", "b", "c", "d"):
         dom.define_integer(nombre, 0, 1000)
@@ -337,7 +338,7 @@ def test_f04_el_segundo_hijo_hereda_del_segundo_padre():
 def test_f20_sa_no_evalua_una_poblacion_entera_al_inicializar():
     from metagen.metaheuristics import SA
 
-    random.seed(6)
+    set_seed(6)
     dom = Domain()
     dom.define_real("x", -5.0, 5.0)
     evaluaciones = {"n": 0}
@@ -395,6 +396,74 @@ def test_p04_la_suite_completa_se_recolecta_sin_los_extras_opcionales():
     assert resultado.returncode == 0, (
         "la recoleccion de `pytest test` aborto sin los extras opcionales "
         f"(exit {resultado.returncode}):\n{resultado.stdout}{resultado.stderr}"
+    )
+
+
+def _dominio_y_fitness_de_prueba():
+    """Dominio minimo con una variable real y una entera, y su fitness."""
+    dominio = Domain()
+    dominio.define_real("x", -5.0, 5.0)
+    dominio.define_integer("n", 0, 100)
+    return dominio, lambda solucion: (solucion["x"] - 1.234) ** 2 + abs(solucion["n"] - 42)
+
+
+def test_a06_la_misma_semilla_reproduce_la_ejecucion():
+    """A-06: sin control de semilla no se podia repetir una ejecucion.
+
+    Se comprueban los dos generadores, porque MetaGen esta partido: TPE tira de
+    NumPy y el resto de la libreria del `random` de la biblioteca estandar. Una
+    sola semilla tiene que cubrir ambos.
+    """
+    from metagen.metaheuristics import RandomSearch, TPE
+
+    dominio, fitness = _dominio_y_fitness_de_prueba()
+    primera = RandomSearch(dominio, fitness, population_size=5, max_iterations=4, seed=7).run()
+    segunda = RandomSearch(dominio, fitness, population_size=5, max_iterations=4, seed=7).run()
+    assert primera.get_fitness() == segunda.get_fitness(), (
+        "dos ejecuciones con la misma semilla han dado resultados distintos"
+    )
+
+    dominio, fitness = _dominio_y_fitness_de_prueba()
+    una = TPE(dominio, fitness, max_iterations=3, warmup_iterations=2,
+              candidate_pool_size=4, seed=5).run()
+    otra = TPE(dominio, fitness, max_iterations=3, warmup_iterations=2,
+               candidate_pool_size=4, seed=5).run()
+    assert una.get_fitness() == otra.get_fitness(), (
+        "TPE no es reproducible: la semilla no alcanza al generador de NumPy"
+    )
+
+
+def test_a06_semillas_distintas_dan_ejecuciones_distintas():
+    """A-06: la semilla tiene que sembrar de verdad, no quedarse en un adorno."""
+    from metagen.metaheuristics import RandomSearch
+
+    dominio, fitness = _dominio_y_fitness_de_prueba()
+    una = RandomSearch(dominio, fitness, population_size=5, max_iterations=4, seed=7).run()
+    otra = RandomSearch(dominio, fitness, population_size=5, max_iterations=4, seed=99).run()
+    assert una.get_fitness() != otra.get_fitness(), (
+        "dos semillas distintas han dado el mismo resultado: la semilla no se aplica"
+    )
+
+
+def test_a06_metagen_no_toca_el_generador_global_del_usuario():
+    """A-06: MetaGen usa sus propios generadores, no el `random` del proceso.
+
+    Es la diferencia entre sembrar MetaGen y llamar a `random.seed()`: lo segundo
+    reconfiguraria tambien el codigo de quien nos llama.
+    """
+    from metagen.metaheuristics import RandomSearch
+
+    dominio, fitness = _dominio_y_fitness_de_prueba()
+
+    random.seed(1234)
+    esperado = [random.random() for _ in range(3)]
+
+    random.seed(1234)
+    RandomSearch(dominio, fitness, population_size=5, max_iterations=3, seed=7).run()
+    obtenido = [random.random() for _ in range(3)]
+
+    assert esperado == obtenido, (
+        "ejecutar una metaheuristica ha alterado el estado del `random` global"
     )
 
 

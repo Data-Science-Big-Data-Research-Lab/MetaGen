@@ -20,6 +20,7 @@ from abc import ABC, abstractmethod
 from .import_helper import is_package_installed
 from typing import List, Tuple, Optional, Callable
 from metagen.framework import Domain, Solution
+from metagen.framework.rng import set_seed
 from copy import deepcopy
 
 from metagen.logging.metagen_logger import metagen_logger
@@ -49,6 +50,10 @@ class Metaheuristic(ABC):
     :type distributed: bool, optional
     :param log_dir: Directory for logging (default is "logs").
     :type log_dir: str, optional
+    :param seed: Seed making the run reproducible (default is None, a different
+        run every time). It seeds MetaGen's own generators, so it does not
+        disturb the random state of the calling application.
+    :type seed: Optional[int], optional
 
     :ivar domain: The problem domain.
     :vartype domain: Domain
@@ -72,7 +77,7 @@ class Metaheuristic(ABC):
 
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float], population_size=20,
                  warmup_iterations: int = 0, distributed=False,
-                 log_dir: str = "logs") -> None:
+                 log_dir: str = "logs", seed: Optional[int] = None) -> None:
         super().__init__()
 
         self.domain = domain
@@ -80,6 +85,7 @@ class Metaheuristic(ABC):
         self.population_size = population_size
         self.warmup_iterations = warmup_iterations
         self.distributed = distributed
+        self.seed = seed
         self.logger = TensorBoardLogger(log_dir=log_dir) if is_package_installed("tensorboard") else None
 
         self.current_iteration = -1
@@ -282,6 +288,12 @@ class Metaheuristic(ABC):
         :return: The best solution found.
         :rtype: Solution
         """
+        # Seeded here rather than in __init__ so that every run() starts from
+        # the same state: building two metaheuristics and running them later
+        # would otherwise make the second one depend on the first.
+        if self.seed is not None:
+            set_seed(self.seed)
+
         if self.distributed and IS_RAY_INSTALLED and not ray.is_initialized():
             ray.init()
 

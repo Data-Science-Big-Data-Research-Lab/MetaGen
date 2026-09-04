@@ -16,7 +16,6 @@
 """
 
 import math
-import random
 from typing import Callable, Set, List, Tuple
 from metagen.metaheuristics.import_helper import is_package_installed
 
@@ -33,6 +32,7 @@ from metagen.logging.metagen_logger import get_remote_metagen_logger, DETAILED_I
 from metagen.metaheuristics.base import Metaheuristic
 from metagen.metaheuristics.cvoa.common_tools import StrainProperties, IndividualState, insert_into_set_strain, infect
 from metagen.metaheuristics.cvoa.distributed_tools import distributed_cvoa_new_infected_population, RemotePandemicState
+from metagen.framework.rng import get_rng
 
 
 class DistributedCVOA(Metaheuristic):
@@ -262,7 +262,7 @@ class DistributedCVOA(Metaheuristic):
             # the newly infected individual can be isolated or not.
             else:
                 new_infected_individual = infect(carrier_individual, self.fitness_function, 1)
-                if random.random() < self.strain_properties.p_isolation:
+                if get_rng().random() < self.strain_properties.p_isolation:
                     self.update_new_infected_population(infected_population, new_infected_individual)
                 else:
                     # If the new individual is isolated, and update_isolated is true, this is sent to the
@@ -296,7 +296,7 @@ class DistributedCVOA(Metaheuristic):
         # p_reinfection. If it can be reinfected, insert it into the new population and remove it from the global
         # recovered set.
         elif individual_state.recovered:
-            if random.random() < self.strain_properties.p_re_infection:
+            if get_rng().random() < self.strain_properties.p_re_infection:
                 new_infected_population.add(new_infected_individual)
                 ray.get(self.global_state.get_infected_again.remote(new_infected_individual))
 

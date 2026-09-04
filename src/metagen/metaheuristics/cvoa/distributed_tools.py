@@ -1,4 +1,3 @@
-import random
 from copy import deepcopy
 from typing import Callable, Set
 import ray
@@ -6,6 +5,7 @@ from metagen.framework import Solution, Domain
 from metagen.metaheuristics.cvoa.common_tools import IndividualState, StrainProperties, \
     compute_n_infected_travel_distance
 from metagen.metaheuristics.distributed_tools import assign_load_equally
+from metagen.framework.rng import get_rng
 
 # Remote pandemic state (ray support)
 @ray.remote
@@ -170,7 +170,7 @@ def cvoa_local_yield_infected_from_carrier(global_state, fitness_function: Calla
             new_infected_individual = deepcopy(carrier)
             new_infected_individual.mutate(1)
             new_infected_individual.evaluate(fitness_function)
-            if random.random() < strain_properties.p_isolation:
+            if get_rng().random() < strain_properties.p_isolation:
                 update_new_infected_population(global_state, new_infected_population, new_infected_individual,
                                                strain_properties.p_re_infection)
             else:
@@ -199,6 +199,6 @@ def update_new_infected_population(global_state, new_infected_population: Set[So
         new_infected_population.add(new_infected_individual)
 
     elif individual_state.recovered:
-        if random.random() < p_re_infection:
+        if get_rng().random() < p_re_infection:
             new_infected_population.add(new_infected_individual)
             ray.get(global_state.get_infected_again.remote(new_infected_individual))
