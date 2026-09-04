@@ -75,8 +75,8 @@ Desde P-06, `.github/workflows/ci.yml` corre en cada push y PR sobre `master` y
 - **`tests`** — matriz 3.10 / 3.11 / 3.12, **bloqueante**. Instala `pip install -e .`
   más `pytest` y `pytest-csv-params`, y ejecuta la suite que debe estar verde.
 - **`types`** — `mypy src`, **informativo** (`continue-on-error: true`) mientras
-  P-11 siga abierto. Hoy son 14 errores; diez pertenecen a hallazgos ya conocidos
-  (F-01, F-05, A-11, familia F-14/A-10). Cuando el contador llegue a cero, quitar el
+  P-11 siga abierto. Hoy son 11 errores, tras cerrar F-01; el resto pertenece a hallazgos
+  ya conocidos (F-05, A-11, familia F-14/A-10). Cuando el contador llegue a cero, quitar el
   `continue-on-error` y la comprobación pasa a bloquear.
 
 El CI **no instala los extras a propósito**: un entorno sin Ray es el único donde

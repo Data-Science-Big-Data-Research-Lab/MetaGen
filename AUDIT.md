@@ -98,7 +98,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ⬜ | `P-08` | Los extras de `setup.cfg` usan `;`, que PEP 508 lee como otra cosa |
 | ⬜ | `P-09` | Falta `py.typed`: mypy trata `metagen` como `Any` desde fuera |
 | ⬜ | `P-10` | Los ejemplos de las docstrings usan una API que no existe |
-| ⬜ | `P-11` | `mypy src` no pasa limpio: 14 errores en 10 ficheros |
+| ⬜ | `P-11` | `mypy src` no pasa limpio: 11 errores en 9 ficheros |
 
 ---
 
@@ -608,7 +608,7 @@ Aquí el código hace lo que dice hacer; lo discutible es qué dice hacer.
 - **[ ] P-08** Los extras de `setup.cfg` usan `;`, que en PEP 508 es el separador de **marcadores de entorno**, no de requisitos: `tensorboard = tensorboard; tensorboardX` se lee como «tensorboard, si el marcador tensorboardX». Comprobar qué instala `pip install pymetagen-datalabupo[all]`. Además hay tres `requirements*.txt` con criterios solapados. *Arreglo*: un requisito por línea y migrar la metadata a `pyproject.toml`.
 - **[ ] P-09** Falta `src/metagen/py.typed`: el paquete está anotado de arriba abajo pero sin el marcador PEP 561 mypy trata `metagen` como `Any`.
 - **[ ] P-10** Los ejemplos de las docstrings usan una API que no existe: `domain.defineInteger(0, 1)` en RS, TPE, Memetic y CVOA (el método es `define_integer(name, min, max)`), y el ejemplo de CVOA usa `CVOA.initialize_pandemic(...)` y `cvoa_launcher(strains)`, de una versión anterior. Son las páginas que publica readthedocs. *Arreglo*: actualizarlos y añadirlos como doctests.
-- **[ ] P-11** `mypy src` **no pasa limpio**: 14 errores en 10 ficheros, pese a que el proyecto se desarrolló con la condición de usar tipos. Por eso el job `types` del CI nace informativo (`continue-on-error: true`). Diez de los catorce no son deuda nueva, sino los mismos bugs que ya recoge la auditoría vistos por otra ventana:
+- **[ ] P-11** `mypy src` **no pasa limpio**: 11 errores en 9 ficheros (eran 14 antes de cerrar `F-01`), pese a que el proyecto se desarrolló con la condición de usar tipos. Por eso el job `types` del CI nace informativo (`continue-on-error: true`). Diez de los catorce no son deuda nueva, sino los mismos bugs que ya recoge la auditoría vistos por otra ventana:
 
   | Causa | Errores | Se cierra con |
   |---|---|---|
