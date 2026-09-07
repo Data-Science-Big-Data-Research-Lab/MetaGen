@@ -44,8 +44,8 @@ ALGORITHMS = ("RandomSearch", "SA", "TabuSearch", "GA", "SSGA", "TPE", "Memetic"
 _SA_REASON = ("SA accepts almost anything: with initial_temp 50 and cooling_rate 0.99 "
               "the temperature is still 40.9 after 20 iterations, so the Metropolis "
               "criterion takes a worsening of 5.0 with probability 0.89. That is a "
-              "random walk, not annealing. F-20 and F-03 are closed and no longer the "
-              "reason")
+              "random walk, not annealing (F-30). F-20 and F-03 are closed and are no "
+              "longer the reason")
 _GA_REASON = ("A-01: best_parents is computed outside the loop, so every crossover "
               "of a generation uses the very same pair and the population collapses "
               "to variations of two individuals")
