@@ -585,6 +585,40 @@ def test_f25_los_vecinos_salen_de_la_solucion_actual_no_en_cadena():
     )
 
 
+def test_a04_random_search_descarta_el_peor_no_el_ultimo(monkeypatch):
+    """A-04: `solutions[:-1]` descartaba el individuo de la ultima posicion, que no
+    tiene por que ser el peor; la docstring dice que se preserva el mejor. Medido, la
+    poblacion `[3.10, 12.19, 2.28, 18.28, 0.13]` perdia el 0.13 —el mejor— y conservaba
+    el 18.28.
+
+    Se anula `mutate` para que los fitness no cambien y se pueda ver quien sobrevive.
+    """
+    from metagen.metaheuristics import RandomSearch
+
+    dominio, fitness = _dominio_y_fitness_de_prueba()
+    algoritmo = RandomSearch(dominio, fitness, population_size=5, max_iterations=1,
+                             seed=7)
+    algoritmo.pre_execution()
+    algoritmo._warmup()
+    algoritmo._initialize()
+
+    poblacion = list(algoritmo.current_solutions)
+    valores = [s.get_fitness() for s in poblacion]
+    peor = max(valores)
+
+    monkeypatch.setattr(Solution, "mutate", lambda self, *a, **k: None)
+    nuevas, _ = algoritmo.iterate(poblacion)
+
+    assert len(nuevas) == len(poblacion)
+    # El primero es la copia elite; los demas son la poblacion menos el peor.
+    supervivientes = sorted(s.get_fitness() for s in nuevas[1:])
+    esperado = sorted(v for v in valores if v != peor)
+    assert supervivientes == esperado, (
+        f"deberia haber descartado el peor ({peor}); poblacion {sorted(valores)}, "
+        f"supervivientes {supervivientes}"
+    )
+
+
 def test_f20_la_temperatura_no_baja_de_t_min():
     """La otra mitad: `self.T_min = 1e-8` estaba asignado y no se leia en ningun
     sitio, asi que el enfriamiento tendia a cero y el criterio de Metropolis dejaba

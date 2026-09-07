@@ -88,7 +88,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ⬜ | `A-01` | Sin selección de padres: todos los cruces usan la misma pareja |
 | ⬜ | `A-02` | La búsqueda tabú es en realidad hill climbing |
 | ⬜ | `A-03` | El vecindario tabú se genera en cadena, no alrededor de la solución |
-| ⬜ | `A-04` | Random Search descarta el último individuo, no el peor |
+| ✅ | `A-04` | Random Search descarta el último individuo, no el peor |
 | ⬜ | `A-05` | SSGA sustituye por igualdad de valor, no por identidad |
 | ✅ | `A-06` | No había forma de fijar la semilla |
 | ⬜ | `A-07` | GA, SSGA y memético no validan que el dominio use `GAConnector` |
@@ -1284,7 +1284,21 @@ Aquí el código hace lo que dice hacer; lo discutible es qué dice hacer.
 - **[ ] A-01** `ga/ga.py:71-79`, `mm/memetic.py:111-119` — **sin selección de padres**: `best_parents` se calcula fuera del bucle y los `n/2` cruces usan siempre la misma pareja. No hay torneo, ruleta ni ranking. *Propuesta*: función de selección intercambiable, torneo binario por defecto.
 - **[ ] A-02** `ts/tabu.py:123-124`, `tools.py:45` — **tabú es hill climbing**: se explora siempre desde `self.best_solution` y `local_search_with_tabu` nunca devuelve algo peor que el punto de partida, así que la lista tabú no puede desviar al algoritmo de nada. *Propuesta*: `current_solution` separada del mejor histórico, moverse al mejor vecino no tabú aunque empeore, criterio de aspiración.
 - **[ ] A-03** `tools.py:49` — el vecindario tabú se genera **en cadena** (`deepcopy(best_neighbor)`), no alrededor de la solución. `mm_tools.py:135` hace lo contrario: las dos implementaciones hermanas discrepan.
-- **[ ] A-04** `rs/random_search.py:110` — `solutions[:-1]` descarta siempre el último individuo, que no tiene por qué ser el peor; la docstring dice que se preserva el mejor.
+- **[x] A-04** `rs/random_search.py:110` — `solutions[:-1]` descarta siempre el último individuo, que no tiene por qué ser el peor; la docstring dice que se preserva el mejor.
+
+  *Cerrado.* La copia élite ocupa un hueco, así que alguien tiene que salir; ahora sale
+  **el peor**, en vez del que estuviera en la última posición. Ejemplo medido:
+
+  ```
+  poblacion: [3.103, 12.191, 2.278, 18.281, 0.129]
+  descartaba el 0.129  <- el MEJOR;  conservaba el 18.281 <- el peor
+  ```
+
+  Con el mismo presupuesto de 145 evaluaciones, diez semillas: **de 7/10 a 8/10** contra
+  el muestreo aleatorio, y la media **de 0.3166 a 0.1613**.
+
+  El test anula `mutate` para que los fitness no cambien y se pueda ver quién sobrevive:
+  `test_a04_random_search_descarta_el_peor_no_el_ultimo`.
 - **[ ] A-05** `ga/ssga.py:84-86` — `solutions.index(worst)` sustituye por igualdad de valor, no por identidad: con duplicados las dos sustituciones caen en la misma posición.
 - **[x] A-06** transversal — **sin control de semilla**. Todo usa el `random` global (y `np.random` en TPE); no hay parámetro `seed` ni `rng`. En distribuido cada worker de Ray arranca con su propio estado. *Propuesta*: `seed: int | None` en `Metaheuristic.__init__` que construya un `random.Random` y un `np.random.Generator` propios, propagados a `Solution` y a los tipos; en distribuido, `SeedSequence.spawn()`.
 

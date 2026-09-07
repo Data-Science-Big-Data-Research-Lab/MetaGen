@@ -108,7 +108,15 @@ class RandomSearch(Metaheuristic):
         best_solution = deepcopy(self.best_solution)
         current_solutions = [best_solution]
 
-        for individual in solutions[:-1]:
+        # The elite copy above takes one slot, so one individual has to go, and it
+        # should be the worst. This used to drop solutions[-1] whatever it was, which
+        # is as often as not the best of the population (A-04).
+        worst_index = max(range(len(solutions)),
+                          key=lambda index: solutions[index].get_fitness())
+
+        for index, individual in enumerate(solutions):
+            if index == worst_index:
+                continue
             individual.mutate()
             individual.evaluate(self.fitness_function)
             current_solutions.append(individual)
