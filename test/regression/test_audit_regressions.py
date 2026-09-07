@@ -14,6 +14,7 @@ Mientras no se arregle nada, la suite sigue en verde: los xfail cuentan como
 esperados. Los detalles de cada hallazgo están en ``AUDIT.md``.
 """
 
+import copy
 import importlib.util
 import os
 import math
@@ -169,11 +170,6 @@ def test_f14_el_centinela_de_mejor_fitness_es_menor_que_cualquier_objetivo():
     assert Solution(dom, best=True).get_fitness() < -1e300
 
 
-@pytest.mark.xfail(
-    reason="F-15: __hash__ usa dict.__hash__ (que es None), asi que solo depende "
-    "del fitness",
-    strict=True,
-)
 def test_f15_dos_soluciones_distintas_no_comparten_hash():
     dom = Domain()
     dom.define_integer("i", 0, 10)
@@ -186,11 +182,6 @@ def test_f15_dos_soluciones_distintas_no_comparten_hash():
     assert hash(a) != hash(b)
 
 
-@pytest.mark.xfail(
-    reason="F-15: el fitness entra en el hash, asi que dos soluciones iguales "
-    "con distinto fitness rompen el invariante a == b => hash(a) == hash(b)",
-    strict=True,
-)
 def test_f15_dos_soluciones_iguales_comparten_hash():
     dom = Domain()
     dom.define_integer("i", 0, 10)
@@ -201,6 +192,50 @@ def test_f15_dos_soluciones_iguales_comparten_hash():
     b.set_fitness(2.0)
     assert a == b
     assert hash(a) == hash(b)
+
+
+def test_f15_una_solucion_con_estructuras_y_grupos_se_puede_hashear():
+    """El hash viejo esquivaba los valores por completo. Hashearlos de verdad obliga
+    a bajar por listas (Structure) y por sub-soluciones (grupos), que no se hashean
+    por si solas."""
+    set_seed(2)
+    dom = Domain()
+    dom.define_static_structure("v", 3)
+    dom.set_structure_to_integer("v", 0, 10)
+    dom.define_dynamic_structure("w", 1, 4)
+    dom.set_structure_to_real("w", -1.0, 1.0)
+    dom.define_group("g")
+    dom.define_integer_in_group("g", "a", 0, 5)
+
+    solucion = Solution(dom)
+    copia = copy.deepcopy(solucion)
+
+    assert solucion == copia
+    assert hash(solucion) == hash(copia)
+
+
+def test_f15_la_lista_tabu_bloquea_una_solucion_ya_prohibida():
+    """Donde el invariante roto se convierte en un fallo de verdad: `tools.py` mete la
+    lista tabu en un `set` y pregunta `neighbor not in tabu_set`.
+
+    Un vecino con las mismas variables que una solucion prohibida **es** esa solucion
+    para `__eq__`, pero con el hash viejo caia en otro cubo si su fitness no coincidia,
+    y el `in` respondia que no estaba. La lista tabu dejaba pasar lo que debia bloquear.
+    """
+    set_seed(3)
+    dom = Domain()
+    dom.define_integer("i", 0, 10)
+
+    prohibida = Solution(dom)
+    prohibida.set("i", 4)
+    prohibida.set_fitness(1.0)
+
+    vecino = Solution(dom)
+    vecino.set("i", 4)             # las mismas variables
+    vecino.set_fitness(5.0)        # distinto fitness
+
+    assert vecino == prohibida
+    assert vecino in {prohibida}
 
 
 # --------------------------------------------------------------------------

@@ -1,7 +1,7 @@
 # Auditoría de MetaGen
 
 Revisión completa de `src/metagen` sobre el commit `74f104e` (2025-03-21).
-51 hallazgos con identificadores estables: los 46 de la revisión inicial más
+52 hallazgos con identificadores estables: los 46 de la revisión inicial más
 `P-11` (al montar el CI), `F-25` (al medir el comportamiento real de las
 metaheurísticas para `P-05`) y `F-26` (al verificar `F-04`). Los marcados **(R)** se reprodujeron
 ejecutando el paquete instalado en Python 3.11 sin Ray ni TensorFlow.
@@ -34,7 +34,7 @@ Marcar aquí el hallazgo como `[x]` al cerrarlo.
 | Bloque | Cantidad | Qué son |
 |---|---|---|
 | `F-01`…`F-13` | 13 | Críticos: corrompen resultados o bloquean la ejecución |
-| `F-14`…`F-28` | 15 | Importantes: fallan en casos concretos o desperdician cómputo |
+| `F-14`…`F-29` | 16 | Importantes: fallan en casos concretos o desperdician cómputo |
 | `A-01`…`A-12` | 12 | Algoritmia y diseño: decisiones discutibles, no bugs |
 | `P-01`…`P-11` | 11 | Empaquetado, tests y documentación |
 
@@ -68,7 +68,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ✅ | `F-12` | Todos los `Domain` comparten el mismo conector por defecto |
 | ✅ | `F-13` | TPE modifica el `Domain` que le pasa el usuario |
 | ✅ | `F-14` | `sys.float_info.min` no es «menos infinito» |
-| ⬜ | `F-15` | `Solution.__hash__` no mira las variables |
+| ✅ | `F-15` | `Solution.__hash__` no mira las variables |
 | ✅ | `F-16` | Los mensajes de error de `Domain` salen mal formados |
 | ✅ | `F-17` | Categorías duplicadas aceptadas, categoría única rechazada |
 | ✅ | `F-18` | Una estructura estática se identifica como dinámica |
@@ -82,6 +82,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ✅ | `F-26` | La semilla no reproducía entre procesos: `mutate` recorría un conjunto |
 | ⬜ | `F-27` | `p_isolation` significa lo contrario de lo que dice su nombre |
 | ⬜ | `F-28` | Tres parámetros de CVOA no son los que sugiere el artículo |
+| ⬜ | `F-29` | CVOA no reproduce entre procesos: itera conjuntos de soluciones |
 | ⬜ | `A-01` | Sin selección de padres: todos los cruces usan la misma pareja |
 | ⬜ | `A-02` | La búsqueda tabú es en realidad hill climbing |
 | ⬜ | `A-03` | El vecindario tabú se genera en cadena, no alrededor de la solución |
@@ -591,7 +592,7 @@ Esto es la causa de fondo de `F-10` (*el «peor superspreader» de CVOA se inici
 revés*), que sigue abierto: ahora `Solution(best=True)` sí devuelve algo menor que
 cualquier objetivo real, que es lo que aquel mecanismo necesitaba para funcionar.
 
-### [ ] F-15 (R) · `Solution.__hash__` no mira las variables
+### [x] F-15 (R) · `Solution.__hash__` no mira las variables
 `base_solution.py:444` · tests: `test_f15_*`
 
 `hash((self.get_variables().__hash__, self.fitness))`: `dict.__hash__` es `None`, así que
@@ -600,6 +601,31 @@ invariante `a == b ⇒ hash(a) == hash(b)`. Duele en CVOA (cuatro `set` de soluc
 en la lista tabú (`tools.py:44`).
 
 **Arreglo** Hashear una representación canónica de las variables y no incluir el fitness.
+
+*Cerrado tal cual*, pero la representación canónica tiene más trabajo del que sugiere la
+frase: los valores de un `Solution` pueden ser una **lista** (`Structure`) o **otra
+solución** (un grupo), y ninguna de las dos se hashea por sí sola. El hash viejo las
+esquivaba todas porque nunca llegaba a mirarlas. Hay un ayudante, `_hashable`, que baja
+recursivamente y convierte listas en tuplas y sub-soluciones en tuplas ordenadas.
+
+**Donde el invariante roto se convierte en un fallo de verdad es en la lista tabú**, y
+el diagnóstico no lo dice: `local_search_with_tabu` mete la lista en un `set` y pregunta
+`neighbor not in tabu_set`. Un vecino con las mismas variables que una solución
+prohibida **es** esa solución para `__eq__`, pero con el hash viejo caía en otro cubo si
+su fitness no coincidía, y el `in` respondía que no estaba. **La lista tabú dejaba pasar
+justo lo que debía bloquear.** Test:
+`test_f15_la_lista_tabu_bloquea_una_solucion_ya_prohibida`.
+
+**Lo que no arregla, y conviene no vender de más.** Se esperaba que acelerase CVOA
+bastante, porque el hash viejo metía en un solo cubo a todas las soluciones de igual
+fitness. Medido sobre la esfera 2D: **3.6 s → 3.1 s**, un 14 %. En un problema continuo
+casi ningún fitness se repite, así que apenas había colisiones. El escenario en que sí
+dolería es la **codificación binaria** del artículo de CVOA, donde muchísimos individuos
+comparten fitness; no se ha medido.
+
+**Y destapó `F-29`**, que es más importante: al cambiar el hash cambia el orden de
+iteración de los conjuntos, y CVOA itera conjuntos de soluciones.
+
 
 ### [x] F-16 (R) · Los mensajes de error de `Domain` salen mal formados
 `domain/preconditions.py:107` · test: `test_f16_el_mensaje_de_variable_ya_definida_es_legible`
@@ -1013,6 +1039,40 @@ lo contrario, subirlo a 0.7 empeora las cosas en vez de mejorarlas.
 
 Se ataca en la sesión dedicada a CVOA, después de `F-27`: ver
 `metagen-auditoria/CVOA-cuestiones.md`.
+
+### [ ] F-29 (R) · CVOA no reproduce entre procesos: itera conjuntos de soluciones
+`src/metagen/metaheuristics/cvoa/cvoa_local.py:178` y su gemelo · descubierto al cerrar `F-15`
+
+`for individual in self.infected:` recorre un `Set[Solution]`. El orden de iteración de
+un conjunto sigue a los hashes de sus elementos, y como cada individuo consume sorteos al
+contagiar, **el orden decide el resultado**. Es el mismo mecanismo que `F-26`, por otro
+canal: allí era un conjunto de nombres de variable, aquí uno de soluciones.
+
+Medido con la misma semilla (`seed=0`) y variando solo el proceso:
+
+| | Mismo `PYTHONHASHSEED` | Distinto `PYTHONHASHSEED` |
+|---|---|---|
+| Antes de `F-15` | **no reproduce** | no reproduce |
+| Después de `F-15` | reproduce | **no reproduce** |
+
+Con el hash viejo eran **5 valores distintos en 6 procesos**, y ni siquiera dependían de
+`PYTHONHASHSEED`: el hash era `hash((None, fitness))`, y `hash(None)` sale de la
+dirección de memoria, que cambia en cada arranque por el ASLR. **Era una aleatoriedad
+que no se podía fijar de ninguna manera.**
+
+Tras `F-15` el hash depende de los nombres de variable, que son cadenas: Python
+aleatoriza su hash en cada arranque (PEP 456), pero eso **sí** se fija con
+`PYTHONHASHSEED`. O sea, `F-15` convierte una aleatoriedad incontrolable en una
+controlable, sin llegar a eliminarla.
+
+**Arreglo** Recorrer los conjuntos en un orden determinista dentro de CVOA —una lista, o
+`sorted(...)` por una clave estable— en vez de depender del orden del `set`. Afecta a los
+dos gemelos.
+
+**Se ataca en la sesión dedicada a CVOA**, no aquí: ver
+`metagen-auditoria/CVOA-cuestiones.md`. Nótese que **invalida cualquier medición de CVOA
+tomada hasta ahora**, incluidas las de `F-23` y `F-10` de este documento, que se hicieron
+en procesos distintos.
 
 ---
 
