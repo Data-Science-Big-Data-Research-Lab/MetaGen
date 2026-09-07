@@ -79,9 +79,10 @@ Desde P-06, `.github/workflows/ci.yml` corre en cada push y PR sobre `master` y
   ya conocidos (F-05, A-11, familia F-14/A-10). Cuando el contador llegue a cero, quitar el
   `continue-on-error` y la comprobación pasa a bloquear.
 
-El CI **no instala los extras a propósito**: un entorno sin Ray es el único donde
-`F-24` es observable. Allí la suite da `123 passed, 1 skipped, 27 xfailed`; en una
-máquina con Ray instalado, un xfail menos y un skip más.
+El CI **no instala los extras a propósito**. Hasta cerrar `F-24` era el único sitio
+donde ese hallazgo se observaba; hoy su test bloquea Ray en un subproceso y corre en
+todas partes. El único que sigue necesitando Ray instalado es el de `F-21`, que se
+salta en el CI: es el `1 skipped` que se ve allí, junto al de `unit_test.py`.
 
 ## Cómo se prueban las metaheurísticas
 
@@ -97,7 +98,7 @@ Hay dos ficheros y conviene no confundirlos:
 Las estadísticas van sobre 10 semillas fijas con umbral de 7, no sobre una
 ejecución suelta: un algoritmo sano queda en 8-10 y uno roto en 0-4. Hoy SA, GA y
 SSGA suspenden las dos últimas propiedades y están marcados `xfail`, citando el
-hallazgo culpable.
+hallazgo culpable. El memético entró al cerrar F-24 y pasa las cuatro.
 
 ## Cómo funcionan los tests de regresión
 
@@ -127,3 +128,7 @@ incorrecto, dilo antes de tocarlo.
 - Los ficheros bajo `src/metagen/metaheuristics/cvoa/` están duplicados entre la
   versión local y la distribuida (A-09): si arreglas algo ahí, comprueba si el
   mismo bug está en el gemelo.
+- Desde F-24, `mm/` sigue el mismo patrón que el resto del paquete: `mm_tools.py`
+  no toca Ray y `mm_distributed_tools.py` sí. El despachador importa el segundo
+  **dentro de la función**, no arriba. Un `import ray` nuevo en `mm_tools.py`
+  devolvería el bug.

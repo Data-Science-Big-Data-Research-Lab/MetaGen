@@ -73,7 +73,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ✅ | `F-21` | `run()` apaga Ray aunque no lo haya arrancado él |
 | ⬜ | `F-22` | TPE escribe valores fuera del dominio saltándose la validación |
 | ⬜ | `F-23` | CVOA se detiene en la primera mejora y reporta mal el tiempo |
-| ⬜ | `F-24` | El memético exige Ray aunque no se distribuya |
+| ✅ | `F-24` | El memético exige Ray aunque no se distribuya |
 | ⬜ | `F-25` | SA se queda con el último vecino, no con el mejor |
 | ✅ | `F-26` | La semilla no reproducía entre procesos: `mutate` recorría un conjunto |
 | ⬜ | `A-01` | Sin selección de padres: todos los cruces usan la misma pareja |
@@ -388,7 +388,8 @@ ejecuta.
 **Arreglo** `best=True` en el constructor, junto con F-14.
 
 ### [ ] F-11 · La búsqueda local distribuida manda la misma porción a todos los workers
-`src/metagen/metaheuristics/mm/mm_tools.py:65-68`
+`src/metagen/metaheuristics/mm/mm_distributed_tools.py:57` (estaba en `mm_tools.py:65-68`
+hasta que `F-24` separó los dos módulos)
 
 `population[:count]` sin avanzar el cursor. Compárese con `base.py:114-115`, donde sí avanza.
 
@@ -632,13 +633,50 @@ se reinicia, así que la cepa muere en la iteración siguiente a la primera mejo
 
 **Arreglo** Contador de iteraciones sin mejora, y `timedelta(seconds=...)`.
 
-### [ ] F-24 (R) · El algoritmo memético exige Ray aunque no se distribuya
+### [x] F-24 (R) · El algoritmo memético exige Ray aunque no se distribuya
 `mm/mm_tools.py:5-8` · test: `test_f24_el_memetico_no_necesita_ray`
 
 La importación es de módulo, no de la rama distribuida. En una instalación estándar
 `Memetic` no existe en `metagen.metaheuristics`, pese a que el README lo anuncia.
 
 **Arreglo** Separar `mm_tools` (sin Ray) de `mm_distributed_tools` (con Ray).
+
+*Cerrado tal cual.* `mm_tools` se queda con las tres funciones que no distribuyen
+—`local_search_of_two_children`, `population_local_search` y `local_search`— y
+`mm_distributed_tools` (nuevo) con las cuatro que sí. Los dos puntos donde el
+despachador salta a la rama distribuida importan el módulo **dentro de la función**,
+no arriba, que es lo que hacía falta para que una ejecución sin distribuir no toque
+Ray. No hay importación circular: el módulo distribuido sí importa de `mm_tools` a
+nivel de módulo, y solo en esa dirección.
+
+`metagen/metaheuristics/__init__.py` **exporta `Memetic` siempre**, sin la guarda
+`if is_package_installed("ray")`. Era la consecuencia visible del hallazgo: el README
+anunciaba un algoritmo que no existía en una instalación estándar.
+
+**El test se ha reescrito, y es una mejora aparte del arreglo.** El anterior se
+*saltaba* cuando Ray estaba instalado, así que en la máquina de desarrollo no corría
+nunca y solo el CI lo ejercitaba. El nuevo **bloquea `ray` en un subproceso** con un
+buscador en `sys.meta_path`, de modo que la comprobación es la misma en todas partes,
+y además ya no se limita a importar: construye un memético y lo ejecuta.
+
+Como efecto, **desaparece el «solo observable sin Ray»** que arrastraban `P-06` y las
+notas del proyecto, y la suite pasa de `2 skipped` a `1 skipped` en esta máquina.
+
+**`Memetic` entra en `behavior_test.py`**, como dejaba anotado `P-05`. Medido con el
+mismo protocolo que el resto y **pasa las cuatro propiedades sin `xfail`**:
+
+| Algoritmo | Evals | Gana al azar | Mejora sobre su inicio | Fitness medio | Azar |
+|---|---|---|---|---|---|
+| Memetic | 610 | **10/10** | **10/10** | **0.0002** | 0.0425 |
+
+Es, con diferencia, el mejor resultado del módulo; también el que más evaluaciones
+gasta. Nótese que el memético **sí hace búsqueda local de verdad** —cada vecino parte
+de `deepcopy(solution)`, no en cadena— al revés que la tabú (`A-03`) y que SA (`F-25`).
+
+**Ojo, `F-11` se ha mudado de fichero**: *la búsqueda local distribuida manda la misma
+porción a todos los workers* vivía en `mm_tools.py:65-68` y ahora está en
+`mm_distributed_tools.py:57`. El bug se ha trasladado intacto, sin arreglar, porque es
+otro hallazgo.
 
 ### [ ] F-25 (R) · SA se queda con el último vecino, no con el mejor
 `src/metagen/metaheuristics/sa/sa.py:161` · sin test todavía
@@ -773,10 +811,10 @@ Aquí el código hace lo que dice hacer; lo discutible es qué dice hacer.
   - **SA no optimiza**: con el mismo presupuesto saca 2.00 donde tirar dados saca 0.17. De sus 135 evaluaciones, unas 15 buscan algo; el resto las tiran `F-20` y `F-03`.
   - **GA y SSGA** quedan por debajo del azar. En GA se ve en el código: `best_parents` se calcula fuera del bucle, así que los cinco cruces de cada generación usan la misma pareja (`A-01`), y encima la mitad de los hijos son clones (`F-04`).
   - **RandomSearch queda excluida** de esa comprobación: es muestreo aleatorio, empatar consigo misma es lo correcto.
-  - **Memetic queda fuera** de todo el módulo porque no se puede importar sin Ray (`F-24`). Entra solo cuando se arregle.
+  - **Memetic quedaba fuera** de todo el módulo porque no se podía importar sin Ray (`F-24`). Entró al cerrarlo, y pasa las cuatro propiedades: 10/10 contra el azar con 610 evaluaciones, media 0.0002 frente a 0.0425.
 
   Los tests de SA, GA y SSGA nacen `xfail(strict=True)` citando el hallazgo culpable: al arreglar `F-20`, `F-04` o `A-05` saltarán a `XPASS` avisando de que ya se puede quitar el marcador. Se comprobó además que estos resultados **son idénticos antes de `A-06`**, ejecutando el código en `1016e8a`: no son un efecto del cambio de semilla, que solo los ha hecho medibles.
-- **[x] P-06** No hay `.github/workflows`. Con `mypy` ya configurado en `setup.cfg` y una suite que corre en 3 s, un workflow mínimo con matriz 3.10–3.12 captura buena parte de lo anterior. *Cerrado*: `.github/workflows/ci.yml` con dos jobs, `tests` (matriz 3.10–3.12, bloqueante) y `types` (`mypy src`, informativo hasta que cierre `P-11`). Dos cosas salieron a la luz al montarlo: la suite necesita `pytest-csv-params`, que no declara ni `install_requires` ni ningún extra (ver `P-08`), y **el CI no instala los extras a propósito**, porque un entorno sin Ray es el único donde `F-24` es observable — en esta máquina su test se salta y por eso salen 20 xfailed en vez de 21.
+- **[x] P-06** No hay `.github/workflows`. Con `mypy` ya configurado en `setup.cfg` y una suite que corre en 3 s, un workflow mínimo con matriz 3.10–3.12 captura buena parte de lo anterior. *Cerrado*: `.github/workflows/ci.yml` con dos jobs, `tests` (matriz 3.10–3.12, bloqueante) y `types` (`mypy src`, informativo hasta que cierre `P-11`). Dos cosas salieron a la luz al montarlo: la suite necesita `pytest-csv-params`, que no declara ni `install_requires` ni ningún extra (ver `P-08`), y **el CI no instala los extras a propósito**. Aquello valía cuando el test de `F-24` se saltaba con Ray instalado; al cerrar ese hallazgo se reescribió para bloquear Ray en un subproceso y ahora corre en todas partes. El único test que sigue necesitando Ray de verdad es el de `F-21`.
 - **[ ] P-07** `.gitignore:14` excluye `*.csv` y `*.xlsx`, y los parámetros de test son CSV en `test/test_parameters/`. Cualquier fichero nuevo se queda fuera del commit sin aviso. *Arreglo*: `!test/test_parameters/**/*.csv`.
 - **[ ] P-08** Los extras de `setup.cfg` usan `;`, que en PEP 508 es el separador de **marcadores de entorno**, no de requisitos: `tensorboard = tensorboard; tensorboardX` se lee como «tensorboard, si el marcador tensorboardX». Comprobar qué instala `pip install pymetagen-datalabupo[all]`. Además hay tres `requirements*.txt` con criterios solapados. *Arreglo*: un requisito por línea y migrar la metadata a `pyproject.toml`.
 - **[ ] P-09** Falta `src/metagen/py.typed`: el paquete está anotado de arriba abajo pero sin el marcador PEP 561 mypy trata `metagen` como `Any`.

@@ -427,15 +427,56 @@ def test_f21_run_no_apaga_un_ray_que_no_arranco():
             ray.shutdown()
 
 
-@pytest.mark.xfail(
-    reason="F-24: mm_tools importa ray a nivel de modulo, asi que Memetic no "
-    "existe en una instalacion sin el extra distributed",
-    strict=True,
+_GUION_F24 = """
+import sys
+
+
+class BloqueaRay:
+    '''Hace que cualquier `import ray` falle, haya Ray instalado o no.'''
+
+    @staticmethod
+    def find_spec(nombre, ruta=None, destino=None):
+        if nombre == "ray" or nombre.startswith("ray."):
+            raise ModuleNotFoundError("No module named 'ray'", name="ray")
+        return None
+
+
+sys.meta_path.insert(0, BloqueaRay)
+
+from metagen.framework import Domain, Solution
+from metagen.metaheuristics import Memetic, GAConnector
+
+dominio = Domain(connector=GAConnector())
+dominio.define_real("x", -5.0, 5.0)
+dominio.define_real("y", -5.0, 5.0)
+
+memetico = Memetic(
+    dominio, lambda s: s["x"] ** 2 + s["y"] ** 2,
+    population_size=10, max_iterations=3, neighbor_population_size=3, seed=3,
 )
+memetico.run()
+print("ok")
+"""
+
+
 def test_f24_el_memetico_no_necesita_ray():
-    if importlib.util.find_spec("ray") is not None:
-        pytest.skip("Ray esta instalado: el fallo solo se observa sin Ray")
-    import metagen.metaheuristics.mm.mm_tools  # noqa: F401
+    """F-24: mm_tools importaba ray a nivel de modulo, asi que `Memetic` no existia
+    en una instalacion sin el extra distribuido, pese a que el README lo anuncia.
+
+    Se bloquea `ray` en un subproceso en vez de saltar el test cuando esta
+    instalado: asi la comprobacion corre en cualquier maquina, y no solo en un
+    entorno sin extras como hacia antes.
+    """
+    resultado = subprocess.run(
+        [sys.executable, "-c", _GUION_F24],
+        capture_output=True,
+        text=True,
+    )
+    assert resultado.returncode == 0, (
+        "el memetico no se puede importar ni ejecutar sin Ray:\n"
+        f"{resultado.stdout}{resultado.stderr}"
+    )
+    assert resultado.stdout.strip().endswith("ok")
 
 
 def test_p04_la_suite_completa_se_recolecta_sin_los_extras_opcionales():
