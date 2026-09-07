@@ -16,6 +16,7 @@ esperados. Los detalles de cada hallazgo están en ``AUDIT.md``.
 
 import importlib.util
 import os
+import math
 import pathlib
 import random
 import re
@@ -651,6 +652,47 @@ def test_f09_insertar_en_el_conjunto_de_muertos_no_revienta():
     # remaining=0 lleva a la rama del else, que es donde vive el fallo.
     _, _, insertado = insert_into_set_strain(
         peor_superspreader, mejor_muerto, bolsa, candidato, 0, "d")
+
+    assert insertado
+    assert candidato in bolsa
+
+
+def test_f10_el_peor_superspreader_arranca_siendo_el_mejor():
+    """F-10: el comentario dice «inicialmente la mejor solucion» pero el constructor
+    por defecto creaba la peor, asi que `to_insert > worst_superspreader` no se
+    cumplia nunca y el reemplazo del peor superspreader no se ejecutaba jamas.
+    """
+    from metagen.metaheuristics.cvoa.cvoa_local import CVOA
+    from metagen.metaheuristics.cvoa.local_tools import LocalPandemicState
+
+    set_seed(1)
+    dominio, fitness = _dominio_y_fitness_de_prueba()
+    cepa = CVOA(LocalPandemicState(Solution(dominio)), dominio, fitness)
+
+    assert cepa.worst_superspreader.get_fitness() == -math.inf
+    # Y su pareja simetrica sigue siendo la peor, que es lo correcto para ella.
+    assert cepa.best_dead.get_fitness() == math.inf
+
+
+def test_f10_el_reemplazo_del_peor_superspreader_se_ejecuta():
+    """La consecuencia: con el conjunto lleno, un candidato peor que el peor
+    superspreader tiene que poder sustituirlo. Es la diversificacion que el codigo
+    documenta y que no llegaba a correr."""
+    from metagen.metaheuristics.cvoa.common_tools import insert_into_set_strain
+    from metagen.metaheuristics.cvoa.cvoa_local import CVOA
+    from metagen.metaheuristics.cvoa.local_tools import LocalPandemicState
+
+    set_seed(1)
+    dominio, fitness = _dominio_y_fitness_de_prueba()
+    cepa = CVOA(LocalPandemicState(Solution(dominio)), dominio, fitness)
+
+    candidato = Solution(dominio)
+    candidato.evaluate(fitness)
+
+    bolsa = set()
+    # remaining=0: el conjunto esta lleno, asi que toca reemplazar al peor.
+    _, _, insertado = insert_into_set_strain(
+        cepa.worst_superspreader, cepa.best_dead, bolsa, candidato, 0, "s")
 
     assert insertado
     assert candidato in bolsa
