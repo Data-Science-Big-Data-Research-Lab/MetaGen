@@ -758,6 +758,54 @@ def test_f23_el_tiempo_de_ejecucion_se_reporta_en_segundos():
         assert "timedelta(milliseconds=" not in texto
 
 
+# --------------------------------------------------------------------------
+# Documentacion
+# --------------------------------------------------------------------------
+
+
+def _bloque_de_codigo(modulo: str) -> str:
+    """Extrae el `.. code-block:: python` de la docstring de clase de un modulo."""
+    origen = pathlib.Path(importlib.util.find_spec(modulo).origin).read_text()
+    inicio = origen.index(".. code-block:: python")
+    inicio = origen.index("\n", inicio) + 1
+    fin = origen.index('"""', inicio)
+    lineas = [linea[8:] if linea.startswith(" " * 8) else linea
+              for linea in origen[inicio:fin].splitlines()]
+    return "\n".join(lineas)
+
+
+@pytest.mark.parametrize("modulo", [
+    "metagen.metaheuristics.rs.random_search",
+    "metagen.metaheuristics.tpe.tpe",
+    "metagen.metaheuristics.mm.memetic",
+    "metagen.metaheuristics.cvoa.cvoa_local",
+])
+def test_p10_los_ejemplos_de_las_docstrings_usan_la_api_de_verdad(modulo, monkeypatch):
+    """P-10: los ejemplos publicados llamaban a `domain.defineInteger(0, 1)`, que no
+    existe —el metodo es `define_integer(nombre, min, max)`—, el de CVOA importaba
+    `CVOA`, que no se exporta, y usaba `CVOA.initialize_pandemic(...)` de una version
+    anterior. Son las paginas que publica readthedocs.
+
+    Se ejecuta el ejemplo entero salvo la optimizacion: `run()` y `cvoa_launcher` se
+    sustituyen por dobles. Correrlos de verdad son decenas de miles de evaluaciones
+    (y minutos, en CVOA), y la busqueda en si no es donde estaban los fallos: lo que
+    aqui se comprueba es que los imports resuelven, que los metodos del dominio
+    existen y que los constructores aceptan lo que el ejemplo les pasa.
+    """
+    from metagen.metaheuristics import base as base_module
+
+    monkeypatch.setattr(base_module.Metaheuristic, "run", lambda self: None)
+
+    lanzamientos = []
+    import metagen.metaheuristics as paquete
+    monkeypatch.setattr(
+        paquete, "cvoa_launcher",
+        lambda strains, domain, fitness_function, **kwargs: lanzamientos.append(
+            (strains, domain, fitness_function)))
+
+    exec(compile(_bloque_de_codigo(modulo), f"<ejemplo de {modulo}>", "exec"), {})
+
+
 def _dominio_y_fitness_de_prueba():
     """Dominio minimo con una variable real y una entera, y su fitness."""
     dominio = Domain()
