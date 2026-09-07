@@ -84,11 +84,6 @@ def test_f12_registrar_un_tipo_no_afecta_a_los_demas_dominios():
     assert Domain().get_connector().get_type(IntegerDefinition) is Integer
 
 
-@pytest.mark.xfail(
-    reason="F-16: `elif mode == ('d_a', 'd_g')` compara un str con una tupla, "
-    "asi que ninguna rama de mensajes de definicion se ejecuta",
-    strict=True,
-)
 def test_f16_el_mensaje_de_variable_ya_definida_es_legible():
     dom = Domain()
     dom.define_integer("i", 0, 10)
@@ -97,6 +92,28 @@ def test_f16_el_mensaje_de_variable_ya_definida_es_legible():
     mensaje = str(exc.value)
     assert "DEFINITION error" in mensaje, mensaje
     assert "already defined" in mensaje, mensaje
+
+
+@pytest.mark.parametrize("modo,esperado", [
+    ("d_a", "already defined"),
+    ("d_n", "not defined"),
+    ("d_g", "not a group"),
+    ("d_s", "not a structure"),
+])
+def test_f16_los_cuatro_mensajes_de_definicion_son_legibles(modo, esperado):
+    """Los cuatro modos caian en la rama muerta, no solo el de «ya definida»."""
+    from metagen.framework.domain.preconditions import Messages
+
+    assert Messages.definition("x", modo) == f"[DEFINITION error] The variable x is {esperado}."
+
+
+def test_f16_el_mensaje_de_paso_cero_no_lleva_espacio_doble():
+    """De la misma familia, senalado al cerrar F-19: `Messages.step_zero` producia
+    «The  value must be greater than zero», con dos espacios."""
+    from metagen.framework.domain.preconditions import Messages
+
+    for modo in ("i", "r", "s"):
+        assert "  " not in Messages.step_zero(modo)
 
 
 @pytest.mark.xfail(
