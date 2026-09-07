@@ -721,6 +721,61 @@ def test_f24_el_memetico_no_necesita_ray():
     assert resultado.stdout.strip().endswith("ok")
 
 
+def _raiz_del_repo() -> pathlib.Path:
+    return pathlib.Path(__file__).resolve().parents[2]
+
+
+def test_p02_la_version_minima_de_python_dice_lo_mismo_en_los_tres_sitios():
+    """P-02: el badge del README decia >=3.12, el texto 3.10+ y `python_requires`
+    >=3.10. El minimo real es 3.10, por `itertools.pairwise`."""
+    raiz = _raiz_del_repo()
+    readme = (raiz / "README.md").read_text()
+    setup = (raiz / "setup.cfg").read_text()
+
+    assert "python->=3.10" in readme
+    assert "Python 3.10+" in readme
+    assert "python_requires = >=3.10" in setup
+
+
+def test_p03_nada_apunta_al_repositorio_antiguo():
+    """P-03: badges, enlaces de Colab y las URLs de `setup.cfg` apuntaban a
+    `DataLabUPO/MetaGen`; el repositorio vive en
+    `Data-Science-Big-Data-Research-Lab/MetaGen`."""
+    raiz = _raiz_del_repo()
+    ficheros = [raiz / "README.md", raiz / "setup.cfg"]
+    ficheros += list((raiz / "docs").rglob("*.rst"))
+
+    culpables = [str(f.relative_to(raiz)) for f in ficheros
+                 if "DataLabUPO/MetaGen" in f.read_text()]
+    assert not culpables, f"siguen apuntando al repositorio antiguo: {culpables}"
+
+
+def test_p07_los_csv_de_parametros_no_estan_ignorados():
+    """P-07: `.gitignore` excluia `*.csv`, y los parametros de los tests son CSV, asi
+    que cualquiera nuevo se quedaba fuera del commit sin que `git status` lo dijera."""
+    raiz = _raiz_del_repo()
+    candidato = "test/test_parameters/framework_parameters/nuevo_ejemplo.csv"
+
+    resultado = subprocess.run(
+        ["git", "check-ignore", "-q", candidato],
+        cwd=raiz, capture_output=True, text=True,
+    )
+    # check-ignore devuelve 0 si el fichero esta ignorado, 1 si no.
+    assert resultado.returncode == 1, (
+        f"{candidato} sigue ignorado por .gitignore"
+    )
+
+
+def test_p09_el_paquete_lleva_el_marcador_py_typed():
+    """P-09: sin el marcador de PEP 561, mypy trata `metagen` como `Any` desde fuera
+    del paquete, pese a estar anotado de arriba abajo."""
+    raiz = _raiz_del_repo()
+
+    assert (raiz / "src" / "metagen" / "py.typed").is_file()
+    # Y tiene que viajar en el paquete construido, no solo estar en el arbol.
+    assert "metagen = py.typed" in (raiz / "setup.cfg").read_text()
+
+
 def test_p04_la_suite_completa_se_recolecta_sin_los_extras_opcionales():
     """P-04: ``pytest test`` abortaba en la recoleccion porque
     ``test/metaheuristics_test/unit_test.py`` importa ``ray`` y, de forma
