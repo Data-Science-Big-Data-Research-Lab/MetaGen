@@ -18,8 +18,8 @@ algorithm that cannot beat random sampling on a bowl is broken, with no excuses
 about problem difficulty.
 
 Property 4 is not asked of RandomSearch: it *is* random sampling, so tying with
-the baseline is the correct outcome and not a defect. Memetic is missing entirely
-because it cannot be imported without Ray (F-24).
+the baseline is the correct outcome and not a defect. Memetic joined the module
+once F-24 stopped it from requiring Ray, and passes every property.
 
 The algorithms marked xfail below do not merely lose, they lose measurably: with
 the same budget SA scores 2.00 where random sampling scores 0.17.
@@ -29,7 +29,7 @@ import pytest
 
 from metagen.framework import Domain, Solution
 from metagen.framework.rng import set_seed
-from metagen.metaheuristics import (GA, SA, SSGA, TPE, GAConnector,
+from metagen.metaheuristics import (GA, SA, SSGA, TPE, GAConnector, Memetic,
                                     RandomSearch, TabuSearch)
 
 SEEDS = tuple(range(10))
@@ -39,7 +39,7 @@ SEEDS = tuple(range(10))
 # broken one at 0-4, so anything in between is a signal rather than noise.
 REQUIRED_WINS = 7
 
-ALGORITHMS = ("RandomSearch", "SA", "TabuSearch", "GA", "SSGA", "TPE")
+ALGORITHMS = ("RandomSearch", "SA", "TabuSearch", "GA", "SSGA", "TPE", "Memetic")
 
 _SA_REASON = ("F-20 and F-03: SA inherits a population of 20, keeps solutions[0] "
               "instead of the best one, and throws the warmup evaluations away")
@@ -95,6 +95,10 @@ def _build(name: str, fitness, seed: int, log_dir: str):
     if name == "TPE":
         return TPE(_sphere_domain(), fitness, max_iterations=15,
                    warmup_iterations=5, seed=seed, log_dir=log_dir)
+    if name == "Memetic":
+        return Memetic(_sphere_domain(GAConnector()), fitness, population_size=10,
+                       max_iterations=15, neighbor_population_size=3, seed=seed,
+                       log_dir=log_dir)
     raise ValueError(f"unknown algorithm: {name}")
 
 
@@ -153,6 +157,7 @@ def test_the_returned_solution_is_the_best_one_seen(runs, name):
     "RandomSearch",
     "TabuSearch",
     "TPE",
+    "Memetic",
     _broken("SA", _SA_REASON),
     _broken("GA", _GA_REASON),
     _broken("SSGA", _SSGA_REASON),
@@ -170,6 +175,7 @@ def test_the_run_ends_better_than_it_started(runs, name):
 @pytest.mark.parametrize("name", [
     "TabuSearch",
     "TPE",
+    "Memetic",
     _broken("SA", _SA_REASON),
     _broken("GA", _GA_REASON),
     _broken("SSGA", _SSGA_REASON),
