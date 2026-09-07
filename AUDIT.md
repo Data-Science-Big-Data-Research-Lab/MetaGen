@@ -55,7 +55,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ✅ | `F-03` | La fase de warmup se calcula y se tira |
 | ✅ | `F-04` | El cruce del GA devolvía un hijo copia exacta del padre 1 |
 | ✅ | `F-05` | `Structure` descarta el valor que se le asigna |
-| ⬜ | `F-06` | `Structure.set` e `insert` fallan con datos válidos |
+| ✅ | `F-06` | `Structure.set` e `insert` fallan con datos válidos |
 | ⬜ | `F-07` | Importar MetaGen secuestra el `excepthook` del proceso |
 | ⬜ | `F-08` | Interbloqueo en CVOA con `update_isolated=True` |
 | ⬜ | `F-09` | `insert_into_set_strain` puede reventar con `KeyError` |
@@ -298,7 +298,7 @@ Necesita la misma pareja `(BaseType, Solution)` por el mismo motivo.
 
 Cierra el error de mypy `structure.py:202` de la tabla de `P-11`.
 
-### [ ] F-06 (R) · `Structure.set` y `Structure.insert` lanzan excepción con datos válidos
+### [x] F-06 (R) · `Structure.set` y `Structure.insert` lanzan excepción con datos válidos
 `structure.py:286` y `structure.py:268` · tests: `test_f06_*`
 
 ```
@@ -310,6 +310,19 @@ st.insert(0, 5)     → AttributeError: 'Integer' object has no attribute 'inser
 `insert` llama a `insert` sobre el elemento, no sobre la lista.
 
 **Arreglo** `get_type(self.get_definition().get_base())` y `current_values.insert(index, ...)`.
+
+*Cerrado.* `insert` es literalmente el arreglo propuesto. `set` va un paso más allá:
+en vez de pedir el tipo con la definición correcta y repetir ahí la conversión, cada
+elemento pasa por `_convert`, que es lo que ya usan `append` e `__setitem__`. Los dos
+caminos estaban duplicados y solo uno se arregló en `F-05`; ahora hay uno.
+
+Como efecto, `set` hereda del arreglo de `F-05` el caso del `dict`, que su propia
+copia no soportaba: `Solution.set` toma `(variable, value)`, así que
+`st.set([{'a': 11}, {'a': 22}])` habría fallado igual tras aplicar solo el arreglo
+literal. Test nuevo, `test_f06_set_admite_una_lista_de_grupos`.
+
+`BaseTypeClass` deja de importarse: era el único uso, y con él se va el bloque
+`TYPE_CHECKING` del módulo.
 
 ### [ ] F-07 · `import metagen` secuestra el `excepthook` del proceso
 `src/metagen/__init__.py:19-30`
