@@ -54,7 +54,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ✅ | `F-02` | TPE toma la peor solución como mejor inicial |
 | ✅ | `F-03` | La fase de warmup se calcula y se tira |
 | ✅ | `F-04` | El cruce del GA devolvía un hijo copia exacta del padre 1 |
-| ⬜ | `F-05` | `Structure` descarta el valor que se le asigna |
+| ✅ | `F-05` | `Structure` descarta el valor que se le asigna |
 | ⬜ | `F-06` | `Structure.set` e `insert` fallan con datos válidos |
 | ⬜ | `F-07` | Importar MetaGen secuestra el `excepthook` del proceso |
 | ⬜ | `F-08` | Interbloqueo en CVOA con `update_isolated=True` |
@@ -259,7 +259,7 @@ resultado. Mientras `best_parents` se calcule fuera del bucle y los cinco cruces
 cada generación usen la misma pareja, arreglar el clon no aporta diversidad. Los
 `xfail` de GA en `behavior_test.py` siguen justificados y ahora citan solo `A-01`.
 
-### [ ] F-05 (R) · `Structure` descarta el valor que se le asigna
+### [x] F-05 (R) · `Structure` descarta el valor que se le asigna
 `src/metagen/framework/solution/types/structure.py:197-208` · tests: `test_f05_*`
 
 `_convert` construye el tipo a partir de la definición —lo que lo inicializa al azar—
@@ -270,6 +270,33 @@ patrón está en `base_solution.py:149`.
 
 **Arreglo** Crear la instancia y llamar a `.set(value)`; cambiar `elif BaseType:` por
 `elif isinstance(value, BaseType):`.
+
+*Cerrado, con dos correcciones sobre el arreglo propuesto.*
+
+**`isinstance(value, BaseType)` a secas habría roto las estructuras de grupos.**
+`Solution` **no hereda de `BaseType`** —su MRO es `['Solution', 'object']`— y una
+estructura sí puede contener sub-soluciones, vía `set_structure_to_variable`. Con la
+comprobación literal, esos elementos ya construidos caerían en el `else` y el
+`ValueError` saltaría con datos válidos, cambiando un bug por otro. Va
+`isinstance(value, (BaseType, Solution))`.
+
+**Aplicar el valor no es un `.set(value)` uniforme.** `Solution.set` toma
+`(variable, value)`, así que la rama del `dict` se recorre clave a clave. Y no se
+vacía la sub-solución antes, a diferencia de `_set_sub_solution`: con un `dict`
+parcial, las variables no mencionadas conservan su inicialización aleatoria en vez
+de desaparecer, que dejaría un elemento incompleto dentro de la estructura.
+
+La vía del `dict` tenía el mismo fallo y no la cubría ningún test: `append({'a': 3})`
+sobre una estructura de grupos guardaba `{'a': 1}`. Test nuevo,
+`test_f05_una_estructura_de_grupos_conserva_el_valor`.
+
+**El gemelo de `base_solution.py:149` también se arregló**, porque el `elif` muerto
+allí no es cosmético: `Solution.set('i', {1, 2})` metía un `set` de Python dentro de
+una variable entera sin decir nada, en vez de lanzar el `TypeError` que el código ya
+tenía escrito. Test nuevo, `test_f05_un_tipo_no_soportado_no_entra_en_la_solucion`.
+Necesita la misma pareja `(BaseType, Solution)` por el mismo motivo.
+
+Cierra el error de mypy `structure.py:202` de la tabla de `P-11`.
 
 ### [ ] F-06 (R) · `Structure.set` y `Structure.insert` lanzan excepción con datos válidos
 `structure.py:286` y `structure.py:268` · tests: `test_f06_*`

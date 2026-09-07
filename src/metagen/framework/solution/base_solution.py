@@ -149,7 +149,10 @@ class Solution:
             self._set_value(variable, type_value)
         elif isinstance(value, dict):
             self._set_sub_solution(variable, value)
-        elif types.BaseType:  # Compatibility with already defined types
+        # Solution is not a BaseType, so both have to be named here. Testing the
+        # class itself, as this did, is always true and left the raise below
+        # unreachable, so any unsupported type went straight into the solution.
+        elif isinstance(value, (types.BaseType, Solution)):  # Compatibility with already defined types
             self._set_value(variable, value)
         else:
             raise TypeError(

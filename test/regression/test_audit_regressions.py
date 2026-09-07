@@ -179,25 +179,40 @@ def _estructura_estatica(longitud=3, semilla=4):
     return Solution(dom).get("v")
 
 
-@pytest.mark.xfail(
-    reason="F-05: Structure._convert crea una instancia nueva con valor aleatorio "
-    "y descarta el valor de entrada",
-    strict=True,
-)
 def test_f05_asignar_un_elemento_conserva_el_valor():
     st = _estructura_estatica()
     st[0] = 42
     assert st[0] == 42
 
 
-@pytest.mark.xfail(
-    reason="F-05: mismo _convert, por la via de append",
-    strict=True,
-)
 def test_f05_append_conserva_el_valor():
     st = _estructura_estatica()
     st.append(7)
     assert st[len(st) - 1] == 7
+
+
+def test_f05_una_estructura_de_grupos_conserva_el_valor():
+    """La vía del dict tenía el mismo _convert, y no la cubría ningún test."""
+    set_seed(4)
+    dom = Domain()
+    dom.define_group("g")
+    dom.define_integer_in_group("g", "a", 0, 100)
+    dom.define_static_structure("v", 2)
+    dom.set_structure_to_variable("v", "g")
+
+    st = Solution(dom).get("v")
+    st.append({"a": 33})
+    assert st[len(st) - 1]["a"] == 33
+
+
+def test_f05_un_tipo_no_soportado_no_entra_en_la_solucion():
+    """El mismo `elif <clase>:` de _convert dejaba muerto el raise de Solution.set."""
+    set_seed(4)
+    dom = Domain()
+    dom.define_integer("i", 0, 10)
+
+    with pytest.raises(TypeError):
+        Solution(dom).set("i", {1, 2})
 
 
 @pytest.mark.xfail(
