@@ -1,22 +1,12 @@
-# developtment documentation
-sphinx-rtd-theme
-# general requirements
-scipy
-numpy
-# optional requirements
-ray
-tensorboardX
-tensorboard-data-server
-tensorboard-plugin-wit
-# test
+# Runtime dependencies. These are the ones setup.cfg declares in install_requires;
+# installing the package brings them along, so this file is for a bare checkout.
+numpy>=1.21.0
+scipy>=1.7.0
+
+# Running the test suite. Also available as the "test" extra:
+#     pip install -e .[test]
 pytest
 pytest-csv-params
-scikit-learn
-tensorflow
-# tensorflow-macos
-# tensorflow-metal
-# benchmark
-hyperopt
-optuna
-pandas
-matplotlib
+
+# Building the documentation.
+sphinx-rtd-theme

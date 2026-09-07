@@ -16,6 +16,7 @@ esperados. Los detalles de cada hallazgo están en ``AUDIT.md``.
 
 import copy
 import importlib.util
+from importlib.metadata import requires
 import os
 import math
 import pathlib
@@ -739,6 +740,32 @@ def test_p01_la_licencia_declarada_es_la_del_fichero_license():
     assert "license_files = LICENSE" in setup
 
 
+def test_p08_los_extras_declaran_un_requisito_por_linea():
+    """P-08: los extras se separaban con ";", que PEP 508 lee como el comienzo de un
+    marcador de entorno. En un `.cfg` setuptools parte por ahi y funciona de milagro,
+    pero el mismo texto en un `pyproject.toml` perderia en silencio todo lo que vaya
+    detras del primer requisito.
+
+    Y comprueba lo que el diagnostico no listaba: que `pytest-csv-params`, que la
+    suite necesita, este declarado en alguna parte.
+    """
+    from importlib.metadata import requires
+
+    setup = (_raiz_del_repo() / "setup.cfg").read_text()
+    seccion = setup[setup.index("[options.extras_require]"):]
+    seccion = seccion.split("\n[")[0]
+    lineas = [l for l in seccion.splitlines()
+              if l.startswith("    ") and not l.strip().startswith("#")]
+    assert lineas, "no se han encontrado requisitos en los extras"
+    for linea in lineas:
+        assert ";" not in linea, f"el extra sigue usando ';': {linea!r}"
+
+    declarados = requires("pymetagen-datalabupo") or []
+    assert any("pytest-csv-params" in r for r in declarados), (
+        "pytest-csv-params, que la suite necesita, no lo declara ningun extra"
+    )
+
+
 def test_p02_la_version_minima_de_python_dice_lo_mismo_en_los_tres_sitios():
     """P-02: el badge del README decia >=3.12, el texto 3.10+ y `python_requires`
     >=3.10. El minimo real es 3.10, por `itertools.pairwise`."""
@@ -1362,8 +1389,9 @@ def test_p06_el_workflow_de_ci_ejecuta_la_suite_que_debe_estar_verde():
     tienen que seguir siendo ciertas o el CI deja de servir para lo que se monto:
 
     - ejecuta la suite que debe estar verde;
-    - instala `pytest-csv-params`, que no declara ni `install_requires` ni
-      ningun extra (P-08) y sin el cual `solution_test.py` ni se recolecta;
+    - acaba teniendo `pytest-csv-params`, sin el cual `solution_test.py` ni se
+      recolecta. Desde P-08 lo declara el extra `test`, asi que vale con que el
+      CI lo instale por su nombre o por el extra;
     - **no** instala los extras opcionales, porque un entorno sin Ray es el
       unico donde F-24 es observable.
 
@@ -1385,8 +1413,13 @@ def test_p06_el_workflow_de_ci_ejecuta_la_suite_que_debe_estar_verde():
         for linea in texto.splitlines()
         if "pip install" in linea
     ]
-    assert any("pytest-csv-params" in linea for linea in instalaciones), (
-        "el CI no instala pytest-csv-params: framework_test/solution_test.py no "
+    # Por su nombre, o por el extra que lo declara desde P-08. Lo que se protege
+    # es que el CI acabe teniendolo, no como se escriba la linea.
+    por_el_nombre = any("pytest-csv-params" in linea for linea in instalaciones)
+    por_el_extra = any("[test]" in linea for linea in instalaciones) and any(
+        "pytest-csv-params" in r for r in (requires("pymetagen-datalabupo") or []))
+    assert por_el_nombre or por_el_extra, (
+        "el CI no acaba con pytest-csv-params: framework_test/solution_test.py no "
         "se llegaria a recolectar"
     )
 

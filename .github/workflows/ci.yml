@@ -26,13 +26,15 @@ jobs:
 
       - name: Install the package and the test tooling
         # pytest-csv-params is a hard requirement of framework_test/solution_test.py
-        # but is declared nowhere in setup.cfg, so it has to be installed by hand
-        # (see P-08). The optional extras (ray, tensorflow) are deliberately left
-        # out: without them F-24 becomes observable and unit_test.py skips cleanly.
+        # and, since P-08, the test extra declares it. The optional extras (ray,
+        # tensorflow) are deliberately left out: without them unit_test.py skips
+        # cleanly, which is what P-04 fixed.
         run: |
           python -m pip install --upgrade pip
-          pip install -e .
-          pip install pytest pytest-csv-params
+          # The test extra, rather than naming the tools here: since P-08 the
+          # suite's dependencies are declared in setup.cfg, and this is what
+          # keeps that declaration honest.
+          pip install -e .[test]
 
       - name: Run the suite that must stay green
         # The whole tree since P-05: metaheuristics_test/behavior_test.py has to

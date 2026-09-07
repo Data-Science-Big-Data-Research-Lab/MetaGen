@@ -1,0 +1,23 @@
+# Optional extras, each also declared in setup.cfg. Prefer installing them from
+# there, so that the version constraints stay in one place:
+#     pip install -e .[all]
+#
+# This file additionally lists what the examples and the benchmarks need, which
+# is not part of the package's own dependencies.
+
+# [tensorboard] extra
+tensorboard
+tensorboardX
+
+# [distributed] extra
+ray>=2.40.0
+
+# Used by the examples under test/ and the notebooks.
+scikit-learn
+tensorflow
+
+# Used only to reproduce the paper's benchmarks.
+hyperopt
+optuna
+pandas
+matplotlib
