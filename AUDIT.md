@@ -1,7 +1,7 @@
 # Auditoría de MetaGen
 
 Revisión completa de `src/metagen` sobre el commit `74f104e` (2025-03-21).
-49 hallazgos con identificadores estables: los 46 de la revisión inicial más
+51 hallazgos con identificadores estables: los 46 de la revisión inicial más
 `P-11` (al montar el CI), `F-25` (al medir el comportamiento real de las
 metaheurísticas para `P-05`) y `F-26` (al verificar `F-04`). Los marcados **(R)** se reprodujeron
 ejecutando el paquete instalado en Python 3.11 sin Ray ni TensorFlow.
@@ -30,7 +30,7 @@ Marcar aquí el hallazgo como `[x]` al cerrarlo.
 | Bloque | Cantidad | Qué son |
 |---|---|---|
 | `F-01`…`F-13` | 13 | Críticos: corrompen resultados o bloquean la ejecución |
-| `F-14`…`F-26` | 13 | Importantes: fallan en casos concretos o desperdician cómputo |
+| `F-14`…`F-28` | 15 | Importantes: fallan en casos concretos o desperdician cómputo |
 | `A-01`…`A-12` | 12 | Algoritmia y diseño: decisiones discutibles, no bugs |
 | `P-01`…`P-11` | 11 | Empaquetado, tests y documentación |
 
@@ -76,6 +76,8 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ✅ | `F-24` | El memético exige Ray aunque no se distribuya |
 | ⬜ | `F-25` | SA se queda con el último vecino, no con el mejor |
 | ✅ | `F-26` | La semilla no reproducía entre procesos: `mutate` recorría un conjunto |
+| ⬜ | `F-27` | `p_isolation` significa lo contrario de lo que dice su nombre |
+| ⬜ | `F-28` | Tres parámetros de CVOA no son los que sugiere el artículo |
 | ⬜ | `A-01` | Sin selección de padres: todos los cruces usan la misma pareja |
 | ⬜ | `A-02` | La búsqueda tabú es en realidad hill climbing |
 | ⬜ | `A-03` | El vecindario tabú se genera en cadena, no alrededor de la solución |
@@ -885,6 +887,71 @@ correctas como medias, pero cada ejecución individual no es repetible.
 misma ejecución el fallo es invisible— y fija dos `PYTHONHASHSEED` concretos en vez de
 confiar en los aleatorios, para que sea determinista y no acierte por suerte. Con esto
 la garantía de `A-06` se sostiene también entre ejecuciones.
+
+### [ ] F-27 (R) · `p_isolation` significa lo contrario de lo que dice su nombre
+`src/metagen/metaheuristics/cvoa/cvoa_local.py:290` y su gemelo · descubierto al leer el artículo de CVOA
+
+```python
+if get_rng().random() < self.strain_properties.p_isolation:
+    self.update_new_infected_population(infected_population, new_infected_individual)   # se CONTAGIA
+else:
+    ...                                                                                  # se aísla
+```
+
+Con `random() < p_isolation` el individuo **se contagia**, y solo se aísla en la rama
+contraria. Es decir, `p_isolation` es la probabilidad de **no** aislarse. Medido, con
+la rama de distanciamiento realmente alcanzada (`social_distancing=2`):
+
+```
+p_isolation=0.1  ->  14, 54, 22, 12, 4, 2, 1, 1, 1      la pandemia se apaga
+p_isolation=0.5  ->  14, 54, 112, 163, ..., 2143        crece
+p_isolation=0.9  ->  14, 54, 180, 548, ..., 124343      explota
+```
+
+**Más aislamiento, más contagios.** Y no es solo la dirección: el umbral en que la
+pandemia deja de crecer está entre `p_isolation` 0.20 y 0.30, y el artículo sitúa
+`R0 = 1` en `P_ISOLATION ≈ 0.65-0.70` (Figura 5). `1 − 0.30 = 0.70` y `1 − 0.20 = 0.80`:
+**el parámetro de MetaGen es el complementario del del artículo**, con los números
+cuadrando.
+
+**El código es fiel al pseudocódigo publicado**, Algoritmo 3, línea 9:
+`if R4 < P_ISOLATION then newInfected ← i`. Pero ese pseudocódigo **contradice a su
+propio artículo**: el texto dice que un individuo aislado pasa a recuperados, y la
+Figura 5 muestra `R0` decreciendo cuando `P_ISOLATION` crece. Texto y figura coinciden
+entre sí; el pseudocódigo es el que discrepa.
+
+**Consecuencia práctica.** El artículo vende como ventaja n.º 2 que «CVOA puede detener
+la exploración tras varias iteraciones, sin necesidad de configurarlo», porque la
+población de infectados decrece hasta vaciarse (Figura 2). **En MetaGen no decrece
+nunca** con los valores por defecto: crece de forma exponencial. Es la causa de fondo
+de que CVOA tarde minutos desde que `F-23` dejó que las cepas se ejecuten enteras.
+
+**Arreglo** Invertir la comparación en los dos gemelos, de forma que `p_isolation` sea
+la probabilidad de aislarse. **Decisión pendiente**: hacerlo aparta el código del
+pseudocódigo publicado, aunque lo acerque al texto, a la figura y al nombre del
+parámetro. Es una decisión de los autores, no de la auditoría.
+
+### [ ] F-28 · Tres parámetros por defecto de CVOA no son los que sugiere el artículo
+`src/metagen/metaheuristics/cvoa/common_tools.py:9-21` · descubierto al leer el artículo de CVOA
+
+El artículo dedica una sección entera, *Suggested parameters setup*, a fijar los
+valores, y presenta como ventaja n.º 1 que «los parámetros de entrada ya están
+fijados según las estadísticas de la enfermedad, evitando que el investigador los
+inicialice con valores arbitrarios». Siete de los diez coinciden; tres no:
+
+| Parámetro | Artículo | MetaGen |
+|---|---|---|
+| `p_re_infection` | 0.02 | **0.001** (20 veces menor) |
+| `p_isolation` | ≥ 0.7 | **0.5** (y ver `F-27`) |
+| `pandemic_duration` | 30 | **10** |
+
+`pandemic_duration=10` con `social_distancing=7` deja solo **tres** iteraciones con
+medidas de distanciamiento; en el artículo son 22 de 30. Esa es la fase en que la
+pandemia decrece, así que con los valores de MetaGen no llega a ocurrir.
+
+**Arreglo** Alinear los tres valores con la sección *Suggested parameters setup*, o
+documentar por qué se apartan. Entrelazado con `F-27`: mientras `p_isolation` signifique
+lo contrario, subirlo a 0.7 empeora las cosas en vez de mejorarlas.
 
 ---
 
