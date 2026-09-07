@@ -77,7 +77,7 @@ def distributed_cvoa_launcher(strains: List[StrainProperties], domain: Domain, f
             + "\n********** Pandemic report **********\n"
             + f"Pandemic report: {ray.get(global_state.get_pandemic_report.remote())}\n"
             + "\n********** Performance **********\n"
-            + f"Execution time: {timedelta(milliseconds=t2 - t1)}\n"
+            + f"Execution time: {timedelta(seconds=t2 - t1)}\n"
     )
 
     metagen_logger.info(output)

@@ -1,5 +1,5 @@
 import copy
-from typing import NamedTuple, Set, Tuple, Callable
+from typing import NamedTuple, Optional, Set, Tuple, Callable
 
 from metagen.framework import Domain, Solution
 from metagen.framework.rng import get_rng
@@ -18,6 +18,11 @@ class StrainProperties(NamedTuple):
     p_re_infection: float = 0.001
     p_superspreader: float = 0.1
     p_die: float = 0.05
+    # Iterations the strain may spend without improving before it gives up. None,
+    # the default, means it does not give up early and runs its whole
+    # pandemic_duration. Added with F-23; last on purpose, so that any existing
+    # positional construction keeps working.
+    max_iterations_without_improvement: Optional[int] = None
 
 # Individual state in the pandemic
 IndividualState = NamedTuple("IndividualState", [("recovered", bool), ("dead", bool), ("isolated", bool)])

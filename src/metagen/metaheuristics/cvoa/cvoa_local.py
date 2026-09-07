@@ -132,6 +132,10 @@ class CVOA(Metaheuristic):
         self.best_strain_solution: Solution | None = None
         self.best_strain_solution_found: bool = False
 
+        # Iterations gone by without a new global best. The flag above used to be
+        # the stopping condition on its own and was never cleared (F-23).
+        self.iterations_without_improvement: int = 0
+
         # 4.4. The best strain-specific death individual will initially be the worst solution.
         self.best_dead: Solution = self.solution_type(self.domain, connector=self.domain.get_connector())
 
@@ -201,6 +205,15 @@ class CVOA(Metaheuristic):
             f' - Best strain individual: {self.best_strain_solution} , Best global individual: {self.global_state.get_best_individual()} ')
 
         # 3. Update the elapsed pandemic time.
+        # The improvement flag becomes a stagnation count here, and is cleared. Left
+        # standing, it ended the strain on the iteration after its first improvement:
+        # the strain stopped because it was working (F-23).
+        if self.best_strain_solution_found:
+            self.iterations_without_improvement = 0
+            self.best_strain_solution_found = False
+        else:
+            self.iterations_without_improvement += 1
+
         self.time += 1
 
         return list(self.infected), self.best_strain_solution
@@ -332,8 +345,13 @@ class CVOA(Metaheuristic):
         # Second condition: When the pandemic duration has been reached
         second_condition: bool = self.time > self.strain_properties.pandemic_duration
 
-        # Third condition: When the best individual has been found and the time is greater than 1
-        third_condition = self.best_strain_solution_found and self.time > 1
+        # Third condition: when the strain has spent too long without improving.
+        # This used to be "best_strain_solution_found and self.time > 1", with a
+        # flag nothing ever cleared, so a strain died right after its first
+        # improvement (F-23). Off unless the strain asks for it.
+        stagnation_limit = self.strain_properties.max_iterations_without_improvement
+        third_condition = (stagnation_limit is not None
+                           and self.iterations_without_improvement >= stagnation_limit)
 
         return first_condition or second_condition or third_condition
 

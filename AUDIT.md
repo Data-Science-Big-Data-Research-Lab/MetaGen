@@ -72,7 +72,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ⬜ | `F-20` | SA evalúa veinte soluciones iniciales para usar una, y no la mejor |
 | ✅ | `F-21` | `run()` apaga Ray aunque no lo haya arrancado él |
 | ⬜ | `F-22` | TPE escribe valores fuera del dominio saltándose la validación |
-| ⬜ | `F-23` | CVOA se detiene en la primera mejora y reporta mal el tiempo |
+| ✅ | `F-23` | CVOA se detiene en la primera mejora y reporta mal el tiempo |
 | ✅ | `F-24` | El memético exige Ray aunque no se distribuya |
 | ⬜ | `F-25` | SA se queda con el último vecino, no con el mejor |
 | ✅ | `F-26` | La semilla no reproducía entre procesos: `mutate` recorría un conjunto |
@@ -716,7 +716,7 @@ refuerzan: un valor fuera de rango llega intacto a la función de fitness del us
 
 **Arreglo** `max_value` a secas, invertir el `if`, usar `self.set(value)` y `.item()`.
 
-### [ ] F-23 · CVOA se detiene al encontrar una mejora y reporta el tiempo mil veces más corto
+### [x] F-23 (R) · CVOA se detiene al encontrar una mejora y reporta el tiempo mil veces más corto
 `cvoa_local.py:333` y `local_launcher.py:45`
 
 `third_condition = self.best_strain_solution_found and self.time > 1`: la bandera nunca
@@ -724,6 +724,50 @@ se reinicia, así que la cepa muere en la iteración siguiente a la primera mejo
 `timedelta(milliseconds=t2 - t1)` con `time()` en segundos.
 
 **Arreglo** Contador de iteraciones sin mejora, y `timedelta(seconds=...)`.
+
+*Cerrado, y es el arreglo que más ha movido un resultado en toda la auditoría.*
+Con `pandemic_duration=8`, cinco semillas:
+
+| | Sin arreglar | Arreglado |
+|---|---|---|
+| Iteraciones ejecutadas | 2 de 8 | 9 de 8 |
+| Fitness medio | **9.343187** | **0.000293** |
+| Valores | `[4.06, 2.88, 3.02, 16.08, 20.67]` | `[0.0006, 0.0006, 0.000005, 0.00004, 0.0002]` |
+
+La cepa se moría en su segunda iteración **porque había encontrado una mejora**. Es
+decir: cuanto antes funcionaba CVOA, antes lo apagaban.
+
+**La condición no se borra, se convierte en lo que decía ser.** La bandera pasa a
+alimentar un contador de iteraciones sin mejora, que se reinicia cuando hay una, y el
+umbral es una propiedad nueva de la cepa:
+
+```python
+max_iterations_without_improvement: Optional[int] = None
+```
+
+**Va al final de `StrainProperties` a propósito**, para no desplazar los campos que ya
+había y no romper ninguna construcción posicional existente. Y **por defecto es `None`,
+que no detiene nada**: así la cepa agota su `pandemic_duration`, que es el presupuesto
+que el usuario declaró, en vez de que el arreglo invente un número mágico. Quien quiera
+la salida temprana la pide.
+
+**Efecto secundario que hay que saber: CVOA ahora tarda.** Antes hacía 2 iteraciones y
+terminaba al instante; ahora corre las que se le pidan, y la población de infectados
+crece en cada una. Con `pandemic_duration=8` un lanzamiento pasa de instantáneo a
+decenas de segundos. No es una regresión: es el algoritmo ejecutándose.
+
+**Esto destapa `F-10`**, que estaba tapado por este. Con la cepa muriendo en la
+iteración 2, la diversificación de superspreaders no tenía ocasión de influir; ahora
+sí. No se ha medido la contribución aislada de `F-10` con `F-23` ya cerrado: el
+experimento ahora es lento y no cambiaba ninguna decisión.
+
+La segunda mitad, `timedelta(milliseconds=t2 - t1)` sobre un `time()` que devuelve
+segundos, estaba **en los dos lanzadores**, no solo en el local: reportaban duraciones
+mil veces más cortas.
+
+Tests: `test_f23_una_cepa_no_muere_al_encontrar_la_primera_mejora`,
+`test_f23_el_estancamiento_si_detiene_la_cepa_cuando_se_pide` y
+`test_f23_el_tiempo_de_ejecucion_se_reporta_en_segundos`.
 
 ### [x] F-24 (R) · El algoritmo memético exige Ray aunque no se distribuya
 `mm/mm_tools.py:5-8` · test: `test_f24_el_memetico_no_necesita_ray`
