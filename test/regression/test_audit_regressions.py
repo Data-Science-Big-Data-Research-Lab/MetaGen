@@ -108,11 +108,6 @@ def test_f17_una_sola_categoria_es_valida():
     assert Solution(dom)["c"] == "solo"
 
 
-@pytest.mark.xfail(
-    reason="F-18: StaticStructureDefinition se construye con meta-tipo D mientras "
-    "get_attributes devuelve S",
-    strict=True,
-)
 def test_f18_una_estructura_estatica_se_identifica_como_static():
     dom = Domain()
     dom.define_static_structure("v", 3)

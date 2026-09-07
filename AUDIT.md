@@ -67,7 +67,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ⬜ | `F-15` | `Solution.__hash__` no mira las variables |
 | ⬜ | `F-16` | Los mensajes de error de `Domain` salen mal formados |
 | ⬜ | `F-17` | Categorías duplicadas aceptadas, categoría única rechazada |
-| ⬜ | `F-18` | Una estructura estática se identifica como dinámica |
+| ✅ | `F-18` | Una estructura estática se identifica como dinámica |
 | ✅ | `F-19` | Estructuras dinámicas: nunca alcanzan el máximo, revientan si min = max |
 | ⬜ | `F-20` | SA evalúa veinte soluciones iniciales para usar una, y no la mejor |
 | ⬜ | `F-21` | `run()` apaga Ray aunque no lo haya arrancado él |
@@ -444,12 +444,20 @@ impide fijar un hiperparámetro a un único valor.
 **Arreglo** `len(set(value)) == len(value)` y un solo tipo; permitir longitud 1
 (protegiendo `Categorical.mutate`, que haría `random.choice([])`).
 
-### [ ] F-18 (R) · Una estructura estática se identifica como `DYNAMIC`
+### [x] F-18 (R) · Una estructura estática se identifica como `DYNAMIC`
 `domain/core.py:695` · test: `test_f18_una_estructura_estatica_se_identifica_como_static`
 
 `Base.__init__(self, D)` mientras `get_attributes()` devuelve `S`.
 
 **Arreglo** `Base.__init__(self, S)`.
+
+*Cerrado*, y es literalmente esa línea. Antes de tocarla se comprobó que el bug no
+sostenía nada: `_meta_type` solo llega a `get_type()`, y `get_type()` en `src/` se usa
+únicamente dentro de los `__str__`. Quien distingue estructuras estáticas de dinámicas
+—`Structure.initialize`, `Structure.mutate`— lo hace con `isinstance` sobre la clase de
+la definición, no con el meta-tipo. Así que el único efecto observable era que una
+estructura estática se imprimía como `s: [DYNAMIC]` mientras sus atributos decían
+`STATIC`.
 
 ### [x] F-19 (R) · Estructuras dinámicas: nunca alcanzan el máximo y revientan si min = max
 `types/structure.py:87` · tests: `test_f19_*`

@@ -694,7 +694,9 @@ class StaticStructureDefinition(Base, BaseStructureDefinition):
         :type length: int
         """
         Preconditions.Structure.length(length)
-        Base.__init__(self, D)
+        # S, not D: get_attributes already reports STATIC, so a static structure
+        # used to print and identify itself as DYNAMIC (F-18).
+        Base.__init__(self, S)
         BaseStructureDefinition.__init__(self, base)
         self.__name: str = name
         self.__length: int = length
