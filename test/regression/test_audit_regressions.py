@@ -725,6 +725,20 @@ def _raiz_del_repo() -> pathlib.Path:
     return pathlib.Path(__file__).resolve().parents[2]
 
 
+def test_p01_la_licencia_declarada_es_la_del_fichero_license():
+    """P-01: `setup.cfg` clasificaba el paquete como MIT frente a un `LICENSE` GPL-3.0
+    y 40 cabeceras GPLv3 en `src/`. PyPI anunciaba MIT desde la 0.2.0."""
+    raiz = _raiz_del_repo()
+    setup = (raiz / "setup.cfg").read_text()
+    licencia = (raiz / "LICENSE").read_text()
+
+    assert "GNU GENERAL PUBLIC LICENSE" in licencia
+    assert "MIT" not in setup
+    assert "license = GPL-3.0-or-later" in setup
+    assert "GNU General Public License v3 or later (GPLv3+)" in setup
+    assert "license_files = LICENSE" in setup
+
+
 def test_p02_la_version_minima_de_python_dice_lo_mismo_en_los_tres_sitios():
     """P-02: el badge del README decia >=3.12, el texto 3.10+ y `python_requires`
     >=3.10. El minimo real es 3.10, por `itertools.pairwise`."""

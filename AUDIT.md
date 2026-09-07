@@ -96,7 +96,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ⬜ | `A-10` | El elitismo depende de que cada subclase se acuerde |
 | ✅ | `A-11` | El logger parchea `logging` globalmente y acumula handlers |
 | ✅ | `A-12` | TensorBoard se activa solo por estar instalado, sin poder apagarlo |
-| ⬜ | `P-01` | Licencia contradictoria: MIT en PyPI frente a GPLv3 en el código |
+| ✅ | `P-01` | Licencia contradictoria: MIT en PyPI frente a GPLv3 en el código |
 | ✅ | `P-02` | La versión mínima de Python se contradice en tres sitios |
 | ✅ | `P-03` | Enlaces y badges apuntan al repositorio antiguo |
 | ✅ | `P-04` | `pytest test` no llegaba a recolectar sin los extras opcionales |
@@ -1360,7 +1360,27 @@ Aquí el código hace lo que dice hacer; lo discutible es qué dice hacer.
 
 ## Empaquetado, tests y documentación
 
-- **[ ] P-01** `setup.cfg:14` — clasificador `MIT License` frente a un `LICENSE` GPL-3.0 y 55 cabeceras GPLv3. PyPI anuncia MIT. *Arreglo*: unificar y añadir `license` / `license_files`.
+- **[x] P-01** `setup.cfg:14` — clasificador `MIT License` frente a un `LICENSE` GPL-3.0 y 55 cabeceras GPLv3. PyPI anuncia MIT. *Arreglo*: unificar y añadir `license` / `license_files`.
+
+  *Cerrado como **GPLv3**, decisión de David: «la licencia es la del fichero LICENSE».*
+  La evidencia estaba muy desequilibrada —el `LICENSE` completo y **40** cabeceras en
+  `src/` (no 55; ese número incluye ficheros fuera de `src/`) frente a una sola línea de
+  clasificador—, pero la dirección no era cosa de la auditoría: **PyPI llevaba
+  anunciando MIT desde la 0.2.0**, y si la intención hubiera sido esa, lo que habría que
+  cambiar son las otras 41 ubicaciones.
+
+  Es `GPL-3.0-or-later`, no `GPL-3.0-only`: las cabeceras dicen «either version 3 of the
+  License, or (at your option) any later version».
+
+  Se añaden `license` y `license_files`, que faltaban: sin el segundo, el fichero
+  `LICENSE` no viaja en la distribución. Verificado sobre el paquete instalado:
+
+  ```
+  License: GPL-3.0-or-later
+  Classifier: License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)
+  ```
+
+  Test: `test_p01_la_licencia_declarada_es_la_del_fichero_license`.
 - **[x] P-02** README badge `>=3.12` vs texto `3.10+` vs `python_requires >=3.10`. El mínimo real es 3.10 (`itertools.pairwise`). *Cerrado*: el badge pasa a `>=3.10`, que es lo que dicen los otros dos sitios y lo que exige el código. Test: `test_p02_la_version_minima_de_python_dice_lo_mismo_en_los_tres_sitios`.
 - **[x] P-03** `setup.cfg:8-10`, badges y enlace de Colab apuntan a `DataLabUPO/MetaGen`; el repo vive en `Data-Science-Big-Data-Research-Lab/MetaGen`. El badge de release no resuelve. *Cerrado*, y había **cuatro sitios más de los que lista el diagnóstico**: `docs/source/metagen_in_action/` tiene cuatro páginas con enlaces de Colab al repositorio antiguo. Son las que publica readthedocs, así que sus cuadernos tampoco abrían. Test: `test_p03_nada_apunta_al_repositorio_antiguo`, que barre README, `setup.cfg` y todos los `.rst`.
 - **[x] P-04 (R)** `pytest test` —el comando del README— **no llega a recolectar**: `test/metaheuristics_test/unit_test.py` importa `ray` y `tensorflow`, que son extras opcionales. Solo corren los 101 tests de `framework_test`. *Arreglo*: `pytest.importorskip("ray")` y `pytest.importorskip("tensorflow")` a nivel de módulo en `unit_test.py` (tensorflow se importa de forma transitiva vía el dispatcher, así que un `@pytest.mark.skipif` por test no basta: el fallo ocurre en tiempo de importación). Test: `test_p04_la_suite_completa_se_recolecta_sin_los_extras_opcionales`.
