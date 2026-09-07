@@ -86,7 +86,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ⬜ | `A-08` | Los reales rechazan enteros y los enteros aceptan booleanos |
 | ⬜ | `A-09` | CVOA y las herramientas están duplicados, y ya divergen |
 | ⬜ | `A-10` | El elitismo depende de que cada subclase se acuerde |
-| ⬜ | `A-11` | El logger parchea `logging` globalmente y acumula handlers |
+| ✅ | `A-11` | El logger parchea `logging` globalmente y acumula handlers |
 | ⬜ | `A-12` | TensorBoard se activa solo por estar instalado, sin poder apagarlo |
 | ⬜ | `P-01` | Licencia contradictoria: MIT en PyPI frente a GPLv3 en el código |
 | ⬜ | `P-02` | La versión mínima de Python se contradice en tres sitios |
@@ -778,7 +778,40 @@ Aquí el código hace lo que dice hacer; lo discutible es qué dice hacer.
 - **[ ] A-08** `domain/core.py:219, 140` — `RealDefinition` exige `isinstance(value, float)` (rechaza `1` y `np.float32`) y `IntegerDefinition` acepta `bool`. *Propuesta*: `numbers.Real` excluyendo `bool`, normalizando al tipo nativo.
 - **[ ] A-09** `cvoa_local.py` ↔ `cvoa_distributed.py` (372 vs 352 líneas) y `tools.py` ↔ `mm_tools.py` — **código duplicado y ya divergente**. *Propuesta*: una clase por algoritmo y la estrategia de ejecución (secuencial / Ray) como objeto inyectado.
 - **[ ] A-10** `base.py:196, 247` — `_iterate` hace `self.best_solution = best_individual` sin comparar, así que el elitismo depende de que cada subclase se acuerde; y `stopping_criterion()` devuelve `False` por defecto (bucle infinito si una subclase lo olvida).
-- **[ ] A-11** `logging/metagen_logger.py:29, 84, 90` — parchea `logging.Logger` globalmente, instala un `StreamHandler` al importar, y añade un handler nuevo en cada llamada a `get_remote_metagen_logger()`. `set_metagen_logger_level` haría `None.close()` si no hay handler de consola. *Propuesta*: solo `NullHandler` al importar y una función de configuración idempotente.
+- **[x] A-11 (R)** `logging/metagen_logger.py:29, 84, 90` — parchea `logging.Logger` globalmente, instala un `StreamHandler` al importar, y añade un handler nuevo en cada llamada a `get_remote_metagen_logger()`. `set_metagen_logger_level` haría `None.close()` si no hay handler de consola. *Propuesta*: solo `NullHandler` al importar y una función de configuración idempotente.
+
+  *Cerrado, los cuatro problemas.* Medidos antes de tocar nada:
+
+  | | Antes | Después |
+  |---|---|---|
+  | Un logger ajeno gana `detailed_info` | sí | no |
+  | Handlers al importar | `['console']` | `['NullHandler']` |
+  | Handlers tras 20 `get_remote_metagen_logger()` | 20 | 1 |
+  | `set_metagen_logger_level` sin consola | `AttributeError` | funciona |
+
+  **El tercero es el que más dolía**: `mm_distributed_tools` y `cvoa_distributed`
+  llaman a `get_remote_metagen_logger()` dentro de bucles, así que cada línea se
+  imprimía tantas veces como llamadas se hubieran hecho.
+
+  **La pieza que la propuesta no mencionaba** es qué hacer con el parcheo. Se
+  sustituye por una subclase `MetaGenLogger(logging.Logger)` construida con el
+  idioma estándar de `setLoggerClass`, acotado a la llamada y restaurado después.
+  Se comprobó que `detailed_info` solo se invoca sobre los dos loggers de MetaGen
+  —`metagen_logger` y el remoto de CVOA—, así que nadie pierde nada. `addLevelName`
+  sí se mantiene: es la forma documentada de dar nombre a un nivel y es inocua.
+
+  `add_file_handler` **también se hizo idempotente**, aunque el hallazgo no lo cita:
+  tenía el mismo problema y encima abría un fichero con marca de tiempo nueva en cada
+  llamada. Con eso `logger_has_filehandler`, que estaba definida y sin usar, pasa a
+  tener uso.
+
+  **Consecuencia asumida**: importar MetaGen ya no imprime nada hasta llamar a
+  `set_metagen_logger_level()`. En la práctica no cambia gran cosa, porque el nivel
+  por defecto ya era `CRITICAL`.
+
+  Cierra los tres errores de mypy que `P-11` le atribuía: el contador local baja de
+  11 a 8. Test: `test_a11_el_logger_no_toca_el_logging_del_proceso`, en subproceso
+  porque las tres primeras mitades se deciden al importar.
 - **[ ] A-12** `base.py:83` — TensorBoard se activa por el mero hecho de estar instalado, sin forma de desactivarlo: un barrido de cientos de configuraciones escribe cientos de directorios en `logs/`. *Propuesta*: `log_dir: str | None = None` con `None` = desactivado.
 
 ---
