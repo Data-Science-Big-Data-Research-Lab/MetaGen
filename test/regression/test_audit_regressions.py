@@ -631,6 +631,31 @@ def test_f08_aislar_un_individuo_no_bloquea_la_hebra():
     assert individuo in estado.isolated
 
 
+def test_f09_insertar_en_el_conjunto_de_muertos_no_revienta():
+    """F-09: la rama 'd' hacia bag.remove(best_dead) sin comprobar pertenencia,
+    mientras que la de superspreaders si comprobaba. `best_dead` arranca siendo
+    una solucion recien construida que nunca estuvo en ningun conjunto.
+    """
+    from metagen.metaheuristics.cvoa.common_tools import insert_into_set_strain
+
+    set_seed(1)
+    dominio, fitness = _dominio_y_fitness_de_prueba()
+
+    # Tal como los inicializa CVOA: soluciones nuevas, ajenas a cualquier bolsa.
+    peor_superspreader = Solution(dominio)
+    mejor_muerto = Solution(dominio)
+    candidato = Solution(dominio)
+    candidato.evaluate(fitness)
+
+    bolsa = set()
+    # remaining=0 lleva a la rama del else, que es donde vive el fallo.
+    _, _, insertado = insert_into_set_strain(
+        peor_superspreader, mejor_muerto, bolsa, candidato, 0, "d")
+
+    assert insertado
+    assert candidato in bolsa
+
+
 def _dominio_y_fitness_de_prueba():
     """Dominio minimo con una variable real y una entera, y su fitness."""
     dominio = Domain()
