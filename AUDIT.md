@@ -58,7 +58,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ✅ | `F-06` | `Structure.set` e `insert` fallan con datos válidos |
 | ✅ | `F-07` | Importar MetaGen secuestra el `excepthook` del proceso |
 | ✅ | `F-08` | Interbloqueo en CVOA con `update_isolated=True` |
-| ⬜ | `F-09` | `insert_into_set_strain` puede reventar con `KeyError` |
+| ✅ | `F-09` | `insert_into_set_strain` puede reventar con `KeyError` |
 | ⬜ | `F-10` | El «peor superspreader» de CVOA se inicializa al revés |
 | ⬜ | `F-11` | La búsqueda local distribuida manda la misma porción a todos los workers |
 | ✅ | `F-12` | Todos los `Domain` comparten el mismo conector por defecto |
@@ -398,7 +398,7 @@ con que la cepa muera en la iteración siguiente a la primera mejora.
 Test: `test_f08_aislar_un_individuo_no_bloquea_la_hebra`, en hebra demonio con espera
 limitada, para que un cuelgue sea un fallo y no deje la suite colgada.
 
-### [ ] F-09 · `insert_into_set_strain` puede reventar con `KeyError`
+### [x] F-09 (R) · `insert_into_set_strain` puede reventar con `KeyError`
 `src/metagen/metaheuristics/cvoa/common_tools.py:126-133`
 
 La rama `'d'` hace `bag.remove(best_dead)` sin comprobar pertenencia; la rama simétrica
@@ -406,6 +406,34 @@ de superspreaders (línea 116) sí comprueba. `best_dead` arranca siendo una sol
 aleatoria sin evaluar que nunca estuvo en el conjunto.
 
 **Arreglo** Misma guarda de pertenencia y `bag.discard()`.
+
+*Cerrado.* Reproducido con las dos ramas una al lado de la otra, que es donde se ve la
+asimetría:
+
+```
+rama 's' -> sin error          (tiene la guarda)
+rama 'd' -> KeyError: F = inf  {x = 3.4743373693723267}
+```
+
+**Las dos ramas pasan a usar `discard`**, no solo la rota. La `'s'` hacía
+`if x in bag: bag.remove(x)`, que es correcto pero verboso, y tener dos formas
+distintas de escribir lo mismo pegadas la una a la otra es precisamente lo que dejó
+esconderse a la asimetría.
+
+**Se retiraron tres `metagen_logger.debug` de la rama `'d'`**, uno de ellos
+literalmente `"contains?: %s"`. Son el fósil de alguien depurando este mismo fallo:
+la pregunta que imprimían es la que ahora responde el código. Con ellos se va el
+`import` de `metagen_logger`, que era el único uso en el módulo.
+
+**Hay una sola implementación**, en `common_tools.py`, compartida por la versión local
+y la distribuida: aquí no hay gemelo que revisar.
+
+**Un dato que apunta directamente a `F-10`:** en la misma reproducción, la rama `'s'`
+devuelve `insertado=False`. `worst_superspreader` arranca con fitness `inf` —el peor—,
+así que `to_insert > worst_superspreader` nunca se cumple y el mecanismo de reemplazo
+no llega a ejecutarse jamás. Es el hallazgo siguiente, visto desde aquí.
+
+Test: `test_f09_insertar_en_el_conjunto_de_muertos_no_revienta`.
 
 ### [ ] F-10 · El «peor superspreader» de CVOA se inicializa al revés
 `src/metagen/metaheuristics/cvoa/cvoa_local.py:138-139`

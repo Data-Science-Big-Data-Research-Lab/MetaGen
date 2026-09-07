@@ -2,7 +2,6 @@ import copy
 from typing import NamedTuple, Set, Tuple, Callable
 
 from metagen.framework import Domain, Solution
-from metagen.logging.metagen_logger import metagen_logger
 from metagen.framework.rng import get_rng
 
 
@@ -113,8 +112,7 @@ def insert_into_set_strain(strain_worst_superspreader:Solution, strain_best_dead
         # This action adds more diversification to the metaheuristic.
         if ty == 's':
             if to_insert > worst_superspreader:
-                if worst_superspreader in bag:
-                    bag.remove(worst_superspreader)
+                bag.discard(worst_superspreader)
                 bag.add(to_insert)
                 inserted = True
                 worst_superspreader = to_insert
@@ -124,10 +122,10 @@ def insert_into_set_strain(strain_worst_superspreader:Solution, strain_best_dead
         # This action adds more diversification to the metaheuristic.
         elif ty == 'd':
             if to_insert < best_dead:
-                metagen_logger.debug("bag: %s", str(bag))
-                metagen_logger.debug("__bestDeadIndividualStrain: %s", str(best_dead))
-                metagen_logger.debug("contains?: %s", str(best_dead in bag))
-                bag.remove(best_dead)
+                # Guarded like the superspreader branch above. best_dead starts as a
+                # freshly built solution that was never added to any bag, so removing
+                # it unconditionally raised KeyError the first time round (F-09).
+                bag.discard(best_dead)
                 bag.add(to_insert)
                 inserted = True
                 best_dead = to_insert
