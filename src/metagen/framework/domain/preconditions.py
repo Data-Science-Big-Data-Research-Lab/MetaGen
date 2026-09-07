@@ -74,7 +74,7 @@ class Messages:
     @staticmethod
     def step_zero(mode: Literal["i", "r", "s"]) -> str:
         context = Messages.get_context(mode)
-        return context[0] + " The  " + context[1] + " must be greater than zero."
+        return context[0] + " The " + context[1] + " must be greater than zero."
 
     @staticmethod
     def step(step: int | float, avg: int | float, mode: Literal["i", "r", "s"]) -> str:
@@ -122,7 +122,10 @@ class Messages:
         elif mode == "r":
             prefix = "[REAL definition error]"
             suffix = "value"
-        elif mode == ("d_a", "d_g"):
+        # `mode in (...)`, not `mode == (...)`: comparing a str against a tuple is
+        # always false, so every definition error came out with the STRUCTURE prefix
+        # and "length" as its suffix — "The variable i is length." (F-16)
+        elif mode in ("d_a", "d_n", "d_g", "d_s"):
             prefix = "[DEFINITION error]"
             if mode == "d_a":
                 suffix = "already defined"

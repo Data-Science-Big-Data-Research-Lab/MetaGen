@@ -69,7 +69,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ✅ | `F-13` | TPE modifica el `Domain` que le pasa el usuario |
 | ✅ | `F-14` | `sys.float_info.min` no es «menos infinito» |
 | ⬜ | `F-15` | `Solution.__hash__` no mira las variables |
-| ⬜ | `F-16` | Los mensajes de error de `Domain` salen mal formados |
+| ✅ | `F-16` | Los mensajes de error de `Domain` salen mal formados |
 | ⬜ | `F-17` | Categorías duplicadas aceptadas, categoría única rechazada |
 | ✅ | `F-18` | Una estructura estática se identifica como dinámica |
 | ✅ | `F-19` | Estructuras dinámicas: nunca alcanzan el máximo, revientan si min = max |
@@ -601,13 +601,36 @@ en la lista tabú (`tools.py:44`).
 
 **Arreglo** Hashear una representación canónica de las variables y no incluir el fitness.
 
-### [ ] F-16 (R) · Los mensajes de error de `Domain` salen mal formados
+### [x] F-16 (R) · Los mensajes de error de `Domain` salen mal formados
 `domain/preconditions.py:107` · test: `test_f16_el_mensaje_de_variable_ya_definida_es_legible`
 
 `elif mode == ("d_a", "d_g")` compara un str con una tupla. Redefinir una variable produce
 `[STRUCTURE definition error] The variable i is length.`
 
 **Arreglo** `elif mode in ("d_a", "d_n", "d_g", "d_s"):` con las cuatro asignaciones anidadas.
+
+*Cerrado tal cual.* **Los cuatro modos caían en la rama muerta, no solo el de «ya
+definida»** que recoge el diagnóstico: `d_n`, `d_g` y `d_s` salían igual de rotos, y
+los cuatro se usan (`facades.py:42, 47, 53` y `core.py:312`).
+
+```
+antes:   [STRUCTURE definition error] The variable i is length.
+después: [DEFINITION error] The variable i is already defined.
+```
+
+**Se arregló también el espacio doble de `Messages.step_zero`**, que quedó señalado al
+cerrar `F-19` como perteneciente a esta familia: producía «The  value must be greater
+than zero». Afectaba a `Integer`, `Real` y `Structure`.
+
+**Un problema distinto que salió al verificar, y que no es de este hallazgo:**
+`link_variable_to_group('nada', 'x')` sobre un grupo inexistente lanza `KeyError:
+'nada'`, no el mensaje de `d_n`. Es decir, hay rutas de la fachada que no llegan a
+pasar por la precondición. No lo cubre `F-16`, que es sobre el formato del mensaje, no
+sobre dónde falta comprobarlo.
+
+Tests: el que ya existía, más `test_f16_los_cuatro_mensajes_de_definicion_son_legibles`
+(parametrizado por los cuatro modos) y
+`test_f16_el_mensaje_de_paso_cero_no_lleva_espacio_doble`.
 
 ### [ ] F-17 (R) · Categorías duplicadas aceptadas, categoría única rechazada
 `domain/preconditions.py:32-39` · tests: `test_f17_*`
