@@ -324,11 +324,6 @@ def test_f02_tpe_initialize_devuelve_la_mejor_solucion():
     assert mejor.get_fitness() == min(s.get_fitness() for s in poblacion)
 
 
-@pytest.mark.xfail(
-    reason="F-13: TPE reasigna domain._connector y deja el dominio del usuario "
-    "modificado",
-    strict=True,
-)
 def test_f13_tpe_no_modifica_el_dominio_del_usuario():
     from metagen.metaheuristics import TPE
 

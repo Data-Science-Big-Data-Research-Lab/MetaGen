@@ -81,13 +81,19 @@ class TPE(Metaheuristic):
         :param log_dir: Directory for logging, defaults to "logs/TPE"
         :type log_dir: str, optional
         """
+        # TPE needs a domain wired to its own connector, which replaces the solution
+        # and type classes. Rewiring the one it was given left it modified for good,
+        # so comparing several metaheuristics in a loop depended on the order they
+        # ran in (F-13). It works on a copy of its own instead.
+        domain = deepcopy(domain)
+        domain._connector = TPEConnector()
+
         super().__init__(domain, fitness_function, warmup_iterations=warmup_iterations, distributed=distributed, log_dir=log_dir, seed=seed)
 
         self.max_iterations = max_iterations
         self.candidate_pool_size = candidate_pool_size
         self.gamma_config = gamma_config if gamma_config else GammaConfig(gamma_function="sampled_based")
         self.solution_history = deque()
-        self.domain._connector = TPEConnector()
 
     def initialize(self, num_solutions=10) -> Tuple[List[Solution], Solution]:
         """
