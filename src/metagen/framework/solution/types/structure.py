@@ -14,7 +14,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-from typing import Any, cast, TYPE_CHECKING
+from typing import Any, cast
 
 from metagen.framework.domain.core import (BaseStructureDefinition,
                                            DynamicStructureDefinition,
@@ -24,9 +24,6 @@ from metagen.framework.solution import Solution
 
 from .base import BaseType
 from metagen.framework.rng import get_rng
-
-if TYPE_CHECKING:
-    from metagen.framework.solution.bounds import BaseTypeClass
 
 
 class Structure(BaseType):
@@ -277,7 +274,9 @@ class Structure(BaseType):
         """
         self.check(value)
         current_values = self.get()
-        current_values[index].insert(index, self._convert(value))
+        # Was current_values[index].insert(...), which asked the element at that
+        # position to insert, not the list holding it (F-06).
+        current_values.insert(index, self._convert(value))
         self.set(current_values)
 
     def append(self, value: int | float | str | list | dict | BaseType) -> None:
@@ -294,20 +293,18 @@ class Structure(BaseType):
         self.set(current_values)
 
     def set(self, value: list[BaseType | Any]) -> None:
+        """
+        Sets the whole content of the Structure, converting any builtin in the list.
 
-        base_type_class: type[BaseTypeClass] = self.get_connector().get_type(
-            self.get_definition())
-
-        # Transform the values inside the list if they are a builtin
-        for index in range(len(value)):
-            v = value[index]
-            if not isinstance(v, (BaseType, Solution)):
-                type_value: BaseType | Solution = base_type_class(
-                    self.get_definition().get_base(), self.get_connector())
-                type_value.set(v)
-                value[index] = type_value
-
-        self.value = value
+        :param value: The values to store, either builtins or already built types.
+        :type value: list[BaseType | Any]
+        :return: None
+        """
+        # Each element goes through the same conversion append and __setitem__ use.
+        # Asking the connector for the type of the structure's own definition, as
+        # this did, answered Structure and then tried to build one out of the base
+        # definition, so a plain list of builtins raised (F-06).
+        self.value = [self._convert(element) for element in value]
 
     def __str__(self) -> str:
         """

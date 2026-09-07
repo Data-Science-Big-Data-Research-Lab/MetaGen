@@ -215,28 +215,32 @@ def test_f05_un_tipo_no_soportado_no_entra_en_la_solucion():
         Solution(dom).set("i", {1, 2})
 
 
-@pytest.mark.xfail(
-    reason="F-06: Structure.set pide el tipo con get_type(definition) en vez de "
-    "get_type(definition.get_base())",
-    strict=True,
-)
 def test_f06_set_admite_una_lista_de_builtins():
     st = _estructura_estatica()
     st.set([1, 2, 3])
     assert [st[i] for i in range(3)] == [1, 2, 3]
 
 
-@pytest.mark.xfail(
-    reason="F-06: Structure.insert llama a insert sobre el elemento, no sobre la "
-    "lista",
-    strict=True,
-)
 def test_f06_insert_inserta_en_la_lista():
     st = _estructura_estatica()
     longitud = len(st)
     st.insert(0, 5)
     assert len(st) == longitud + 1
     assert st[0] == 5
+
+
+def test_f06_set_admite_una_lista_de_grupos():
+    """set() tambien es la via del dict, y ahi nadie la probaba."""
+    set_seed(4)
+    dom = Domain()
+    dom.define_group("g")
+    dom.define_integer_in_group("g", "a", 0, 100)
+    dom.define_static_structure("v", 2)
+    dom.set_structure_to_variable("v", "g")
+
+    st = Solution(dom).get("v")
+    st.set([{"a": 11}, {"a": 22}])
+    assert [st[i]["a"] for i in range(2)] == [11, 22]
 
 
 @pytest.mark.xfail(
