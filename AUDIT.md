@@ -1476,32 +1476,65 @@ Aquí el código hace lo que dice hacer; lo discutible es qué dice hacer.
 
   Test: `test_p10_los_ejemplos_de_las_docstrings_usan_la_api_de_verdad`,
   parametrizado por módulo.
-- **[ ] P-11** `mypy src` **no pasa limpio**: 8 errores en 8 ficheros con `mypy 1.1.1`, 7 con la versión que instala el CI. Eran 14 al abrir el hallazgo. El proyecto se desarrolló con la condición de usar tipos, así que esto es deuda declarada, no higiene opcional; por eso el job `types` del CI nace informativo (`continue-on-error: true`).
+- **[ ] P-11** `mypy src` **no pasa limpio**. El contador que llevaba este hallazgo —14 al abrirlo, 8 tras cerrar `F-01`, `F-05` y `A-11`— **estaba medido con mypy ciego a los tipos del propio paquete**, y hay que rehacerlo. Ver abajo.
 
-  **El contador es la barra de progreso de la auditoría**, y va bajando solo al cerrar
-  otros hallazgos:
+  ## El contador estaba mal medido
 
-  | Al cerrar | Errores que se lleva | Contador |
-  |---|---|---|
-  | — (apertura) | | 14 |
-  | `F-01` | `types/base.py:117, 119, 122` | 11 |
-  | `F-05` | `types/structure.py:202` | 10 |
-  | `A-11` | `metagen_logger.py:29, 69, 70` | 7 |
+  `mypy src` sobre un proyecto con disposición `src/` y sin `mypy_path` comprueba los
+  ficheros pero resuelve `from metagen.framework import ...` contra el paquete
+  **instalado**; con `ignore_missing_imports = True` eso se convierte en `Any`. Es
+  decir, **no se comprobaba ni un solo uso entre módulos**. Verificado con una sonda:
+  con la configuración vieja no se revelaba ningún tipo; con la nueva,
+  `Revealed type is "metagen.framework.facades.Domain"`.
 
-  Lo que queda, y de quién es:
+  Al añadir `py.typed` (`P-09`) el montaje deja de funcionar directamente —
+  *«Source file found twice under different module names»* — y hay que declarar
+  `mypy_path = src` y `explicit_package_bases = True`, que es la configuración estándar
+  para esta disposición. Con ella, mypy comprueba el paquete de verdad:
 
-  | Causa | Errores | Se cierra con |
-  |---|---|---|
-  | `metaheuristics/base.py`, `cvoa_local.py`, `cvoa_distributed.py` — `.get_fitness()` sobre `Any \| None` | 3 | Familia `F-14` / `A-10` |
-  | `base_solution.py`, `real.py`, `integer.py` — `Optional` implícito: `= None` en un parámetro no opcional | 3 | Propio de `P-11` |
-  | `tpe/tpe.py` — falta anotar `solution_history` | 1 | Propio de `P-11` |
-  | `connector/connector.py:91` — asignación incompatible en `get_type` | 1 | Propio de `P-11`, **solo con mypy 1.1.1** |
+  | Configuración | Errores |
+  |---|---|
+  | La original, sin `py.typed` | **8** |
+  | `mypy_path = src` + `explicit_package_bases`, con o sin `py.typed` | **170** |
 
-  **Ojo con ese último**: no lo da la versión de mypy que instala el CI, así que el
-  contador local y el del CI difieren en uno. No es una discrepancia del código.
+  Comprobado que el salto **no lo causa `py.typed`**: con la configuración nueva salen
+  170 con el marcador y sin él. Lo causa que mypy pase a resolver los imports internos
+  contra las fuentes en vez de contra `Any`.
 
-  *Arreglo*: cerrar los hallazgos de la tabla, resolver los cuatro o cinco restantes
-  (`x: int | None = None` y una anotación en TPE) y, cuando `mypy src` salga a cero,
-  **quitar el `continue-on-error: true` del job `types`** para que la comprobación
-  pase a bloquear. Conviene hacerlo junto con `P-09` (`py.typed`), que hoy hace que
-  mypy trate `metagen` como `Any` desde fuera del paquete.
+  ## Qué son esos 170
+
+  Reparto por fichero y por categoría:
+
+  | Fichero | Errores |
+  |---|---|
+  | `framework/facades.py` | 26 |
+  | `solution/types/structure.py` | 23 |
+  | `cvoa/cvoa_distributed.py` | 21 |
+  | `solution/types/integer.py` | 14 |
+  | `framework/connector/connector.py` | 14 |
+  | `solution/base_solution.py` | 11 |
+  | resto (14 ficheros) | 61 |
+
+  `misc` 60, `valid-type` 26, `attr-defined` 20, `arg-type` 20, `assignment` 15,
+  `return-value` 12, `union-attr` 7, `var-annotated` 3.
+
+  **Son errores reales, no ruido de configuración.** Muestreados, salen cosas como
+  `Argument 1 to "local_search_with_tabu" has incompatible type "Optional[Solution]"`
+  (familia `F-14`/`A-10`) o `List item 1 has incompatible type "Solution"; expected
+  "GASolution"` en el memético.
+
+  **Pero conviene no exagerar: no todos son bugs latentes.** Por ejemplo,
+  `integer.py:68: Too many values to unpack (4 expected, 5 provided)` suena a fallo de
+  ejecución y no lo es: `Base.get_attributes()` está declarado como una unión que
+  incluye la variante de cinco elementos de las estructuras, mientras que en ejecución
+  un `Integer` siempre lleva un `IntegerDefinition`, que devuelve cuatro. El error está
+  en que el tipo declarado es demasiado ancho, no en el código.
+
+  ## Qué falta decidir
+
+  Esto pasa de «arreglar cuatro cosas» a un trabajo de su propio tamaño, y la decisión
+  es del equipo. **El job `types` del CI sigue siendo informativo**
+  (`continue-on-error: true`), así que nada se rompe mientras tanto.
+
+  *Arreglo*: por decidir. Cuando `mypy src` salga a cero, quitar el `continue-on-error`
+  para que la comprobación pase a bloquear.
