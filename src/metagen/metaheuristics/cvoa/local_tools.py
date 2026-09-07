@@ -9,7 +9,12 @@ from metagen.metaheuristics.cvoa.common_tools import IndividualState
 class LocalPandemicState:
     def __init__(self, initial_individual:Solution):
         # Lock fot multi-threading safety access to the shared structures.
-        self.lock = threading.Lock()
+        # Reentrant on purpose: isolate_individual_conditional_state holds it and
+        # calls get_individual_state, which takes it again. A plain Lock is not
+        # reentrant, so that thread blocked against itself (F-08). The failure mode
+        # of getting the nesting wrong is a silent hang, which is reason enough to
+        # let a thread reacquire a lock it already owns.
+        self.lock = threading.RLock()
         self.recovered:Set[Solution] = set()
         self.deaths:Set[Solution] = set()
         self.isolated:Set[Solution] = set()
