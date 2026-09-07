@@ -1,7 +1,7 @@
 # MetaGen: A Framework for Metaheuristic Development and Hyperparameter Optimization
 
 [![Python](https://img.shields.io/badge/python->=3.10-orange)](https://pypi.org/project/pymetagen-datalabupo/) 
-[![Latest Release](https://img.shields.io/github/v/release/DataLabUPO/MetaGen)](https://github.com/DataLabUPO/MetaGen/releases) 
+[![Latest Release](https://img.shields.io/github/v/release/Data-Science-Big-Data-Research-Lab/MetaGen)](https://github.com/Data-Science-Big-Data-Research-Lab/MetaGen/releases) 
 [![Documentation](https://img.shields.io/badge/view-Documentation-blue)](https://pymetagen.readthedocs.io) 
 
 ## 🚀 Why MetaGen?
@@ -132,7 +132,7 @@ We welcome contributions from developers of all experience levels! To contribute
 ## 📌 Resources
 
 - [CVOA Paper](https://www.liebertpub.com/doi/10.1089/big.2020.0051)
-- [Google Colab Notebooks](https://colab.research.google.com/github/DataLabUPO/MetaGen)
+- [Google Colab Notebooks](https://colab.research.google.com/github/Data-Science-Big-Data-Research-Lab/MetaGen)
 
 ---
 

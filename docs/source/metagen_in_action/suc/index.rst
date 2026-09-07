@@ -51,8 +51,8 @@ Or, to solve another simple problem like :math:`x^2` where :math:`x \in \mathbb{
 
 Both simple examples can be executed by these Google Colab Notebooks:
 
-* `x+5 <https://colab.research.google.com/github/DataLabUPO/MetaGen/blob/master/notebooks/suc_p1.ipynb>`_
-* `x² <https://colab.research.google.com/github/DataLabUPO/MetaGen/blob/master/notebooks/suc_p2.ipynb>`_
+* `x+5 <https://colab.research.google.com/github/Data-Science-Big-Data-Research-Lab/MetaGen/blob/master/notebooks/suc_p1.ipynb>`_
+* `x² <https://colab.research.google.com/github/Data-Science-Big-Data-Research-Lab/MetaGen/blob/master/notebooks/suc_p2.ipynb>`_
 
 Next, we will show how to use |metagen| to solve two hyperparameter optimization problems to tune a Random Forest Classifier using the scikit-learn library and a Deep Neural Network using the TensorFlow library.
 
