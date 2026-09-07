@@ -68,7 +68,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ⬜ | `F-16` | Los mensajes de error de `Domain` salen mal formados |
 | ⬜ | `F-17` | Categorías duplicadas aceptadas, categoría única rechazada |
 | ⬜ | `F-18` | Una estructura estática se identifica como dinámica |
-| ⬜ | `F-19` | Estructuras dinámicas: nunca alcanzan el máximo, revientan si min = max |
+| ✅ | `F-19` | Estructuras dinámicas: nunca alcanzan el máximo, revientan si min = max |
 | ⬜ | `F-20` | SA evalúa veinte soluciones iniciales para usar una, y no la mejor |
 | ⬜ | `F-21` | `run()` apaga Ray aunque no lo haya arrancado él |
 | ⬜ | `F-22` | TPE escribe valores fuera del dominio saltándose la validación |
@@ -451,7 +451,7 @@ impide fijar un hiperparámetro a un único valor.
 
 **Arreglo** `Base.__init__(self, S)`.
 
-### [ ] F-19 (R) · Estructuras dinámicas: nunca alcanzan el máximo y revientan si min = max
+### [x] F-19 (R) · Estructuras dinámicas: nunca alcanzan el máximo y revientan si min = max
 `types/structure.py:87` · tests: `test_f19_*`
 
 `randrange(min_size, max_size, step or 1)` excluye el máximo, incoherente con
@@ -461,6 +461,39 @@ impide fijar un hiperparámetro a un único valor.
 
 **Arreglo** `randrange(min_size, max_size + 1, step)`, guardar `min == max`, proteger
 `_alterate` y añadir precondiciones de longitud.
+
+*Cerrado, las cuatro mitades.* Las dos primeras son la misma línea: con
+`max_size + 1`, `randrange(3, 4, 1)` devuelve 3 y el caso `min == max` deja de ser un
+error, así que no hace falta guarda aparte. Comprobado que ahora sí salen las cuatro
+longitudes: `[2, 3, 4, 5]` en 300 inicializaciones de una `dynamic(2, 5)`, donde antes
+salían `[2, 3, 4]`.
+
+`_alterate` **no se protege con un `max(1, ...)`**, que inventaría un cambio donde no
+hay nada que cambiar: si la estructura está vacía, no hay nada que alterar y se
+vuelve. Solo es alcanzable con longitud mínima cero, que ahora es legal.
+
+Las precondiciones son nuevas, `Preconditions.Structure`, junto a las de `Integer` y
+`Real`, con dos reglas distintas para cada definición:
+
+| Definición | Regla |
+|---|---|
+| dinámica | `min >= 0`, `min <= max`, paso positivo |
+| estática | `longitud >= 1` |
+
+**`min == max` se permite a propósito**, al revés que en `Integer` y `Real`, que
+exigen `min < max`: en una estructura declara una longitud fija, y `check_length` ya
+la aceptaba como `min <= longitud <= max`. Por eso los mensajes son propios y no
+reutilizan `Messages.min_max`, que dice «must be less than».
+
+Antes de esto, `define_static_structure('s', -3)` se aceptaba y producía una
+estructura de longitud 0 cuyo `check_length` exigía −3: ningún valor podía ser válido.
+
+Ningún test existente usaba una longitud imposible, así que las precondiciones nuevas
+no rompen nada.
+
+**De paso, sin arreglar:** `Messages.step_zero` tiene un espacio doble —«The  length
+must be greater than zero»— que afecta también a `Integer` y `Real`. Es de la familia
+de `F-16`, y allí debería cerrarse.
 
 ### [ ] F-20 (R) · SA evalúa veinte soluciones iniciales para usar una
 `sa/sa.py:117` · test: `test_f20_sa_no_evalua_una_poblacion_entera_al_inicializar`

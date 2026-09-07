@@ -243,11 +243,6 @@ def test_f06_set_admite_una_lista_de_grupos():
     assert [st[i]["a"] for i in range(2)] == [11, 22]
 
 
-@pytest.mark.xfail(
-    reason="F-19: randrange(min, max) excluye el extremo superior, mientras que "
-    "check_length acepta min <= len <= max",
-    strict=True,
-)
 def test_f19_una_estructura_dinamica_alcanza_su_longitud_maxima():
     set_seed(5)
     dom = Domain()
@@ -257,15 +252,42 @@ def test_f19_una_estructura_dinamica_alcanza_su_longitud_maxima():
     assert longitudes == {2, 3, 4, 5}, sorted(longitudes)
 
 
-@pytest.mark.xfail(
-    reason="F-19: randrange(n, n) lanza ValueError con una longitud fija",
-    strict=True,
-)
 def test_f19_una_estructura_dinamica_admite_min_igual_a_max():
     dom = Domain()
     dom.define_dynamic_structure("d", 3, 3)
     dom.set_structure_to_integer("d", 0, 10)
     assert len(Solution(dom).get("d")) == 3
+
+
+def test_f19_alterar_una_estructura_vacia_no_revienta():
+    """Con longitud minima cero la estructura puede estar vacia, y _alterate
+    hacia randint(1, 0)."""
+    set_seed(5)
+    dom = Domain()
+    dom.define_dynamic_structure("d", 0, 4)
+    dom.set_structure_to_integer("d", 0, 10)
+
+    st = Solution(dom).get("d")
+    st.set([])
+    st.mutate()
+    assert len(st) >= 0
+
+
+@pytest.mark.parametrize(
+    "definir",
+    [
+        lambda dom: dom.define_dynamic_structure("d", 9, 2),
+        lambda dom: dom.define_dynamic_structure("d", -1, 5),
+        lambda dom: dom.define_dynamic_structure("d", 1, 5, 0),
+        lambda dom: dom.define_static_structure("s", -3),
+        lambda dom: dom.define_static_structure("s", 0),
+    ],
+    ids=["min>max", "min negativo", "paso cero", "longitud negativa", "longitud cero"],
+)
+def test_f19_una_longitud_imposible_se_rechaza_al_definirla(definir):
+    """Ninguna de las dos definiciones validaba sus longitudes."""
+    with pytest.raises(ValueError):
+        definir(Domain())
 
 
 # --------------------------------------------------------------------------

@@ -611,6 +611,7 @@ class DynamicStructureDefinition(Base, BaseStructureDefinition):
         :param step_length: An optional integer representing the step length of the dynamic structure definition.
         :type step_length: int or None
         """
+        Preconditions.Structure.range(min_length, max_length, step_length)
         Base.__init__(self, D)
         BaseStructureDefinition.__init__(self, base)
         self.__name: str = name
@@ -692,6 +693,7 @@ class StaticStructureDefinition(Base, BaseStructureDefinition):
         :param length: Length of the structure definition.
         :type length: int
         """
+        Preconditions.Structure.length(length)
         Base.__init__(self, D)
         BaseStructureDefinition.__init__(self, base)
         self.__name: str = name

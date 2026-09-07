@@ -84,6 +84,24 @@ class Messages:
             + context[1] + " - minimum " + context[1] + ") / 2 (" \
             + str(avg) + ")."
 
+    @staticmethod
+    def min_max_length(min_length: int, max_length: int) -> str:
+        prefix, suffix = Messages.get_context("s")
+        return prefix + " The minimum " + suffix + " of the variable (" + str(min_length) \
+            + ") must be less than or equal to the maximum one (" + str(max_length) + ")."
+
+    @staticmethod
+    def negative_length(length: int) -> str:
+        prefix, suffix = Messages.get_context("s")
+        return prefix + " The minimum " + suffix + " of the variable (" \
+            + str(length) + ") can not be negative."
+
+    @staticmethod
+    def not_positive_length(length: int) -> str:
+        prefix, suffix = Messages.get_context("s")
+        return prefix + " The " + suffix + " of the variable (" + str(length) \
+            + ") must be greater than zero."
+
     NOT_CATEGORIES: Final = "The categories must be a list, have the same type (int, float or str) and can not " \
                             "contain repeated values"
 
@@ -155,3 +173,27 @@ class Preconditions:
         def categories(value: Any):
             if not Primitives.is_categories_value(value):
                 raise ValueError(Messages.NOT_CATEGORIES)
+
+    @final
+    class Structure:
+        """
+        Length checks for the two structure definitions, which had none (F-19).
+
+        Unlike Integer and Real, a minimum equal to the maximum is allowed here:
+        it declares a structure of a fixed length, and check_length already
+        accepts it as ``min <= length <= max``.
+        """
+
+        @staticmethod
+        def length(length: int):
+            if length < 1:
+                raise ValueError(Messages.not_positive_length(length))
+
+        @staticmethod
+        def range(min_length: int, max_length: int, step_length: int | None):
+            if min_length < 0:
+                raise ValueError(Messages.negative_length(min_length))
+            if min_length > max_length:
+                raise ValueError(Messages.min_max_length(min_length, max_length))
+            if step_length is not None:
+                Preconditions.length(step_length, "s")

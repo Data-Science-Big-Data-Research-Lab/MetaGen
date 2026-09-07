@@ -81,7 +81,9 @@ class Structure(BaseType):
         if isinstance(self.get_definition(), DynamicStructureDefinition):
             _, min_size, max_size, step_size, _ = self.get_definition().get_attributes()
 
-            size = get_rng().randrange(min_size, max_size, step_size or 1)
+            # max_size + 1, because randrange excludes its upper bound while
+            # check_length and _resize both accept min <= length <= max (F-19).
+            size = get_rng().randrange(min_size, max_size + 1, step_size or 1)
 
         elif isinstance(self.get_definition(), StaticStructureDefinition):
             _, size, _ = self.get_definition().get_attributes()
@@ -167,6 +169,12 @@ class Structure(BaseType):
         """
 
         current_size = len(self)
+
+        # A dynamic structure whose minimum length is zero can be empty, and
+        # there is nothing to alter then. randint(1, 0) raised instead (F-19).
+        if current_size == 0:
+            return
+
         number_of_changes = get_rng().randint(1, current_size)
         index_to_change = get_rng().sample(
             list(range(0, current_size)), number_of_changes)
