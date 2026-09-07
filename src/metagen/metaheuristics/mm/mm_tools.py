@@ -1,7 +1,8 @@
-from copy import deepcopy
 from typing import Tuple, Callable, List
 
 from metagen.framework import Solution
+# The one implementation. This module carried a byte-for-byte copy of it (A-09).
+from metagen.metaheuristics.tools import local_search
 
 
 def local_search_of_two_children(parents: Tuple[Solution, Solution], fitness_function: Callable[[Solution], float],
@@ -71,17 +72,3 @@ def population_local_search(population: List[Solution], fitness_function: Callab
     return neighbours
 
 
-
-
-# Local Search
-
-def local_search(solution: Solution, fitness_function: Callable[[Solution], float], neighbor_population_size: int
-                             , alteration_limit: float) -> Solution:
-    best_neighbor = deepcopy(solution)
-    for _ in range(neighbor_population_size):
-        neighbor = deepcopy(solution)
-        neighbor.mutate(alteration_limit=alteration_limit)
-        neighbor.evaluate(fitness_function)
-        if neighbor.get_fitness() < best_neighbor.get_fitness():
-            best_neighbor = neighbor
-    return best_neighbor
