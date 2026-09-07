@@ -26,7 +26,9 @@ src/metagen/
   metaheuristics/
     base.py       Metaheuristic (ABC): run() = pre_execution → _warmup → _initialize
                   → bucle (pre_iteration → _iterate → post_iteration) → post_execution
-    rs/ ga/ sa/ ts/ tpe/ mm/ cvoa/    Una carpeta por algoritmo
+    rs/ ga/ sa/ hc/ tpe/ mm/ cvoa/   Una carpeta por algoritmo. `hc/` era `ts/`:
+                  lo que había implementado no era una búsqueda tabú sino hill
+                  climbing, y se renombró en A-02 en vez de reescribirlo
     tools.py      random_exploration, local_search, local_search_with_tabu
   logging/        metagen_logger + TensorBoardLogger. Desde A-11 el paquete solo
                   instala un NullHandler al importarse: para ver algo por consola

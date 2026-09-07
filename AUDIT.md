@@ -86,8 +86,8 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ⬜ | `F-30` | La temperatura de SA no llega a enfriarse: es un paseo aleatorio |
 | ⬜ | `F-31` | Los genéticos no admiten estructuras dinámicas: el cruce no existe |
 | ⬜ | `A-01` | Sin selección de padres: todos los cruces usan la misma pareja |
-| ⬜ | `A-02` | La búsqueda tabú es en realidad hill climbing |
-| ⬜ | `A-03` | El vecindario tabú se genera en cadena, no alrededor de la solución |
+| ✅ | `A-02` | La búsqueda tabú es en realidad hill climbing |
+| ✅ | `A-03` | El vecindario tabú se genera en cadena, no alrededor de la solución |
 | ✅ | `A-04` | Random Search descarta el último individuo, no el peor |
 | ✅ | `A-05` | SSGA sustituye por igualdad de valor, no por identidad |
 | ✅ | `A-06` | No había forma de fijar la semilla |
@@ -1282,8 +1282,65 @@ dos dice «los genéticos no admiten estructuras dinámicas todavía». Ver `A-0
 Aquí el código hace lo que dice hacer; lo discutible es qué dice hacer.
 
 - **[ ] A-01** `ga/ga.py:71-79`, `mm/memetic.py:111-119` — **sin selección de padres**: `best_parents` se calcula fuera del bucle y los `n/2` cruces usan siempre la misma pareja. No hay torneo, ruleta ni ranking. *Propuesta*: función de selección intercambiable, torneo binario por defecto.
-- **[ ] A-02** `ts/tabu.py:123-124`, `tools.py:45` — **tabú es hill climbing**: se explora siempre desde `self.best_solution` y `local_search_with_tabu` nunca devuelve algo peor que el punto de partida, así que la lista tabú no puede desviar al algoritmo de nada. *Propuesta*: `current_solution` separada del mejor histórico, moverse al mejor vecino no tabú aunque empeore, criterio de aspiración.
-- **[ ] A-03** `tools.py:49` — el vecindario tabú se genera **en cadena** (`deepcopy(best_neighbor)`), no alrededor de la solución. `mm_tools.py:135` hace lo contrario: las dos implementaciones hermanas discrepan.
+- **[x] A-02 (R)** `ts/tabu.py:123-124`, `tools.py:45` — **tabú es hill climbing**: se explora siempre desde `self.best_solution` y `local_search_with_tabu` nunca devuelve algo peor que el punto de partida, así que la lista tabú no puede desviar al algoritmo de nada. *Propuesta*: `current_solution` separada del mejor histórico, moverse al mejor vecino no tabú aunque empeore, criterio de aspiración.
+
+  *Cerrado renombrando, no reescribiendo.* Decisión de David: **el algoritmo es bueno y
+  no hay motivo para tirarlo**; lo que estaba mal era el nombre. `TabuSearch` pasa a
+  llamarse **`HillClimbing`**, que es lo que hace: muestrea vecinos alrededor del mejor
+  y se mueve al mejor de ellos si mejora, sin aceptar nunca un empeoramiento.
+
+  **Sin alias de compatibilidad**, también decisión suya, y el argumento es bueno: quien
+  tenga `from metagen.metaheuristics import TabuSearch` se lleva un `ImportError` al
+  importar, que es la mejor clase de rotura —ruidosa, inmediata y de una palabra— y un
+  alias dejaría para siempre en la API un nombre que sabemos que miente. Renombrar no
+  toca nada publicado: `TabuSearch` **no aparece en el README ni en la documentación**, y
+  el artículo solo evalúa Random Search y TPE.
+
+  **Antes de renombrar se comprobó que el algoritmo no es un artefacto de la esfera**,
+  que era la sospecha razonable. En Rastrigin, con decenas de óptimos locales, aguanta:
+
+  | Función | `HillClimbing` | TPE |
+  |---|---|---|
+  | Esfera | **10/10**, media 0.0005 (azar 0.1587) | 8/10, 0.0137 |
+  | Rastrigin | **9/10**, media 0.6173 (azar 3.2867) | 5/10, 2.0579 |
+
+  Es el mejor del paquete en las dos. La explicación probable es el
+  `alteration_limit=1.0` por defecto sobre un dominio `[-5.12, 5.12]`: cada «vecino»
+  puede saltar hasta un 10 % del rango, así que escapa de óptimos locales sin necesitar
+  el mecanismo tabú.
+
+  **La lista tabú se conserva**, pero documentada por lo que es: memoria de soluciones ya
+  vistas que no merece la pena volver a evaluar, no un mecanismo que desvíe la búsqueda.
+
+  **Cuidado para el futuro**: el día que exista una tabú de verdad y se llame
+  `TabuSearch`, el código antiguo volvería a importar bien pero **ejecutaría otro
+  algoritmo**, que sí es una rotura silenciosa. Se evita si la tabú nueva llega en una
+  versión posterior a este renombrado, dejando una ventana en la que el `ImportError`
+  avisa.
+- **[x] A-03 (R)** `tools.py:49` — el vecindario tabú se genera **en cadena** (`deepcopy(best_neighbor)`), no alrededor de la solución. `mm_tools.py:135` hace lo contrario: las dos implementaciones hermanas discrepan.
+
+  ### Se disuelve con el renombrado de `A-02`, y además el arreglo empeoraba.
+
+  Encadenar es un defecto **para una búsqueda tabú**, que necesita un vecindario
+  alrededor del punto actual para elegir el mejor movimiento no tabú. **Para hill
+  climbing es el algoritmo**: dar un paso y, si mejora, seguir desde ahí.
+
+  Medido en las dos direcciones, con el mismo presupuesto:
+
+  | | En cadena (como está) | Desde la solución |
+  |---|---|---|
+  | Esfera | **0.0005** | 0.0025 |
+  | Rastrigin | **0.6173** | 0.7778 |
+
+  Aplicar el arreglo propuesto lo empeora **cinco veces en la esfera** y un 26 % en
+  Rastrigin. Se revirtió y se dejó un comentario en `tools.py` explicando por qué la
+  discrepancia con `mm_tools.py` es deliberada, para que nadie la «unifique».
+
+  **La diferencia con `F-25`, donde encadenar sí era un fallo, merece retenerse:** allí
+  la base se movía **en cada mutación, pasara lo que pasara**, así que los vecinos se
+  alejaban del punto contra el que el criterio de Metropolis los comparaba. Aquí la base
+  **solo se mueve cuando mejora**. El mismo patrón sintáctico, correcto en un sitio e
+  incorrecto en el otro.
 - **[x] A-04** `rs/random_search.py:110` — `solutions[:-1]` descarta siempre el último individuo, que no tiene por qué ser el peor; la docstring dice que se preserva el mejor.
 
   *Cerrado.* La copia élite ocupa un hueco, así que alguien tiene que salir; ahora sale

@@ -1,7 +1,7 @@
 from typing import Callable, Tuple
 
 from metagen.framework import Domain, Solution
-from metagen.metaheuristics import RandomSearch, SA, TabuSearch, GA, SSGA, TPE
+from metagen.metaheuristics import RandomSearch, SA, HillClimbing, GA, SSGA, TPE
 from metagen.metaheuristics.base import Metaheuristic
 from metagen.metaheuristics.gamma_schedules import GammaConfig
 from metagen.metaheuristics.mm.memetic import Memetic
@@ -43,7 +43,7 @@ def get_metaheuristic(code: str,
                 alpha=kwargs.get('gamma_alpha', 5.0)
             )
 
-        result = TabuSearch(domain, fitness_function,
+        result = HillClimbing(domain, fitness_function,
                             population_size=kwargs.get('population_size', 10),
                             warmup_iterations=kwargs.get('warmup_iterations', 5),
                             max_iterations=kwargs.get('max_iterations', 10),
