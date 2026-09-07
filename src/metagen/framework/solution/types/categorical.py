@@ -63,9 +63,14 @@ class Categorical(BaseType):
         """
         _, categories = self.get_definition().get_attributes()
         current_category = self.get()
-        random_category = get_rng().choice(
-            [category for category in categories if category != current_category])
-        self.set(random_category)
+        others = [category for category in categories if category != current_category]
+
+        # A definition may legitimately hold a single category since F-17, and then
+        # there is nothing to mutate to: choice([]) would raise.
+        if not others:
+            return
+
+        self.set(get_rng().choice(others))
 
     def set(self, value: Any) -> None:
         """

@@ -70,7 +70,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ✅ | `F-14` | `sys.float_info.min` no es «menos infinito» |
 | ⬜ | `F-15` | `Solution.__hash__` no mira las variables |
 | ✅ | `F-16` | Los mensajes de error de `Domain` salen mal formados |
-| ⬜ | `F-17` | Categorías duplicadas aceptadas, categoría única rechazada |
+| ✅ | `F-17` | Categorías duplicadas aceptadas, categoría única rechazada |
 | ✅ | `F-18` | Una estructura estática se identifica como dinámica |
 | ✅ | `F-19` | Estructuras dinámicas: nunca alcanzan el máximo, revientan si min = max |
 | ⬜ | `F-20` | SA evalúa veinte soluciones iniciales para usar una, y no la mejor |
@@ -632,7 +632,7 @@ Tests: el que ya existía, más `test_f16_los_cuatro_mensajes_de_definicion_son_
 (parametrizado por los cuatro modos) y
 `test_f16_el_mensaje_de_paso_cero_no_lleva_espacio_doble`.
 
-### [ ] F-17 (R) · Categorías duplicadas aceptadas, categoría única rechazada
+### [x] F-17 (R) · Categorías duplicadas aceptadas, categoría única rechazada
 `domain/preconditions.py:32-39` · tests: `test_f17_*`
 
 `pairwise` solo compara adyacentes: `["a", "b", "a"]` se acepta. Y `len(value) >= 2`
@@ -640,6 +640,26 @@ impide fijar un hiperparámetro a un único valor.
 
 **Arreglo** `len(set(value)) == len(value)` y un solo tipo; permitir longitud 1
 (protegiendo `Categorical.mutate`, que haría `random.choice([])`).
+
+*Cerrado tal cual.* `is_categories_value` se reescribió entera en vez de parchear la
+condición: comprueba por separado que sea una lista no vacía, que todo sean valores
+básicos, que compartan tipo y que no haya repetidos.
+
+`pairwise` era peor de lo que sugiere el diagnóstico: no solo pasaba `["a", "b", "a"]`,
+también **`["a", "b", "a", "b"]`**, donde la mitad de las categorías están repetidas.
+Basta con que no haya dos iguales *seguidas*.
+
+`Categorical.mutate` quedó protegido, y la guarda es **volver sin tocar nada**, no
+elegir entre la lista completa: con una sola categoría no hay a qué mutar, e inventar
+un cambio sería mentir sobre lo que hizo. Comprobado con cinco mutaciones seguidas
+sobre un dominio de una categoría.
+
+`pairwise` sigue importándose: lo usa `is_basic_vector_sequence_value`, que es otra
+función.
+
+Tests: los dos que ya existían, más `test_f17_una_sola_categoria_se_puede_mutar` y
+`test_f17_otras_listas_de_categorias_invalidas_se_rechazan`, parametrizado sobre los
+tres casos que el diagnóstico no cubría.
 
 ### [x] F-18 (R) · Una estructura estática se identifica como `DYNAMIC`
 `domain/core.py:695` · test: `test_f18_una_estructura_estatica_se_identifica_como_static`

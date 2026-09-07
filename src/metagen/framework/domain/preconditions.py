@@ -30,13 +30,17 @@ class Primitives:
         return r
 
     @staticmethod
-    def is_categories_value(value: Any):
-        r = False
-        if isinstance(value, list):
-            if len(value) >= 2:
-                r = all(type(x) == type(y) and Primitives.is_basic_value(x) and x != y
-                        for x, y in pairwise(value))
-        return r
+    def is_categories_value(value: Any) -> bool:
+        # pairwise only compared adjacent items, so ["a", "b", "a"] passed and even
+        # ["a", "b", "a", "b"] did. And len >= 2 forbade pinning a hyperparameter to a
+        # single value, which is a legitimate thing to declare (F-17).
+        if not isinstance(value, list) or not value:
+            return False
+        if not all(Primitives.is_basic_value(x) for x in value):
+            return False
+        if any(type(x) is not type(value[0]) for x in value):
+            return False
+        return len(set(value)) == len(value)
 
     @staticmethod
     def is_layer_value(value: Any) -> bool:
