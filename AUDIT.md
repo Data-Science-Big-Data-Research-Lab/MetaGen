@@ -880,15 +880,32 @@ Aquí el código hace lo que dice hacer; lo discutible es qué dice hacer.
 - **[ ] P-08** Los extras de `setup.cfg` usan `;`, que en PEP 508 es el separador de **marcadores de entorno**, no de requisitos: `tensorboard = tensorboard; tensorboardX` se lee como «tensorboard, si el marcador tensorboardX». Comprobar qué instala `pip install pymetagen-datalabupo[all]`. Además hay tres `requirements*.txt` con criterios solapados. *Arreglo*: un requisito por línea y migrar la metadata a `pyproject.toml`.
 - **[ ] P-09** Falta `src/metagen/py.typed`: el paquete está anotado de arriba abajo pero sin el marcador PEP 561 mypy trata `metagen` como `Any`.
 - **[ ] P-10** Los ejemplos de las docstrings usan una API que no existe: `domain.defineInteger(0, 1)` en RS, TPE, Memetic y CVOA (el método es `define_integer(name, min, max)`), y el ejemplo de CVOA usa `CVOA.initialize_pandemic(...)` y `cvoa_launcher(strains)`, de una versión anterior. Son las páginas que publica readthedocs. *Arreglo*: actualizarlos y añadirlos como doctests.
-- **[ ] P-11** `mypy src` **no pasa limpio**: 11 errores en 9 ficheros (eran 14 antes de cerrar `F-01`), pese a que el proyecto se desarrolló con la condición de usar tipos. Por eso el job `types` del CI nace informativo (`continue-on-error: true`). Diez de los catorce no son deuda nueva, sino los mismos bugs que ya recoge la auditoría vistos por otra ventana:
+- **[ ] P-11** `mypy src` **no pasa limpio**: 8 errores en 8 ficheros con `mypy 1.1.1`, 7 con la versión que instala el CI. Eran 14 al abrir el hallazgo. El proyecto se desarrolló con la condición de usar tipos, así que esto es deuda declarada, no higiene opcional; por eso el job `types` del CI nace informativo (`continue-on-error: true`).
+
+  **El contador es la barra de progreso de la auditoría**, y va bajando solo al cerrar
+  otros hallazgos:
+
+  | Al cerrar | Errores que se lleva | Contador |
+  |---|---|---|
+  | — (apertura) | | 14 |
+  | `F-01` | `types/base.py:117, 119, 122` | 11 |
+  | `F-05` | `types/structure.py:202` | 10 |
+  | `A-11` | `metagen_logger.py:29, 69, 70` | 7 |
+
+  Lo que queda, y de quién es:
 
   | Causa | Errores | Se cierra con |
   |---|---|---|
-  | `logging/metagen_logger.py:29, 69, 70` — parcheo de `Logger` y `Handler \| None` sin comprobar | 3 | `A-11` |
-  | `solution/types/base.py:117, 119, 122` — `int \| float` asignado a un `int` en `_closest_number` | 3 | `F-01` |
-  | `solution/types/structure.py:202` — `Function "BaseType" could always be true` | 1 | `F-05` |
-  | `metaheuristics/base.py:256`, `cvoa_local.py:259`, `cvoa_distributed.py:238` — `.get_fitness()` sobre `Any \| None` | 3 | Familia `F-14` / `A-10` |
-  | `base_solution.py:265`, `real.py:61`, `integer.py:62` — `Optional` implícito: `= None` en un parámetro no opcional | 3 | Propio de `P-11` |
-  | `tpe/tpe.py:88` — falta anotar `solution_history` | 1 | Propio de `P-11` |
+  | `metaheuristics/base.py`, `cvoa_local.py`, `cvoa_distributed.py` — `.get_fitness()` sobre `Any \| None` | 3 | Familia `F-14` / `A-10` |
+  | `base_solution.py`, `real.py`, `integer.py` — `Optional` implícito: `= None` en un parámetro no opcional | 3 | Propio de `P-11` |
+  | `tpe/tpe.py` — falta anotar `solution_history` | 1 | Propio de `P-11` |
+  | `connector/connector.py:91` — asignación incompatible en `get_type` | 1 | Propio de `P-11`, **solo con mypy 1.1.1** |
 
-  *Arreglo*: cerrar los hallazgos de la tabla, resolver los cuatro restantes (`x: int \| None = None` y una anotación en TPE) y, cuando `mypy src` salga a cero, **quitar el `continue-on-error: true` del job `types`** para que la comprobación pase a bloquear. Conviene hacerlo junto con `P-09` (`py.typed`), que hoy hace que mypy trate `metagen` como `Any` desde fuera del paquete.
+  **Ojo con ese último**: no lo da la versión de mypy que instala el CI, así que el
+  contador local y el del CI difieren en uno. No es una discrepancia del código.
+
+  *Arreglo*: cerrar los hallazgos de la tabla, resolver los cuatro o cinco restantes
+  (`x: int | None = None` y una anotación en TPE) y, cuando `mypy src` salga a cero,
+  **quitar el `continue-on-error: true` del job `types`** para que la comprobación
+  pase a bloquear. Conviene hacerlo junto con `P-09` (`py.typed`), que hoy hace que
+  mypy trate `metagen` como `Any` desde fuera del paquete.

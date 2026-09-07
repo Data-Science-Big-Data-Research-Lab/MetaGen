@@ -28,7 +28,11 @@ src/metagen/
                   → bucle (pre_iteration → _iterate → post_iteration) → post_execution
     rs/ ga/ sa/ ts/ tpe/ mm/ cvoa/    Una carpeta por algoritmo
     tools.py      random_exploration, local_search, local_search_with_tabu
-  logging/        metagen_logger + TensorBoardLogger
+  logging/        metagen_logger + TensorBoardLogger. Desde A-11 el paquete solo
+                  instala un NullHandler al importarse: para ver algo por consola
+                  hay que llamar a set_metagen_logger_level(). Desde A-12
+                  TensorBoard es opcional: log_dir=None (el valor por defecto) no
+                  escribe nada, y cualquier ruta lo enciende
 ```
 
 Tres ideas que conviene tener presentes:
@@ -75,9 +79,11 @@ Desde P-06, `.github/workflows/ci.yml` corre en cada push y PR sobre `master` y
 - **`tests`** — matriz 3.10 / 3.11 / 3.12, **bloqueante**. Instala `pip install -e .`
   más `pytest` y `pytest-csv-params`, y ejecuta la suite que debe estar verde.
 - **`types`** — `mypy src`, **informativo** (`continue-on-error: true`) mientras
-  P-11 siga abierto. Hoy son 11 errores, tras cerrar F-01; el resto pertenece a hallazgos
-  ya conocidos (F-05, A-11, familia F-14/A-10). Cuando el contador llegue a cero, quitar el
-  `continue-on-error` y la comprobación pasa a bloquear.
+  P-11 siga abierto. De 14 al abrir la auditoría van 7 en el CI, tras cerrar F-01, F-05
+  y A-11; el resto pertenece a la familia F-14/A-10 y a deuda propia de P-11. Cuando el
+  contador llegue a cero, quitar el `continue-on-error` y la comprobación pasa a
+  bloquear. **En local pueden salir 8**: `mypy 1.1.1` da un error en `connector.py:91`
+  que la versión del CI no da.
 
 El CI **no instala los extras a propósito**. Hasta cerrar `F-24` era el único sitio
 donde ese hallazgo se observaba; hoy su test bloquea Ray en un subproceso y corre en
