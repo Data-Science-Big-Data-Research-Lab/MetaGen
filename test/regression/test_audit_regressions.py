@@ -585,6 +585,56 @@ def test_f25_los_vecinos_salen_de_la_solucion_actual_no_en_cadena():
     )
 
 
+@pytest.mark.parametrize("nombre", ["GA", "SSGA", "Memetic"])
+def test_a07_los_geneticos_explican_que_necesitan_el_conector(nombre):
+    """A-07: con un `Domain()` normal los tres morian en la primera iteracion con
+    `AttributeError: 'Solution' object has no attribute 'crossover'`, que no dice que
+    hacer. Ahora fallan al construirse y con instrucciones."""
+    import metagen.metaheuristics as paquete
+
+    clase = getattr(paquete, nombre)
+    dominio, fitness = _dominio_y_fitness_de_prueba()
+
+    with pytest.raises(ValueError) as fallo:
+        clase(dominio, fitness, population_size=4, max_iterations=2, seed=1)
+
+    mensaje = str(fallo.value)
+    assert "crossover" in mensaje
+    assert "GAConnector" in mensaje
+
+
+@pytest.mark.parametrize("nombre", ["GA", "SSGA", "Memetic"])
+def test_a07_un_conector_propio_con_crossover_vale(nombre):
+    """La comprobacion pregunta por la capacidad, no por la clase `GAConnector`: quien
+    traiga su propio conector con su propio operador de cruce tiene que seguir
+    pudiendo. El conector es el mecanismo de extension del framework."""
+    import metagen.metaheuristics as paquete
+    from metagen.framework import BaseConnector
+    from metagen.framework.domain import (BaseDefinition, CategoricalDefinition,
+                                          IntegerDefinition, RealDefinition,
+                                          StaticStructureDefinition)
+    from metagen.metaheuristics.ga.ga_tools import GASolution, GAStructure
+    import metagen.framework.solution as tipos
+
+    class CruceMio(GASolution):
+        pass
+
+    class ConectorMio(BaseConnector):
+        def __init__(self):
+            super().__init__()
+            self.register(BaseDefinition, CruceMio, dict)
+            self.register(IntegerDefinition, tipos.Integer, int)
+            self.register(RealDefinition, tipos.Real, float)
+            self.register(CategoricalDefinition, tipos.Categorical, str)
+            self.register(StaticStructureDefinition, (GAStructure, "static"), list)
+
+    clase = getattr(paquete, nombre)
+    dominio = Domain(connector=ConectorMio())
+    dominio.define_real("x", -5.0, 5.0)
+
+    clase(dominio, lambda s: s["x"] ** 2, population_size=4, max_iterations=2, seed=1)
+
+
 def test_a05_la_sustitucion_del_ssga_mete_a_los_dos_mejores():
     """A-05 quedo **refutado**: la version por valor daba el mismo resultado, porque
     `index()` rescanea la lista tras la primera sustitucion y encuentra al otro

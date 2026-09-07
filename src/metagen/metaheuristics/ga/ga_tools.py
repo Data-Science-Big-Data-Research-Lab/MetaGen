@@ -132,6 +132,36 @@ class GASolution(Solution):
         return child1, child2
 
 
+def require_crossover(domain: Domain, algorithm: str) -> None:
+    """
+    Check that the domain's connector yields solutions that know how to cross over.
+
+    GA, SSGA and the memetic algorithm all cross solutions, an operator that only
+    GASolution and GAStructure provide. With a plain Domain() they used to die on the
+    first iteration with `AttributeError: 'Solution' object has no attribute
+    'crossover'`, which says nothing about what to do (A-07).
+
+    The check asks for the capability rather than for GAConnector itself, so that a
+    user bringing their own connector with their own crossover operator still works:
+    the connector is the framework's extension point.
+
+    :param domain: The domain the algorithm was given.
+    :type domain: Domain
+    :param algorithm: The algorithm's name, for the error message.
+    :type algorithm: str
+    :raises ValueError: If the domain's solutions have no crossover operator.
+    """
+    solution_type = domain.get_connector().get_type(domain.get_core())
+    if not hasattr(solution_type, "crossover"):
+        raise ValueError(
+            f"{algorithm} crosses solutions over, and this domain's connector maps it "
+            f"to {solution_type.__name__}, which has no crossover operator. Build the "
+            f"domain with the GA connector:\n\n"
+            f"    from metagen.metaheuristics import GAConnector\n"
+            f"    domain = Domain(connector=GAConnector())\n"
+        )
+
+
 class GAConnector(BaseConnector):
     """
     Represents the custom Connector for the Genetic Algorithm (GA).
