@@ -62,7 +62,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ⬜ | `F-10` | El «peor superspreader» de CVOA se inicializa al revés |
 | ⬜ | `F-11` | La búsqueda local distribuida manda la misma porción a todos los workers |
 | ✅ | `F-12` | Todos los `Domain` comparten el mismo conector por defecto |
-| ⬜ | `F-13` | TPE modifica el `Domain` que le pasa el usuario |
+| ✅ | `F-13` | TPE modifica el `Domain` que le pasa el usuario |
 | ✅ | `F-14` | `sys.float_info.min` no es «menos infinito» |
 | ⬜ | `F-15` | `Solution.__hash__` no mira las variables |
 | ⬜ | `F-16` | Los mensajes de error de `Domain` salen mal formados |
@@ -430,13 +430,38 @@ Ninguna forma de llamada se rompe: `Domain()`, `Domain(mi_conector)` y
 
 Comprobado además que este era **el único argumento por defecto mutable de `src/`**.
 
-### [ ] F-13 (R) · TPE modifica el `Domain` que le pasa el usuario
+### [x] F-13 (R) · TPE modifica el `Domain` que le pasa el usuario
 `src/metagen/metaheuristics/tpe/tpe.py:89` · test: `test_f13_tpe_no_modifica_el_dominio_del_usuario`
 
 `self.domain._connector = TPEConnector()` deja el dominio del usuario modificado para
 siempre. Comparar varias metaheurísticas en un bucle da resultados dependientes del orden.
 
 **Arreglo** Trabajar sobre una copia, o exigir `Domain(connector=TPEConnector())` y validarlo.
+
+*Cerrado con la copia*, no con la exigencia. Exigir `Domain(connector=TPEConnector())`
+sería más coherente con GA —que ya funciona así, aunque sin validarlo: ese es `A-07`—
+pero **rompería todos los guiones existentes**: `TPE(domain, fitness)` sobre un
+`Domain()` normal es la forma que documentan el artículo y los cuadernos, y TPE es una
+de las dos metaheurísticas evaluadas allí. No es un precio que pague este hallazgo.
+
+El `deepcopy` va **antes** del `super().__init__`, no después: así `self.domain` nace
+ya siendo la copia y no hay un instante en que la clase base apunte al dominio del
+usuario.
+
+La contaminación ocurría en el **constructor**, no en `run()`: bastaba con crear un TPE
+para que el dominio quedara con `TPEConnector` para siempre.
+
+**Los resultados de TPE no cambian ni un dígito**, y conviene dejarlo dicho: ni
+`deepcopy` ni construir el conector consumen sorteos. Comprobado sobre la esfera 2D con
+las diez semillas, comparando valores y no veredictos:
+
+```
+antes:   [0.0011548337, 0.0249535054, 0.0044897437, ..., 0.0064106984]
+despues: [0.0011548337, 0.0249535054, 0.0044897437, ..., 0.0064106984]
+```
+
+Queda una incoherencia de fondo para `A-07`: GA espera que el usuario traiga el
+conector y TPE se lo monta él. Una de las dos convenciones sobra.
 
 ---
 
