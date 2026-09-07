@@ -759,6 +759,60 @@ def test_f23_el_tiempo_de_ejecucion_se_reporta_en_segundos():
 
 
 # --------------------------------------------------------------------------
+# Duplicacion (A-09)
+# --------------------------------------------------------------------------
+
+
+def _fuente(modulo: str) -> str:
+    return pathlib.Path(importlib.util.find_spec(modulo).origin).read_text()
+
+
+def test_a09_hay_una_sola_implementacion_de_local_search():
+    """A-09: `tools.py` y `mm_tools.py` llevaban la misma `local_search`, identica
+    byte a byte. La de `tools.py` no la usaba nadie y la de `mm_tools.py` si, asi
+    que la copia viva estaba en el modulo especifico del memetico."""
+    from metagen.metaheuristics import tools
+    from metagen.metaheuristics.mm import mm_tools
+
+    assert mm_tools.local_search is tools.local_search
+
+
+def test_a09_los_dos_cvoa_exponen_los_mismos_metodos():
+    """A-09 sigue abierto: los dos CVOA siguen duplicados a proposito, y su
+    reestructuracion se hara aislada. Mientras tanto, esto detecta que se le anada
+    o se le quite un metodo a uno y no al otro.
+    """
+    import ast
+
+    def metodos(modulo, clase):
+        arbol = ast.parse(_fuente(modulo))
+        for nodo in ast.walk(arbol):
+            if isinstance(nodo, ast.ClassDef) and nodo.name == clase:
+                return {m.name for m in nodo.body if isinstance(m, ast.FunctionDef)}
+        raise AssertionError(f"no se encontro la clase {clase} en {modulo}")
+
+    local = metodos("metagen.metaheuristics.cvoa.cvoa_local", "CVOA")
+    distribuido = metodos("metagen.metaheuristics.cvoa.cvoa_distributed", "DistributedCVOA")
+
+    assert local == distribuido, (
+        f"solo en el local: {sorted(local - distribuido)}; "
+        f"solo en el distribuido: {sorted(distribuido - local)}"
+    )
+
+
+def test_a09_los_dos_cvoa_informan_de_la_iteracion_una_sola_vez():
+    """Una divergencia real que dejo la duplicacion: el gemelo distribuido imprimia
+    el informe de iteracion dos veces. No era solo ruido: cada uno hace un `ray.get`
+    entre procesos, y la f-string se evalua aunque el nivel de log lo descarte."""
+    local = _fuente("metagen.metaheuristics.cvoa.cvoa_local").count("Iteration #")
+    distribuido = _fuente("metagen.metaheuristics.cvoa.cvoa_distributed").count("Iteration #")
+
+    assert local == distribuido == 1, (
+        f"informes de iteracion: local {local}, distribuido {distribuido}"
+    )
+
+
+# --------------------------------------------------------------------------
 # Documentacion
 # --------------------------------------------------------------------------
 

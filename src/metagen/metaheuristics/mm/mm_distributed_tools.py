@@ -26,7 +26,8 @@ else:
 from metagen.framework import Solution
 from metagen.logging.metagen_logger import get_remote_metagen_logger
 from metagen.metaheuristics.distributed_tools import assign_load_equally
-from metagen.metaheuristics.mm.mm_tools import local_search, population_local_search
+from metagen.metaheuristics.mm.mm_tools import population_local_search
+from metagen.metaheuristics.tools import local_search
 
 
 def distributed_population_local_search(population: List[Solution], fitness_function: Callable[[Solution], float],

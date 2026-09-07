@@ -167,10 +167,6 @@ class DistributedCVOA(Metaheuristic):
         # 1.3. Then, add the best individual of the strain to the next population.
         new_infected_population.add(self.best_strain_solution)
 
-        self.remote_logger.detailed_info(
-            f'[{self.strain_properties.strain_id}] Iteration #{self.time} - {self.r0_report(len(new_infected_population))}'
-            f'- Best strain individual: {self.best_strain_solution} , Best global individual: {ray.get(self.global_state.get_best_individual.remote())} ')
-
         # 1.4. Update the infected strain population for the next iteration
         self.infected.clear()
         self.infected.update(new_infected_population)

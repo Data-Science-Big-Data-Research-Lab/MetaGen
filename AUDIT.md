@@ -913,6 +913,45 @@ Aquí el código hace lo que dice hacer; lo discutible es qué dice hacer.
 - **[ ] A-07** `ga`, `ssga`, `mm` — no validan que el dominio use `GAConnector`: con un `Domain()` normal mueren en la primera iteración con `AttributeError: 'Solution' object has no attribute 'crossover'`.
 - **[ ] A-08** `domain/core.py:219, 140` — `RealDefinition` exige `isinstance(value, float)` (rechaza `1` y `np.float32`) y `IntegerDefinition` acepta `bool`. *Propuesta*: `numbers.Real` excluyendo `bool`, normalizando al tipo nativo.
 - **[ ] A-09** `cvoa_local.py` ↔ `cvoa_distributed.py` (372 vs 352 líneas) y `tools.py` ↔ `mm_tools.py` — **código duplicado y ya divergente**. *Propuesta*: una clase por algoritmo y la estrategia de ejecución (secuencial / Ray) como objeto inyectado.
+
+  **Sigue abierto a propósito.** Se hizo solo la parte de riesgo cero y se aplaza la
+  reestructuración de CVOA a un trabajo aislado. Decisión de David, 7 de septiembre
+  de 2026, con un motivo que no está en el código: **CVOA fue de las partes más duras
+  de desarrollar**, porque el algoritmo es multihilo por naturaleza y encima llevaba
+  Ray encima. Refactorizarlo de pasada, dentro de una tanda de arreglos, es
+  exactamente lo que no conviene.
+
+  **Lo que se midió**, en vez de estimarlo. Los dos CVOA tienen **los mismos métodos**
+  y difieren en tres ejes, todos de fontanería:
+
+  | Eje | Local | Distribuido |
+  |---|---|---|
+  | Logger | `metagen_logger` | `self.remote_logger` |
+  | Estado global | `self.global_state.x(...)` | `ray.get(self.global_state.x.remote(...))` |
+  | Paso de contagio | un bucle | `distributed_cvoa_new_infected_population(...)` |
+
+  `stopping_criterion` y `__str__` son idénticos; el resto difiere entre 2 y 12 líneas.
+
+  **La divergencia que denuncia el hallazgo existe y se arregló:** el gemelo
+  distribuido **imprimía el informe de iteración dos veces**, líneas 171 y 185. No era
+  solo ruido: cada uno hace un `ray.get` de ida y vuelta entre procesos, y la f-string
+  se evalúa aunque el nivel de log la descarte.
+
+  **`local_search` estaba duplicada byte a byte** en `tools.py` y `mm_tools.py`. Se
+  unificó, y con un matiz que no se ve de lejos: **a la de `tools.py` no la usaba
+  nadie** y la viva era la del módulo del memético. Se conserva la de `tools.py`, que
+  es el módulo genérico y el que documenta `DEVELOPMENT.md`, y `mm_tools` y
+  `mm_distributed_tools` la importan de allí.
+
+  **Si algún día se aborda, mejor una clase base con tres puntos de extensión** —los
+  tres ejes de la tabla— que la «estrategia de ejecución inyectada» de la propuesta:
+  no hace falta inventar una abstracción para dos únicos casos.
+
+  Tests, que no cierran el hallazgo pero **detectan que vuelva a divergir**:
+  `test_a09_hay_una_sola_implementacion_de_local_search`,
+  `test_a09_los_dos_cvoa_exponen_los_mismos_metodos` (avisa si se le añade un método
+  a un gemelo y no al otro) y
+  `test_a09_los_dos_cvoa_informan_de_la_iteracion_una_sola_vez`.
 - **[ ] A-10** `base.py:196, 247` — `_iterate` hace `self.best_solution = best_individual` sin comparar, así que el elitismo depende de que cada subclase se acuerde; y `stopping_criterion()` devuelve `False` por defecto (bucle infinito si una subclase lo olvida).
 - **[x] A-11 (R)** `logging/metagen_logger.py:29, 84, 90` — parchea `logging.Logger` globalmente, instala un `StreamHandler` al importar, y añade un handler nuevo en cada llamada a `get_remote_metagen_logger()`. `set_metagen_logger_level` haría `None.close()` si no hay handler de consola. *Propuesta*: solo `NullHandler` al importar y una función de configuración idempotente.
 
