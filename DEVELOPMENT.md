@@ -104,9 +104,19 @@ Hay dos ficheros y conviene no confundirlos:
   mejora sobre su inicio, y **gana a muestrear al azar con sus mismas evaluaciones**.
 
 Las estadísticas van sobre 10 semillas fijas con umbral de 7, no sobre una
-ejecución suelta: un algoritmo sano queda en 8-10 y uno roto en 0-4. Hoy SA, GA y
-SSGA suspenden las dos últimas propiedades y están marcados `xfail`, citando el
-hallazgo culpable. El memético entró al cerrar F-24 y pasa las cuatro.
+ejecución suelta: un algoritmo sano queda en 8-10 y uno roto en 0-4.
+
+Desde `F-32` el banco son **seis funciones**, las clásicas del campo, cada una con
+su dominio canónico: Sphere, Rastrigin, Rosenbrock, Ackley, Griewank y Schwefel.
+Los dominios **no se normalizan a propósito** — es lo que destapó `F-32`, porque
+`alteration_limit=1.0` significa algo muy distinto en `[-2.048, 2.048]` que en
+`[-600, 600]`.
+
+Las dos primeras propiedades son estructurales y se exigen a **las 42
+combinaciones**, sin excepciones: hoy pasan todas. Las dos estadísticas llevan una
+tabla de `xfail` por propiedad, medida y no supuesta, donde cada par que falla cita
+lo que lo explica. Ojo: la tabla va **por propiedad**, porque hay pares que fallan
+una y pasan la otra.
 
 ## Cómo funcionan los tests de regresión
 

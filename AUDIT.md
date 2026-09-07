@@ -1,7 +1,7 @@
 # Auditoría de MetaGen
 
 Revisión completa de `src/metagen` sobre el commit `74f104e` (2025-03-21).
-54 hallazgos con identificadores estables: los 46 de la revisión inicial más
+55 hallazgos con identificadores estables: los 46 de la revisión inicial más
 `P-11` (al montar el CI), `F-25` (al medir el comportamiento real de las
 metaheurísticas para `P-05`) y `F-26` (al verificar `F-04`). Los marcados **(R)** se reprodujeron
 ejecutando el paquete instalado en Python 3.11 sin Ray ni TensorFlow.
@@ -34,7 +34,7 @@ Marcar aquí el hallazgo como `[x]` al cerrarlo.
 | Bloque | Cantidad | Qué son |
 |---|---|---|
 | `F-01`…`F-13` | 13 | Críticos: corrompen resultados o bloquean la ejecución |
-| `F-14`…`F-31` | 18 | Importantes: fallan en casos concretos o desperdician cómputo |
+| `F-14`…`F-32` | 19 | Importantes: fallan en casos concretos o desperdician cómputo |
 | `A-01`…`A-12` | 12 | Algoritmia y diseño: decisiones discutibles, no bugs |
 | `P-01`…`P-11` | 11 | Empaquetado, tests y documentación |
 
@@ -85,6 +85,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ⬜ | `F-29` | CVOA no reproduce entre procesos: itera conjuntos de soluciones |
 | ⬜ | `F-30` | La temperatura de SA no llega a enfriarse: es un paseo aleatorio |
 | ⬜ | `F-31` | Los genéticos no admiten estructuras dinámicas: el cruce no existe |
+| ⬜ | `F-32` | El `alteration_limit` por defecto es absoluto, no relativo al dominio |
 | ⬜ | `A-01` | Sin selección de padres: todos los cruces usan la misma pareja |
 | ✅ | `A-02` | La búsqueda tabú es en realidad hill climbing |
 | ✅ | `A-03` | El vecindario tabú se genera en cadena, no alrededor de la solución |
@@ -1275,6 +1276,45 @@ Mientras tanto, lo que sí cabe en la auditoría es que el fallo se explique: ho
 `ValueError` sobre el conector y un `NotImplementedError` sin mensaje, y ninguno de los
 dos dice «los genéticos no admiten estructuras dinámicas todavía». Ver `A-07`.
 
+### [ ] F-32 (R) · El `alteration_limit` por defecto es absoluto, no relativo al dominio
+`hc/hill_climbing.py:50`, `mm/memetic.py:72`, `sa/sa.py:92` · descubierto al ampliar el banco de pruebas
+
+Los tres algoritmos con búsqueda local traen `alteration_limit=1.0` por defecto, un
+valor **absoluto**. Cuánto significa depende por completo de lo ancho que sea el dominio
+del problema, que el framework conoce y no mira.
+
+Medido con presupuesto igualado sobre las seis funciones clásicas del campo, con sus
+dominios canónicos: **cuántas de 10 semillas gana cada algoritmo al muestreo aleatorio.**
+
+| | Sphere | Rastrigin | Rosenbrock | Ackley | Griewank | Schwefel |
+|---|---|---|---|---|---|---|
+| *anchura del dominio* | *±5.12* | *±5.12* | *±2.05* | *±32.8* | *±600* | *±500* |
+| RandomSearch | 8 | 5 | 3 | 8 | 7 | 6 |
+| SA | 4 | 3 | 5 | 3 | 3 | 2 |
+| **HillClimbing** | **10** | **10** | 7 | **10** | **3** | **4** |
+| GA | 4 | 5 | 1 | 4 | 4 | 4 |
+| SSGA | 3 | 5 | 2 | 2 | 2 | 5 |
+| TPE | **10** | 6 | 6 | **10** | **8** | 5 |
+| **Memetic** | **10** | **10** | **10** | 8 | **2** | 4 |
+
+`HillClimbing` y el memético son imbatibles en las cuatro primeras y **caen por debajo
+del azar en las dos últimas**. El patrón **no es multimodal contra unimodal**: Rastrigin
+y Ackley también son multimodales y ahí arrasan. Lo que las separa es **la anchura del
+dominio**: en Griewank (`±600`) un vecino se mueve como mucho un **0.1 % del rango**, así
+que la búsqueda local no llega a ninguna parte.
+
+**TPE es el más robusto del conjunto**, un dato que con la esfera sola no se veía:
+allí `HillClimbing` parecía dominar.
+
+**Arreglo** Hacer que el límite por defecto sea **relativo**: derivarlo de la anchura del
+dominio —por ejemplo una fracción del rango de cada variable— en vez de fijar un 1.0 que
+solo tiene sentido para dominios de unas pocas unidades. Alternativa conservadora:
+dejarlo como está y avisar en la documentación de que hay que ajustarlo al problema,
+que es peor porque el framework sí conoce el dominio.
+
+**Ojo:** cambiar el valor por defecto **mueve los resultados de tres algoritmos**, así
+que debería hacerse midiendo antes y después sobre las seis funciones, no a ojo.
+
 ---
 
 ## Algoritmia y diseño
@@ -1663,6 +1703,23 @@ Aquí el código hace lo que dice hacer; lo discutible es qué dice hacer.
   - **GA y SSGA** quedan por debajo del azar. En GA se ve en el código: `best_parents` se calcula fuera del bucle, así que los cinco cruces de cada generación usan la misma pareja (`A-01`), y encima la mitad de los hijos son clones (`F-04`).
   - **RandomSearch queda excluida** de esa comprobación: es muestreo aleatorio, empatar consigo misma es lo correcto.
   - **Memetic quedaba fuera** de todo el módulo porque no se podía importar sin Ray (`F-24`). Entró al cerrarlo, y pasa las cuatro propiedades: 10/10 contra el azar con 610 evaluaciones, media 0.0002 frente a 0.0425.
+
+  **Ampliado el 7 de septiembre de 2026 a seis funciones**, a petición de David: las
+  clásicas del campo con sus dominios canónicos (Sphere, Rastrigin, Rosenbrock, Ackley,
+  Griewank y Schwefel). De 27 casos de prueba a 162, y la suite completa pasa de 15 s a
+  28 s. Lo que se gana:
+
+  - **Las dos propiedades estructurales pasan en las 42 combinaciones.** Ningún
+    algoritmo reporta un historial que mejora y devuelve otra cosa, en ninguna función.
+    Es la comprobación más fuerte del módulo y con una sola función no se sabía.
+  - **`F-32` salió de aquí**: `HillClimbing` y el memético dominan las cuatro funciones
+    de dominio estrecho y caen por debajo del azar en las dos anchas.
+  - **TPE resulta ser el más robusto del conjunto**, cosa que con la esfera sola no se
+    veía: allí `HillClimbing` parecía dominar.
+
+  La tabla de `xfail` va **por propiedad**, no compartida: hay pares que fallan «gana al
+  azar» y pasan «mejora sobre su inicio», y una tabla común los convertiría en
+  `XPASS(strict)`.
 
   Los tests de SA, GA y SSGA nacen `xfail(strict=True)` citando el hallazgo culpable: al arreglar `F-20`, `F-04` o `A-05` saltarán a `XPASS` avisando de que ya se puede quitar el marcador. Se comprobó además que estos resultados **son idénticos antes de `A-06`**, ejecutando el código en `1016e8a`: no son un efecto del cambio de semilla, que solo los ha hecho medibles.
 - **[x] P-06** No hay `.github/workflows`. Con `mypy` ya configurado en `setup.cfg` y una suite que corre en 3 s, un workflow mínimo con matriz 3.10–3.12 captura buena parte de lo anterior. *Cerrado*: `.github/workflows/ci.yml` con dos jobs, `tests` (matriz 3.10–3.12, bloqueante) y `types` (`mypy src`, informativo hasta que cierre `P-11`). Dos cosas salieron a la luz al montarlo: la suite necesita `pytest-csv-params`, que no declara ni `install_requires` ni ningún extra (ver `P-08`), y **el CI no instala los extras a propósito**. Aquello valía cuando el test de `F-24` se saltaba con Ray instalado; al cerrar ese hallazgo se reescribió para bloquear Ray en un subproceso y ahora corre en todas partes. El único test que sigue necesitando Ray de verdad es el de `F-21`.
