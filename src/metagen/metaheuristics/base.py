@@ -48,8 +48,8 @@ class Metaheuristic(ABC):
     :type population_size: int, optional
     :param distributed: Whether to use distributed computation (default is False).
     :type distributed: bool, optional
-    :param log_dir: Directory for logging (default is "logs").
-    :type log_dir: str, optional
+    :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
+    :type log_dir: str or None, optional
     :param seed: Seed making the run reproducible (default is None, a different
         run every time). It seeds MetaGen's own generators, so it does not
         disturb the random state of the calling application.
@@ -77,7 +77,7 @@ class Metaheuristic(ABC):
 
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float], population_size=20,
                  warmup_iterations: int = 0, distributed=False,
-                 log_dir: str = "logs", seed: Optional[int] = None) -> None:
+                 log_dir: Optional[str] = None, seed: Optional[int] = None) -> None:
         super().__init__()
 
         self.domain = domain
@@ -86,7 +86,13 @@ class Metaheuristic(ABC):
         self.warmup_iterations = warmup_iterations
         self.distributed = distributed
         self.seed = seed
-        self.logger = TensorBoardLogger(log_dir=log_dir) if is_package_installed("tensorboard") else None
+        # TensorBoard used to switch itself on for the mere fact of being
+        # installed, with no way to turn it off, so a sweep of hundreds of
+        # configurations left hundreds of directories behind (A-12). It is opt-in
+        # now: log_dir is where to write, and None means do not write.
+        self.logger = (TensorBoardLogger(log_dir=log_dir)
+                       if log_dir is not None and is_package_installed("tensorboard")
+                       else None)
 
         self.current_iteration = -1
         self.best_solution: Optional[Solution] = None

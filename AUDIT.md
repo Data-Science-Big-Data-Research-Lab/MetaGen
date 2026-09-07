@@ -87,7 +87,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ⬜ | `A-09` | CVOA y las herramientas están duplicados, y ya divergen |
 | ⬜ | `A-10` | El elitismo depende de que cada subclase se acuerde |
 | ✅ | `A-11` | El logger parchea `logging` globalmente y acumula handlers |
-| ⬜ | `A-12` | TensorBoard se activa solo por estar instalado, sin poder apagarlo |
+| ✅ | `A-12` | TensorBoard se activa solo por estar instalado, sin poder apagarlo |
 | ⬜ | `P-01` | Licencia contradictoria: MIT en PyPI frente a GPLv3 en el código |
 | ⬜ | `P-02` | La versión mínima de Python se contradice en tres sitios |
 | ⬜ | `P-03` | Enlaces y badges apuntan al repositorio antiguo |
@@ -812,7 +812,35 @@ Aquí el código hace lo que dice hacer; lo discutible es qué dice hacer.
   Cierra los tres errores de mypy que `P-11` le atribuía: el contador local baja de
   11 a 8. Test: `test_a11_el_logger_no_toca_el_logging_del_proceso`, en subproceso
   porque las tres primeras mitades se deciden al importar.
-- **[ ] A-12** `base.py:83` — TensorBoard se activa por el mero hecho de estar instalado, sin forma de desactivarlo: un barrido de cientos de configuraciones escribe cientos de directorios en `logs/`. *Propuesta*: `log_dir: str | None = None` con `None` = desactivado.
+- **[x] A-12 (R)** `base.py:83` — TensorBoard se activa por el mero hecho de estar instalado, sin forma de desactivarlo: un barrido de cientos de configuraciones escribe cientos de directorios en `logs/`. *Propuesta*: `log_dir: str | None = None` con `None` = desactivado.
+
+  *Cerrado con la propuesta tal cual*, elegida sobre la alternativa de dejar el valor
+  por defecto en `"logs"` y usar `None` solo para apagar. El argumento: una librería
+  no debería escribir en disco sin que se lo pidan, y quien de verdad usa TensorBoard
+  ya suele pasar su propio directorio.
+
+  **Cambia el comportamiento por defecto y hay que decirlo**: con TensorBoard
+  instalado, quien antes iba a mirar sus curvas después de una ejecución ya no las
+  tendrá salvo que pase `log_dir="logs/GA"` o lo que prefiera. A cambio, esto:
+
+  ```
+  5 ejecuciones de RandomSearch por defecto  ->  antes: 5 directorios,  ahora: 0
+  ```
+
+  `log_dir` pasa a `Optional[str] = None` en `Metaheuristic` y en las siete
+  metaheurísticas, más los dos lanzadores de CVOA; se pierden los valores propios de
+  cada algoritmo (`"logs/GA"`, `"logs/TPE"`…), que ahora los elige quien enciende el
+  registro. Doce `:param log_dir:` y doce `:type log_dir:` actualizados, que
+  anunciaban los valores viejos.
+
+  **Un efecto colateral que destapó mypy:** el worker remoto `run_strain` de
+  `distributed_launcher.py` estaba anotado `log_dir: str` y ahora puede recibir
+  `None`; se anotó `Optional[str]`. Sin mypy habría pasado desapercibido hasta una
+  ejecución distribuida de CVOA.
+
+  Tests: `test_a12_tensorboard_esta_apagado_por_defecto` y
+  `test_a12_tensorboard_se_enciende_al_pedirlo`. El segundo importa: apagar por
+  defecto no puede llevarse por delante la funcionalidad.
 
 ---
 

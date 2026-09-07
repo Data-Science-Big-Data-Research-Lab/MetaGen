@@ -558,6 +558,42 @@ def test_a11_el_logger_no_toca_el_logging_del_proceso():
     assert resultado.stdout.strip().endswith("ok")
 
 
+def test_a12_tensorboard_esta_apagado_por_defecto(tmp_path, monkeypatch):
+    """A-12: TensorBoard se activaba por el mero hecho de estar instalado, sin
+    forma de apagarlo, asi que un barrido de cientos de configuraciones dejaba
+    cientos de directorios en `logs/`."""
+    from metagen.metaheuristics import RandomSearch
+
+    dominio, fitness = _dominio_y_fitness_de_prueba()
+
+    monkeypatch.chdir(tmp_path)
+    for semilla in range(5):
+        algoritmo = RandomSearch(dominio, fitness, population_size=3,
+                                 max_iterations=2, seed=semilla)
+        assert algoritmo.logger is None
+        algoritmo.run()
+
+    escrito = list(tmp_path.iterdir())
+    assert escrito == [], f"cinco ejecuciones por defecto han escrito {escrito}"
+
+
+def test_a12_tensorboard_se_enciende_al_pedirlo(tmp_path, monkeypatch):
+    """El apagado no puede llevarse por delante la funcionalidad: con `log_dir`
+    explicito TensorBoard sigue registrando."""
+    pytest.importorskip("tensorboard")
+    from metagen.metaheuristics import RandomSearch
+
+    dominio, fitness = _dominio_y_fitness_de_prueba()
+
+    monkeypatch.chdir(tmp_path)
+    algoritmo = RandomSearch(dominio, fitness, population_size=3, max_iterations=2,
+                             seed=0, log_dir="mis_curvas")
+    assert algoritmo.logger is not None
+    algoritmo.run()
+
+    assert (tmp_path / "mis_curvas").is_dir()
+
+
 def _dominio_y_fitness_de_prueba():
     """Dominio minimo con una variable real y una entera, y su fitness."""
     dominio = Domain()

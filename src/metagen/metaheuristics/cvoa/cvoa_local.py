@@ -106,7 +106,7 @@ class CVOA(Metaheuristic):
 
     def __init__(self, global_state: LocalPandemicState, domain: Domain, fitness_function: Callable[[Solution], float],
                  strain_properties: StrainProperties = StrainProperties(), update_isolated=False,
-                 log_dir="logs/CVOA"):
+                 log_dir=None):
 
         # 1. Initialize the base class.
         super().__init__(domain, fitness_function, log_dir=log_dir)

@@ -32,8 +32,8 @@ class TabuSearch(Metaheuristic):
     :type alteration_limit: float, optional
     :param distributed: Whether to use distributed computation, defaults to False
     :type distributed: bool, optional
-    :param log_dir: Directory for logging, defaults to "logs/TS"
-    :type log_dir: str, optional
+    :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
+    :type log_dir: str or None, optional
 
     :ivar max_iterations: Maximum number of iterations to run
     :vartype max_iterations: int
@@ -48,7 +48,7 @@ class TabuSearch(Metaheuristic):
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
                  population_size: int = 10, warmup_iterations:int = 5,
                  max_iterations: int = 20, tabu_size: int = 5, alteration_limit: float = 1.0,
-                 gamma_config: Optional[GammaConfig] = None, distributed=False, log_dir: str = "logs/TS",
+                 gamma_config: Optional[GammaConfig] = None, distributed=False, log_dir: Optional[str] = None,
                  seed: Optional[int] = None):
         """
         Initialize the Tabu Search algorithm.
@@ -67,8 +67,8 @@ class TabuSearch(Metaheuristic):
         :type alteration_limit: float, optional
         :param distributed: Whether to use distributed computation, defaults to False
         :type distributed: bool, optional
-        :param log_dir: Directory for logging, defaults to "logs/TS"
-        :type log_dir: str, optional
+        :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
+        :type log_dir: str or None, optional
         """
         super().__init__(domain, fitness_function, population_size, warmup_iterations, distributed, log_dir, seed=seed)
         self.max_iterations = max_iterations

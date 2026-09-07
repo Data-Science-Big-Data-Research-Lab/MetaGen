@@ -33,7 +33,7 @@ class Memetic(Metaheuristic):
     :param neighbor_population_size: The size of neighborhood in local search, defaults to 10
     :param alteration_limit: The maximum alteration allowed in local search, defaults to 1.0
     :param distributed: Whether to use distributed computation, defaults to False
-    :param log_dir: The logging directory, defaults to "logs/MM"
+    :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
     :param distribution_level: The level of distribution (0=none), defaults to 0
     :type domain: :py:class:`~metagen.framework.Domain`
     :type fitness_function: Callable[[:py:class:`~metagen.framework.Solution`], float]
@@ -43,7 +43,7 @@ class Memetic(Metaheuristic):
     :type neighbor_population_size: int
     :type alteration_limit: float
     :type distributed: bool
-    :type log_dir: str
+    :type log_dir: str or None, optional
     :type distribution_level: int
 
     **Code example**
@@ -67,7 +67,7 @@ class Memetic(Metaheuristic):
                  population_size: int = 10,
                  max_iterations: int = 20, mutation_rate: float = 0.1,
                  neighbor_population_size: int = 10, alteration_limit: float = 1.0,
-                 distributed: bool = False, log_dir: str = "logs/MM",
+                 distributed: bool = False, log_dir: Optional[str] = None,
                  distribution_level: int = 0, seed: Optional[int] = None) -> None:
         """Initialize the Memetic Algorithm with the given parameters."""
         super().__init__(domain, fitness_function, population_size=population_size, distributed=distributed, log_dir=log_dir, seed=seed)

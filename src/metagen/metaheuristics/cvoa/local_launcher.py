@@ -14,14 +14,14 @@ from metagen.metaheuristics.cvoa.local_tools import LocalPandemicState
 
 
 def run_strain(global_state:LocalPandemicState, domain:Domain, fitness_function: Callable[[Solution],float],
-               strain_properties:StrainProperties, update_isolated:bool=False, log_dir:str="logs/CVOA") -> Solution:
+               strain_properties:StrainProperties, update_isolated:bool=False, log_dir:Optional[str]=None) -> Solution:
     strain = CVOA(global_state, domain,fitness_function, strain_properties, update_isolated, log_dir)
     return strain.run()
 
 
 
 def cvoa_launcher(strains: List[StrainProperties], domain: Domain, fitness_function: Callable[[Solution], float],
-                  update_isolated: bool = False, log_dir: str = "logs/CVOA",
+                  update_isolated: bool = False, log_dir: Optional[str] = None,
                   seed: Optional[int] = None) -> Solution:
     """
     Run a CVOA pandemic over the given strains and return the best solution.
@@ -34,8 +34,8 @@ def cvoa_launcher(strains: List[StrainProperties], domain: Domain, fitness_funct
     :type fitness_function: Callable[[Solution], float]
     :param update_isolated: Whether to update the isolated population.
     :type update_isolated: bool, optional
-    :param log_dir: Directory for logging.
-    :type log_dir: str, optional
+    :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
+    :type log_dir: str or None, optional
     :param seed: Seed for MetaGen's generators (default is None). Note that a
         pandemic with more than one strain runs them in concurrent threads that
         share those generators, so a seed makes a single-strain run reproducible
