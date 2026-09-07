@@ -21,6 +21,7 @@ import random
 import re
 import subprocess
 import sys
+import threading
 
 import pytest
 
@@ -592,6 +593,42 @@ def test_a12_tensorboard_se_enciende_al_pedirlo(tmp_path, monkeypatch):
     algoritmo.run()
 
     assert (tmp_path / "mis_curvas").is_dir()
+
+
+# --------------------------------------------------------------------------
+# CVOA
+# --------------------------------------------------------------------------
+
+
+def test_f08_aislar_un_individuo_no_bloquea_la_hebra():
+    """F-08: isolate_individual_conditional_state toma self.lock y dentro llama a
+    get_individual_state, que lo vuelve a tomar. Un threading.Lock no es
+    reentrante, asi que la hebra se bloqueaba contra si misma.
+
+    Se ejecuta en una hebra demonio con espera limitada: si el fallo vuelve, el
+    test falla en vez de colgar la suite entera.
+    """
+    from metagen.metaheuristics.cvoa.common_tools import IndividualState
+    from metagen.metaheuristics.cvoa.local_tools import LocalPandemicState
+
+    dominio, _ = _dominio_y_fitness_de_prueba()
+    estado = LocalPandemicState(Solution(dominio))
+    individuo = Solution(dominio)
+
+    hilo = threading.Thread(
+        target=estado.isolate_individual_conditional_state,
+        args=(individuo, IndividualState(False, False, False)),
+        daemon=True,
+    )
+    hilo.start()
+    hilo.join(timeout=10)
+
+    assert not hilo.is_alive(), (
+        "isolate_individual_conditional_state se ha quedado bloqueada sobre su "
+        "propio cerrojo"
+    )
+    # Y ademas hace su trabajo: el individuo cumple el estado pedido, luego se aisla.
+    assert individuo in estado.isolated
 
 
 def _dominio_y_fitness_de_prueba():

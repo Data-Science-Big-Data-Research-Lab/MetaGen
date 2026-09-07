@@ -57,7 +57,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ✅ | `F-05` | `Structure` descarta el valor que se le asigna |
 | ✅ | `F-06` | `Structure.set` e `insert` fallan con datos válidos |
 | ✅ | `F-07` | Importar MetaGen secuestra el `excepthook` del proceso |
-| ⬜ | `F-08` | Interbloqueo en CVOA con `update_isolated=True` |
+| ✅ | `F-08` | Interbloqueo en CVOA con `update_isolated=True` |
 | ⬜ | `F-09` | `insert_into_set_strain` puede reventar con `KeyError` |
 | ⬜ | `F-10` | El «peor superspreader» de CVOA se inicializa al revés |
 | ⬜ | `F-11` | La búsqueda local distribuida manda la misma porción a todos los workers |
@@ -359,7 +359,7 @@ docstring. Se notará menos cuando `F-24` deje de importar Ray sin necesidad.
 Test: `test_f07_importar_metagen_no_toca_el_excepthook_del_proceso`, que cruza la
 frontera del proceso porque dentro de pytest el paquete ya está importado.
 
-### [ ] F-08 · Interbloqueo en CVOA con `update_isolated=True`
+### [x] F-08 (R) · Interbloqueo en CVOA con `update_isolated=True`
 `src/metagen/metaheuristics/cvoa/local_tools.py:55-59`
 
 `isolate_individual_conditional_state` adquiere `self.lock` y dentro llama a
@@ -367,6 +367,36 @@ frontera del proceso porque dentro de pytest el paquete ya está importado.
 la hebra se bloquea contra sí misma.
 
 **Arreglo** `threading.RLock()`, o un `_get_individual_state_unlocked` privado.
+
+*Cerrado con `RLock`*, y el argumento que decide entre las dos opciones no es la
+elegancia: **con un `Lock` normal, el precio de equivocarse al anidar es un cuelgue
+silencioso**, que es el peor fallo posible y justamente este hallazgo. Con `RLock` ese
+mismo despiste funciona. El ayudante privado sería más explícito sobre qué código
+asume el cerrojo tomado, pero deja intacta la trampa.
+
+**La rama no es fácil de alcanzar, y la primera comprobación se me quedó corta.** Un
+CVOA con `update_isolated=True` y `pandemic_duration=4` **termina igual**, sin
+arreglar: la llamada solo ocurre pasadas `social_distancing` iteraciones (7 por
+defecto) y cuando el sorteo cae del lado del aislamiento. Forzando la rama con
+`social_distancing=1` y `p_isolation=0.0`:
+
+```
+sin el arreglo -> SE COLGO (interbloqueo)
+con el arreglo -> CVOA con update_isolated=True -> 2.75007
+```
+
+Conviene retenerlo: **un hallazgo de concurrencia puede no reproducirse con los
+parámetros por defecto**, y no reproducirlo no significa que no esté.
+
+El gemelo distribuido, `distributed_tools.py:50`, tiene el mismo anidamiento pero
+**no el mismo bug**: es un actor de Ray y no usa cerrojo ninguno.
+
+**Un dato suelto que apunta a `F-23`:** el fitness sale `2.75007` en las dos
+configuraciones, que son muy distintas entre sí. Que el resultado no se mueva encaja
+con que la cepa muera en la iteración siguiente a la primera mejora.
+
+Test: `test_f08_aislar_un_individuo_no_bloquea_la_hebra`, en hebra demonio con espera
+limitada, para que un cuelgue sea un fallo y no deje la suite colgada.
 
 ### [ ] F-09 · `insert_into_set_strain` puede reventar con `KeyError`
 `src/metagen/metaheuristics/cvoa/common_tools.py:126-133`
