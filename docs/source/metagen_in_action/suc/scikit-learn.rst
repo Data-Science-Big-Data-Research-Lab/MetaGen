@@ -3,7 +3,7 @@
 Tuning a scikit-learn Random Forest classification model
 ===========================================================
 
-Google Colab Notebook: `Random Forest <https://colab.research.google.com/github/DataLabUPO/MetaGen/blob/master/notebooks/suc_p3.ipynb>`_
+Google Colab Notebook: `Random Forest <https://colab.research.google.com/github/Data-Science-Big-Data-Research-Lab/MetaGen/blob/master/notebooks/suc_p3.ipynb>`_
 
 As preliminary step the following code can be used to generate a synthetic dataset.
 
