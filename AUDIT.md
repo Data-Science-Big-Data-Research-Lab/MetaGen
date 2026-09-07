@@ -97,14 +97,14 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ✅ | `A-11` | El logger parchea `logging` globalmente y acumula handlers |
 | ✅ | `A-12` | TensorBoard se activa solo por estar instalado, sin poder apagarlo |
 | ⬜ | `P-01` | Licencia contradictoria: MIT en PyPI frente a GPLv3 en el código |
-| ⬜ | `P-02` | La versión mínima de Python se contradice en tres sitios |
-| ⬜ | `P-03` | Enlaces y badges apuntan al repositorio antiguo |
+| ✅ | `P-02` | La versión mínima de Python se contradice en tres sitios |
+| ✅ | `P-03` | Enlaces y badges apuntan al repositorio antiguo |
 | ✅ | `P-04` | `pytest test` no llegaba a recolectar sin los extras opcionales |
 | ✅ | `P-05` | Los tests de metaheurísticas no comprobaban nada útil |
 | ✅ | `P-06` | No había integración continua |
-| ⬜ | `P-07` | `.gitignore` excluye los CSV de parámetros de test |
+| ✅ | `P-07` | `.gitignore` excluye los CSV de parámetros de test |
 | ⬜ | `P-08` | Los extras de `setup.cfg` usan `;`, que PEP 508 lee como otra cosa |
-| ⬜ | `P-09` | Falta `py.typed`: mypy trata `metagen` como `Any` desde fuera |
+| ✅ | `P-09` | Falta `py.typed`: mypy trata `metagen` como `Any` desde fuera |
 | ✅ | `P-10` | Los ejemplos de las docstrings usan una API que no existe |
 | ⬜ | `P-11` | `mypy src` no pasa limpio: 11 errores en 9 ficheros |
 
@@ -1361,8 +1361,8 @@ Aquí el código hace lo que dice hacer; lo discutible es qué dice hacer.
 ## Empaquetado, tests y documentación
 
 - **[ ] P-01** `setup.cfg:14` — clasificador `MIT License` frente a un `LICENSE` GPL-3.0 y 55 cabeceras GPLv3. PyPI anuncia MIT. *Arreglo*: unificar y añadir `license` / `license_files`.
-- **[ ] P-02** README badge `>=3.12` vs texto `3.10+` vs `python_requires >=3.10`. El mínimo real es 3.10 (`itertools.pairwise`).
-- **[ ] P-03** `setup.cfg:8-10`, badges y enlace de Colab apuntan a `DataLabUPO/MetaGen`; el repo vive en `Data-Science-Big-Data-Research-Lab/MetaGen`. El badge de release no resuelve.
+- **[x] P-02** README badge `>=3.12` vs texto `3.10+` vs `python_requires >=3.10`. El mínimo real es 3.10 (`itertools.pairwise`). *Cerrado*: el badge pasa a `>=3.10`, que es lo que dicen los otros dos sitios y lo que exige el código. Test: `test_p02_la_version_minima_de_python_dice_lo_mismo_en_los_tres_sitios`.
+- **[x] P-03** `setup.cfg:8-10`, badges y enlace de Colab apuntan a `DataLabUPO/MetaGen`; el repo vive en `Data-Science-Big-Data-Research-Lab/MetaGen`. El badge de release no resuelve. *Cerrado*, y había **cuatro sitios más de los que lista el diagnóstico**: `docs/source/metagen_in_action/` tiene cuatro páginas con enlaces de Colab al repositorio antiguo. Son las que publica readthedocs, así que sus cuadernos tampoco abrían. Test: `test_p03_nada_apunta_al_repositorio_antiguo`, que barre README, `setup.cfg` y todos los `.rst`.
 - **[x] P-04 (R)** `pytest test` —el comando del README— **no llega a recolectar**: `test/metaheuristics_test/unit_test.py` importa `ray` y `tensorflow`, que son extras opcionales. Solo corren los 101 tests de `framework_test`. *Arreglo*: `pytest.importorskip("ray")` y `pytest.importorskip("tensorflow")` a nivel de módulo en `unit_test.py` (tensorflow se importa de forma transitiva vía el dispatcher, así que un `@pytest.mark.skipif` por test no basta: el fallo ocurre en tiempo de importación). Test: `test_p04_la_suite_completa_se_recolecta_sin_los_extras_opcionales`.
 - **[x] P-05** Los tests de metaheurísticas solo comprueban `assert solution is not None`. Los cuatro bugs críticos pasan la suite. *Arreglo*: con semilla fija (A-06), tres aserciones por algoritmo: fitness final ≤ mejor inicial; mejor que una búsqueda aleatoria del mismo presupuesto; `best_solution_fitnesses` monótona no creciente.
 
@@ -1390,9 +1390,9 @@ Aquí el código hace lo que dice hacer; lo discutible es qué dice hacer.
 
   Los tests de SA, GA y SSGA nacen `xfail(strict=True)` citando el hallazgo culpable: al arreglar `F-20`, `F-04` o `A-05` saltarán a `XPASS` avisando de que ya se puede quitar el marcador. Se comprobó además que estos resultados **son idénticos antes de `A-06`**, ejecutando el código en `1016e8a`: no son un efecto del cambio de semilla, que solo los ha hecho medibles.
 - **[x] P-06** No hay `.github/workflows`. Con `mypy` ya configurado en `setup.cfg` y una suite que corre en 3 s, un workflow mínimo con matriz 3.10–3.12 captura buena parte de lo anterior. *Cerrado*: `.github/workflows/ci.yml` con dos jobs, `tests` (matriz 3.10–3.12, bloqueante) y `types` (`mypy src`, informativo hasta que cierre `P-11`). Dos cosas salieron a la luz al montarlo: la suite necesita `pytest-csv-params`, que no declara ni `install_requires` ni ningún extra (ver `P-08`), y **el CI no instala los extras a propósito**. Aquello valía cuando el test de `F-24` se saltaba con Ray instalado; al cerrar ese hallazgo se reescribió para bloquear Ray en un subproceso y ahora corre en todas partes. El único test que sigue necesitando Ray de verdad es el de `F-21`.
-- **[ ] P-07** `.gitignore:14` excluye `*.csv` y `*.xlsx`, y los parámetros de test son CSV en `test/test_parameters/`. Cualquier fichero nuevo se queda fuera del commit sin aviso. *Arreglo*: `!test/test_parameters/**/*.csv`.
+- **[x] P-07** `.gitignore:14` excluye `*.csv` y `*.xlsx`, y los parámetros de test son CSV en `test/test_parameters/`. Cualquier fichero nuevo se queda fuera del commit sin aviso. *Arreglo*: `!test/test_parameters/**/*.csv`. *Cerrado tal cual.* Comprobado que los 25 CSV que ya estaban versionados siguen estándolo —una regla de `.gitignore` no desversiona nada— y que uno nuevo **ya aparece en `git status`**, donde antes no salía. Test: `test_p07_los_csv_de_parametros_no_estan_ignorados`, con `git check-ignore`.
 - **[ ] P-08** Los extras de `setup.cfg` usan `;`, que en PEP 508 es el separador de **marcadores de entorno**, no de requisitos: `tensorboard = tensorboard; tensorboardX` se lee como «tensorboard, si el marcador tensorboardX». Comprobar qué instala `pip install pymetagen-datalabupo[all]`. Además hay tres `requirements*.txt` con criterios solapados. *Arreglo*: un requisito por línea y migrar la metadata a `pyproject.toml`.
-- **[ ] P-09** Falta `src/metagen/py.typed`: el paquete está anotado de arriba abajo pero sin el marcador PEP 561 mypy trata `metagen` como `Any`.
+- **[x] P-09** Falta `src/metagen/py.typed`: el paquete está anotado de arriba abajo pero sin el marcador PEP 561 mypy trata `metagen` como `Any`. *Cerrado*, con el fichero y su declaración en `[options.package_data]`, sin la cual no viajaría en la distribución. **La comprobación evidente no sirve**: con el paquete instalado en modo editable, mypy lee las fuentes igual y el marcador no cambia nada, así que probarlo así da un falso positivo en las dos direcciones. Se verificó construyendo una rueda y mirando dentro. Test: `test_p09_el_paquete_lleva_el_marcador_py_typed`.
 - **[x] P-10 (R)** Los ejemplos de las docstrings usan una API que no existe: `domain.defineInteger(0, 1)` en RS, TPE, Memetic y CVOA (el método es `define_integer(name, min, max)`), y el ejemplo de CVOA usa `CVOA.initialize_pandemic(...)` y `cvoa_launcher(strains)`, de una versión anterior. Son las páginas que publica readthedocs. *Arreglo*: actualizarlos y añadirlos como doctests.
 
   *Cerrado.* **Había dos errores más de los que lista el diagnóstico**, y los dos
