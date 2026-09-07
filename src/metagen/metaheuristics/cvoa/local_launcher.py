@@ -66,7 +66,7 @@ def cvoa_launcher(strains: List[StrainProperties], domain: Domain, fitness_funct
             + "\n********** Pandemic report **********\n"
             + f"Pandemic report: {global_state.get_pandemic_report()}\n"
             + "\n********** Performance **********\n"
-            + f"Execution time: {timedelta(milliseconds=t2 - t1)}\n"
+            + f"Execution time: {timedelta(seconds=t2 - t1)}\n"
     )
 
     metagen_logger.info(output)

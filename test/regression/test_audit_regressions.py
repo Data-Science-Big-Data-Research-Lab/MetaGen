@@ -698,6 +698,66 @@ def test_f10_el_reemplazo_del_peor_superspreader_se_ejecuta():
     assert candidato in bolsa
 
 
+def test_f23_una_cepa_no_muere_al_encontrar_la_primera_mejora():
+    """F-23: `third_condition = best_strain_solution_found and self.time > 1`, con
+    una bandera que nadie reiniciaba, mataba la cepa en la iteracion siguiente a su
+    primera mejora: se paraba justamente porque estaba funcionando.
+    """
+    from metagen.metaheuristics import cvoa_launcher
+    from metagen.metaheuristics.cvoa import cvoa_local
+    from metagen.metaheuristics.cvoa.common_tools import StrainProperties
+
+    iteraciones = {}
+    run_original = cvoa_local.CVOA.run
+
+    def run_espia(self):
+        resultado = run_original(self)
+        iteraciones["hechas"] = self.time
+        return resultado
+
+    cvoa_local.CVOA.run = run_espia
+    try:
+        dominio, fitness = _dominio_y_fitness_de_prueba()
+        cvoa_launcher([StrainProperties(strain_id="S1", pandemic_duration=4)],
+                      dominio, fitness, seed=0)
+    finally:
+        cvoa_local.CVOA.run = run_original
+
+    assert iteraciones["hechas"] > 4, (
+        f"la cepa se detuvo en la iteracion {iteraciones['hechas']} de las 4 "
+        "declaradas en pandemic_duration"
+    )
+
+
+def test_f23_el_estancamiento_si_detiene_la_cepa_cuando_se_pide():
+    """La condicion no se elimina, se convierte en lo que decia ser: una parada por
+    estancamiento, y ahora es opcional."""
+    from metagen.metaheuristics.cvoa.common_tools import StrainProperties
+
+    propiedades = StrainProperties()
+    assert propiedades.max_iterations_without_improvement is None
+
+    # Y se puede pedir sin romper la construccion posicional que ya existia.
+    con_parada = StrainProperties(strain_id="S1", max_iterations_without_improvement=2)
+    assert con_parada.max_iterations_without_improvement == 2
+    assert con_parada.pandemic_duration == StrainProperties().pandemic_duration
+
+
+def test_f23_el_tiempo_de_ejecucion_se_reporta_en_segundos():
+    """La segunda mitad: `timedelta(milliseconds=t2 - t1)` sobre un `time()` que da
+    segundos reportaba una duracion mil veces mas corta."""
+    fuente = pathlib.Path(
+        importlib.util.find_spec("metagen.metaheuristics.cvoa.local_launcher").origin
+    ).read_text()
+    fuente_distribuida = pathlib.Path(
+        importlib.util.find_spec("metagen.metaheuristics.cvoa.distributed_launcher").origin
+    ).read_text()
+
+    for texto in (fuente, fuente_distribuida):
+        assert "timedelta(seconds=t2 - t1)" in texto
+        assert "timedelta(milliseconds=" not in texto
+
+
 def _dominio_y_fitness_de_prueba():
     """Dominio minimo con una variable real y una entera, y su fitness."""
     dominio = Domain()
