@@ -71,8 +71,8 @@ class SA(Metaheuristic):
     :type neighbor_population_size: int, optional
     :param distributed: Whether to use distributed computation, defaults to False
     :type distributed: bool, optional
-    :param log_dir: Directory for logging, defaults to "logs/SA"
-    :type log_dir: str, optional
+    :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
+    :type log_dir: str or None, optional
 
     :ivar max_iterations: Maximum number of iterations
     :vartype max_iterations: int
@@ -91,7 +91,7 @@ class SA(Metaheuristic):
                  max_iterations: int = 20,
                  alteration_limit: int = 1, initial_temp: float = 50.0,
                  cooling_rate: float = 0.99, neighbor_population_size: int = 1,
-                 distributed=False, log_dir: str = "logs/SA",
+                 distributed=False, log_dir: Optional[str] = None,
                  seed: Optional[int] = None) -> None:
         """
         Initialize the Simulated Annealing algorithm.
@@ -112,8 +112,8 @@ class SA(Metaheuristic):
         :type neighbor_population_size: int, optional
         :param distributed: Whether to use distributed computation, defaults to False
         :type distributed: bool, optional
-        :param log_dir: Directory for logging, defaults to "logs/SA"
-        :type log_dir: str, optional
+        :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
+        :type log_dir: str or None, optional
         """
         super().__init__(domain, fitness_function, warmup_iterations=warmup_iterations,distributed=distributed, log_dir=log_dir, seed=seed)
         self.max_iterations = max_iterations

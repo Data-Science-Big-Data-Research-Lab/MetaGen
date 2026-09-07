@@ -55,7 +55,7 @@ class SSGA(Metaheuristic):
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
                  population_size: int = 10,
                  max_iterations: int = 50, mutation_rate: float = 0.1,
-                 distributed: bool = False, log_dir: str = "logs/SSGA",
+                 distributed: bool = False, log_dir: Optional[str] = None,
                  seed: Optional[int] = None):
         super().__init__(domain, fitness_function, population_size=population_size, distributed=distributed, log_dir=log_dir, seed=seed)
         self.mutation_rate = mutation_rate

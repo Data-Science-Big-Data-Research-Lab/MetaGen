@@ -35,8 +35,8 @@ class TPE(Metaheuristic):
     :type gamma: float, optional
     :param distributed: Whether to use distributed computation, defaults to False
     :type distributed: bool, optional
-    :param log_dir: Directory for logging, defaults to "logs/TPE"
-    :type log_dir: str, optional
+    :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
+    :type log_dir: str or None, optional
 
     :ivar max_iterations: Maximum number of iterations
     :vartype max_iterations: int
@@ -61,7 +61,7 @@ class TPE(Metaheuristic):
 
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
                  max_iterations: int = 50, warmup_iterations:int = 10, candidate_pool_size: int = 24,
-                 gamma_config: Optional[GammaConfig] = None, distributed=False, log_dir: str = "logs/TPE",
+                 gamma_config: Optional[GammaConfig] = None, distributed=False, log_dir: Optional[str] = None,
                  seed: Optional[int] = None) -> None:
         """
         Initialize the TPE algorithm.
@@ -78,8 +78,8 @@ class TPE(Metaheuristic):
         :type gamma: float, optional
         :param distributed: Whether to use distributed computation, defaults to False
         :type distributed: bool, optional
-        :param log_dir: Directory for logging, defaults to "logs/TPE"
-        :type log_dir: str, optional
+        :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
+        :type log_dir: str or None, optional
         """
         # TPE needs a domain wired to its own connector, which replaces the solution
         # and type classes. Rewiring the one it was given left it modified for good,
