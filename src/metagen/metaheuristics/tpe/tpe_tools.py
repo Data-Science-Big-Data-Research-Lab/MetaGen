@@ -28,9 +28,12 @@ def sample_from_values(tpe_type, best_values, worst_values):
         else:
             value = np.clip(get_numpy_rng().normal(mu_worst, sigma_worst), min_value, max_value).item()
     else:
-        value = get_numpy_rng().uniform(min_value, max_value + 1)
+        # max_value, not max_value + 1: that +1 belongs to numpy's integers(), whose
+        # upper bound is exclusive. On a uniform draw it just reached past the domain
+        # (F-22).
+        value = get_numpy_rng().uniform(min_value, max_value)
 
-    return value
+    return float(value)
 
 class TPEInteger(types.Integer):
     """
@@ -49,12 +52,17 @@ class TPEInteger(types.Integer):
         best_values = [val.value for val in best_values]
         worst_values = [val.value for val in worst_values]
 
-        value = round(sample_from_values(self, best_values, worst_values))
+        value = sample_from_values(self, best_values, worst_values)
 
-        if np.isnan(value) or value is None:
+        # `value is None` first: np.isnan(None) raises TypeError, so the guard could
+        # never have caught a None (F-22).
+        if value is None or np.isnan(value):
+            # +1 is right here: numpy's integers() excludes its upper bound.
             value = get_numpy_rng().integers(min_value, max_value + 1)
-        
-        self.value = value
+
+        # set(), not self.value: assigning straight to the attribute skipped check()
+        # and let an out-of-domain value reach the user's fitness function (F-22).
+        self.set(int(round(float(value))))
 
 class TPEReal(types.Real):
     """
@@ -70,10 +78,10 @@ class TPEReal(types.Real):
 
         _, min_value, max_value, _ = self.get_definition().get_attributes()
         value = sample_from_values(self, best_values, worst_values)
-        if np.isnan(value) or value is None:
-            value = get_numpy_rng().uniform(min_value, max_value + 1)
-        
-        self.value = value
+        if value is None or np.isnan(value):
+            value = get_numpy_rng().uniform(min_value, max_value)
+
+        self.set(float(value))
 
 class TPECategorical(types.Categorical):
     """
@@ -88,7 +96,12 @@ class TPECategorical(types.Categorical):
         unique, counts = np.unique(best_values, return_counts=True)
         probabilities = counts / counts.sum() if len(unique) > 1 else None
 
-        self.value = get_numpy_rng().choice(unique,p=probabilities) if probabilities is not None else get_numpy_rng().choice(categories)
+        elegida = (get_numpy_rng().choice(unique, p=probabilities)
+                   if probabilities is not None
+                   else get_numpy_rng().choice(categories))
+
+        # .item(), so the user gets a str and not a numpy.str_ (F-22).
+        self.set(elegida.item() if hasattr(elegida, "item") else elegida)
 
 class TPEStructure(types.Structure):
     """
