@@ -115,13 +115,23 @@ class SA(Metaheuristic):
         :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
         :type log_dir: str or None, optional
         """
-        super().__init__(domain, fitness_function, warmup_iterations=warmup_iterations,distributed=distributed, log_dir=log_dir, seed=seed)
+        # population_size=1: annealing walks a single point, and iterate() only ever
+        # looks at solutions[0]. Inheriting the default of 20 meant the warmup drew
+        # 5 x 20 solutions and the initialization 20 more, of which 39 were thrown
+        # away — about 120 of SA's 135 evaluations (F-20).
+        super().__init__(domain, fitness_function, population_size=1,
+                         warmup_iterations=warmup_iterations, distributed=distributed,
+                         log_dir=log_dir, seed=seed)
         self.max_iterations = max_iterations
         self.alteration_limit = alteration_limit
         self.initial_temp = initial_temp
         self.current_temp = self.initial_temp
         self.cooling_rate = cooling_rate
         self.neighbor_population_size = neighbor_population_size
+
+        # Floor of the cooling schedule, applied in iterate(). It was assigned and
+        # never read, so the temperature decayed towards zero and the Metropolis
+        # criterion silently stopped accepting anything worse (F-20).
         self.T_min = 1e-8
 
     def initialize(self, num_solutions: int = 1) -> Tuple[List[Solution], Solution]:
@@ -181,8 +191,8 @@ class SA(Metaheuristic):
             if get_rng().random() < exploration_rate:
                 current_solution = best_neighbor
 
-        # Cool down
-        self.current_temp *= self.cooling_rate
+        # Cool down, no further than T_min
+        self.current_temp = max(self.current_temp * self.cooling_rate, self.T_min)
 
         return [current_solution], best_solution
 

@@ -73,7 +73,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ✅ | `F-17` | Categorías duplicadas aceptadas, categoría única rechazada |
 | ✅ | `F-18` | Una estructura estática se identifica como dinámica |
 | ✅ | `F-19` | Estructuras dinámicas: nunca alcanzan el máximo, revientan si min = max |
-| ⬜ | `F-20` | SA evalúa veinte soluciones iniciales para usar una, y no la mejor |
+| ✅ | `F-20` | SA evalúa veinte soluciones iniciales para usar una, y no la mejor |
 | ✅ | `F-21` | `run()` apaga Ray aunque no lo haya arrancado él |
 | ⬜ | `F-22` | TPE escribe valores fuera del dominio saltándose la validación |
 | ✅ | `F-23` | CVOA se detiene en la primera mejora y reporta mal el tiempo |
@@ -746,7 +746,7 @@ no rompen nada.
 must be greater than zero»— que afecta también a `Integer` y `Real`. Es de la familia
 de `F-16`, y allí debería cerrarse.
 
-### [ ] F-20 (R) · SA evalúa veinte soluciones iniciales para usar una
+### [x] F-20 (R) · SA evalúa veinte soluciones iniciales para usar una
 `sa/sa.py:117` · test: `test_f20_sa_no_evalua_una_poblacion_entera_al_inicializar`
 
 No pasa `population_size` al `super().__init__`, así que hereda 20 aunque `iterate` solo
@@ -754,6 +754,33 @@ use `solutions[0]` (y no el mejor de los veinte, sino el primero). `self.T_min =
 (línea 124) no se usa en ningún sitio.
 
 **Arreglo** `population_size=1` y aplicar `T_min` como suelo del enfriamiento.
+
+*Cerrado, las dos mitades.* El presupuesto de SA pasa de **135 evaluaciones a 21**:
+
+| | Antes | Después |
+|---|---|---|
+| Evaluaciones | 135 | **21** |
+| Mejora sobre su inicio | 0/10 | **3/10** |
+| Gana al azar | 6/10 | 5/10 |
+| Fitness medio | 0.1478 | 2.2720 |
+| Azar, mismo presupuesto | 0.2070 | 0.9169 |
+
+**El fitness absoluto empeora y hay que explicarlo bien**, porque parece un retroceso y
+no lo es: SA recibía **100 evaluaciones de búsqueda aleatoria disfrazadas de warmup**
+(5 rondas × 20 de población heredada) más 20 de inicialización, de las que usaba una.
+Ahora gasta 15 de sus 21 evaluaciones en recocer, no en tirar dados. La fila que lo
+demuestra es la segunda: **de 0/10 a 3/10 en «mejora sobre su inicio»**, que era la que
+delataba que todo lo bueno venía del warmup.
+
+`T_min` estaba asignado y **no se leía en ningún sitio**, así que el enfriamiento tendía
+a cero sin suelo. Ahora `current_temp = max(current_temp * cooling_rate, T_min)`.
+
+**Lo que sigue sin funcionar, y ahora se ve limpio: `F-30`.** Con `initial_temp=50` y
+`cooling_rate=0.99`, tras 20 iteraciones la temperatura sigue en 40.9 y un
+empeoramiento de 5.0 se acepta con probabilidad 0.89. SA acepta casi todo: es un paseo
+aleatorio, no un enfriamiento.
+
+Tests: el que ya existía, más `test_f20_la_temperatura_no_baja_de_t_min`.
 
 ### [x] F-21 (R) · `run()` apaga Ray aunque no lo haya arrancado
 `metaheuristics/base.py:307-308`

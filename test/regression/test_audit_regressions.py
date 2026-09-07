@@ -435,11 +435,6 @@ def test_f04_el_segundo_hijo_hereda_del_segundo_padre():
     assert heredadas, "el hijo 2 no hereda ninguna variable de la madre"
 
 
-@pytest.mark.xfail(
-    reason="F-20: SA hereda population_size=20 de la clase base aunque solo use "
-    "solutions[0]",
-    strict=True,
-)
 def test_f20_sa_no_evalua_una_poblacion_entera_al_inicializar():
     from metagen.metaheuristics import SA
 
@@ -465,6 +460,20 @@ def test_f20_sa_no_evalua_una_poblacion_entera_al_inicializar():
         f"2 iteraciones con 1 vecino deberian costar ~3 evaluaciones y han "
         f"costado {evaluaciones['n']}"
     )
+
+
+def test_f20_la_temperatura_no_baja_de_t_min():
+    """La otra mitad: `self.T_min = 1e-8` estaba asignado y no se leia en ningun
+    sitio, asi que el enfriamiento tendia a cero y el criterio de Metropolis dejaba
+    de aceptar empeoramientos sin que nadie lo dijera."""
+    from metagen.metaheuristics import SA
+
+    dominio, fitness = _dominio_y_fitness_de_prueba()
+    algoritmo = SA(dominio, fitness, max_iterations=300, initial_temp=1.0,
+                   cooling_rate=0.5, seed=1)
+    algoritmo.run()
+
+    assert algoritmo.current_temp == algoritmo.T_min
 
 
 def test_f21_run_no_apaga_un_ray_que_no_arranco():
