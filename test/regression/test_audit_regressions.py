@@ -478,6 +478,41 @@ def test_a06_semillas_distintas_dan_ejecuciones_distintas():
     )
 
 
+_GUION_F07 = """
+import sys
+
+def hook_de_la_aplicacion(tipo, excepcion, traza):
+    pass
+
+sys.excepthook = hook_de_la_aplicacion
+
+import metagen
+import metagen.framework
+
+print(sys.excepthook is hook_de_la_aplicacion)
+"""
+
+
+def test_f07_importar_metagen_no_toca_el_excepthook_del_proceso():
+    """F-07: metagen/__init__.py instalaba su propio sys.excepthook al importarse.
+
+    Hace falta un subproceso: dentro de la sesion de pytest el paquete ya esta
+    importado y el hook ya estaria puesto.
+
+    Se importa `metagen.framework`, no `metagen.metaheuristics`: ese arrastra Ray,
+    que instala su propio excepthook. Eso es cosa de Ray, no de MetaGen.
+    """
+    resultado = subprocess.run(
+        [sys.executable, "-c", _GUION_F07],
+        capture_output=True,
+        text=True,
+    )
+    assert resultado.returncode == 0, f"{resultado.stdout}{resultado.stderr}"
+    assert resultado.stdout.strip() == "True", (
+        "importar MetaGen ha reemplazado el sys.excepthook de quien lo importa"
+    )
+
+
 _GUION_F26 = """
 from metagen.framework import Domain, Solution
 from metagen.framework.rng import set_seed
