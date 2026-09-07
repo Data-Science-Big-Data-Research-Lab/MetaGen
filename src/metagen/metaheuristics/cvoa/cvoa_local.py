@@ -80,28 +80,21 @@ class CVOA(Metaheuristic):
     .. code-block:: python
 
         from metagen.framework import Domain, Solution
-        from metagen.metaheuristics import CVOA, cvoa_launcher
+        from metagen.metaheuristics import cvoa_launcher
+        from metagen.metaheuristics.cvoa.common_tools import StrainProperties
+
         domain = Domain()
-        multithread = True
+        domain.define_real("x", -5.0, 5.0)
 
-        domain.defineInteger(0, 1)
+        def fitness_function(solution: Solution) -> float:
+            return solution["x"] ** 2
 
-        fitness_function = ...
-
-        if multithread: # For multiple thread excecution
-
-            CVOA.initialize_pandemic(domain, fitness_function)
-            strain1 = CVOA("Strain1", pandemic_duration=100)
-            strain2 = CVOA("Strain2",  pandemic_duration=100)
-            ...
-
-            strains = [strain1, strain2, ...]
-            optimal_solution = cvoa_launcher(strains)
-        else: # For individual thread excecution
-
-            CVOA.initialize_pandemic(domain, fitness_function)
-            search = CVOA(pandemic_duration=100)
-            optimal_solution = search.run()
+        # One strain per concurrent thread, each with its own properties.
+        strains = [
+            StrainProperties(strain_id="Strain1", pandemic_duration=10),
+            StrainProperties(strain_id="Strain2", pandemic_duration=10),
+        ]
+        optimal_solution = cvoa_launcher(strains, domain, fitness_function)
     """
 
     def __init__(self, global_state: LocalPandemicState, domain: Domain, fitness_function: Callable[[Solution], float],

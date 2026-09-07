@@ -50,16 +50,18 @@ class Memetic(Metaheuristic):
 
     .. code-block:: python
 
-        from metagen.framework import Domain
-        from metagen.metaheuristics import Memetic
+        from metagen.framework import Domain, Solution
+        from metagen.metaheuristics import GAConnector, Memetic
 
-        # Create domain and fitness function
-        domain = Domain()
-        domain.defineInteger(0, 1)
-        fitness_function = lambda x: sum(x)
+        # The memetic algorithm crosses solutions over, so its domain needs the
+        # GA connector; a plain Domain() fails on the first iteration.
+        domain = Domain(connector=GAConnector())
+        domain.define_real("x", -5.0, 5.0)
 
-        # Create and run memetic algorithm
-        memetic = Memetic(domain, fitness_function, population_size=50)
+        def fitness_function(solution: Solution) -> float:
+            return solution["x"] ** 2
+
+        memetic = Memetic(domain, fitness_function, population_size=50, max_iterations=100)
         best_solution = memetic.run()
     """
 

@@ -47,15 +47,16 @@ class TPE(Metaheuristic):
 
     .. code-block:: python
 
-        from metagen.framework import Domain
+        from metagen.framework import Domain, Solution
         from metagen.metaheuristics import TPE
-        
-        domain = Domain()
-        domain.defineInteger(0, 1)
-        
-        fitness_function = ...
 
-        search = TPE(domain, fitness_function, population_size=50, max_iterations=100)
+        domain = Domain()
+        domain.define_real("x", -5.0, 5.0)
+
+        def fitness_function(solution: Solution) -> float:
+            return solution["x"] ** 2
+
+        search = TPE(domain, fitness_function, max_iterations=100)
         optimal_solution = search.run()
     """
 

@@ -97,7 +97,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ⬜ | `P-07` | `.gitignore` excluye los CSV de parámetros de test |
 | ⬜ | `P-08` | Los extras de `setup.cfg` usan `;`, que PEP 508 lee como otra cosa |
 | ⬜ | `P-09` | Falta `py.typed`: mypy trata `metagen` como `Any` desde fuera |
-| ⬜ | `P-10` | Los ejemplos de las docstrings usan una API que no existe |
+| ✅ | `P-10` | Los ejemplos de las docstrings usan una API que no existe |
 | ⬜ | `P-11` | `mypy src` no pasa limpio: 11 errores en 9 ficheros |
 
 ---
@@ -1015,7 +1015,32 @@ Aquí el código hace lo que dice hacer; lo discutible es qué dice hacer.
 - **[ ] P-07** `.gitignore:14` excluye `*.csv` y `*.xlsx`, y los parámetros de test son CSV en `test/test_parameters/`. Cualquier fichero nuevo se queda fuera del commit sin aviso. *Arreglo*: `!test/test_parameters/**/*.csv`.
 - **[ ] P-08** Los extras de `setup.cfg` usan `;`, que en PEP 508 es el separador de **marcadores de entorno**, no de requisitos: `tensorboard = tensorboard; tensorboardX` se lee como «tensorboard, si el marcador tensorboardX». Comprobar qué instala `pip install pymetagen-datalabupo[all]`. Además hay tres `requirements*.txt` con criterios solapados. *Arreglo*: un requisito por línea y migrar la metadata a `pyproject.toml`.
 - **[ ] P-09** Falta `src/metagen/py.typed`: el paquete está anotado de arriba abajo pero sin el marcador PEP 561 mypy trata `metagen` como `Any`.
-- **[ ] P-10** Los ejemplos de las docstrings usan una API que no existe: `domain.defineInteger(0, 1)` en RS, TPE, Memetic y CVOA (el método es `define_integer(name, min, max)`), y el ejemplo de CVOA usa `CVOA.initialize_pandemic(...)` y `cvoa_launcher(strains)`, de una versión anterior. Son las páginas que publica readthedocs. *Arreglo*: actualizarlos y añadirlos como doctests.
+- **[x] P-10 (R)** Los ejemplos de las docstrings usan una API que no existe: `domain.defineInteger(0, 1)` en RS, TPE, Memetic y CVOA (el método es `define_integer(name, min, max)`), y el ejemplo de CVOA usa `CVOA.initialize_pandemic(...)` y `cvoa_launcher(strains)`, de una versión anterior. Son las páginas que publica readthedocs. *Arreglo*: actualizarlos y añadirlos como doctests.
+
+  *Cerrado.* **Había dos errores más de los que lista el diagnóstico**, y los dos
+  aparecieron al ejecutar los ejemplos en vez de leerlos:
+
+  - El de CVOA hace `from metagen.metaheuristics import CVOA, cvoa_launcher`, y
+    **`CVOA` no se exporta**: solo `cvoa_launcher`. El ejemplo fallaba en su tercera
+    línea, antes de llegar al `defineInteger`.
+  - El del memético usaba `fitness_function = lambda x: sum(x)`, que revienta: iterar
+    una `Solution` devuelve **nombres de variable**, no valores.
+
+  Y una tercera cosa que el ejemplo del memético callaba: necesita
+  `Domain(connector=GAConnector())`. Con un `Domain()` normal muere en la primera
+  iteración (es `A-07`). Ahora el ejemplo lo pasa y explica por qué.
+
+  **En vez de doctests, un test que ejecuta los ejemplos.** Extrae el
+  `.. code-block:: python` de las cuatro docstrings y lo ejecuta entero **salvo la
+  optimización**: `run()` y `cvoa_launcher` se sustituyen por dobles. Correrlos de
+  verdad son decenas de miles de evaluaciones, y minutos en CVOA desde que `F-23`
+  dejó que las cepas se ejecuten. Lo que se comprueba es exactamente donde estaban
+  los fallos: que los imports resuelven, que los métodos del dominio existen y que
+  los constructores aceptan lo que el ejemplo les pasa. Comprobado que el test falla
+  con los cuatro ejemplos viejos, cada uno por su motivo.
+
+  Test: `test_p10_los_ejemplos_de_las_docstrings_usan_la_api_de_verdad`,
+  parametrizado por módulo.
 - **[ ] P-11** `mypy src` **no pasa limpio**: 8 errores en 8 ficheros con `mypy 1.1.1`, 7 con la versión que instala el CI. Eran 14 al abrir el hallazgo. El proyecto se desarrolló con la condición de usar tipos, así que esto es deuda declarada, no higiene opcional; por eso el job `types` del CI nace informativo (`continue-on-error: true`).
 
   **El contador es la barra de progreso de la auditoría**, y va bajando solo al cerrar

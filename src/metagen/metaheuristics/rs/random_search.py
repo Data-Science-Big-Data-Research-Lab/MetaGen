@@ -49,13 +49,14 @@ class RandomSearch(Metaheuristic):
 
     .. code-block:: python
 
-        from metagen.framework import Domain
+        from metagen.framework import Domain, Solution
         from metagen.metaheuristics import RandomSearch
-        
+
         domain = Domain()
-        domain.defineInteger(0, 1)
-        
-        fitness_function = ...
+        domain.define_integer("n", 0, 100)
+
+        def fitness_function(solution: Solution) -> float:
+            return abs(solution["n"] - 42)
 
         search = RandomSearch(domain, fitness_function, population_size=50, max_iterations=100)
         optimal_solution = search.run()
