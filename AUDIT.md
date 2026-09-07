@@ -92,7 +92,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ✅ | `A-05` | SSGA sustituye por igualdad de valor, no por identidad |
 | ✅ | `A-06` | No había forma de fijar la semilla |
 | ✅ | `A-07` | GA, SSGA y memético no validan que el dominio use `GAConnector` |
-| ⬜ | `A-08` | Los reales rechazan enteros y los enteros aceptan booleanos |
+| ✅ | `A-08` | Los reales rechazan enteros y los enteros aceptan booleanos |
 | ⬜ | `A-09` | CVOA y las herramientas están duplicados, y ya divergen |
 | ✅ | `A-10` | El elitismo depende de que cada subclase se acuerde |
 | ✅ | `A-11` | El logger parchea `logging` globalmente y acumula handlers |
@@ -1384,7 +1384,50 @@ Aquí el código hace lo que dice hacer; lo discutible es qué dice hacer.
   Tests: `test_a07_los_geneticos_explican_que_necesitan_el_conector` y
   `test_a07_un_conector_propio_con_crossover_vale`, los dos parametrizados por los tres
   algoritmos.
-- **[ ] A-08** `domain/core.py:219, 140` — `RealDefinition` exige `isinstance(value, float)` (rechaza `1` y `np.float32`) y `IntegerDefinition` acepta `bool`. *Propuesta*: `numbers.Real` excluyendo `bool`, normalizando al tipo nativo.
+- **[x] A-08 (R)** `domain/core.py:219, 140` — `RealDefinition` exige `isinstance(value, float)` (rechaza `1` y `np.float32`) y `IntegerDefinition` acepta `bool`. *Propuesta*: `numbers.Real` excluyendo `bool`, normalizando al tipo nativo.
+
+  *Cerrado con la propuesta*, pero hizo falta más que las dos `check_value`, porque
+  arreglarlas solas **no se nota desde fuera**.
+
+  **Lo que decía el diagnóstico, comprobado a nivel de definición:**
+
+  | | Antes | Después |
+  |---|---|---|
+  | `RealDefinition.check_value(1)` | False | **True** |
+  | `RealDefinition.check_value(np.float32(1.5))` | False | **True** |
+  | `IntegerDefinition.check_value(True)` | **True** | False |
+  | `IntegerDefinition.check_value(np.int64(3))` | False | **True** |
+
+  **Un matiz que cambia la lectura:** `Solution.set("n", True)` **ya fallaba** antes, pero
+  no por la validación sino por accidente, en el conector: *«The class True has not been
+  registered»*. El bug de la definición estaba ahí, tapado por un error que no explica
+  nada. Hay un test que comprueba que ahora se rechaza **por ser booleano**.
+
+  **Las dos piezas que faltaban para que se note:**
+
+  1. **`Solution.set` decide el tipo por la definición, no por el valor.** Pedía
+     `get_type(value)`, así que meter `1` en una variable real construía un `Integer`
+     con una `RealDefinition`, y un escalar de numpy ni llegaba: `bool`, `np.int64` y
+     compañía no están registrados como builtins.
+  2. **`Integer.set` y `Real.set` normalizan.** Lo que el usuario lee siempre es un
+     `int` o un `float` nativo, no lo que entrara.
+
+  Resultado por la vía que usa el usuario:
+
+  ```
+  x.set(1)                 -> 1.0  (float)      antes: rechazado
+  x.set(np.float32(1.5))   -> 1.5  (float)      antes: rechazado
+  n.set(np.int64(3))       -> 3    (int)        antes: rechazado
+  n.set(True)              -> TypeError         antes: ValueError del conector
+  n.set(3.5)               -> ValueError        igual que antes
+  ```
+
+  **Ningún algoritmo cambia de resultado**: los siete dan el mismo fitness medio sobre la
+  esfera 2D antes y después. Es un cambio en qué acepta la API, no en cómo busca.
+
+  De paso, `check_value` **convierte antes de comparar** (`int(value) < min`), lo que
+  además evita dos errores de mypy: `numbers.Integral` y `numbers.Real` no declaran
+  orden.
 - **[ ] A-09** `cvoa_local.py` ↔ `cvoa_distributed.py` (372 vs 352 líneas) y `tools.py` ↔ `mm_tools.py` — **código duplicado y ya divergente**. *Propuesta*: una clase por algoritmo y la estrategia de ejecución (secuencial / Ray) como objeto inyectado.
 
   **Sigue abierto a propósito.** Se hizo solo la parte de riesgo cero y se aplaza la

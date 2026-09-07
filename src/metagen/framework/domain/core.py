@@ -16,6 +16,7 @@
 """
 from __future__ import annotations
 
+import numbers
 from abc import ABC, abstractmethod
 from typing import Any, Dict, cast
 
@@ -137,10 +138,14 @@ class IntegerDefinition(Base):
         """
         res: bool = True
 
-        if not isinstance(value, int):
+        # numbers.Integral rather than int, so that a numpy integer counts, and bool
+        # ruled out explicitly, since it is a subclass of int and True used to pass as
+        # a valid integer (A-08).
+        if isinstance(value, bool) or not isinstance(value, numbers.Integral):
             res = False
         else:
-            if value < self.__min_value or value > self.__max_value:
+            numeric = int(value)
+            if numeric < self.__min_value or numeric > self.__max_value:
                 res = False
         return res
 
@@ -216,10 +221,14 @@ class RealDefinition(Base):
         """
         res: bool = True
 
-        if not isinstance(value, float):
+        # numbers.Real rather than float: isinstance(1, float) is False, so a real
+        # variable rejected 1, and a numpy float32 too. bool is ruled out for the same
+        # reason as in IntegerDefinition (A-08).
+        if isinstance(value, bool) or not isinstance(value, numbers.Real):
             res = False
         else:
-            if value < self.__min_value or value > self.__max_value:
+            numeric = float(value)
+            if numeric < self.__min_value or numeric > self.__max_value:
                 res = False
         return res
 

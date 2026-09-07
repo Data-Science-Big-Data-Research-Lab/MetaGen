@@ -89,4 +89,8 @@ class Real(BaseType):
 
         """
         self.check(value)
-        super().set(value)
+
+        # Normalized: the definition accepts anything numbers.Integral/Real since A-08,
+        # so 1 into a real variable or a numpy scalar would otherwise be stored as it
+        # came in. What the user reads back is always a native float.
+        super().set(float(value))
