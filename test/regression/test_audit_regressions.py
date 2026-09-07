@@ -462,6 +462,55 @@ def test_f20_sa_no_evalua_una_poblacion_entera_al_inicializar():
     )
 
 
+def test_f25_sa_devuelve_el_mejor_vecino_no_el_ultimo():
+    """F-25: `best_neighbor = neighbor` era un alias, no una copia, y el bucle
+    seguia mutando ese mismo objeto. Si el mejor vecino resultaba ser el primero,
+    `best_fitness` anunciaba su valor mientras `best_neighbor` apuntaba ya al ultimo
+    generado, asi que SA devolvia algo que no era lo mejor que habia visto.
+    """
+    from metagen.metaheuristics import SA
+
+    dominio, fitness = _dominio_y_fitness_de_prueba()
+
+    for semilla in range(10):
+        algoritmo = SA(dominio, fitness, max_iterations=15,
+                       neighbor_population_size=5, seed=semilla)
+        solucion = algoritmo.run()
+        assert solucion.get_fitness() == pytest.approx(
+            min(algoritmo.best_solution_fitnesses)), (
+            f"semilla {semilla}: devuelve {solucion.get_fitness()} y su historial "
+            f"llego a {min(algoritmo.best_solution_fitnesses)}"
+        )
+
+
+def test_f25_los_vecinos_salen_de_la_solucion_actual_no_en_cadena():
+    """La otra mitad: cada vecino se generaba mutando el vecino anterior, asi que la
+    serie se alejaba del punto explorado en vez de recorrer su vecindario. Con
+    `alteration_limit=1.0` ningun vecino puede quedar a mas de 1.0 del punto actual.
+    """
+    from metagen.metaheuristics import SA
+
+    dominio = Domain()
+    dominio.define_real("x", -5.0, 5.0)
+
+    vistos = []
+
+    def fitness(solucion):
+        vistos.append(solucion["x"])
+        return abs(solucion["x"])
+
+    algoritmo = SA(dominio, fitness, warmup_iterations=0, max_iterations=1,
+                   neighbor_population_size=10, alteration_limit=1.0, seed=5)
+    algoritmo.run()
+
+    partida, vecinos = vistos[0], vistos[1:]
+    fuera = [v for v in vecinos if abs(v - partida) > 1.0 + 1e-9]
+    assert not fuera, (
+        f"{len(fuera)} de {len(vecinos)} vecinos se salen del vecindario de "
+        f"{partida:.4f}: {[round(v, 4) for v in fuera]}"
+    )
+
+
 def test_f20_la_temperatura_no_baja_de_t_min():
     """La otra mitad: `self.T_min = 1e-8` estaba asignado y no se leia en ningun
     sitio, asi que el enfriamiento tendia a cero y el criterio de Metropolis dejaba
