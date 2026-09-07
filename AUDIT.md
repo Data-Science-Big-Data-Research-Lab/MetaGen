@@ -1536,5 +1536,7 @@ Aquí el código hace lo que dice hacer; lo discutible es qué dice hacer.
   es del equipo. **El job `types` del CI sigue siendo informativo**
   (`continue-on-error: true`), así que nada se rompe mientras tanto.
 
-  *Arreglo*: por decidir. Cuando `mypy src` salga a cero, quitar el `continue-on-error`
-  para que la comprobación pase a bloquear.
+  *Arreglo*: **sesión dedicada, fichero a fichero**, decisión de David del 7 de
+  septiembre de 2026. Mismo trato que CVOA. Empezar por `facades.py`, `structure.py` y
+  `cvoa_distributed.py`, que suman 70 de los 170. Cuando `mypy src` salga a cero, quitar
+  el `continue-on-error` del job `types` para que la comprobación pase a bloquear.
