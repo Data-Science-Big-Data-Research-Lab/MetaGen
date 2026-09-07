@@ -194,18 +194,30 @@ class Structure(BaseType):
         :return: A BaseType instance created from the input value.
         :raises ValueError: If the type of the input value is not supported by the Structure [int, float, str, list, dict, BaseType]. 
         """
+        # Solution is not a BaseType, so both have to be named here: a structure
+        # whose base is a group holds Solution instances.
+        if isinstance(value, (BaseType, Solution)):  # Compatibility with already defined types
+            return value
+
         if isinstance(value, int | float | str | list | dict):
             base_type_class: type[BaseType] = self.get_connector().get_type(
                 value)
-            value = base_type_class(self.get_definition(
+            converted = base_type_class(self.get_definition(
             ).get_base(), connector=self.get_connector())
-        elif BaseType:  # Compatibility with already defined types
-            pass
-        else:
-            raise ValueError(
-                f"The type {type(value)} is not supported by the structure. An instance of [int, float, str, list, dict, BaseType] was expected.")
 
-        return value
+            # The constructor initializes the instance at random, so the input
+            # value has to be applied on top of it. Without this the structure
+            # kept a random element and dropped what the caller assigned (F-05).
+            if isinstance(value, dict):
+                for variable, variable_value in value.items():
+                    converted.set(variable, variable_value)
+            else:
+                converted.set(value)
+
+            return converted
+
+        raise ValueError(
+            f"The type {type(value)} is not supported by the structure. An instance of [int, float, str, list, dict, BaseType] was expected.")
 
     def __len__(self) -> int:
         """
