@@ -116,25 +116,38 @@ def test_f16_el_mensaje_de_paso_cero_no_lleva_espacio_doble():
         assert "  " not in Messages.step_zero(modo)
 
 
-@pytest.mark.xfail(
-    reason="F-17: is_categories_value usa pairwise, que solo compara elementos "
-    "adyacentes",
-    strict=True,
-)
 def test_f17_las_categorias_duplicadas_se_rechazan():
     with pytest.raises(ValueError):
         Domain().define_categorical("c", ["a", "b", "a"])
 
 
-@pytest.mark.xfail(
-    reason="F-17: `len(value) >= 2` impide declarar un hiperparametro fijado a "
-    "un unico valor",
-    strict=True,
-)
 def test_f17_una_sola_categoria_es_valida():
     dom = Domain()
     dom.define_categorical("c", ["solo"])
     assert Solution(dom)["c"] == "solo"
+
+
+def test_f17_una_sola_categoria_se_puede_mutar():
+    """Permitir longitud 1 obliga a proteger `Categorical.mutate`, que elegia entre
+    las categorias distintas de la actual y con una sola haria `choice([])`."""
+    set_seed(1)
+    dom = Domain()
+    dom.define_categorical("c", ["solo"])
+
+    solucion = Solution(dom)
+    for _ in range(5):
+        solucion.mutate()
+    assert solucion["c"] == "solo"
+
+
+@pytest.mark.parametrize("categorias", [
+    ["a", "b", "a", "b"],
+    ["a", 1],
+    [],
+], ids=["duplicadas no adyacentes", "tipos mezclados", "lista vacia"])
+def test_f17_otras_listas_de_categorias_invalidas_se_rechazan(categorias):
+    with pytest.raises(ValueError):
+        Domain().define_categorical("c", categorias)
 
 
 def test_f18_una_estructura_estatica_se_identifica_como_static():
