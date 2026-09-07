@@ -505,6 +505,59 @@ def test_p04_la_suite_completa_se_recolecta_sin_los_extras_opcionales():
     )
 
 
+_GUION_A11 = """
+import logging
+
+# Un logger que no es de MetaGen, creado antes de importar nada.
+ajeno = logging.getLogger("la_aplicacion")
+assert not hasattr(ajeno, "detailed_info"), "el logger ajeno ya traia detailed_info"
+
+import metagen.logging.metagen_logger as m
+
+# 1. El parcheo de logging.Logger repartia detailed_info a todo el proceso.
+assert not hasattr(ajeno, "detailed_info"), "importar MetaGen ha parcheado logging.Logger"
+assert not hasattr(logging.getLogger("otra_app"), "detailed_info")
+assert hasattr(m.metagen_logger, "detailed_info"), "el logger de MetaGen lo ha perdido"
+
+# 2. Al importar, una libreria solo debe instalar un NullHandler.
+tipos = [type(h).__name__ for h in m.metagen_logger.handlers]
+assert tipos == ["NullHandler"], tipos
+
+# 3. get_remote_metagen_logger anadia un handler nuevo en cada llamada.
+remoto = m.get_remote_metagen_logger()
+for _ in range(19):
+    m.get_remote_metagen_logger()
+assert len(remoto.handlers) == 1, len(remoto.handlers)
+
+# 4. set_metagen_logger_level hacia None.close() sin handler de consola, y dos
+#    llamadas seguidas deben dejar uno solo.
+m.set_metagen_logger_level(logging.INFO)
+m.set_metagen_logger_level(m.DETAILED_INFO)
+consolas = [h for h in m.metagen_logger.handlers if h.get_name() == "console"]
+assert len(consolas) == 1, len(consolas)
+assert m.metagen_logger.level == m.DETAILED_INFO
+
+print("ok")
+"""
+
+
+def test_a11_el_logger_no_toca_el_logging_del_proceso():
+    """A-11: el modulo parcheaba `logging.Logger`, instalaba un StreamHandler al
+    importarse, acumulaba un handler por llamada a `get_remote_metagen_logger` y
+    reventaba en `set_metagen_logger_level` si no habia handler de consola.
+
+    Va en un subproceso porque las tres primeras se deciden en el momento de
+    importar, y dentro de pytest el modulo ya esta importado.
+    """
+    resultado = subprocess.run(
+        [sys.executable, "-c", _GUION_A11],
+        capture_output=True,
+        text=True,
+    )
+    assert resultado.returncode == 0, f"{resultado.stdout}{resultado.stderr}"
+    assert resultado.stdout.strip().endswith("ok")
+
+
 def _dominio_y_fitness_de_prueba():
     """Dominio minimo con una variable real y una entera, y su fitness."""
     dominio = Domain()
