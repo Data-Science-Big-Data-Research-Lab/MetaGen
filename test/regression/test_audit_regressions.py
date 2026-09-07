@@ -585,6 +585,62 @@ def test_f25_los_vecinos_salen_de_la_solucion_actual_no_en_cadena():
     )
 
 
+def test_a10_la_clase_base_no_pierde_el_mejor_aunque_la_subclase_se_olvide():
+    """A-10: `_iterate` hacia `self.best_solution = best_individual` sin comparar, asi
+    que el elitismo dependia de que cada subclase se acordara.
+
+    Hoy ninguna se olvida —medido: los siete algoritmos dan el mismo resultado antes y
+    despues— asi que lo que se prueba es la proteccion, con una subclase que devuelve
+    a proposito algo peor de lo que ya habia encontrado.
+    """
+    from metagen.metaheuristics.base import Metaheuristic
+
+    dominio, fitness = _dominio_y_fitness_de_prueba()
+
+    class Olvidadiza(Metaheuristic):
+        def initialize(self, num_solutions=10):
+            buena = Solution(dominio)
+            buena.set_fitness(1.0)
+            return [buena], buena
+
+        def iterate(self, solutions):
+            mala = Solution(dominio)
+            mala.set_fitness(99.0)          # peor que la inicial, a proposito
+            return [mala], mala
+
+        def stopping_criterion(self) -> bool:
+            return self.current_iteration >= 3
+
+    algoritmo = Olvidadiza(dominio, fitness, warmup_iterations=0)
+    mejor = algoritmo.run()
+
+    assert mejor.get_fitness() == 1.0, (
+        f"la clase base ha dejado que la subclase perdiera el mejor: {mejor.get_fitness()}"
+    )
+    assert algoritmo.best_solution_fitnesses == [1.0, 1.0, 1.0]
+
+
+def test_a10_una_subclase_sin_criterio_de_parada_no_se_puede_instanciar():
+    """La otra mitad: `stopping_criterion` devolvia False por defecto, asi que una
+    subclase que se olvidara de implementarlo entraba en un bucle infinito sin decir
+    por que. Ahora es abstracto y falla al construirse."""
+    from metagen.metaheuristics.base import Metaheuristic
+
+    dominio, fitness = _dominio_y_fitness_de_prueba()
+
+    class SinParada(Metaheuristic):
+        def initialize(self, num_solutions=10):
+            s = Solution(dominio)
+            return [s], s
+
+        def iterate(self, solutions):
+            return solutions, solutions[0]
+
+    with pytest.raises(TypeError) as fallo:
+        SinParada(dominio, fitness)
+    assert "stopping_criterion" in str(fallo.value)
+
+
 @pytest.mark.parametrize("nombre", ["GA", "SSGA", "Memetic"])
 def test_a07_los_geneticos_explican_que_necesitan_el_conector(nombre):
     """A-07: con un `Domain()` normal los tres morian en la primera iteracion con

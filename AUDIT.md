@@ -94,7 +94,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ✅ | `A-07` | GA, SSGA y memético no validan que el dominio use `GAConnector` |
 | ⬜ | `A-08` | Los reales rechazan enteros y los enteros aceptan booleanos |
 | ⬜ | `A-09` | CVOA y las herramientas están duplicados, y ya divergen |
-| ⬜ | `A-10` | El elitismo depende de que cada subclase se acuerde |
+| ✅ | `A-10` | El elitismo depende de que cada subclase se acuerde |
 | ✅ | `A-11` | El logger parchea `logging` globalmente y acumula handlers |
 | ✅ | `A-12` | TensorBoard se activa solo por estar instalado, sin poder apagarlo |
 | ✅ | `P-01` | Licencia contradictoria: MIT en PyPI frente a GPLv3 en el código |
@@ -1425,7 +1425,29 @@ Aquí el código hace lo que dice hacer; lo discutible es qué dice hacer.
   `test_a09_los_dos_cvoa_exponen_los_mismos_metodos` (avisa si se le añade un método
   a un gemelo y no al otro) y
   `test_a09_los_dos_cvoa_informan_de_la_iteracion_una_sola_vez`.
-- **[ ] A-10** `base.py:196, 247` — `_iterate` hace `self.best_solution = best_individual` sin comparar, así que el elitismo depende de que cada subclase se acuerde; y `stopping_criterion()` devuelve `False` por defecto (bucle infinito si una subclase lo olvida).
+- **[x] A-10 (R)** `base.py:196, 247` — `_iterate` hace `self.best_solution = best_individual` sin comparar, así que el elitismo depende de que cada subclase se acuerde; y `stopping_criterion()` devuelve `False` por defecto (bucle infinito si una subclase lo olvida).
+
+  *Cerrado, las dos mitades.* `_iterate` fusiona en vez de asignar, igual que
+  `_initialize` desde `F-03`, y `stopping_criterion` pasa a ser `@abstractmethod`. Los
+  nueve algoritmos concretos ya lo implementaban, así que no rompe ninguno.
+
+  **No cambia ningún resultado, y conviene decirlo**: medidos los siete algoritmos sobre
+  la esfera 2D con diez semillas, dan exactamente el mismo fitness medio antes y después.
+  **Hoy ninguna subclase se olvida.** Es una protección, no un arreglo de comportamiento,
+  que es como lo plantea el propio hallazgo.
+
+  Por eso el test no mide algoritmos reales sino que **construye una subclase olvidadiza
+  a propósito**, que devuelve algo peor de lo que ya había encontrado, y comprueba que la
+  clase base no la deja perder el mejor:
+  `test_a10_la_clase_base_no_pierde_el_mejor_aunque_la_subclase_se_olvide`. El otro,
+  `test_a10_una_subclase_sin_criterio_de_parada_no_se_puede_instanciar`, comprueba que
+  olvidarse del criterio de parada ahora es un `TypeError` al construir y no un bucle
+  infinito.
+
+  El caso más cercano a ocurrir de verdad es `ssga.py:102`, que devuelve
+  `heapq.nsmallest(1, solutions, ...)[0]`, o sea el mejor de la **población actual**, que
+  puede ser peor que el mejor histórico. Hoy no pasa porque el elitismo de la propia SSGA
+  lo evita; si ese elitismo cambiara, la clase base ya lo cubre.
 - **[x] A-11 (R)** `logging/metagen_logger.py:29, 84, 90` — parchea `logging.Logger` globalmente, instala un `StreamHandler` al importar, y añade un handler nuevo en cada llamada a `get_remote_metagen_logger()`. `set_metagen_logger_level` haría `None.close()` si no hay handler de consola. *Propuesta*: solo `NullHandler` al importar y una función de configuración idempotente.
 
   *Cerrado, los cuatro problemas.* Medidos antes de tocar nada:

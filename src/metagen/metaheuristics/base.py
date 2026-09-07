@@ -217,9 +217,15 @@ class Metaheuristic(ABC):
             population, best_individual = self.iterate(self.current_solutions)
 
         self.current_solutions = population
-        self.best_solution = best_individual
 
-        return population, best_individual
+        # Merged, not assigned, the same way _initialize does since F-03. Assigning
+        # made elitism the responsibility of each subclass: one that returns the best
+        # of its current population, as SSGA does, would hand back something worse
+        # than the best already found and lose it (A-10).
+        if self.best_solution is None or best_individual.get_fitness() < self.best_solution.get_fitness():
+            self.best_solution = best_individual
+
+        return population, self.best_solution
 
     def pre_execution(self) -> None:
         """
@@ -260,15 +266,17 @@ class Metaheuristic(ABC):
         """
         pass
 
+    @abstractmethod
     def stopping_criterion(self) -> bool:
         """
         Check if the algorithm should stop.
-        Override this method to implement custom stopping criteria.
+
+        Abstract on purpose: it used to return False, so a subclass that forgot to
+        implement it looped for ever with nothing to say why (A-10).
 
         :return: True if the algorithm should stop, False otherwise.
         :rtype: bool
         """
-        return False
 
     def post_iteration(self) -> None:
         """
