@@ -63,13 +63,23 @@ def test_f01_la_rejilla_de_step_arranca_en_el_minimo():
     )
 
 
-@pytest.mark.xfail(
-    reason="F-12: el conector por defecto es un argumento por defecto mutable, "
-    "evaluado una sola vez al importar",
-    strict=True,
-)
 def test_f12_cada_domain_tiene_su_propio_conector():
     assert Domain().get_connector() is not Domain().get_connector()
+
+
+def test_f12_registrar_un_tipo_no_afecta_a_los_demas_dominios():
+    """Lo que de verdad dolia del conector compartido: el conector es el mecanismo
+    de extension, y registrar en uno recableaba todos los demas."""
+    from metagen.framework.domain import IntegerDefinition
+    from metagen.framework.solution.types import Integer
+
+    class EnteroPropio(Integer):
+        pass
+
+    con_extension = Domain()
+    con_extension.get_connector().register(IntegerDefinition, EnteroPropio, int)
+
+    assert Domain().get_connector().get_type(IntegerDefinition) is Integer
 
 
 @pytest.mark.xfail(

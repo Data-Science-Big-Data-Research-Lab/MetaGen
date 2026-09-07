@@ -56,7 +56,7 @@ def _get_structure_definition(name: str, variable: Base) -> BaseStructureDefinit
 
 class Domain:
 
-    def __init__(self, connector: BaseConnector = BaseConnector()):
+    def __init__(self, connector: BaseConnector | None = None):
         """
         This class encompasses the domain of the problem by defining a set of variables and its possible values.
         The user must instantiate the class, then, define the variables using the member methods of the class.
@@ -72,7 +72,10 @@ class Domain:
             >>> new_domain.define_group("Group")
             >>> new_domain.link_variable_to_group("Group", "RealValue")
         """
-        self._connector = connector
+        # Built here and not in the signature: a default argument is evaluated once,
+        # at import time, so every Domain shared one connector and a type registered
+        # on any of them rewired all the others (F-12).
+        self._connector = BaseConnector() if connector is None else connector
         base_definition: type[BaseDefinitionClass] = self._connector.get_definition(
             self._connector.get_type(dict))
         self._core: BaseDefinition = base_definition()
