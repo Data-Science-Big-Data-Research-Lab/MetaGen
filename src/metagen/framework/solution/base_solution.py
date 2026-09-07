@@ -30,6 +30,32 @@ if TYPE_CHECKING:
     from metagen.framework.solution.bounds import BaseTypeClass, SolutionClass
 
 
+def _hashable(value: Any) -> Any:
+    """
+    Build a hashable, canonical snapshot of a variable's value.
+
+    A solution keeps its variables in a dict, and those values may in turn be a list
+    (a Structure) or another solution (a group). None of the three hashes on its own,
+    which is why the hash used to sidestep them altogether (F-15).
+
+    :param value: A solution type, a solution, or a plain builtin.
+    :type value: Any
+    :return: An equivalent value made of tuples and builtins, safe to hash.
+    :rtype: Any
+    """
+    if isinstance(value, Solution):
+        return tuple(sorted((name, _hashable(item))
+                            for name, item in value.get_variables().items()))
+
+    raw = value.get() if isinstance(value, types.BaseType) else value
+
+    if isinstance(raw, list):
+        return tuple(_hashable(item) for item in raw)
+    if isinstance(raw, dict):
+        return tuple(sorted((name, _hashable(item)) for name, item in raw.items()))
+    return raw
+
+
 class Solution:
     """
     Base abstract class representing a solution in an optimization problem.
@@ -449,8 +475,16 @@ class Solution:
     def __hash__(self):
         """ Hash function for :py:class:`~metagen.individual.Individual` objects. It is necessary for set structure
         management.
+
+        It hashes the variables, and only the variables, so that it agrees with
+        ``__eq__``. It used to be ``hash((self.get_variables().__hash__, self.fitness))``,
+        where ``dict.__hash__`` is None for every solution alike, leaving the fitness as
+        the only ingredient: two equal solutions with different fitness broke
+        ``a == b => hash(a) == hash(b)``, and every solution sharing a fitness value
+        landed in one bucket (F-15).
         """
-        return hash((self.get_variables().__hash__, self.fitness))
+        return hash(tuple(sorted((name, _hashable(value))
+                                 for name, value in self.get_variables().items())))
 
     def __lt__(self, other):
         """ *Less than* function for :py:class:`~metagen.individual.Individual` objects. An individual **A** is less
