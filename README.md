@@ -1,6 +1,6 @@
 # MetaGen: A Framework for Metaheuristic Development and Hyperparameter Optimization
 
-[![Python](https://img.shields.io/badge/python->=3.12-orange)](https://pypi.org/project/pymetagen-datalabupo/) 
+[![Python](https://img.shields.io/badge/python->=3.10-orange)](https://pypi.org/project/pymetagen-datalabupo/) 
 [![Latest Release](https://img.shields.io/github/v/release/DataLabUPO/MetaGen)](https://github.com/DataLabUPO/MetaGen/releases) 
 [![Documentation](https://img.shields.io/badge/view-Documentation-blue)](https://pymetagen.readthedocs.io) 
 
