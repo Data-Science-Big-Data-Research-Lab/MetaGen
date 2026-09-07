@@ -89,7 +89,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ⬜ | `A-02` | La búsqueda tabú es en realidad hill climbing |
 | ⬜ | `A-03` | El vecindario tabú se genera en cadena, no alrededor de la solución |
 | ✅ | `A-04` | Random Search descarta el último individuo, no el peor |
-| ⬜ | `A-05` | SSGA sustituye por igualdad de valor, no por identidad |
+| ✅ | `A-05` | SSGA sustituye por igualdad de valor, no por identidad |
 | ✅ | `A-06` | No había forma de fijar la semilla |
 | ⬜ | `A-07` | GA, SSGA y memético no validan que el dominio use `GAConnector` |
 | ⬜ | `A-08` | Los reales rechazan enteros y los enteros aceptan booleanos |
@@ -1299,7 +1299,43 @@ Aquí el código hace lo que dice hacer; lo discutible es qué dice hacer.
 
   El test anula `mutate` para que los fitness no cambien y se pueda ver quién sobrevive:
   `test_a04_random_search_descarta_el_peor_no_el_ultimo`.
-- **[ ] A-05** `ga/ssga.py:84-86` — `solutions.index(worst)` sustituye por igualdad de valor, no por identidad: con duplicados las dos sustituciones caen en la misma posición.
+- **[x] A-05 (R)** `ga/ssga.py:84-86` — `solutions.index(worst)` sustituye por igualdad de valor, no por identidad: con duplicados las dos sustituciones caen en la misma posición.
+
+  ### Refutado. No es un bug.
+
+  **La colisión existe**: medida sobre un dominio entero pequeño, los dos peores son
+  iguales en **73 de 130** sustituciones. **Pero no hace daño**, y la razón es sutil:
+  `solutions.index(worst)` **rescanea la lista ya modificada**. Cuando la primera
+  sustitución quita una copia del duplicado, la segunda búsqueda encuentra la otra. Y en
+  el único caso donde la primera deja el duplicado en su sitio —cuando ningún hijo mejora
+  al peor, y entonces `best_two = [peor, peor]`— escribir el peor donde ya estaba no
+  cambia nada.
+
+  Comprobado de tres formas, porque el razonamiento solo no bastaba:
+
+  | Prueba | Diferencias |
+  |---|---|
+  | Poblaciones finales de SSGA, 3 semillas, dominio entero | **0** |
+  | 4096 casos exhaustivos | **0** |
+  | 200 000 casos aleatorios con muchos duplicados | **0** |
+
+  Antes se verificó que el intercambio de implementaciones funcionaba de verdad, para no
+  estar midiendo dos veces el mismo código.
+
+  **El código se cambió igualmente**, a trabajar por índices, por decisión de David: *«para
+  que sea más compatible con terceros»*. No arregla nada, pero la corrección de la versión
+  por valor es **accidental** —depende de que `index()` rescanee— y un refactor razonable,
+  como construir una lista nueva en vez de modificar la existente, la rompería sin aviso.
+  De paso desaparece el `if worst in solutions`, que nunca es falso.
+
+  Test: `test_a05_la_sustitucion_del_ssga_mete_a_los_dos_mejores`, que **pasa con las dos
+  versiones** a propósito: fija la propiedad, no la implementación.
+
+  **Lección de método:** esto salió porque el arreglo **no movió ningún número**, ni en
+  continuo ni en discreto. En `F-25` y `F-22` esa misma señal tenía explicación (una rama
+  que no se ejecuta con los valores por defecto); aquí no la tenía, y tirar del hilo dio
+  la vuelta al hallazgo. Cuando un arreglo correcto no cambia nada, o **está tapado** o
+  **no había nada que arreglar**.
 - **[x] A-06** transversal — **sin control de semilla**. Todo usa el `random` global (y `np.random` en TPE); no hay parámetro `seed` ni `rng`. En distribuido cada worker de Ray arranca con su propio estado. *Propuesta*: `seed: int | None` en `Metaheuristic.__init__` que construya un `random.Random` y un `np.random.Generator` propios, propagados a `Solution` y a los tipos; en distribuido, `SeedSequence.spawn()`.
 
   *Cerrado con una variante de la propuesta.* Propagar el generador hasta `Solution` y los tipos exigía tocar sus constructores, que son el punto de extensión que el artículo documenta (caso *Extended Metaheuristic*), así que se descartó por romper la API pública. En su lugar, `metagen/framework/rng.py` guarda **dos generadores propios del paquete** —un `random.Random` y un `np.random.Generator`, porque TPE tira de NumPy y el resto de la biblioteca estándar— y las 38 llamadas al RNG global de `src/` pasan por ellos. `seed` es ahora un parámetro de `Metaheuristic.__init__` (heredado por las siete metaheurísticas) y de los dos lanzadores de CVOA; se aplica en `run()`, no en el constructor, para que cada `run()` arranque del mismo estado.
