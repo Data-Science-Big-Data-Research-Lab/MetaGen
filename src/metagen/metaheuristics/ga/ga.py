@@ -17,7 +17,7 @@
 import heapq
 
 from metagen.framework import Domain, Solution
-from .ga_tools import GASolution, yield_two_children
+from .ga_tools import GASolution, yield_two_children, require_crossover
 from metagen.metaheuristics.base import Metaheuristic
 from typing import Optional, Callable, List, Tuple, cast
 from copy import deepcopy
@@ -57,6 +57,10 @@ class GA(Metaheuristic):
                  distributed: bool = False, log_dir: Optional[str] = None,
                  seed: Optional[int] = None):
         super().__init__(domain, fitness_function, population_size=population_size, distributed=distributed, log_dir=log_dir, seed=seed)
+
+        # Fails here, with a message that says what to do, instead of dying on
+        # the first iteration with AttributeError: no attribute 'crossover' (A-07).
+        require_crossover(domain, "GA")
         self.mutation_rate = mutation_rate
         self.max_iterations = max_iterations
 

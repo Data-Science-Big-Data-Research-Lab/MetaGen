@@ -91,7 +91,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ✅ | `A-04` | Random Search descarta el último individuo, no el peor |
 | ✅ | `A-05` | SSGA sustituye por igualdad de valor, no por identidad |
 | ✅ | `A-06` | No había forma de fijar la semilla |
-| ⬜ | `A-07` | GA, SSGA y memético no validan que el dominio use `GAConnector` |
+| ✅ | `A-07` | GA, SSGA y memético no validan que el dominio use `GAConnector` |
 | ⬜ | `A-08` | Los reales rechazan enteros y los enteros aceptan booleanos |
 | ⬜ | `A-09` | CVOA y las herramientas están duplicados, y ya divergen |
 | ⬜ | `A-10` | El elitismo depende de que cada subclase se acuerde |
@@ -1349,7 +1349,41 @@ Aquí el código hace lo que dice hacer; lo discutible es qué dice hacer.
   - **Sigue sin resolverse la concurrencia**: las cepas de CVOA local corren en hilos que comparten los generadores, y los workers de Ray arrancan con su propio estado. Ambas firmas lo advierten en su docstring. Cerrarlo del todo exige un generador por instancia, que es la propuesta original de este hallazgo.
 
   Tests: `test_a06_la_misma_semilla_reproduce_la_ejecucion`, `test_a06_semillas_distintas_dan_ejecuciones_distintas`, `test_a06_metagen_no_toca_el_generador_global_del_usuario`.
-- **[ ] A-07** `ga`, `ssga`, `mm` — no validan que el dominio use `GAConnector`: con un `Domain()` normal mueren en la primera iteración con `AttributeError: 'Solution' object has no attribute 'crossover'`.
+- **[x] A-07 (R)** `ga`, `ssga`, `mm` — no validan que el dominio use `GAConnector`: con un `Domain()` normal mueren en la primera iteración con `AttributeError: 'Solution' object has no attribute 'crossover'`.
+
+  *Cerrado validando y explicando*, no montando el conector por dentro. **La primera
+  propuesta fue lo segundo** —imitar a `F-13`, donde TPE se copia el dominio y le pone su
+  conector— y **David señaló por qué no vale**: GA, SSGA y el memético necesitan una
+  `Solution` especial porque necesitan **cruzar**, y `GAConnector` es el punto de
+  extensión que documenta el framework. Alguien puede traer su propia subclase de
+  `GASolution` con otro operador de cruce, y montárselo por dentro se la pisaría. TPE
+  puede permitírselo porque `TPEConnector` sustituye tipos internos que nadie extiende.
+
+  Al mirarlo salió el reparto exacto de lo que aporta `GAConnector`, que es menos de lo
+  que parece:
+
+  | Definición | Normal | Con `GAConnector` |
+  |---|---|---|
+  | `BaseDefinition` | `Solution` | **`GASolution`** |
+  | `StaticStructureDefinition` | `Structure` | **`GAStructure`** |
+  | Integer, Real, Categorical | iguales | iguales |
+  | `DynamicStructureDefinition` | `Structure` | **sin registrar** (ver `F-31`) |
+
+  Y esas dos clases añaden **un solo método, `crossover`**. `mutate` está en la clase
+  base: cualquier `Solution` sabe mutar.
+
+  **La comprobación pregunta por la capacidad, no por la clase**: `hasattr(tipo,
+  "crossover")` en vez de `isinstance(conector, GAConnector)`. Así un conector propio con
+  su propio cruce sigue valiendo, que es justo lo que el mecanismo de extensión promete.
+  Hay un test que lo protege.
+
+  El mensaje pasa de `AttributeError: 'Solution' object has no attribute 'crossover'` en
+  mitad de la primera iteración a un `ValueError` al construir el algoritmo, con las dos
+  líneas que hay que escribir.
+
+  Tests: `test_a07_los_geneticos_explican_que_necesitan_el_conector` y
+  `test_a07_un_conector_propio_con_crossover_vale`, los dos parametrizados por los tres
+  algoritmos.
 - **[ ] A-08** `domain/core.py:219, 140` — `RealDefinition` exige `isinstance(value, float)` (rechaza `1` y `np.float32`) y `IntegerDefinition` acepta `bool`. *Propuesta*: `numbers.Real` excluyendo `bool`, normalizando al tipo nativo.
 - **[ ] A-09** `cvoa_local.py` ↔ `cvoa_distributed.py` (372 vs 352 líneas) y `tools.py` ↔ `mm_tools.py` — **código duplicado y ya divergente**. *Propuesta*: una clase por algoritmo y la estrategia de ejecución (secuencial / Ray) como objeto inyectado.
 

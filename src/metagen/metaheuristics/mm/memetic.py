@@ -6,7 +6,7 @@ from metagen.framework import Domain, Solution
 from metagen.metaheuristics.tools import random_exploration
 from metagen.metaheuristics.base import Metaheuristic
 from metagen.metaheuristics.ga import GASolution
-from metagen.metaheuristics.ga.ga_tools import yield_two_children
+from metagen.metaheuristics.ga.ga_tools import yield_two_children, require_crossover
 from metagen.metaheuristics.mm.mm_tools import local_search_of_two_children
 
 
@@ -73,6 +73,10 @@ class Memetic(Metaheuristic):
                  distribution_level: int = 0, seed: Optional[int] = None) -> None:
         """Initialize the Memetic Algorithm with the given parameters."""
         super().__init__(domain, fitness_function, population_size=population_size, distributed=distributed, log_dir=log_dir, seed=seed)
+
+        # Fails here, with a message that says what to do, instead of dying on
+        # the first iteration with AttributeError: no attribute 'crossover' (A-07).
+        require_crossover(domain, "Memetic")
 
         self.mutation_rate = mutation_rate
         self.max_generations = max_iterations
