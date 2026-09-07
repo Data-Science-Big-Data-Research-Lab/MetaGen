@@ -119,7 +119,10 @@ class DistributedCVOA(Metaheuristic):
         self.best_dead: Solution = self.solution_type(self.domain, connector=self.domain.get_connector())
 
         # 4.5. The worst strain-specific superspreader individual will initially be the best solution.
-        self.worst_superspreader: Solution = self.solution_type(self.domain, connector=self.domain.get_connector())
+        # best=True, so that it really is the best one. Without it the default
+        # constructor built the worst, "to_insert > worst_superspreader" never held
+        # and the replacement mechanism this comment describes never ran (F-10).
+        self.worst_superspreader: Solution = self.solution_type(self.domain, best=True, connector=self.domain.get_connector())
 
         # 5. Main strain sets: infected, superspreaders, infected superspreaders and deaths.
         self.infected: Set[Solution] = set()

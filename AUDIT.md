@@ -59,7 +59,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ✅ | `F-07` | Importar MetaGen secuestra el `excepthook` del proceso |
 | ✅ | `F-08` | Interbloqueo en CVOA con `update_isolated=True` |
 | ✅ | `F-09` | `insert_into_set_strain` puede reventar con `KeyError` |
-| ⬜ | `F-10` | El «peor superspreader» de CVOA se inicializa al revés |
+| ✅ | `F-10` | El «peor superspreader» de CVOA se inicializa al revés |
 | ⬜ | `F-11` | La búsqueda local distribuida manda la misma porción a todos los workers |
 | ✅ | `F-12` | Todos los `Domain` comparten el mismo conector por defecto |
 | ✅ | `F-13` | TPE modifica el `Domain` que le pasa el usuario |
@@ -435,7 +435,7 @@ no llega a ejecutarse jamás. Es el hallazgo siguiente, visto desde aquí.
 
 Test: `test_f09_insertar_en_el_conjunto_de_muertos_no_revienta`.
 
-### [ ] F-10 · El «peor superspreader» de CVOA se inicializa al revés
+### [x] F-10 (R) · El «peor superspreader» de CVOA se inicializa al revés
 `src/metagen/metaheuristics/cvoa/cvoa_local.py:138-139`
 
 El comentario dice «inicialmente la mejor solución» pero el constructor por defecto crea
@@ -444,6 +444,40 @@ reemplazo del peor superspreader —la diversificación que el código documenta
 ejecuta.
 
 **Arreglo** `best=True` en el constructor, junto con F-14.
+
+*Cerrado en los dos gemelos*, `cvoa_local.py` y `cvoa_distributed.py`, que tenían la
+línea idéntica. `best_dead` **no se toca**: su comentario dice «inicialmente la peor
+solución» y `inf` es justamente eso, así que ese estaba bien.
+
+Medido en el mecanismo:
+
+```
+como estaba (best=False): fitness inicial = +inf  -> reemplaza? False
+arreglado   (best=True) : fitness inicial = -inf  -> reemplaza? True
+```
+
+Y contando dentro de una pandemia real, la rama de reemplazo se alcanza 12 veces:
+**antes reemplazaba 0 de esas 12, ahora reemplaza 2.**
+
+**El resultado de CVOA no cambia ni un dígito**, y hay que decirlo: cinco semillas,
+`[4.058812, 2.883657, 3.021229, 16.083051, 20.669185]`, idénticas antes y después.
+Es el mismo patrón que `F-04` con `A-01`: **el arreglo es correcto y otro hallazgo lo
+tapa.** El culpable aquí es `F-23`, medido de paso:
+
+```
+iteraciones ejecutadas: {'S1': 2}   de un pandemic_duration de 8
+```
+
+La cepa muere en la segunda iteración de las ocho declaradas, mucho antes de que la
+diversificación de superspreaders pueda influir en nada. Hasta que `F-23` esté
+cerrado, este arreglo no se verá en los resultados.
+
+De paso, esto explica el `2.75007` idéntico que salió al verificar `F-08` con dos
+configuraciones muy distintas.
+
+Tests: `test_f10_el_peor_superspreader_arranca_siendo_el_mejor` y
+`test_f10_el_reemplazo_del_peor_superspreader_se_ejecuta`. El segundo comprueba la
+consecuencia, no solo el valor inicial.
 
 ### [ ] F-11 · La búsqueda local distribuida manda la misma porción a todos los workers
 `src/metagen/metaheuristics/mm/mm_distributed_tools.py:57` (estaba en `mm_tools.py:65-68`
