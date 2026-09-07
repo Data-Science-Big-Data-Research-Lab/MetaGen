@@ -70,7 +70,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ✅ | `F-18` | Una estructura estática se identifica como dinámica |
 | ✅ | `F-19` | Estructuras dinámicas: nunca alcanzan el máximo, revientan si min = max |
 | ⬜ | `F-20` | SA evalúa veinte soluciones iniciales para usar una, y no la mejor |
-| ⬜ | `F-21` | `run()` apaga Ray aunque no lo haya arrancado él |
+| ✅ | `F-21` | `run()` apaga Ray aunque no lo haya arrancado él |
 | ⬜ | `F-22` | TPE escribe valores fuera del dominio saltándose la validación |
 | ⬜ | `F-23` | CVOA se detiene en la primera mejora y reporta mal el tiempo |
 | ⬜ | `F-24` | El memético exige Ray aunque no se distribuya |
@@ -587,13 +587,30 @@ use `solutions[0]` (y no el mejor de los veinte, sino el primero). `self.T_min =
 
 **Arreglo** `population_size=1` y aplicar `T_min` como suelo del enfriamiento.
 
-### [ ] F-21 · `run()` apaga Ray aunque no lo haya arrancado
+### [x] F-21 (R) · `run()` apaga Ray aunque no lo haya arrancado
 `metaheuristics/base.py:307-308`
 
 Si el usuario conectó a un clúster existente, o compara varias metaheurísticas en un
 script, la primera que termina se lleva el runtime de las demás.
 
 **Arreglo** Recordar en un flag si fue `run()` quien llamó a `ray.init()`.
+
+*Cerrado* con el flag, tal cual. La condición de apagado deja de mirar
+`self.distributed and IS_RAY_INSTALLED`: si `started_ray` es cierto, esas dos ya lo
+eran, y repetirlas invita a que se desincronicen.
+
+Se revisaron los gemelos: el único otro `ray.init()` del paquete está en
+`cvoa/distributed_launcher.py:57` y **no tiene `shutdown`**, así que ahí no está el
+bug. Es el desequilibrio contrario, y no lo toca este hallazgo.
+
+**Queda un cabo suelto del mismo asunto, sin arreglar:** el `shutdown` está en la ruta
+normal de `run()`, no en un `finally`. Si el bucle lanza, el runtime que arrancó
+`run()` se queda vivo. Es la mitad simétrica de este hallazgo y pide una decisión
+aparte sobre el manejo de errores de `run()`.
+
+Test: `test_f21_run_no_apaga_un_ray_que_no_arranco`, que **necesita Ray de verdad** y
+por tanto se salta en el CI, que no instala los extras a propósito (ver `P-06`). Es el
+segundo test en esa situación, junto al de `F-24`.
 
 ### [ ] F-22 · TPE escribe valores fuera del dominio saltándose la validación
 `tpe/tpe_tools.py:30, 51-56, 71-75`

@@ -306,8 +306,13 @@ class Metaheuristic(ABC):
         if self.seed is not None:
             set_seed(self.seed)
 
+        # Remembered so that only the run() that started Ray stops it. Shutting it
+        # down unconditionally took the runtime away from a cluster the user had
+        # connected to, or from the other metaheuristics in a comparison (F-21).
+        started_ray = False
         if self.distributed and IS_RAY_INSTALLED and not ray.is_initialized():
             ray.init()
+            started_ray = True
 
         self.pre_execution()
 
@@ -328,7 +333,7 @@ class Metaheuristic(ABC):
 
         self.post_execution()
 
-        if self.distributed and IS_RAY_INSTALLED and ray.is_initialized():
-                ray.shutdown()
+        if started_ray and ray.is_initialized():
+            ray.shutdown()
 
         return deepcopy(self.best_solution)
