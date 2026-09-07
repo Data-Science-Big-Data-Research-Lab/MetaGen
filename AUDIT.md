@@ -61,7 +61,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ⬜ | `F-09` | `insert_into_set_strain` puede reventar con `KeyError` |
 | ⬜ | `F-10` | El «peor superspreader» de CVOA se inicializa al revés |
 | ⬜ | `F-11` | La búsqueda local distribuida manda la misma porción a todos los workers |
-| ⬜ | `F-12` | Todos los `Domain` comparten el mismo conector por defecto |
+| ✅ | `F-12` | Todos los `Domain` comparten el mismo conector por defecto |
 | ⬜ | `F-13` | TPE modifica el `Domain` que le pasa el usuario |
 | ✅ | `F-14` | `sys.float_info.min` no es «menos infinito» |
 | ⬜ | `F-15` | `Solution.__hash__` no mira las variables |
@@ -394,7 +394,7 @@ ejecuta.
 
 **Arreglo** `population = population[count:]` dentro del bucle.
 
-### [ ] F-12 (R) · Todos los `Domain` comparten el mismo conector por defecto
+### [x] F-12 (R) · Todos los `Domain` comparten el mismo conector por defecto
 `src/metagen/framework/facades.py:59` · test: `test_f12_cada_domain_tiene_su_propio_conector`
 
 ```python
@@ -405,6 +405,30 @@ Argumento por defecto mutable: se evalúa una vez, al importar.
 `Domain().get_connector() is Domain().get_connector()` → `True`.
 
 **Arreglo** `connector: BaseConnector | None = None` y `connector or BaseConnector()`.
+
+*Cerrado*, con `is None` en vez de `or`: un `or` trataría como ausente cualquier
+conector que resultara falsy, y aquí el valor legítimo y el centinela deben
+distinguirse por identidad, no por verdad.
+
+**Lo caro no era el `is`, era el estado compartido.** `BaseConnector` guarda cuatro
+diccionarios que `register` muta, y el conector es **el mecanismo de extensión** que
+documenta el artículo. Con un solo conector para todo el proceso, registrar un tipo
+propio en un dominio recableaba los demás, incluidos los creados después:
+
+```
+a.get_connector().register(IntegerDefinition, MiEntero, int)
+b.get_connector().get_type(IntegerDefinition)     -> MiEntero    # b es otro Domain
+Domain().get_connector().get_type(IntegerDefinition) -> MiEntero # creado despues
+```
+
+Test nuevo para eso, `test_f12_registrar_un_tipo_no_afecta_a_los_demas_dominios`; el
+que ya existía solo comprobaba la identidad.
+
+**Cambia la firma de `Domain.__init__`**, de `BaseConnector` a `BaseConnector | None`.
+Ninguna forma de llamada se rompe: `Domain()`, `Domain(mi_conector)` y
+`Domain(connector=mi_conector)` siguen funcionando igual.
+
+Comprobado además que este era **el único argumento por defecto mutable de `src/`**.
 
 ### [ ] F-13 (R) · TPE modifica el `Domain` que le pasa el usuario
 `src/metagen/metaheuristics/tpe/tpe.py:89` · test: `test_f13_tpe_no_modifica_el_dominio_del_usuario`
