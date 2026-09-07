@@ -10,13 +10,24 @@ from copy import deepcopy
 from metagen.metaheuristics.gamma_schedules import GammaConfig, compute_gamma
 
 
-class TabuSearch(Metaheuristic):
+class HillClimbing(Metaheuristic):
     """
-    Tabu Search Algorithm for optimization problems.
+    Stochastic hill climbing for optimization problems.
 
-    This class implements the Tabu Search metaheuristic which uses a memory structure (tabu list)
-    to avoid revisiting recently explored solutions. The algorithm explores the neighborhood of
-    the current solution while maintaining a list of forbidden (tabu) solutions.
+    Each iteration samples several neighbours around the best solution found so far and
+    moves to the best of them, if it improves. A worse neighbour is never accepted, so
+    the search only ever walks uphill.
+
+    .. note::
+        This class used to be called ``TabuSearch``, and it is not one: exploring from
+        ``self.best_solution`` and refusing every worsening move leaves the tabu list
+        with nothing to steer away from, because the search cannot go anywhere it would
+        need steering from (A-02). It is a good optimizer, and the best of the package
+        as measured, but under its own name. The list is kept, as a memory of solutions
+        already seen that are not worth evaluating again.
+
+        A tabu search proper, one that moves to the best non-tabu neighbour even when it
+        is worse, is a different algorithm and belongs in its own class.
 
     :param domain: The problem's domain to explore
     :type domain: Domain
@@ -39,7 +50,7 @@ class TabuSearch(Metaheuristic):
     :vartype max_iterations: int
     :ivar tabu_size: Maximum size of the tabu list
     :vartype tabu_size: int
-    :ivar tabu_list: List of recently visited solutions that are forbidden
+    :ivar tabu_list: Solutions already visited, skipped when sampling neighbours
     :vartype tabu_list: Deque[Solution]
     :ivar alteration_limit: Maximum proportion of solution to alter in local search
     :vartype alteration_limit: float
@@ -51,7 +62,7 @@ class TabuSearch(Metaheuristic):
                  gamma_config: Optional[GammaConfig] = None, distributed=False, log_dir: Optional[str] = None,
                  seed: Optional[int] = None):
         """
-        Initialize the Tabu Search algorithm.
+        Initialize the hill climbing algorithm.
 
         :param domain: The problem's domain to explore
         :type domain: Domain

@@ -14,7 +14,7 @@ import ray
 from pytest_csv_params.decorator import csv_params
 
 from metagen.logging.metagen_logger import metagen_logger
-from metagen.metaheuristics import RandomSearch, SA, TabuSearch, GA, GAConnector, SSGA, TPE
+from metagen.metaheuristics import RandomSearch, SA, HillClimbing, GA, GAConnector, SSGA, TPE
 from metagen.metaheuristics.gamma_schedules import GammaConfig
 from metagen.metaheuristics.mm.memetic import Memetic
 
@@ -154,7 +154,7 @@ def test_ts(active:bool, problem: str, population_size: int, warmup_iterations: 
     problem_definition, fitness_function = problem_dispatcher(problem)
 
     # Initialize Tabu Search algorithm
-    algorithm = TabuSearch(problem_definition, fitness_function, population_size=population_size,
+    algorithm = HillClimbing(problem_definition, fitness_function, population_size=population_size,
                            warmup_iterations=warmup_iterations,
                            max_iterations=max_iterations, tabu_size=tabu_size, alteration_limit=alteration_limit,
                            gamma_config=gamma_config, distributed=distributed, log_dir=log_dir)

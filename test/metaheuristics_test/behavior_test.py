@@ -30,7 +30,7 @@ import pytest
 from metagen.framework import Domain, Solution
 from metagen.framework.rng import set_seed
 from metagen.metaheuristics import (GA, SA, SSGA, TPE, GAConnector, Memetic,
-                                    RandomSearch, TabuSearch)
+                                    RandomSearch, HillClimbing)
 
 SEEDS = tuple(range(10))
 
@@ -39,7 +39,7 @@ SEEDS = tuple(range(10))
 # broken one at 0-4, so anything in between is a signal rather than noise.
 REQUIRED_WINS = 7
 
-ALGORITHMS = ("RandomSearch", "SA", "TabuSearch", "GA", "SSGA", "TPE", "Memetic")
+ALGORITHMS = ("RandomSearch", "SA", "HillClimbing", "GA", "SSGA", "TPE", "Memetic")
 
 _SA_REASON = ("SA accepts almost anything: with initial_temp 50 and cooling_rate 0.99 "
               "the temperature is still 40.9 after 20 iterations, so the Metropolis "
@@ -86,8 +86,8 @@ def _build(name: str, fitness, seed: int, log_dir: str):
                             max_iterations=15, seed=seed, log_dir=log_dir)
     if name == "SA":
         return SA(_sphere_domain(), fitness, max_iterations=15, seed=seed, log_dir=log_dir)
-    if name == "TabuSearch":
-        return TabuSearch(_sphere_domain(), fitness, population_size=10,
+    if name == "HillClimbing":
+        return HillClimbing(_sphere_domain(), fitness, population_size=10,
                           max_iterations=15, seed=seed, log_dir=log_dir)
     if name == "GA":
         return GA(_sphere_domain(GAConnector()), fitness, population_size=10,
@@ -158,7 +158,7 @@ def test_the_returned_solution_is_the_best_one_seen(runs, name):
 
 @pytest.mark.parametrize("name", [
     "RandomSearch",
-    "TabuSearch",
+    "HillClimbing",
     "TPE",
     "Memetic",
     _broken("SA", _SA_REASON),
@@ -176,7 +176,7 @@ def test_the_run_ends_better_than_it_started(runs, name):
 
 
 @pytest.mark.parametrize("name", [
-    "TabuSearch",
+    "HillClimbing",
     "TPE",
     "Memetic",
     _broken("SA", _SA_REASON),
