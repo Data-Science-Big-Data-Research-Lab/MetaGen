@@ -400,6 +400,33 @@ def test_f20_sa_no_evalua_una_poblacion_entera_al_inicializar():
     )
 
 
+def test_f21_run_no_apaga_un_ray_que_no_arranco():
+    """F-21: run() llamaba a ray.shutdown() siempre que Ray estuviera arrancado,
+    lo hubiera arrancado el o no.
+
+    Se salta sin Ray instalado, que es el caso del CI.
+    """
+    ray = pytest.importorskip("ray")
+    from metagen.metaheuristics import RandomSearch
+
+    dominio, fitness = _dominio_y_fitness_de_prueba()
+
+    arrancado_aqui = not ray.is_initialized()
+    if arrancado_aqui:
+        ray.init(num_cpus=1, include_dashboard=False, ignore_reinit_error=True)
+    try:
+        RandomSearch(
+            dominio, fitness, population_size=2, max_iterations=1,
+            distributed=True, seed=7,
+        ).run()
+        assert ray.is_initialized(), (
+            "run() ha apagado un runtime de Ray que no habia arrancado el"
+        )
+    finally:
+        if arrancado_aqui and ray.is_initialized():
+            ray.shutdown()
+
+
 @pytest.mark.xfail(
     reason="F-24: mm_tools importa ray a nivel de modulo, asi que Memetic no "
     "existe en una instalacion sin el extra distributed",
