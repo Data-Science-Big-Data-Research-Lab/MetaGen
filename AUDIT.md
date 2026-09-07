@@ -47,6 +47,56 @@ Orden sugerido de ataque:
 5. Revisión de CVOA: `F-08`, `F-09`, `F-10`, `F-23`, `A-09`, `P-10`.
 6. Conversación de fondo: `A-01`, `A-02`, `A-03`.
 
+## Trabajo aplazado, con su sitio propio
+
+Cosas que **no son hallazgos que arreglar de una sentada** y se han apartado a
+propósito, cada una con su motivo. No están en el índice porque no son hallazgos.
+
+| Qué | Por qué está aparte | Dónde |
+|---|---|---|
+| **Revisión de CVOA** | El diseño es de Paco Martínez-Álvarez y el código es multihilo con Ray encima. `F-27`, `F-28`, `F-29`, `A-09` y seis discrepancias más con el artículo | `metagen-auditoria/CVOA-cuestiones.md` |
+| **`mypy src` a cero** | 170 errores, no los 8 que se creían; trabajo fichero a fichero | `P-11` |
+| **Implementar una búsqueda tabú de verdad** | Lo que había no lo era y se renombró a `HillClimbing` (`A-02`). La tabú canónica es un algoritmo nuevo, no un arreglo | ver abajo |
+| **Estructuras dinámicas en los genéticos** | El cruce para longitudes variables no existe; es funcionalidad, no arreglo | `F-31` |
+| **Completar el banco con las nueve del artículo** | Hoy tiene seis; faltan Levy, Michalewicz y Zakharov | ver abajo |
+
+### Implementar `TabuSearch`
+
+`A-02` renombró a `HillClimbing` lo que se llamaba `TabuSearch`, porque no lo era: no
+acepta empeoramientos, así que su lista tabú no puede desviarlo de nada. **El algoritmo
+canónico sigue sin existir en el paquete.** Lo que haría falta:
+
+- Una `current_solution` separada del mejor histórico.
+- Moverse al **mejor vecino no tabú aunque empeore**, que es la esencia del método.
+- Un criterio de aspiración: aceptar un movimiento tabú si mejora el mejor histórico.
+- Vecindario **alrededor de la solución actual**, no en cadena — al revés que en
+  `HillClimbing`, donde encadenar es correcto y está medido (`A-03`).
+
+**Cuidado con el nombre.** Si la clase nueva se llama `TabuSearch`, el código anterior
+al renombrado volverá a importar bien pero **ejecutará otro algoritmo**. Eso solo es
+seguro si llega en una versión **posterior** a la del renombrado, dejando una ventana en
+la que el `ImportError` avisa.
+
+**Y hay que medirla contra `HillClimbing` en el banco completo antes de sacar
+conclusiones**: hoy `HillClimbing` es el mejor del paquete en cuatro de seis funciones.
+
+### Completar el banco de pruebas
+
+La Sección 5.1 del artículo evalúa sobre **nueve** funciones; `behavior_test.py` tiene
+seis, con los mismos dominios. Faltan:
+
+| Función | Dominio | Mínimo |
+|---|---|---|
+| Levy | [−10, 10] | 0 en (1,…,1) |
+| Michalewicz | [0, π] | **≈ −1.8013** en 2D |
+| Zakharov | [−5, 10] | 0 en (0,…,0) |
+
+**Michalewicz tiene el mínimo negativo**, así que rompe la suposición «todas tienen su
+óptimo en 0» que hoy documenta el módulo. Completarlo dejaría el banco siendo
+exactamente el conjunto publicado.
+
+---
+
 ## Índice
 
 Qué es cada código, para no tener que buscarlo. ✅ cerrado, ⬜ abierto. **Al cerrar un
