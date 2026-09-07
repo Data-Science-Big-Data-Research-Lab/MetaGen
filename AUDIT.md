@@ -75,7 +75,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ✅ | `F-19` | Estructuras dinámicas: nunca alcanzan el máximo, revientan si min = max |
 | ✅ | `F-20` | SA evalúa veinte soluciones iniciales para usar una, y no la mejor |
 | ✅ | `F-21` | `run()` apaga Ray aunque no lo haya arrancado él |
-| ⬜ | `F-22` | TPE escribe valores fuera del dominio saltándose la validación |
+| ✅ | `F-22` | TPE escribe valores fuera del dominio saltándose la validación |
 | ✅ | `F-23` | CVOA se detiene en la primera mejora y reporta mal el tiempo |
 | ✅ | `F-24` | El memético exige Ray aunque no se distribuya |
 | ✅ | `F-25` | SA se queda con el último vecino, no con el mejor |
@@ -831,7 +831,7 @@ Test: `test_f21_run_no_apaga_un_ray_que_no_arranco`, que **necesita Ray de verda
 por tanto se salta en el CI, que no instala los extras a propósito (ver `P-06`). Es el
 segundo test en esa situación, junto al de `F-24`.
 
-### [ ] F-22 · TPE escribe valores fuera del dominio saltándose la validación
+### [x] F-22 (R) · TPE escribe valores fuera del dominio saltándose la validación
 `tpe/tpe_tools.py:30, 51-56, 71-75`
 
 `np.random.uniform(min_value, max_value + 1)` (el `+1` es de enteros);
@@ -841,6 +841,36 @@ refuerzan: un valor fuera de rango llega intacto a la función de fitness del us
 `TPECategorical` devuelve además escalares NumPy en vez de tipos nativos.
 
 **Arreglo** `max_value` a secas, invertir el `if`, usar `self.set(value)` y `.item()`.
+
+*Cerrado, los cuatro.* **El `+1` no sobra en todas partes**, y el diagnóstico no lo
+distingue: en `get_numpy_rng().integers(min_value, max_value + 1)` es **correcto**,
+porque el límite superior de `integers()` de NumPy es exclusivo. Solo sobra en las dos
+llamadas a `uniform()`, cuyo límite sí es inclusivo. Quitarlo de la de enteros habría
+hecho inalcanzable el valor máximo, cambiando un bug por otro.
+
+**Y se alcanza en ejecuciones normales**, no solo forzándolo. Instrumentando una
+ejecución real de TPE sobre un dominio de dos enteros y una categórica —que es el caso
+de uso de TPE, optimización de hiperparámetros—:
+
+```
+sin arreglar: 960 muestreos, 141 fuera de rango   (15 %)
+arreglado   : 960 muestreos,   0 fuera de rango
+```
+
+La rama de reserva se toma cuando la desviación de los valores de referencia es cero, es
+decir, **cuando coinciden**: raro en un problema continuo, muy común en uno discreto.
+
+**Los resultados de TPE sobre la esfera 2D no cambian ni un dígito**, y conviene decirlo
+para que nadie lo interprete como que el arreglo no hace nada: ahí las variables son
+reales y esa rama casi no se toma.
+
+`self.set(...)` en vez de `self.value = ...` es lo que hace que el `check()` del dominio
+vuelva a correr. Con la asignación directa, un valor fuera de rango llegaba intacto a la
+función de fitness del usuario.
+
+Tests: `test_f22_el_remuestreo_de_tpe_no_sale_del_dominio`,
+`test_f22_el_remuestreo_devuelve_tipos_nativos` (parametrizado) y
+`test_f22_la_guarda_de_none_no_revienta`.
 
 ### [x] F-23 (R) · CVOA se detiene al encontrar una mejora y reporta el tiempo mil veces más corto
 `cvoa_local.py:333` y `local_launcher.py:45`

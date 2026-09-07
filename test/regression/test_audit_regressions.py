@@ -391,6 +391,79 @@ def test_f02_tpe_initialize_devuelve_la_mejor_solucion():
     assert mejor.get_fitness() == min(s.get_fitness() for s in poblacion)
 
 
+def _dominio_tpe():
+    from metagen.metaheuristics.tpe.tpe_tools import TPEConnector
+
+    dominio = Domain(connector=TPEConnector())
+    dominio.define_real("r", -5.0, 5.0)
+    dominio.define_integer("n", 0, 10)
+    dominio.define_categorical("c", ["a", "b", "c"])
+    return dominio
+
+
+def test_f22_el_remuestreo_de_tpe_no_sale_del_dominio():
+    """F-22: la rama de reserva hacia `uniform(min_value, max_value + 1)`, con un +1
+    que es de `integers()` de numpy, cuyo limite superior es exclusivo. Y el valor se
+    asignaba con `self.value = ...`, saltandose `set()` y su `check()`.
+
+    Se fuerza la rama igualando los valores de referencia, que es cuando sigma vale
+    cero. En una ejecucion real de TPE sobre un dominio entero se alcanzaba en 141 de
+    960 muestreos.
+    """
+    set_seed(3)
+    dominio = _dominio_tpe()
+    solucion = Solution(dominio, connector=dominio.get_connector())
+    referencias = [Solution(dominio, connector=dominio.get_connector()) for _ in range(3)]
+
+    for nombre in ("r", "n"):
+        for referencia in referencias:
+            referencia.set(nombre, solucion[nombre])       # sigma = 0
+        _, minimo, maximo, _ = solucion.get(nombre).get_definition().get_attributes()
+
+        for _ in range(200):
+            valores = [referencia.get(nombre) for referencia in referencias]
+            solucion.get(nombre).resample(valores, valores)
+            assert minimo <= solucion[nombre] <= maximo, (
+                f"{nombre} se ha ido a {solucion[nombre]}, fuera de "
+                f"[{minimo}, {maximo}]"
+            )
+
+
+@pytest.mark.parametrize("nombre,tipo", [("r", float), ("n", int), ("c", str)])
+def test_f22_el_remuestreo_devuelve_tipos_nativos(nombre, tipo):
+    """`TPECategorical` devolvia escalares de numpy en vez de tipos nativos, que es
+    lo que acaba viendo la funcion de fitness del usuario."""
+    set_seed(3)
+    dominio = _dominio_tpe()
+    solucion = Solution(dominio, connector=dominio.get_connector())
+    referencias = [Solution(dominio, connector=dominio.get_connector()) for _ in range(3)]
+
+    valores = [referencia.get(nombre) for referencia in referencias]
+    solucion.get(nombre).resample(valores, valores)
+
+    assert type(solucion[nombre]) is tipo
+
+
+def test_f22_la_guarda_de_none_no_revienta(monkeypatch):
+    """`if np.isnan(value) or value is None` no podia atrapar un None: `np.isnan(None)`
+    lanza TypeError antes de llegar a la segunda mitad."""
+    import metagen.metaheuristics.tpe.tpe_tools as herramientas
+
+    set_seed(3)
+    dominio = _dominio_tpe()
+    solucion = Solution(dominio, connector=dominio.get_connector())
+    referencias = [Solution(dominio, connector=dominio.get_connector()) for _ in range(3)]
+
+    monkeypatch.setattr(herramientas, "sample_from_values",
+                        lambda tipo, mejores, peores: None)
+
+    for nombre in ("r", "n"):
+        valores = [referencia.get(nombre) for referencia in referencias]
+        solucion.get(nombre).resample(valores, valores)   # no debe lanzar TypeError
+        _, minimo, maximo, _ = solucion.get(nombre).get_definition().get_attributes()
+        assert minimo <= solucion[nombre] <= maximo
+
+
 def test_f13_tpe_no_modifica_el_dominio_del_usuario():
     from metagen.metaheuristics import TPE
 
