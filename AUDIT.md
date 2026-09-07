@@ -56,7 +56,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ✅ | `F-04` | El cruce del GA devolvía un hijo copia exacta del padre 1 |
 | ✅ | `F-05` | `Structure` descarta el valor que se le asigna |
 | ✅ | `F-06` | `Structure.set` e `insert` fallan con datos válidos |
-| ⬜ | `F-07` | Importar MetaGen secuestra el `excepthook` del proceso |
+| ✅ | `F-07` | Importar MetaGen secuestra el `excepthook` del proceso |
 | ⬜ | `F-08` | Interbloqueo en CVOA con `update_isolated=True` |
 | ⬜ | `F-09` | `insert_into_set_strain` puede reventar con `KeyError` |
 | ⬜ | `F-10` | El «peor superspreader» de CVOA se inicializa al revés |
@@ -324,7 +324,7 @@ literal. Test nuevo, `test_f06_set_admite_una_lista_de_grupos`.
 `BaseTypeClass` deja de importarse: era el único uso, y con él se va el bloque
 `TYPE_CHECKING` del módulo.
 
-### [ ] F-07 · `import metagen` secuestra el `excepthook` del proceso
+### [x] F-07 (R) · `import metagen` secuestra el `excepthook` del proceso
 `src/metagen/__init__.py:19-30`
 
 Una librería no debe tocar estado global del intérprete. Quien importe MetaGen dentro
@@ -332,6 +332,32 @@ de una aplicación mayor se lleva un cambio silencioso en cómo se reportan toda
 excepciones no capturadas.
 
 **Arreglo** Borrar el hook, o exponerlo como función explícita.
+
+*Cerrado borrándolo*, la primera opción. No se expone como función porque nadie la
+usaba —`DEBUGGING` y `exception_handler` no aparecen en `src/`, ni en `test/`, ni en la
+documentación— y dejar una función instalable sin usar es código muerto. Quien quiera
+ese comportamiento lo escribe en dos líneas. `metagen/__init__.py` se queda con la
+cabecera de licencia y nada más.
+
+**El daño era mayor de lo que sugiere el diagnóstico.** Con `DEBUGGING = True`, que es
+el valor por defecto, el hook delega en el que había y no se nota. Pero basta un
+`metagen.DEBUGGING = False` en cualquier punto del proceso para que **todas** las
+excepciones no capturadas pierdan su traza, también las del código de la aplicación:
+
+```
+RuntimeError: algo se rompio en el codigo de la aplicacion
+```
+
+Eso es todo lo que se imprime. Sin traza, sin fichero, sin línea.
+
+**Ojo, hay un segundo culpable que no es MetaGen:** `import metagen.metaheuristics`
+sigue cambiando el `excepthook`, porque arrastra Ray y **Ray instala el suyo**
+(`ray._private.worker.custom_excepthook`). No es algo que se pueda arreglar aquí; el
+test de este hallazgo importa `metagen.framework` a propósito, y lo dice en su
+docstring. Se notará menos cuando `F-24` deje de importar Ray sin necesidad.
+
+Test: `test_f07_importar_metagen_no_toca_el_excepthook_del_proceso`, que cruza la
+frontera del proceso porque dentro de pytest el paquete ya está importado.
 
 ### [ ] F-08 · Interbloqueo en CVOA con `update_isolated=True`
 `src/metagen/metaheuristics/cvoa/local_tools.py:55-59`
