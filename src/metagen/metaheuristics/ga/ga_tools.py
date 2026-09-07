@@ -151,7 +151,7 @@ def require_crossover(domain: Domain, algorithm: str) -> None:
     :type algorithm: str
     :raises ValueError: If the domain's solutions have no crossover operator.
     """
-    solution_type = domain.get_connector().get_type(domain.get_core())
+    solution_type: type = domain.get_connector().get_type(domain.get_core())
     if not hasattr(solution_type, "crossover"):
         raise ValueError(
             f"{algorithm} crosses solutions over, and this domain's connector maps it "
