@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import math
+import numbers
 from collections.abc import Callable
 from typing import TYPE_CHECKING, KeysView, ValuesView, Dict, Any
 
@@ -163,11 +164,15 @@ class Solution:
             :func:`_set_sub_solution`
             :func:`_set_value`
         """
-        if isinstance(value, (int, float, str, list)):
-            base_type_class: type[BaseTypeClass] = self.get_connector().get_type(
-                value)
+        if isinstance(value, (numbers.Number, str, list)) and not isinstance(value, bool):
             variable_definition: Base = self.get_definition().get(variable)
-            variable_definition.check_value(value)
+
+            # The type comes from the definition, not from the value. Asking the
+            # connector for get_type(value) made a real variable hold an Integer when
+            # given 1, and refused a numpy scalar outright because bool, numpy.int64
+            # and the like are not registered as builtins (A-08).
+            base_type_class: type[BaseTypeClass] = self.get_connector().get_type(
+                variable_definition)
 
             type_value: types.BaseType = base_type_class(
                 variable_definition, self.get_connector())

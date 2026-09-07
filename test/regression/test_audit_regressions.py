@@ -585,6 +585,66 @@ def test_f25_los_vecinos_salen_de_la_solucion_actual_no_en_cadena():
     )
 
 
+@pytest.mark.parametrize("valor,esperado", [
+    (1.5, True),
+    (1, True),                      # un entero es un real perfectamente valido
+    (3, True),
+    (True, False),                  # bool es subclase de int, pero no es un numero aqui
+    ("1.5", False),
+    (None, False),
+], ids=["float", "int", "otro int", "bool", "cadena", "None"])
+def test_a08_una_definicion_real_acepta_enteros_y_rechaza_booleanos(valor, esperado):
+    """A-08: `RealDefinition` exigia `isinstance(value, float)`, y `isinstance(1, float)`
+    es False, asi que rechazaba 1 y cualquier float de numpy."""
+    from metagen.framework.domain import RealDefinition
+
+    assert RealDefinition(0.0, 10.0).check_value(valor) is esperado
+
+
+@pytest.mark.parametrize("valor,esperado", [
+    (3, True),
+    (True, False),                  # el fallo que cita el hallazgo
+    (3.0, False),                   # un real no es un entero
+    ("3", False),
+], ids=["int", "bool", "float", "cadena"])
+def test_a08_una_definicion_entera_rechaza_booleanos(valor, esperado):
+    from metagen.framework.domain import IntegerDefinition
+
+    assert IntegerDefinition(0, 10).check_value(valor) is esperado
+
+
+def test_a08_los_escalares_de_numpy_valen_y_se_normalizan():
+    """La otra mitad: `np.float32` se rechazaba, y lo que quedaba guardado era el valor
+    tal cual llegara. Ahora se acepta y lo que el usuario lee es un tipo nativo."""
+    numpy = pytest.importorskip("numpy")
+
+    dominio = Domain()
+    dominio.define_real("x", 0.0, 10.0)
+    dominio.define_integer("n", 0, 10)
+    solucion = Solution(dominio)
+
+    solucion.set("x", numpy.float32(1.5))
+    assert type(solucion["x"]) is float and solucion["x"] == pytest.approx(1.5)
+
+    solucion.set("n", numpy.int64(3))
+    assert type(solucion["n"]) is int and solucion["n"] == 3
+
+    # Y un entero en una variable real se guarda como real, no como entero.
+    solucion.set("x", 1)
+    assert type(solucion["x"]) is float and solucion["x"] == 1.0
+
+
+def test_a08_un_booleano_se_rechaza_por_ser_booleano():
+    """Antes tambien fallaba, pero por accidente y en otro sitio: el conector decia
+    «The class True has not been registered», que no explica nada."""
+    dominio = Domain()
+    dominio.define_integer("n", 0, 10)
+
+    with pytest.raises(Exception) as fallo:
+        Solution(dominio).set("n", True)
+    assert "registered" not in str(fallo.value)
+
+
 def test_a10_la_clase_base_no_pierde_el_mejor_aunque_la_subclase_se_olvide():
     """A-10: `_iterate` hacia `self.best_solution = best_individual` sin comparar, asi
     que el elitismo dependia de que cada subclase se acordara.
