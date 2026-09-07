@@ -1,7 +1,7 @@
 # Auditoría de MetaGen
 
 Revisión completa de `src/metagen` sobre el commit `74f104e` (2025-03-21).
-53 hallazgos con identificadores estables: los 46 de la revisión inicial más
+54 hallazgos con identificadores estables: los 46 de la revisión inicial más
 `P-11` (al montar el CI), `F-25` (al medir el comportamiento real de las
 metaheurísticas para `P-05`) y `F-26` (al verificar `F-04`). Los marcados **(R)** se reprodujeron
 ejecutando el paquete instalado en Python 3.11 sin Ray ni TensorFlow.
@@ -34,7 +34,7 @@ Marcar aquí el hallazgo como `[x]` al cerrarlo.
 | Bloque | Cantidad | Qué son |
 |---|---|---|
 | `F-01`…`F-13` | 13 | Críticos: corrompen resultados o bloquean la ejecución |
-| `F-14`…`F-30` | 17 | Importantes: fallan en casos concretos o desperdician cómputo |
+| `F-14`…`F-31` | 18 | Importantes: fallan en casos concretos o desperdician cómputo |
 | `A-01`…`A-12` | 12 | Algoritmia y diseño: decisiones discutibles, no bugs |
 | `P-01`…`P-11` | 11 | Empaquetado, tests y documentación |
 
@@ -84,6 +84,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ⬜ | `F-28` | Tres parámetros de CVOA no son los que sugiere el artículo |
 | ⬜ | `F-29` | CVOA no reproduce entre procesos: itera conjuntos de soluciones |
 | ⬜ | `F-30` | La temperatura de SA no llega a enfriarse: es un paseo aleatorio |
+| ⬜ | `F-31` | Los genéticos no admiten estructuras dinámicas: el cruce no existe |
 | ⬜ | `A-01` | Sin selección de padres: todos los cruces usan la misma pareja |
 | ⬜ | `A-02` | La búsqueda tabú es en realidad hill climbing |
 | ⬜ | `A-03` | El vecindario tabú se genera en cadena, no alrededor de la solución |
@@ -1224,6 +1225,55 @@ avisar cuando no cuadren.
 el framework no conoce. Una temperatura absoluta por defecto es discutible para
 cualquier problema; puede tener más sentido una relativa a la dispersión observada en
 el warmup. Es decisión de algoritmia, no de auditoría.
+
+### [ ] F-31 (R) · Los genéticos no admiten estructuras dinámicas: el cruce no está implementado
+`src/metagen/metaheuristics/ga/ga_tools.py:62` y `:160` · descubierto al plantear `A-07`
+
+Con `GAConnector`, **ni siquiera se puede declarar** una estructura dinámica. Falla al
+definir el dominio, antes de lanzar nada:
+
+```python
+Domain(connector=GAConnector()).define_dynamic_structure("v", 2, 4)
+#   -> ValueError: (GAStructure, 'dynamic') has not been registered in the connector
+
+Domain().define_dynamic_structure("v", 2, 4)
+#   -> ok
+```
+
+`GAConnector` es el único de los tres que no registra la variante dinámica:
+
+| Conector | Estáticas | Dinámicas |
+|---|---|---|
+| `BaseConnector` | sí | sí |
+| `TPEConnector` | sí | sí |
+| **`GAConnector`** | sí | **no** |
+
+**Pero no es un registro que falte por descuido.** `GAStructure.crossover` tiene la rama
+dinámica escrita así:
+
+```python
+if isinstance(self.get_definition(), DynamicStructureDefinition):
+    raise NotImplementedError()
+```
+
+y su docstring lo documenta (`:raises NotImplementedError:`). Es decir, la ausencia del
+registro es **coherente** con que el operador de cruce no exista para longitudes
+variables. Añadir la línea del registro cambiaría un `ValueError` al definir el dominio
+por un `NotImplementedError` en mitad de la primera generación: peor, no mejor.
+
+Afecta a **GA, SSGA y el memético**, los tres que usan `GAConnector`. Las estructuras de
+longitud variable son una de las capacidades que el framework destaca, así que la
+combinación «genético + estructura dinámica» simplemente no existe hoy.
+
+**Arreglo** No es un arreglo de auditoría sino una funcionalidad a implementar:
+un operador de cruce para estructuras de longitud variable —cruce en un punto sobre la
+longitud mínima y decisión sobre la cola sobrante, o cruce que también recombine las
+longitudes— y después registrar la variante dinámica en `GAConnector`. **David quiere
+hacerlo más adelante** (7 de septiembre de 2026).
+
+Mientras tanto, lo que sí cabe en la auditoría es que el fallo se explique: hoy son un
+`ValueError` sobre el conector y un `NotImplementedError` sin mensaje, y ninguno de los
+dos dice «los genéticos no admiten estructuras dinámicas todavía». Ver `A-07`.
 
 ---
 
