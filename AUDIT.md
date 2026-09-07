@@ -78,7 +78,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ⬜ | `F-22` | TPE escribe valores fuera del dominio saltándose la validación |
 | ✅ | `F-23` | CVOA se detiene en la primera mejora y reporta mal el tiempo |
 | ✅ | `F-24` | El memético exige Ray aunque no se distribuya |
-| ⬜ | `F-25` | SA se queda con el último vecino, no con el mejor |
+| ✅ | `F-25` | SA se queda con el último vecino, no con el mejor |
 | ✅ | `F-26` | La semilla no reproducía entre procesos: `mutate` recorría un conjunto |
 | ⬜ | `F-27` | `p_isolation` significa lo contrario de lo que dice su nombre |
 | ⬜ | `F-28` | Tres parámetros de CVOA no son los que sugiere el artículo |
@@ -917,8 +917,8 @@ porción a todos los workers* vivía en `mm_tools.py:65-68` y ahora está en
 `mm_distributed_tools.py:57`. El bug se ha trasladado intacto, sin arreglar, porque es
 otro hallazgo.
 
-### [ ] F-25 (R) · SA se queda con el último vecino, no con el mejor
-`src/metagen/metaheuristics/sa/sa.py:161` · sin test todavía
+### [x] F-25 (R) · SA se queda con el último vecino, no con el mejor
+`src/metagen/metaheuristics/sa/sa.py:161` · tests: `test_f25_*`
 
 ```python
 best_neighbor = neighbor          # alias, no una copia
@@ -947,6 +947,34 @@ ejecutarse y nada de esto se observa: por eso no aparece en las mediciones de `P
 
 **Arreglo** `best_neighbor = deepcopy(neighbor)` en la línea 161, y generar cada
 vecino desde `deepcopy(current_solution)` dentro del bucle.
+
+*Cerrado, las dos mitades.* Medido con `neighbor_population_size=5`, diez semillas y el
+**mismo presupuesto de 81 evaluaciones** en ambos casos:
+
+| | Sin arreglar | Arreglado |
+|---|---|---|
+| Gana al azar | 4/10 | **9/10** |
+| Fitness medio | 0.9252 | **0.0196** |
+| Devuelve algo que no es su mejor | **2/10** | 0/10 |
+
+La última fila es la huella directa del alias: en dos de diez semillas SA devolvía una
+solución que **no era la mejor de su propio historial**.
+
+**Con el valor por defecto, `neighbor_population_size=1`, no cambia nada**, porque el
+bucle no llega a ejecutarse. Comprobado: 2.2720 antes y después.
+
+**Y eso destapa algo que conviene decidir: el valor por defecto deja a SA sin selección
+ninguna.** Con un solo vecino no hay entre qué elegir, así que SA queda como un paseo
+aleatorio con aceptación de Metropolis —que además acepta casi todo, ver `F-30`—. Con
+cinco vecinos **gana al azar 9 de 10 veces**. Subir el valor por defecto es decisión de
+algoritmia, no de auditoría, pero la diferencia es grande y está medida.
+
+El test de la cadena es determinista y no estadístico: con `alteration_limit=1.0`
+ningún vecino puede quedar a más de 1.0 del punto actual. Sin arreglar, **9 de 10
+vecinos se salían**, llegando a 2.09 de distancia.
+
+Tests: `test_f25_sa_devuelve_el_mejor_vecino_no_el_ultimo` y
+`test_f25_los_vecinos_salen_de_la_solucion_actual_no_en_cadena`.
 
 ### [x] F-26 (R) · La semilla no reproduce entre procesos: `mutate` recorre un conjunto
 `src/metagen/framework/solution/base_solution.py:279` · test: `test_f26_la_misma_semilla_reproduce_entre_procesos`

@@ -168,12 +168,20 @@ class SA(Metaheuristic):
         neighbor.mutate(alteration_limit=self.alteration_limit)
         neighbor.evaluate(self.fitness_function)
 
-        best_neighbor = neighbor
+        # A copy, not an alias: the loop below kept mutating the very object
+        # best_neighbor pointed at, so when the first neighbor turned out to be the
+        # best one, best_fitness announced its value while best_neighbor had become
+        # the last one generated (F-25).
+        best_neighbor = deepcopy(neighbor)
         best_fitness = neighbor.get_fitness()
 
         # Generate additional neighbors and update best_neighbor if needed
         for _ in range(self.neighbor_population_size - 1):
-            neighbor.mutate(alteration_limit=self.alteration_limit)  # Reuse the same neighbor object
+            # Each neighbor starts from the current solution. Mutating the previous
+            # neighbor again built a chain that wandered away from the point being
+            # explored instead of sampling its neighborhood (F-25).
+            neighbor = deepcopy(current_solution)
+            neighbor.mutate(alteration_limit=self.alteration_limit)
             neighbor.evaluate(self.fitness_function)
 
             if neighbor.get_fitness() < best_fitness:
