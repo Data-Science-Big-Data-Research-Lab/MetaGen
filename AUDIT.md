@@ -6,6 +6,10 @@ Revisión completa de `src/metagen` sobre el commit `74f104e` (2025-03-21).
 metaheurísticas para `P-05`) y `F-26` (al verificar `F-04`). Los marcados **(R)** se reprodujeron
 ejecutando el paquete instalado en Python 3.11 sin Ray ni TensorFlow.
 
+**CVOA va aparte.** Sus cuestiones abiertas, sus discrepancias con el artículo original
+y el orden en que atacarlas están en `metagen-auditoria/CVOA-cuestiones.md`, para una
+sesión dedicada. Aquí siguen sus hallazgos con su ficha, pero el contexto vive allí.
+
 ## Cómo se usa este documento
 
 Cada hallazgo tiene un ID (`F-01`, `A-03`, `P-07`…) que no cambia nunca. Los
@@ -927,9 +931,20 @@ nunca** con los valores por defecto: crece de forma exponencial. Es la causa de 
 de que CVOA tarde minutos desde que `F-23` dejó que las cepas se ejecuten enteras.
 
 **Arreglo** Invertir la comparación en los dos gemelos, de forma que `p_isolation` sea
-la probabilidad de aislarse. **Decisión pendiente**: hacerlo aparta el código del
-pseudocódigo publicado, aunque lo acerque al texto, a la figura y al nombre del
-parámetro. Es una decisión de los autores, no de la auditoría.
+la probabilidad de aislarse.
+
+**Criterio de David, 7 de septiembre de 2026: la errata está en el pseudocódigo y el
+texto es lo correcto.** El arreglo va, por tanto, en la dirección del texto. **No se
+aplica todavía**: CVOA se ataca en una sesión dedicada, porque el diseño del algoritmo
+es de Paco Martínez-Álvarez, primer autor, y una errata en su pseudocódigo no se
+corrige desde el código sin hablarlo.
+
+Refuerza el criterio que **el mismo patrón aparece dos veces más** en el Algoritmo 2:
+`if R2 < P_SUPERSPREADER` usa la tasa *ordinaria* y `if R1 < P_TRAVEL` la distancia
+*ordinaria*, ambas al revés de lo que dice el texto. MetaGen **no** hereda esas dos.
+
+Detalle completo y orden de ataque en
+`metagen-auditoria/CVOA-cuestiones.md`.
 
 ### [ ] F-28 · Tres parámetros por defecto de CVOA no son los que sugiere el artículo
 `src/metagen/metaheuristics/cvoa/common_tools.py:9-21` · descubierto al leer el artículo de CVOA
@@ -952,6 +967,9 @@ pandemia decrece, así que con los valores de MetaGen no llega a ocurrir.
 **Arreglo** Alinear los tres valores con la sección *Suggested parameters setup*, o
 documentar por qué se apartan. Entrelazado con `F-27`: mientras `p_isolation` signifique
 lo contrario, subirlo a 0.7 empeora las cosas en vez de mejorarlas.
+
+Se ataca en la sesión dedicada a CVOA, después de `F-27`: ver
+`metagen-auditoria/CVOA-cuestiones.md`.
 
 ---
 
