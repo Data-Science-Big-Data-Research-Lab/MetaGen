@@ -585,6 +585,47 @@ def test_f25_los_vecinos_salen_de_la_solucion_actual_no_en_cadena():
     )
 
 
+def test_a05_la_sustitucion_del_ssga_mete_a_los_dos_mejores():
+    """A-05 quedo **refutado**: la version por valor daba el mismo resultado, porque
+    `index()` rescanea la lista tras la primera sustitucion y encuentra al otro
+    duplicado. Comprobado con 4096 casos exhaustivos y 200000 aleatorios.
+
+    Este test **no distingue las dos versiones** —pasa con las dos— y esta aqui a
+    proposito: fija la propiedad que el bloque debe cumplir, para que un refactor
+    futuro que la rompa se vea. Es lo que motivo pasar a trabajar por indices.
+    """
+    import heapq
+
+    from metagen.metaheuristics import GAConnector
+
+    set_seed(1)
+    dominio = Domain(connector=GAConnector())
+    dominio.define_integer("n", 0, 9)
+    tipo = dominio.get_connector().get_type(dominio.get_core())
+
+    def individuo(valor, fitness):
+        s = tipo(dominio, connector=dominio.get_connector())
+        s.set("n", valor)
+        s.set_fitness(fitness)
+        return s
+
+    # Los dos peores son iguales, y los dos hijos los mejoran.
+    poblacion = [individuo(1, 1.0), individuo(9, 9.0), individuo(9, 9.0), individuo(2, 2.0)]
+    hijos = [individuo(0, 0.1), individuo(3, 0.2)]
+
+    peores = heapq.nlargest(2, range(len(poblacion)),
+                            key=lambda i: poblacion[i].get_fitness())
+    candidatos = [poblacion[i] for i in peores] + hijos
+    mejores = heapq.nsmallest(2, candidatos, key=lambda s: s.get_fitness())
+    for indice, reemplazo in zip(peores, mejores):
+        poblacion[indice] = reemplazo
+
+    valores = sorted(s["n"] for s in poblacion)
+    assert valores == [0, 1, 2, 3], (
+        f"los dos hijos deberian haber entrado y los dos peores salido; queda {valores}"
+    )
+
+
 def test_a04_random_search_descarta_el_peor_no_el_ultimo(monkeypatch):
     """A-04: `solutions[:-1]` descartaba el individuo de la ultima posicion, que no
     tiene por que ser el peor; la docstring dice que se preserva el mejor. Medido, la
