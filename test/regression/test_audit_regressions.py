@@ -584,6 +584,50 @@ print("ok")
 """
 
 
+def test_f11_la_busqueda_local_distribuida_reparte_la_poblacion():
+    """F-11: `population[:count]` sin avanzar el cursor, asi que todos los workers
+    recibian la misma porcion inicial. Con 9 individuos repartidos en 3, solo se
+    buscaba sobre los 3 primeros y la poblacion volvia siendo tres copias de ellos.
+
+    Necesita Ray de verdad, asi que se salta en el CI.
+    """
+    ray = pytest.importorskip("ray")
+    from metagen.metaheuristics.mm.mm_distributed_tools import \
+        distributed_population_local_search
+
+    arrancado_aqui = not ray.is_initialized()
+    if arrancado_aqui:
+        ray.init(num_cpus=3, include_dashboard=False, ignore_reinit_error=True)
+    try:
+        set_seed(1)
+        dominio = Domain()
+        dominio.define_integer("id", 0, 100)
+
+        # Identidades distinguibles, para saber quien vuelve.
+        poblacion = []
+        for i in range(9):
+            individuo = Solution(dominio)
+            individuo.set("id", i * 10)
+            individuo.set_fitness(float(i))
+            poblacion.append(individuo)
+
+        entrada = {individuo["id"] for individuo in poblacion}
+
+        # Sin vecinos ni alteracion, la busqueda local devuelve lo que recibe: lo
+        # unico que se mide aqui es el reparto.
+        salida = distributed_population_local_search(
+            poblacion, lambda s: float(s["id"]), neighbor_population_size=0,
+            alteration_limit=0.0, distribution_level=1)
+
+        assert {individuo["id"] for individuo in salida} == entrada, (
+            "la busqueda local distribuida ha perdido individuos por el camino"
+        )
+        assert len(salida) == len(poblacion)
+    finally:
+        if arrancado_aqui and ray.is_initialized():
+            ray.shutdown()
+
+
 def test_f24_el_memetico_no_necesita_ray():
     """F-24: mm_tools importaba ray a nivel de modulo, asi que `Memetic` no existia
     en una instalacion sin el extra distribuido, pese a que el README lo anuncia.

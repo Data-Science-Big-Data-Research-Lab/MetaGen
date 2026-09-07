@@ -57,6 +57,10 @@ def distributed_population_local_search(population: List[Solution], fitness_func
         futures.append(
             remote_population_local_search.remote(population[:count], fitness_function, neighbor_population_size,
                                                   alteration_limit, distribution_level))
+        # Advance the cursor, as base.py does. Without it every worker got the same
+        # opening slice: with 9 individuals over 3 workers, only the first 3 were
+        # ever searched and the population came back as three copies of them (F-11).
+        population = population[count:]
 
     results = ray.get(futures)
     flattened_results = [item for sublist in results for item in sublist]

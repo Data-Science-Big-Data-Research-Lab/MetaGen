@@ -64,7 +64,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ✅ | `F-08` | Interbloqueo en CVOA con `update_isolated=True` |
 | ✅ | `F-09` | `insert_into_set_strain` puede reventar con `KeyError` |
 | ✅ | `F-10` | El «peor superspreader» de CVOA se inicializa al revés |
-| ⬜ | `F-11` | La búsqueda local distribuida manda la misma porción a todos los workers |
+| ✅ | `F-11` | La búsqueda local distribuida manda la misma porción a todos los workers |
 | ✅ | `F-12` | Todos los `Domain` comparten el mismo conector por defecto |
 | ✅ | `F-13` | TPE modifica el `Domain` que le pasa el usuario |
 | ✅ | `F-14` | `sys.float_info.min` no es «menos infinito» |
@@ -487,13 +487,36 @@ Tests: `test_f10_el_peor_superspreader_arranca_siendo_el_mejor` y
 `test_f10_el_reemplazo_del_peor_superspreader_se_ejecuta`. El segundo comprueba la
 consecuencia, no solo el valor inicial.
 
-### [ ] F-11 · La búsqueda local distribuida manda la misma porción a todos los workers
+### [x] F-11 (R) · La búsqueda local distribuida manda la misma porción a todos los workers
 `src/metagen/metaheuristics/mm/mm_distributed_tools.py:57` (estaba en `mm_tools.py:65-68`
 hasta que `F-24` separó los dos módulos)
 
 `population[:count]` sin avanzar el cursor. Compárese con `base.py:114-115`, donde sí avanza.
 
 **Arreglo** `population = population[count:]` dentro del bucle.
+
+*Cerrado tal cual*, una línea. Reproducido con una ejecución distribuida real, dando a
+cada individuo una identidad para saber cuál vuelve:
+
+```
+reparto de carga: [3, 3, 3]
+ids de entrada  : [0, 10, 20, 30, 40, 50, 60, 70, 80]
+ids de salida   : [0, 0, 0, 10, 10, 10, 20, 20, 20]     <- sin arreglar
+ids de salida   : [0, 10, 20, 30, 40, 50, 60, 70, 80]   <- arreglado
+```
+
+**Es peor que «desperdicia cómputo»**, que es como lo clasifica la auditoría. Con 9
+individuos repartidos entre 3 workers, seis **nunca se buscan** y, como el resultado se
+concatena, **la población vuelve siendo tres copias de su primer tercio**. El memético
+distribuido perdía dos tercios de su población en cada búsqueda local de nivel 1, en
+silencio y con el tamaño correcto.
+
+Comprobado que es **el único sitio** con ese patrón: los otros dos `[:count]` de `src/`
+están en `base.py:133-134`, que sí avanza.
+
+Test: `test_f11_la_busqueda_local_distribuida_reparte_la_poblacion`, que **necesita Ray
+de verdad** y por tanto se salta en el CI. Es el tercero en esa situación, junto a los de
+`F-21` y `F-24`... salvo que el de `F-24` ya no lo necesita.
 
 ### [x] F-12 (R) · Todos los `Domain` comparten el mismo conector por defecto
 `src/metagen/framework/facades.py:59` · test: `test_f12_cada_domain_tiene_su_propio_conector`
