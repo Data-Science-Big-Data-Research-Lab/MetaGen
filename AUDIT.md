@@ -103,7 +103,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ✅ | `P-05` | Los tests de metaheurísticas no comprobaban nada útil |
 | ✅ | `P-06` | No había integración continua |
 | ✅ | `P-07` | `.gitignore` excluye los CSV de parámetros de test |
-| ⬜ | `P-08` | Los extras de `setup.cfg` usan `;`, que PEP 508 lee como otra cosa |
+| ✅ | `P-08` | Los extras de `setup.cfg` usan `;`, que PEP 508 lee como otra cosa |
 | ✅ | `P-09` | Falta `py.typed`: mypy trata `metagen` como `Any` desde fuera |
 | ✅ | `P-10` | Los ejemplos de las docstrings usan una API que no existe |
 | ⬜ | `P-11` | `mypy src` no pasa limpio: 11 errores en 9 ficheros |
@@ -1411,7 +1411,44 @@ Aquí el código hace lo que dice hacer; lo discutible es qué dice hacer.
   Los tests de SA, GA y SSGA nacen `xfail(strict=True)` citando el hallazgo culpable: al arreglar `F-20`, `F-04` o `A-05` saltarán a `XPASS` avisando de que ya se puede quitar el marcador. Se comprobó además que estos resultados **son idénticos antes de `A-06`**, ejecutando el código en `1016e8a`: no son un efecto del cambio de semilla, que solo los ha hecho medibles.
 - **[x] P-06** No hay `.github/workflows`. Con `mypy` ya configurado en `setup.cfg` y una suite que corre en 3 s, un workflow mínimo con matriz 3.10–3.12 captura buena parte de lo anterior. *Cerrado*: `.github/workflows/ci.yml` con dos jobs, `tests` (matriz 3.10–3.12, bloqueante) y `types` (`mypy src`, informativo hasta que cierre `P-11`). Dos cosas salieron a la luz al montarlo: la suite necesita `pytest-csv-params`, que no declara ni `install_requires` ni ningún extra (ver `P-08`), y **el CI no instala los extras a propósito**. Aquello valía cuando el test de `F-24` se saltaba con Ray instalado; al cerrar ese hallazgo se reescribió para bloquear Ray en un subproceso y ahora corre en todas partes. El único test que sigue necesitando Ray de verdad es el de `F-21`.
 - **[x] P-07** `.gitignore:14` excluye `*.csv` y `*.xlsx`, y los parámetros de test son CSV en `test/test_parameters/`. Cualquier fichero nuevo se queda fuera del commit sin aviso. *Arreglo*: `!test/test_parameters/**/*.csv`. *Cerrado tal cual.* Comprobado que los 25 CSV que ya estaban versionados siguen estándolo —una regla de `.gitignore` no desversiona nada— y que uno nuevo **ya aparece en `git status`**, donde antes no salía. Test: `test_p07_los_csv_de_parametros_no_estan_ignorados`, con `git check-ignore`.
-- **[ ] P-08** Los extras de `setup.cfg` usan `;`, que en PEP 508 es el separador de **marcadores de entorno**, no de requisitos: `tensorboard = tensorboard; tensorboardX` se lee como «tensorboard, si el marcador tensorboardX». Comprobar qué instala `pip install pymetagen-datalabupo[all]`. Además hay tres `requirements*.txt` con criterios solapados. *Arreglo*: un requisito por línea y migrar la metadata a `pyproject.toml`.
+- **[x] P-08** Los extras de `setup.cfg` usan `;`, que en PEP 508 es el separador de **marcadores de entorno**, no de requisitos: `tensorboard = tensorboard; tensorboardX` se lee como «tensorboard, si el marcador tensorboardX». Comprobar qué instala `pip install pymetagen-datalabupo[all]`. Además hay tres `requirements*.txt` con criterios solapados. *Arreglo*: un requisito por línea y migrar la metadata a `pyproject.toml`.
+
+  **Dos partes del diagnóstico son falsas, y se comprobó antes de arreglar nada.** La
+  auditoría manda comprobar qué instalan los extras; hecho, sobre el paquete instalado:
+
+  ```
+  tensorboard;  extra == "tensorboard"
+  tensorboardX; extra == "tensorboard"
+  ```
+
+  **Los extras funcionaban**: setuptools parte por `;` los valores de lista en un
+  fichero `.cfg`, así que las dos dependencias entraban. Y donde el documento dice «tres
+  `requirements*.txt`», solo había **uno**.
+
+  **Lo que sí es cierto es el riesgo, y está justo en la migración que el propio
+  documento propone**: ese `;` funciona por una particularidad del formato `.cfg`. En un
+  `pyproject.toml`, donde el valor es una lista TOML, el mismo texto se leería como manda
+  PEP 508 y **`tensorboardX` desaparecería en silencio**.
+
+  *Cerrado con la variante conservadora, decisión de David:* un requisito por línea, sin
+  migrar a `pyproject.toml`. La migración queda como trabajo aparte, para cuando se
+  publique una versión nueva y se pueda probar contra TestPyPI.
+
+  Además:
+
+  - **Extra `test` nuevo**, con `pytest` y `pytest-csv-params`. Este último lo necesita
+    `framework_test/solution_test.py` y **no lo declaraba nada**; salió al montar el CI
+    (`P-06`) y el documento no lo lista. El workflow pasa a instalar `.[test]` en vez de
+    nombrar las herramientas a mano, que es lo que mantiene honesta la declaración.
+  - **`all` fija `ray>=2.40.0`**, como `distributed`. Antes llevaba `ray` a secas: los
+    dos extras podían instalar versiones distintas.
+  - **`requirements.txt` se parte en dos.** Mezclaba dependencias de ejecución, de
+    documentación, de test, extras opcionales y las del *benchmark* del artículo, todo
+    en un fichero con secciones en comentarios. Ahora queda con lo de ejecutar,
+    documentar y probar, y `requirements-optional.txt` con lo demás.
+
+  Test: `test_p08_los_extras_declaran_un_requisito_por_linea`, que además comprueba que
+  `pytest-csv-params` esté declarado en alguna parte.
 - **[x] P-09** Falta `src/metagen/py.typed`: el paquete está anotado de arriba abajo pero sin el marcador PEP 561 mypy trata `metagen` como `Any`. *Cerrado*, con el fichero y su declaración en `[options.package_data]`, sin la cual no viajaría en la distribución. **La comprobación evidente no sirve**: con el paquete instalado en modo editable, mypy lee las fuentes igual y el marcador no cambia nada, así que probarlo así da un falso positivo en las dos direcciones. Se verificó construyendo una rueda y mirando dentro. Test: `test_p09_el_paquete_lleva_el_marcador_py_typed`.
 - **[x] P-10 (R)** Los ejemplos de las docstrings usan una API que no existe: `domain.defineInteger(0, 1)` en RS, TPE, Memetic y CVOA (el método es `define_integer(name, min, max)`), y el ejemplo de CVOA usa `CVOA.initialize_pandemic(...)` y `cvoa_launcher(strains)`, de una versión anterior. Son las páginas que publica readthedocs. *Arreglo*: actualizarlos y añadirlos como doctests.
 
