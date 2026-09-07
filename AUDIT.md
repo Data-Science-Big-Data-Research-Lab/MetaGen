@@ -1,7 +1,7 @@
 # Auditoría de MetaGen
 
 Revisión completa de `src/metagen` sobre el commit `74f104e` (2025-03-21).
-52 hallazgos con identificadores estables: los 46 de la revisión inicial más
+53 hallazgos con identificadores estables: los 46 de la revisión inicial más
 `P-11` (al montar el CI), `F-25` (al medir el comportamiento real de las
 metaheurísticas para `P-05`) y `F-26` (al verificar `F-04`). Los marcados **(R)** se reprodujeron
 ejecutando el paquete instalado en Python 3.11 sin Ray ni TensorFlow.
@@ -34,7 +34,7 @@ Marcar aquí el hallazgo como `[x]` al cerrarlo.
 | Bloque | Cantidad | Qué son |
 |---|---|---|
 | `F-01`…`F-13` | 13 | Críticos: corrompen resultados o bloquean la ejecución |
-| `F-14`…`F-29` | 16 | Importantes: fallan en casos concretos o desperdician cómputo |
+| `F-14`…`F-30` | 17 | Importantes: fallan en casos concretos o desperdician cómputo |
 | `A-01`…`A-12` | 12 | Algoritmia y diseño: decisiones discutibles, no bugs |
 | `P-01`…`P-11` | 11 | Empaquetado, tests y documentación |
 
@@ -83,6 +83,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ⬜ | `F-27` | `p_isolation` significa lo contrario de lo que dice su nombre |
 | ⬜ | `F-28` | Tres parámetros de CVOA no son los que sugiere el artículo |
 | ⬜ | `F-29` | CVOA no reproduce entre procesos: itera conjuntos de soluciones |
+| ⬜ | `F-30` | La temperatura de SA no llega a enfriarse: es un paseo aleatorio |
 | ⬜ | `A-01` | Sin selección de padres: todos los cruces usan la misma pareja |
 | ⬜ | `A-02` | La búsqueda tabú es en realidad hill climbing |
 | ⬜ | `A-03` | El vecindario tabú se genera en cadena, no alrededor de la solución |
@@ -1100,6 +1101,48 @@ dos gemelos.
 `metagen-auditoria/CVOA-cuestiones.md`. Nótese que **invalida cualquier medición de CVOA
 tomada hasta ahora**, incluidas las de `F-23` y `F-10` de este documento, que se hicieron
 en procesos distintos.
+
+### [ ] F-30 (R) · La temperatura de SA no llega a enfriarse: es un paseo aleatorio
+`src/metagen/metaheuristics/sa/sa.py:92-93` · descubierto al cerrar `F-20`
+
+Los valores por defecto son `initial_temp=50.0`, `cooling_rate=0.99` y
+`max_iterations=20`. Con ellos la temperatura **no baja lo suficiente para que el
+criterio de Metropolis discrimine nada**:
+
+```
+  15 iteraciones -> T = 43.00
+  20 iteraciones -> T = 40.90
+ 100 iteraciones -> T = 18.30
+```
+
+Y a esas temperaturas se acepta casi cualquier empeoramiento:
+
+| T | Empeoramiento | Se acepta con probabilidad |
+|---|---|---|
+| 50 | 1.0 | 0.980 |
+| 43 | 1.0 | 0.977 |
+| 43 | **5.0** | **0.890** |
+| 1.0 | 1.0 | 0.368 |
+| 0.1 | 1.0 | 0.000 |
+
+**Con los valores por defecto, SA acepta casi todo lo que genera.** Eso no es recocido
+simulado: es un paseo aleatorio con pasos de tamaño `alteration_limit`. Llegar a `T=0.1`
+con `cooling_rate=0.99` exige unas **618 iteraciones**, treinta veces el
+`max_iterations` por defecto.
+
+Es la causa que queda de que SA no mejore sobre su propio inicio (3/10) ni gane al azar
+(5/10) tras cerrar `F-03` y `F-20`.
+
+**Arreglo** Ligar el enfriamiento al presupuesto en vez de fijar una tasa suelta: por
+ejemplo, derivar `cooling_rate` de `initial_temp`, `T_min` y `max_iterations` de modo
+que la temperatura recorra su rango completo en las iteraciones disponibles. Alternativa
+más conservadora: dejar los tres parámetros como están pero documentar la relación y
+avisar cuando no cuadren.
+
+**Nota:** el `initial_temp` adecuado depende de la escala del fitness del problema, que
+el framework no conoce. Una temperatura absoluta por defecto es discutible para
+cualquier problema; puede tener más sentido una relativa a la dispersión observada en
+el warmup. Es decisión de algoritmia, no de auditoría.
 
 ---
 
