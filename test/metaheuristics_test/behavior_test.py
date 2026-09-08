@@ -256,7 +256,17 @@ def _build(name: str, problem: _Problem, fitness, seed: int, log_dir: str):
 
 
 def _best_of_random_sampling(problem: _Problem, evaluations: int, seed: int) -> float:
-    """Best of `evaluations` solutions drawn at random: the baseline to beat."""
+    """Best of `evaluations` solutions drawn at random: the baseline to beat.
+
+    One solution per point. It was two for a while -- x taken from one and y from
+    another -- which drew twice the random numbers for the same distribution. That
+    came in when the benchmark widened to six functions and the objectives changed
+    from taking a Solution to taking (x, y): the baseline was adapted by calling
+    Solution(domain) twice instead of binding it once. Comparisons made against it
+    were still fair, since every algorithm faced the same baseline, but the stream
+    differed, so undoing it moved the borderline cells and the xfail table was
+    recalibrated.
+    """
     set_seed(100_000 + seed)
     domain = problem.domain()
     return min(problem.objective(Solution(domain)) for _ in range(evaluations))
