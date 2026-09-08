@@ -56,7 +56,7 @@ propósito, cada una con su motivo. No están en el índice porque no son hallaz
 | Qué | Por qué está aparte | Dónde |
 |---|---|---|
 | **Revisión de CVOA** | El diseño es de Paco Martínez-Álvarez y el código es multihilo con Ray encima. `F-27`, `F-28`, `F-29`, `A-09` y seis discrepancias más con el artículo | `metagen-auditoria/CVOA-cuestiones.md` |
-| **`mypy src` a cero** | 167 errores, no los 8 que se creían; trabajo fichero a fichero | `P-11` |
+| **`mypy src` a cero** | 136 errores tras la primera tanda, no los 8 que se creían; trabajo fichero a fichero | `P-11` |
 | **Implementar una búsqueda tabú de verdad** | Lo que había no lo era y se renombró a `HillClimbing` (`A-02`). La tabú canónica es un algoritmo nuevo, no un arreglo | ver abajo |
 | **Estructuras dinámicas en los genéticos** | El cruce para longitudes variables no existe; es funcionalidad, no arreglo | `F-31` |
 | **Implementar un TPE canónico** | El de MetaGen funciona y no se toca; el canónico es otro algoritmo, con dos piezas que van juntas | ver abajo |
@@ -219,7 +219,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ✅ | `P-08` | Los extras de `setup.cfg` usan `;`, que PEP 508 lee como otra cosa |
 | ✅ | `P-09` | Falta `py.typed`: mypy trata `metagen` como `Any` desde fuera |
 | ✅ | `P-10` | Los ejemplos de las docstrings usan una API que no existe |
-| ⬜ | `P-11` | `mypy src` no pasa limpio: 167 errores en 23 ficheros |
+| ⬜ | `P-11` | `mypy src` no pasa limpio: 136 errores en 22 ficheros |
 
 ---
 
@@ -2447,3 +2447,50 @@ Aquí el código hace lo que dice hacer; lo discutible es qué dice hacer.
   septiembre de 2026. Mismo trato que CVOA. Empezar por `facades.py`, `structure.py` y
   `cvoa_distributed.py`, que suman 70 de los 170. Cuando `mypy src` salga a cero, quitar
   el `continue-on-error` del job `types` para que la comprobación pase a bloquear.
+
+  ### Primera tanda: `facades.py` y `connector.py` a cero
+
+  **167 → 136**, 8 de septiembre de 2026. Los dos ficheros quedan limpios y la suite no
+  se mueve. **El recuento por fichero que traía este hallazgo estaba inflado**: contaba
+  también las líneas `note:` de mypy, así que `facades.py` figuraba con 52 y sus errores
+  reales eran 26.
+
+  **Una sola equivocación explicaba los 26 de `facades.py` y 6 de `connector.py`.**
+  `domain/bounds.py` y `solution/bounds.py` definen `TypeVar`s —`BaseClass`,
+  `BaseTypeClass`, `IntegerDefinitionClass`…— que el código usa **como si fueran
+  alias de las clases base**. Un `TypeVar` que aparece solo en el retorno no se puede
+  resolver: queda «sin ligar», mypy lo trata como `Any` y **todo lo que viene detrás
+  deja de comprobarse**. De ahí los mensajes en cascada, «type variable is unbound» y
+  «cannot instantiate».
+
+  Sin bug de ejecución: en `facades.py` la variable local guarda la clase que devuelve
+  el conector y el `TypeVar` solo la anota, así que nunca se le llama.
+
+  **Lo que los `TypeVar` estaban tapando sí importaba.** Al ponerles el tipo de verdad
+  apareció que **los cuatro diccionarios del conector están anotados como si guardaran
+  instancias** cuando lo que guardan son **clases**, y que `get_type` puede devolver una
+  `Solution`, que **no es un `BaseType`** (lo que ya enseñó `F-05`): su retorno declarado
+  era falso. Con `Any` no se veía ninguna de las dos cosas.
+
+  Cambios, todos de anotación salvo lo que se dice:
+
+  - `connector.py`: alias con nombre `SolutionEntry` y `BuiltinType` para lo que el
+    registro guarda de verdad —la clase, o la clase con un discriminador, porque un
+    `list` mapea a la estructura estática **y** a la dinámica—; los cuatro diccionarios
+    pasan a `Dict[type[...], ...]`; `get_type` declara `type[BaseType | Solution]`; y las
+    tres funciones dejan de **reasignar su propio parámetro** a un tipo distinto, que es
+    lo que confundía a mypy, usando una local.
+  - Un ayudante privado, `_solution_class`, quita el discriminador. **Con él, dos pares
+    de ramas de `get_type` pasaron a ser idénticas y se fusionaron**: la de estructuras
+    con la de definiciones, y la de `list` con la de los demás builtins. Es la única
+    simplificación de lógica, y es equivalente.
+  - `facades.py`: las trece locales anotadas con un `TypeVar` pasan a un `cast` a su
+    clase concreta. El `cast` es honesto: el código **sabe** qué tipo ha pedido al
+    conector y mypy no puede seguir un registro de tiempo de ejecución.
+
+  **Cambia una anotación de la API pública**: `BaseConnector.get_type` pasa de declarar
+  `type[BaseTypeClass]` —que resolvía a `Any`— a `type[BaseType | Solution]`. No cambia
+  el comportamiento y dice más, no menos, pero `BaseConnector` es el punto de extensión
+  del framework y conviene que conste.
+
+  **Y destapó un bug de verdad, que es lo que este hallazgo anunciaba**: ver `F-34`.
