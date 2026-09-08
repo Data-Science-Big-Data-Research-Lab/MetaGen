@@ -71,7 +71,8 @@ class SA(Metaheuristic):
         Derived from the budget when not given, so that the temperature travels from
         initial_temp down to T_min over the iterations available (F-30)
     :type cooling_rate: float or None, optional
-    :param neighbor_population_size: Number of neighbors to generate in each iteration, defaults to 1
+    :param neighbor_population_size: Number of neighbors to generate in each iteration,
+        defaults to 5
     :type neighbor_population_size: int, optional
     :param distributed: Whether to use distributed computation, defaults to False
     :type distributed: bool, optional
@@ -94,7 +95,7 @@ class SA(Metaheuristic):
                  warmup_iterations: int = 5,
                  max_iterations: int = 20,
                  alteration_limit: Any = RelativeAlteration(0.2), initial_temp: float = 50.0,
-                 cooling_rate: Optional[float] = None, neighbor_population_size: int = 1,
+                 cooling_rate: Optional[float] = None, neighbor_population_size: int = 5,
                  distributed=False, log_dir: Optional[str] = None,
                  seed: Optional[int] = None) -> None:
         """
@@ -115,7 +116,9 @@ class SA(Metaheuristic):
             Derived from the budget when not given, so that the temperature travels
             from initial_temp down to T_min over max_iterations (F-30)
         :type cooling_rate: float or None, optional
-        :param neighbor_population_size: Number of neighbors to generate in each iteration, defaults to 1
+        :param neighbor_population_size: Number of neighbors to generate in each
+            iteration, defaults to 5. One leaves nothing to choose between, which is
+            what F-25 measured
         :type neighbor_population_size: int, optional
         :param distributed: Whether to use distributed computation, defaults to False
         :type distributed: bool, optional

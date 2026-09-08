@@ -1322,7 +1322,19 @@ ejecución. Se reinicia en `pre_execution()`.
 **Lo que sigue faltándole a SA no es de este hallazgo.** Con la tasa arreglada queda en
 161/270, todavía por debajo del muestreo aleatorio. El que pesa el doble es
 `neighbor_population_size=1`, la nota que dejó abierta `F-25`: con un solo vecino no hay
-entre qué elegir. Medido, sube a **214/270**. Va en su propio commit.
+entre qué elegir. Medido, sube a **214/270**.
+
+*Aplicado en el commit siguiente*, decisión de David: el valor por defecto pasa de 1 a
+**5**. Con las dos cosas, SA pasa de **31/90 a 71/90** en la tabla de `P-05` y **deja de
+ser el peor del paquete para ser el tercero**, por delante de TPE. **Mejora sobre su
+propio inicio en las nueve funciones**, que es la propiedad que llevaba toda la
+auditoría delatándolo. Diez `xfail` se retiran de golpe.
+
+**El precio hay que decirlo: el presupuesto de SA pasa de 21 evaluaciones a 81.** No es
+gratis, y quien tenga una función de fitness cara lo va a notar; se compara siempre
+contra el azar con ese mismo presupuesto, así que la mejora no viene de gastar más.
+Las cuatro funciones que sigue sin ganar son las más duras del conjunto para un solo
+punto que camina: Rastrigin, Rosenbrock, Schwefel y Michalewicz.
 
 Un `xfail` se retira (`Zakharov-SA`, mejora sobre su inicio) y se añade otro
 (`Rastrigin-SA`, gana al azar): es una celda al borde que baja de 7 a 5 mientras el
@@ -2038,26 +2050,29 @@ Aquí el código hace lo que dice hacer; lo discutible es qué dice hacer.
   excepciones.
 
   Cuántas de 10 semillas gana cada algoritmo al muestreo aleatorio con **su mismo
-  presupuesto**, medido tras cerrar `A-01`:
+  presupuesto**. Es la tabla de referencia del módulo y se actualiza al cerrar cada
+  hallazgo que mueva resultados; esta es de después de `F-30`, con entre paréntesis lo
+  que daba al abrir la sesión del 8 de septiembre de 2026:
 
   | | Sph | Ras | Ros | Ack | Gri | Sch | Levy | Mich | Zak | total |
   |---|---|---|---|---|---|---|---|---|---|---|
   | RandomSearch | 8 | 5 | 3 | 8 | 7 | 6 | 5 | 3 | 5 | 50/90 |
-  | SA | 4 | 3 | 5 | 3 | 3 | 2 | 2 | 6 | 3 | **31/90** |
-  | HillClimbing | 10 | 10 | 7 | 10 | 3 | 4 | 10 | 6 | 10 | 70/90 |
+  | SA | 10 | 6 | 6 | 10 | 10 | 4 | 10 | 6 | 9 | **71/90** (31) |
+  | HillClimbing | 10 | 10 | 8 | 10 | 9 | 6 | 9 | 7 | 10 | **79/90** (70) |
   | GA | 7 | 4 | 3 | 7 | 4 | 4 | 7 | 4 | 0 | 40/90 |
   | SSGA | 3 | 5 | 5 | 3 | 3 | 6 | 6 | 5 | 2 | 38/90 |
   | TPE | 10 | 6 | 6 | 10 | 8 | 5 | 8 | 6 | 8 | 67/90 |
-  | **Memetic** | 10 | 10 | 9 | 10 | 6 | 2 | 10 | 8 | 10 | **75/90** |
+  | **Memetic** | 10 | 10 | 9 | 10 | 9 | 10 | 10 | 8 | 10 | **86/90** (75) |
 
   Tres cosas que las seis funciones no dejaban ver:
 
-  - **El memético es el mejor del paquete, no `HillClimbing`.** 75/90, y empata o gana
-    en siete de las nueve. `HillClimbing` va segundo con 70/90 y TPE tercero con 67/90.
-    Con la esfera sola parecía que dominaba `HillClimbing`; con seis, que el más
-    robusto era TPE. Ninguna de las dos lecturas se sostiene con las nueve.
-  - **SA, GA y SSGA quedan por debajo del muestreo aleatorio**, que suma 50/90 empatando
-    consigo mismo. SA es el peor del paquete con 31/90, lo que apunta a `F-30`.
+  - **El memético es el mejor del paquete, no `HillClimbing`.** Empata o gana en las
+    nueve. `HillClimbing` va segundo, SA tercero desde `F-30` y TPE cuarto. Con la
+    esfera sola parecía que dominaba `HillClimbing`; con seis, que el más robusto era
+    TPE. Ninguna de las dos lecturas se sostiene con las nueve.
+  - **GA y SSGA siguen por debajo del muestreo aleatorio**, que suma 50/90 empatando
+    consigo mismo; hoy la causa es `F-33`. **SA estaba con ellos** —31/90, el peor del
+    paquete— y salió al cerrar `F-30` y subir su número de vecinos.
   - **Michalewicz derrota a seis de los siete, y la culpa es de la función.** Medido
     sobre una rejilla de 1200×1200, la mediana del paisaje es **−0.015** frente a un
     óptimo de −1.8013, y solo el **0.43 %** del dominio baja de −1.5. Es un pajar con
