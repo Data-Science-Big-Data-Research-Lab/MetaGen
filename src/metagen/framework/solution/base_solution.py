@@ -19,7 +19,8 @@ from __future__ import annotations
 import math
 import numbers
 from collections.abc import Callable
-from typing import TYPE_CHECKING, KeysView, ValuesView, Dict, Any
+from typing import (TYPE_CHECKING, Any, Dict, KeysView, Optional, Union,
+                    ValuesView, cast)
 
 import metagen.framework.solution as types
 from metagen.framework.rng import get_rng
@@ -117,11 +118,17 @@ class Solution:
         :param connector: The connector to be used by the class, if None the definition must be a Domain instance.
         :type connector: BaseConnector
         """
-        self.connector = connector or definition.get_connector()
-        self.__definition: BaseDefinition = definition.get_core(
-        ) if definition.__class__.__name__ == 'Domain' else definition
+        # Compared by name and not with isinstance to avoid importing Domain, which
+        # imports this module. mypy cannot narrow on a class name, hence the casts.
+        is_domain = definition.__class__.__name__ == 'Domain'
+        self.connector = connector or cast('Domain', definition).get_connector()
+        self.__definition: BaseDefinition = (
+            cast('Domain', definition).get_core() if is_domain
+            else cast('BaseDefinition', definition))
 
-        self.value: Dict[str, types.BaseType] = {}
+        # A group variable holds a Solution, which is not a BaseType: its MRO is
+        # ['Solution', 'object'], as F-05 had to spell out.
+        self.value: Dict[str, Union[types.BaseType, 'Solution']] = {}
         # Infinities, not sys.float_info: its .min is +2.2e-308, a positive number,
         # so any objective able to go negative was already better than the
         # "best possible" sentinel (F-14).
@@ -129,7 +136,7 @@ class Solution:
 
         self.initialize()
 
-    def get_variables(self) -> Dict[str, types.BaseType]:
+    def get_variables(self) -> Dict[str, Union[types.BaseType, 'Solution']]:
         """
         It obtains the defined variables which constitutes the solution.
 
@@ -147,7 +154,7 @@ class Solution:
         """
         return self.__definition
 
-    def set(self, variable: str, value: InputValue | types.BaseType) -> None:
+    def set(self, variable: str, value: Union[InputValue, types.BaseType, 'Solution']) -> None:
         """
         Sets the value of a variable in the solution.
 
@@ -171,8 +178,8 @@ class Solution:
             # connector for get_type(value) made a real variable hold an Integer when
             # given 1, and refused a numpy scalar outright because bool, numpy.int64
             # and the like are not registered as builtins (A-08).
-            base_type_class: type[BaseTypeClass] = self.get_connector().get_type(
-                variable_definition)
+            base_type_class = cast(Callable[..., types.BaseType],
+                                   self.get_connector().get_type(variable_definition))
 
             type_value: types.BaseType = base_type_class(
                 variable_definition, self.get_connector())
@@ -189,7 +196,7 @@ class Solution:
             raise TypeError(
                 f"The type {type(value)} is not supported by the solution.")
 
-    def get(self, variable: str) -> types.BaseType:
+    def get(self, variable: str) -> Union[types.BaseType, 'Solution']:
         """
         Returns the value of a variable in the solution.
 
@@ -299,7 +306,8 @@ class Solution:
             definition = domain.get(variable)
             self._initialize(variable, definition)
 
-    def mutate(self, alterations_number: int = None, alteration_limit: Any = None):
+    def mutate(self, alterations_number: Optional[int] = None,
+               alteration_limit: Any = None) -> None:
         """
         Modify a rs subset of the solution's variables calling its mutate method.
 
@@ -362,8 +370,8 @@ class Solution:
         """
         variable_definition = self.get_definition().get(variable)
 
-        solution_definition: type[SolutionClass] = self.get_connector().get_type(
-            value)
+        solution_definition = cast(Callable[..., 'Solution'],
+                                   self.get_connector().get_type(value))
         subsolution: Solution = solution_definition(
             variable_definition, connector=self.get_connector())
         subsolution.value = {}
@@ -390,8 +398,8 @@ class Solution:
             :meth:`initialize`
             :meth:`set`
         """
-        type_class: type[BaseTypeClass] = self.get_connector().get_type(
-            definition)
+        type_class = cast(Callable[..., Union[types.BaseType, 'Solution']],
+                          self.get_connector().get_type(definition))
         variable_definition = self.get_definition().get(variable)
         self.set(variable, type_class(
             variable_definition, connector=self.get_connector()))

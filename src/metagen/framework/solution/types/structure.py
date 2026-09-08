@@ -14,7 +14,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-from typing import Any, cast
+from typing import Any, Callable, cast
 
 from metagen.framework.domain.core import (BaseStructureDefinition,
                                            DynamicStructureDefinition,
@@ -28,15 +28,50 @@ from metagen.framework.rng import get_rng
 
 class Structure(BaseType):
 
-    def __init__(self, definition: BaseStructureDefinition, connector=None):
+    def __init__(self, definition: DynamicStructureDefinition | StaticStructureDefinition,
+                 connector=None):
         """
         The Real class inherits from the BaseType class and represents a Real variable.
 
-        :param definition: An instance of `BaseStructureDefinition` class representing the definition of the categorical variable.
-        :type definition: `BaseStructureDefinition`
+        :param definition: The structure's definition, static or dynamic. Declared as the
+            two concrete classes and not as their mixin ``BaseStructureDefinition``,
+            which is not a ``Base`` and so is not what ``BaseType`` accepts (P-11).
+        :type definition: DynamicStructureDefinition or StaticStructureDefinition
         """
 
         super(Structure, self).__init__(definition, connector)
+
+    def get_definition(self) -> DynamicStructureDefinition | StaticStructureDefinition:
+        """
+        The definition this structure was built from, static or dynamic.
+
+        Narrows what :py:meth:`~metagen.framework.solution.types.base.BaseType.get_definition`
+        declares. Two things need it: ``get_base`` lives on the structure definitions
+        and not on ``Base``, and the attribute tuples of the two have different widths,
+        five for the dynamic one and three for the static (P-11).
+
+        :return: The definition of this structure.
+        :rtype: DynamicStructureDefinition or StaticStructureDefinition
+        """
+        return cast(DynamicStructureDefinition | StaticStructureDefinition,
+                    super().get_definition())
+
+    def _new_element(self) -> BaseType | Solution:
+        """
+        A fresh element of this structure, built from its base definition.
+
+        The class comes from the connector's registry, so it is a Solution when the
+        base is a group and a BaseType subclass otherwise. Both are constructed the
+        same way, but their declared parameter types differ and mypy cannot follow a
+        runtime registry, hence the cast to the shape they share (P-11).
+
+        :return: A new element, uninitialized.
+        :rtype: BaseType or Solution
+        """
+        base = self.get_definition().get_base()
+        element_class = cast(Callable[..., BaseType | Solution],
+                             self.get_connector().get_type(base))
+        return element_class(base, connector=self.get_connector())
 
     def check(self, value: Any) -> None:
         """
@@ -78,21 +113,23 @@ class Structure(BaseType):
 
         size = 0
 
-        if isinstance(self.get_definition(), DynamicStructureDefinition):
-            _, min_size, max_size, step_size, _ = self.get_definition().get_attributes()
+        # Bound to a local so that isinstance narrows it: the two definitions carry
+        # attribute tuples of different widths, and asking get_definition() again
+        # inside the branch throws that narrowing away (P-11).
+        definition = self.get_definition()
+
+        if isinstance(definition, DynamicStructureDefinition):
+            _, min_size, max_size, step_size, _ = definition.get_attributes()
 
             # max_size + 1, because randrange excludes its upper bound while
             # check_length and _resize both accept min <= length <= max (F-19).
             size = get_rng().randrange(min_size, max_size + 1, step_size or 1)
 
-        elif isinstance(self.get_definition(), StaticStructureDefinition):
-            _, size, _ = self.get_definition().get_attributes()
+        elif isinstance(definition, StaticStructureDefinition):
+            _, size, _ = definition.get_attributes()
 
         for _ in range(size):
-            base_type_class = self.get_connector().get_type(self.get_definition().get_base())
-
-            base_value: BaseType = base_type_class(
-                self.get_definition().get_base(), connector=self.get_connector())
+            base_value = self._new_element()
             self.append(base_value)
 
     def mutate(self, alteration_limit: Any = None) -> None:
@@ -142,16 +179,17 @@ class Structure(BaseType):
         """
 
         current_size = len(self)
-        _, min_size, max_size, step_size, _ = self.get_definition().get_attributes()
+        # Only a dynamic structure resizes; mutate() reaches here through the branch
+        # that has already established that.
+        definition = cast(DynamicStructureDefinition, self.get_definition())
+        _, min_size, max_size, step_size, _ = definition.get_attributes()
         new_size = round(self._generate_numerical(
             min_size, max_size, step_size))
 
         if new_size > current_size:
             n_deletions = 0
-            base_type_class = self.get_connector().get_type(self.get_definition().get_base())
             for _ in range(new_size - current_size):
-                new_value: BaseType = base_type_class(
-                    self.get_definition().get_base(), connector=self.get_connector())
+                new_value = self._new_element()
                 new_value.initialize()
                 self.append(new_value)
         elif current_size > new_size:
@@ -182,7 +220,7 @@ class Structure(BaseType):
         for i in index_to_change:
             self.get(i).mutate(alteration_limit=alteration_limit)
 
-    def _convert(self, value: InputValue) -> BaseType:
+    def _convert(self, value: InputValue | BaseType | Solution) -> BaseType | Solution:
         """
         This method takes an input value which usually represents a builtin type and returns an instance of the corresponding BaseType. For instance:
 
@@ -205,19 +243,25 @@ class Structure(BaseType):
             return value
 
         if isinstance(value, int | float | str | list | dict):
-            base_type_class: type[BaseType] = self.get_connector().get_type(
-                value)
-            converted = base_type_class(self.get_definition(
-            ).get_base(), connector=self.get_connector())
+            # From the value's own type rather than from the base, so a dict becomes
+            # a group; built with the base definition all the same. Same registry mypy
+            # cannot follow as in _new_element.
+            element_class = cast(Callable[..., BaseType | Solution],
+                                 self.get_connector().get_type(value))
+            converted = element_class(self.get_definition().get_base(),
+                                      connector=self.get_connector())
 
             # The constructor initializes the instance at random, so the input
             # value has to be applied on top of it. Without this the structure
             # kept a random element and dropped what the caller assigned (F-05).
             if isinstance(value, dict):
+                # A dict base is a group, which the connector maps to Solution, whose
+                # set takes (variable, value) instead of just the value.
+                sub_solution = cast(Solution, converted)
                 for variable, variable_value in value.items():
-                    converted.set(variable, variable_value)
+                    sub_solution.set(variable, variable_value)
             else:
-                converted.set(value)
+                cast(BaseType, converted).set(value)
 
             return converted
 
@@ -287,7 +331,7 @@ class Structure(BaseType):
         current_values.insert(index, self._convert(value))
         self.set(current_values)
 
-    def append(self, value: int | float | str | list | dict | BaseType) -> None:
+    def append(self, value: int | float | str | list | dict | BaseType | Solution) -> None:
         """
         Appends the given value to the end of the Structure.
 
