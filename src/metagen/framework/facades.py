@@ -19,9 +19,12 @@ from typing import cast
 
 from metagen.framework import BaseConnector
 from metagen.framework.domain import (Base, BaseDefinition,
-                                      BaseStructureDefinition)
+                                      BaseStructureDefinition,
+                                      CategoricalDefinition,
+                                      DynamicStructureDefinition,
+                                      IntegerDefinition, RealDefinition,
+                                      StaticStructureDefinition)
 from metagen.framework.domain.literals import CatVal
-from metagen.framework.domain.bounds import BaseDefinitionClass, IntegerDefinitionClass, RealDefinitionClass, CategoricalDefinitionClass, DynamicStructureDefinitionClass, StaticStructureDefinitionClass
 from metagen.framework.domain.preconditions import Messages
 
 
@@ -76,8 +79,8 @@ class Domain:
         # at import time, so every Domain shared one connector and a type registered
         # on any of them rewired all the others (F-12).
         self._connector = BaseConnector() if connector is None else connector
-        base_definition: type[BaseDefinitionClass] = self._connector.get_definition(
-            self._connector.get_type(dict))
+        base_definition = cast(type[BaseDefinition], self._connector.get_definition(
+            self._connector.get_type(dict)))
         self._core: BaseDefinition = base_definition()
 
     def define_integer(self, name: str, min_value: int, max_value: int, step: int | None = None):
@@ -93,8 +96,8 @@ class Domain:
         :type max_value: int
         :type step: int
         """
-        integer_definition: type[IntegerDefinitionClass] = self._connector.get_definition(
-            self._connector.get_type(int))
+        integer_definition = cast(type[IntegerDefinition], self._connector.get_definition(
+            self._connector.get_type(int)))
         self._core.define(name, integer_definition(min_value, max_value, step))
 
     def define_real(self, name: str, min_value: float, max_value: float, step: float | None = None):
@@ -110,8 +113,8 @@ class Domain:
         :type max_value: float
         :type step: float
         """
-        real_definition: type[RealDefinitionClass] = self._connector.get_definition(
-            self._connector.get_type(float))
+        real_definition = cast(type[RealDefinition], self._connector.get_definition(
+            self._connector.get_type(float)))
         self._core.define(name, real_definition(min_value, max_value, step))
 
     def define_categorical(self, name: str, categories: CatVal):
@@ -123,8 +126,8 @@ class Domain:
         :type name: str
         :type categories: list of int, float or str
         """
-        categorical_definition: type[CategoricalDefinitionClass] = self._connector.get_definition(
-            self._connector.get_type(str))
+        categorical_definition = cast(type[CategoricalDefinition], self._connector.get_definition(
+            self._connector.get_type(str)))
         self._core.define(name, categorical_definition(categories))
 
     def define_group(self, name: str):
@@ -133,8 +136,8 @@ class Domain:
         :param name: The group name.
         :type name: str
         """
-        base_definition: type[BaseDefinitionClass] = self._connector.get_definition(
-            self._connector.get_type(dict))
+        base_definition = cast(type[BaseDefinition], self._connector.get_definition(
+            self._connector.get_type(dict)))
 
         self._core.define(name, base_definition())
 
@@ -156,8 +159,8 @@ class Domain:
         """
         group_def: BaseDefinition = _get_group_definition(
             group, self._core.get(group))
-        integer_definition: type[IntegerDefinitionClass] = self._connector.get_definition(
-            self._connector.get_type(int))
+        integer_definition = cast(type[IntegerDefinition], self._connector.get_definition(
+            self._connector.get_type(int)))
         group_def.define(name, integer_definition(min_value, max_value, step))
 
     def define_real_in_group(self, group: str, name: str, min_value: float, max_value: float,
@@ -178,8 +181,8 @@ class Domain:
         """
         group_def: BaseDefinition = _get_group_definition(
             group, self._core.get(group))
-        real_definition: type[RealDefinitionClass] = self._connector.get_definition(
-            self._connector.get_type(float))
+        real_definition = cast(type[RealDefinition], self._connector.get_definition(
+            self._connector.get_type(float)))
         group_def.define(name, real_definition(min_value, max_value, step))
 
     def define_categorical_in_group(self, group: str, name: str, categories: CatVal):
@@ -195,8 +198,8 @@ class Domain:
         """
         group_def: BaseDefinition = _get_group_definition(
             group, self._core.get(group))
-        categorical_definition: type[CategoricalDefinitionClass] = self._connector.get_definition(
-            self._connector.get_type(str))
+        categorical_definition = cast(type[CategoricalDefinition], self._connector.get_definition(
+            self._connector.get_type(str)))
         group_def.define(name, categorical_definition(categories))
 
     def link_variable_to_group(self, group: str, var: str, remember: bool = False):
@@ -228,8 +231,8 @@ class Domain:
         :type step_len: int
         """
         base_type: Base | None = _get_base_type(self._core, var, remember)
-        dynamic_structure_definition: type[DynamicStructureDefinitionClass] = self._connector.get_definition(
-            (self._connector.get_type(list), 'dynamic'))
+        dynamic_structure_definition = cast(type[DynamicStructureDefinition], self._connector.get_definition(
+            (self._connector.get_type(list), 'dynamic')))
         self._core.define(name, dynamic_structure_definition(
             name, base_type, min_len, max_len, step_len))
 
@@ -244,8 +247,8 @@ class Domain:
         :type length: int
         """
         base_type: Base | None = _get_base_type(self._core, var, remember)
-        static_structure_definition: type[StaticStructureDefinitionClass] = self._connector.get_definition(
-            (self._connector.get_type(list), 'static'))
+        static_structure_definition = cast(type[StaticStructureDefinition], self._connector.get_definition(
+            (self._connector.get_type(list), 'static')))
         self._core.define(name, static_structure_definition(
             name, base_type, length))
 
@@ -264,8 +267,8 @@ class Domain:
         """
         structure: BaseStructureDefinition = _get_structure_definition(
             name, self._core.get(name))
-        integer_definition: type[IntegerDefinitionClass] = self._connector.get_definition(
-            self._connector.get_type(int))
+        integer_definition = cast(type[IntegerDefinition], self._connector.get_definition(
+            self._connector.get_type(int)))
         structure.set_base(integer_definition(min_value, max_value, step))
 
     def set_structure_to_categorical(self, name: str, categories: CatVal):
@@ -279,8 +282,8 @@ class Domain:
         """
         structure: BaseStructureDefinition = _get_structure_definition(
             name, self._core.get(name))
-        categorical_definition: type[CategoricalDefinitionClass] = self._connector.get_definition(
-            self._connector.get_type(str))
+        categorical_definition = cast(type[CategoricalDefinition], self._connector.get_definition(
+            self._connector.get_type(str)))
         structure.set_base(categorical_definition(categories))
 
     def set_structure_to_real(self, name: str, min_value: float, max_value: float,
@@ -299,8 +302,8 @@ class Domain:
         """
         structure: BaseStructureDefinition = _get_structure_definition(
             name, self._core.get(name))
-        real_definition: type[RealDefinitionClass] = self._connector.get_definition(
-            self._connector.get_type(float))
+        real_definition = cast(type[RealDefinition], self._connector.get_definition(
+            self._connector.get_type(float)))
         structure.set_base(real_definition(min_value, max_value, step))
 
     def set_structure_to_variable(self, name: str, var: str, remember: bool = False):
