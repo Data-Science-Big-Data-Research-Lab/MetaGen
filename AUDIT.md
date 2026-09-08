@@ -1,10 +1,10 @@
 # Auditoría de MetaGen
 
 Revisión completa de `src/metagen` sobre el commit `74f104e` (2025-03-21).
-56 hallazgos con identificadores estables: los 46 de la revisión inicial más
+57 hallazgos con identificadores estables: los 46 de la revisión inicial más
 `P-11` (al montar el CI), `F-25` (al medir el comportamiento real de las
-metaheurísticas para `P-05`), `F-26` (al verificar `F-04`) y `F-33` (al medir
-`A-01`). Los marcados **(R)** se reprodujeron
+metaheurísticas para `P-05`), `F-26` (al verificar `F-04`), `F-33` (al medir `A-01`) y `F-34` (al
+tipar el conector para `P-11`). Los marcados **(R)** se reprodujeron
 ejecutando el paquete instalado en Python 3.11 sin Ray ni TensorFlow.
 
 **CVOA va aparte.** Sus cuestiones abiertas, sus discrepancias con el artículo original
@@ -35,7 +35,7 @@ Marcar aquí el hallazgo como `[x]` al cerrarlo.
 | Bloque | Cantidad | Qué son |
 |---|---|---|
 | `F-01`…`F-13` | 13 | Críticos: corrompen resultados o bloquean la ejecución |
-| `F-14`…`F-33` | 20 | Importantes: fallan en casos concretos o desperdician cómputo |
+| `F-14`…`F-34` | 21 | Importantes: fallan en casos concretos o desperdician cómputo |
 | `A-01`…`A-12` | 12 | Algoritmia y diseño: decisiones discutibles, no bugs |
 | `P-01`…`P-11` | 11 | Empaquetado, tests y documentación |
 
@@ -197,6 +197,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ⬜ | `F-31` | Los genéticos no admiten estructuras dinámicas: el cruce no existe |
 | ✅ | `F-32` | El `alteration_limit` por defecto es absoluto, no relativo al dominio |
 | ✅ | `F-33` | El cruce es uniforme: sobre variables reales no crea ningún valor nuevo |
+| ⬜ | `F-34` | `get_builtin` del conector falla con cualquier estructura |
 | ✅ | `A-01` | Sin selección de padres: todos los cruces usan la misma pareja |
 | ✅ | `A-02` | La búsqueda tabú es en realidad hill climbing |
 | ✅ | `A-03` | El vecindario tabú se genera en cadena, no alrededor de la solución |
@@ -1695,6 +1696,56 @@ devuelve a los padres— deja de valer en cuanto algo se mezcla.
 Tests: `test_f33_el_cruce_produce_valores_que_no_tenia_ningun_padre`,
 `test_f33_la_categorica_se_sigue_intercambiando_entera` y
 `test_f33_el_cruce_no_se_sale_del_dominio`.
+
+### [ ] F-34 (R) · `BaseConnector.get_builtin` falla con cualquier estructura
+`src/metagen/framework/connector/connector.py:158-180` · descubierto al tipar el conector para `P-11`
+
+El registro guarda las estructuras con un discriminador, porque un `list` mapea a la
+definición estática **y** a la dinámica:
+
+```python
+self.register(definitions.DynamicStructureDefinition, (types.Structure, 'dynamic'), list)
+self.register(definitions.StaticStructureDefinition,  (types.Structure, 'static'),  list)
+```
+
+Pero `get_builtin`, cuando recibe una **instancia**, construye la clave con la clase
+pelada, `type(solution_type)`, que no está en el registro:
+
+```
+get_builtin(una estructura)            -> ValueError
+get_builtin((una estructura, 'static')) -> list
+```
+
+`get_type` y `get_definition` no tienen el problema: la primera entra por la definición,
+que sí distingue estática de dinámica, y la segunda acepta la tupla.
+
+**Reproducido antes de tocar nada**: falla igual en el código anterior a la primera
+tanda de `P-11`, así que no es una regresión de ese trabajo. Con los `TypeVar` sin ligar
+todo era `Any` y mypy no podía verlo; salió al ponerle tipos de verdad al conector, que
+es lo que `P-11` anunciaba.
+
+**Hoy no lo llama nadie en `src/`.** Su único llamante era `GASolution.crossover`, que lo
+sorteaba envolviendo la estructura a mano:
+
+```python
+if isinstance(variable_value, GAStructure):
+    variable_value = (variable_value, "static")     # 'static' fijo, tambien para dinamicas
+if self.connector.get_builtin(variable_value) in [int, float, str]:
+```
+
+**`F-33` eliminó esa llamada** al sustituir la pregunta por el builtin por la pregunta
+por la capacidad (`hasattr(valor, "crossover")`). Así que el bug queda solo en la
+superficie pública: `BaseConnector` es el punto de extensión del framework y quien
+escriba un conector propio puede toparse con él.
+
+Nótese que el apaño hardcodeaba `'static'` incluso para una estructura dinámica. No
+hacía daño porque las dos devuelven `list`, pero era casualidad.
+
+**Arreglo** Que `get_builtin` resuelva el discriminador como hace el registro: si la
+clase pelada no está, probar las variantes con discriminador; o, mejor, guardar el
+builtin bajo la clase sin discriminador, ya que las dos estructuras devuelven `list` y el
+discriminador no aporta nada en ese diccionario concreto. Hay que decidir cuál, y
+comprobar que ningún conector propio dependa de la forma actual de las claves.
 
 ---
 

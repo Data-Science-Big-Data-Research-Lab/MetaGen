@@ -2055,3 +2055,39 @@ def test_f33_el_cruce_no_se_sale_del_dominio():
         for hijo in padre.crossover(madre):
             assert -5.0 <= hijo["x"] <= 5.0, f"x se ha salido del dominio: {hijo['x']}"
             assert 0 <= hijo["n"] <= 100, f"n se ha salido del dominio: {hijo['n']}"
+
+
+# --------------------------------------------------------------------------------
+# F-34 · get_builtin del conector falla con cualquier estructura
+# --------------------------------------------------------------------------------
+
+@pytest.mark.xfail(reason="F-34: el registro guarda las estructuras con un "
+                          "discriminador y get_builtin busca la clase pelada",
+                   strict=True)
+def test_f34_get_builtin_acepta_una_estructura():
+    """F-34: el conector registra las estructuras como `(Structure, 'static')` y
+    `(Structure, 'dynamic')`, porque un `list` mapea a las dos definiciones. Pero
+    `get_builtin`, cuando recibe una instancia, construye la clave con la clase pelada,
+    que no esta en el registro.
+
+    Su unico llamante lo sorteaba envolviendo la estructura a mano en una tupla con
+    'static' fijo, incluso para las dinamicas; `F-33` elimino esa llamada, asi que el
+    bug queda en la superficie publica de `BaseConnector`, que es el punto de extension
+    del framework.
+    """
+    from metagen.framework import BaseConnector
+
+    dominio = Domain()
+    dominio.define_static_structure("s", 3)
+    dominio.set_structure_to_real("s", 0.0, 1.0)
+    dominio.define_dynamic_structure("v", 2, 4)
+    dominio.set_structure_to_integer("v", 0, 5)
+
+    set_seed(0)
+    solucion = Solution(dominio)
+    conector = BaseConnector()
+
+    for variable in ("s", "v"):
+        assert conector.get_builtin(solucion.get(variable)) is list, (
+            f"get_builtin no reconoce la estructura {variable}"
+        )
