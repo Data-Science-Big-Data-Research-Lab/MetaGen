@@ -147,7 +147,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ✅ | `P-08` | Los extras de `setup.cfg` usan `;`, que PEP 508 lee como otra cosa |
 | ✅ | `P-09` | Falta `py.typed`: mypy trata `metagen` como `Any` desde fuera |
 | ✅ | `P-10` | Los ejemplos de las docstrings usan una API que no existe |
-| ⬜ | `P-11` | `mypy src` no pasa limpio: 11 errores en 9 ficheros |
+| ⬜ | `P-11` | `mypy src` no pasa limpio: 167 errores en 23 ficheros |
 
 ---
 
@@ -2159,6 +2159,63 @@ Aquí el código hace lo que dice hacer; lo discutible es qué dice hacer.
     mediante una suma ponderada elevada a la cuarta, así que lo que hace buena a una
     solución es la **combinación**; intercambiar una coordenada entre padres, que es
     todo lo que el cruce uniforme de `F-33` sabe hacer, la destruye.
+
+  **Ampliado el 8 de septiembre de 2026 con un problema de hiperparámetros**, a
+  petición de David: nueve funciones de dos variables reales no dicen nada del caso de
+  uso que vende el paquete. El décimo problema afina un árbol de decisión de
+  scikit-learn sobre un dominio **heterogéneo de verdad** —dos enteros, una categórica
+  y un real, de anchuras muy distintas—, que es donde muerden `F-32` y `F-33` y donde
+  el banco era ciego.
+
+  **`scikit-learn` entra en el extra `test`**, así que el CI lo instala y el problema
+  se mide en todas partes. Sigue sin instalar `ray` ni `tensorflow`, que es lo que
+  `P-06` protege.
+
+  **El coste obligó a apartarse del ejemplo publicado.** El tutorial del repo afina un
+  Random Forest de 100 árboles con validación cruzada de 10 pliegues: **543 ms por
+  evaluación**, y el banco gasta unas 34 000 evaluaciones por problema entre los
+  algoritmos y su línea base. Serían **dos horas**. Un árbol único sobre una partición
+  fija cuesta 1.2 ms y cabe en 30 s. La suite completa pasa de 35 s a **66 s**.
+
+  **La métrica se cambió de exactitud a log-loss, y el motivo es una lección de
+  método:** con exactitud, `RandomSearch` sacaba **9 de 10 contra sí mismo**. La
+  comprobación es `<=`, la exactitud sobre 90 muestras solo toma **17 valores
+  distintos** en mil configuraciones, y el 14 % de las parejas empatan: los empates
+  contaban como victorias y la propiedad había dejado de medir nada. La log-loss da
+  **154 valores distintos** y diez veces más rango. **La fila de `RandomSearch` es la
+  calibración del banco**: si se aleja de 5 de 10, la comparación está rota.
+
+  **De paso se arregló el muestreo de referencia**, que creaba **dos soluciones por
+  punto** y tomaba la `x` de una y la `y` de otra. Estadísticamente daba lo mismo
+  —siguen siendo puntos uniformes independientes— pero consumía el doble de sorteos, y
+  con un dominio que no tiene `x` ni `y` no se sostenía. **Cambia el flujo de números
+  aleatorios**, así que las celdas al borde se movieron y la tabla de `xfail` se
+  recalibró entera. Michalewicz es la que más se mueve, y hay motivo: solo el 0.43 %
+  de su dominio baja de −1.5, así que los dos lados de la comparación dependen de
+  sorteos afortunados.
+
+  Tabla de referencia con los diez problemas, tras `F-33`:
+
+  | | Sph | Ras | Ros | Ack | Gri | Sch | Levy | Mich | Zak | **Árbol** | total |
+  |---|---|---|---|---|---|---|---|---|---|---|---|
+  | RandomSearch | 8 | 4 | 4 | 7 | 6 | 6 | 5 | 6 | 6 | 4 | 56/100 |
+  | SA | 10 | 9 | 4 | 10 | 9 | 6 | 9 | 7 | 10 | 3 | 77/100 |
+  | HillClimbing | 10 | 10 | 8 | 10 | 8 | 6 | 9 | 10 | 10 | **8** | 89/100 |
+  | GA | 6 | 9 | 5 | 7 | 7 | 5 | 6 | 8 | 4 | 5 | 62/100 |
+  | SSGA | 5 | 6 | 3 | 5 | 5 | 5 | 7 | 10 | 4 | 4 | 54/100 |
+  | TPE | 8 | 5 | 5 | 9 | 9 | 6 | 8 | 7 | 10 | **3** | 70/100 |
+  | **Memetic** | 10 | 10 | 6 | 10 | 10 | 9 | 10 | 10 | 10 | 6 | **91/100** |
+
+  **Lo que el problema nuevo destapa, y merece mirarse:** el dominio heterogéneo separa
+  a los algoritmos de otra manera. `HillClimbing` lo gana con 8 de 10 y el memético con
+  6, mientras que **TPE se queda en 3, por debajo del muestreo aleatorio** — y la
+  búsqueda de hiperparámetros es exactamente para lo que existe TPE, además de ser uno
+  de los dos algoritmos que evalúa el artículo. No se convierte en hallazgo sin
+  investigarlo, pero queda anotado.
+
+  **En «mejora sobre su inicio» solo queda TPE** con marcador, en Rosenbrock, Schwefel
+  y el árbol. Los otros seis, `RandomSearch` incluida, mejoran sobre su punto de
+  partida en los diez problemas.
 
   Los tests de SA, GA y SSGA nacen `xfail(strict=True)` citando el hallazgo culpable: al arreglar `F-20`, `F-04` o `A-05` saltarán a `XPASS` avisando de que ya se puede quitar el marcador. Se comprobó además que estos resultados **son idénticos antes de `A-06`**, ejecutando el código en `1016e8a`: no son un efecto del cambio de semilla, que solo los ha hecho medibles.
 - **[x] P-06** No hay `.github/workflows`. Con `mypy` ya configurado en `setup.cfg` y una suite que corre en 3 s, un workflow mínimo con matriz 3.10–3.12 captura buena parte de lo anterior. *Cerrado*: `.github/workflows/ci.yml` con dos jobs, `tests` (matriz 3.10–3.12, bloqueante) y `types` (`mypy src`, informativo hasta que cierre `P-11`). Dos cosas salieron a la luz al montarlo: la suite necesita `pytest-csv-params`, que no declara ni `install_requires` ni ningún extra (ver `P-08`), y **el CI no instala los extras a propósito**. Aquello valía cuando el test de `F-24` se saltaba con Ray instalado; al cerrar ese hallazgo se reescribió para bloquear Ray en un subproceso y ahora corre en todas partes. El único test que sigue necesitando Ray de verdad es el de `F-21`.

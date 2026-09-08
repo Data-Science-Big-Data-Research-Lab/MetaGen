@@ -14,7 +14,11 @@ Every run is seeded, so the outcome is fixed rather than a coin toss, and the
 verdicts below are ratios over ten seeds instead of single runs.
 
 The problems are the nine of Section 5.1 of the MetaGen paper, the classics of
-continuous optimization, each on its own canonical domain. Keeping the canonical
+continuous optimization on their canonical domains, and a tenth that tunes a
+scikit-learn model. The tenth is there because nine functions of two real
+variables say nothing about the case the package is sold on: a hyperparameter
+domain mixes integers, categoricals and reals of quite different widths, and
+findings like F-32 and F-33 are invisible without one. Keeping the canonical
 domains rather than normalizing them is deliberate, and it is what turned up
 F-32: an absolute alteration_limit of 1.0 means something quite different on
 [-2.048, 2.048] than on [-600, 600], and the algorithms built around local search
@@ -32,7 +36,15 @@ statistical, and the pairs that fail them carry an xfail naming what is
 responsible.
 
 Property 4 is not asked of RandomSearch: it *is* random sampling, so tying with
-the baseline is the correct outcome and not a defect.
+the baseline is the correct outcome and not a defect. Watch its row anyway: it is
+the calibration. RandomSearch scoring far from five of ten against itself means
+the comparison has stopped measuring, which is what happened when the
+hyperparameter objective was accuracy -- 17 distinct values over a thousand
+configurations, so ties, which count as wins under <=, carried it to nine.
+
+The whole file takes about a minute, most of it the hyperparameter problem: the
+seven algorithms spend some 17000 evaluations per problem and the baseline spends
+as many again, so it fits about 34000 model fits into 30 seconds.
 """
 
 import math
@@ -89,6 +101,12 @@ def _levy(x: float, y: float) -> float:
 
 def _michalewicz(x: float, y: float) -> float:
     # Steepness m = 20 in the exponent, that is the usual m = 10 doubled.
+    #
+    # A needle in a haystack, and the noisiest column of the benchmark because of
+    # it: measured on a 1200x1200 grid the median of the landscape is -0.015 against
+    # an optimum of -1.8013, and only 0.43 % of the domain sits below -1.5. Both
+    # sides of the random-sampling comparison come down to lucky draws, so its
+    # counts swing further between measurements than any other problem's.
     return -sum(math.sin(v) * math.sin((i + 1) * v ** 2 / math.pi) ** 20
                 for i, v in enumerate((x, y)))
 
@@ -98,79 +116,150 @@ def _zakharov(x: float, y: float) -> float:
     return x ** 2 + y ** 2 + weighted ** 2 + weighted ** 4
 
 
-# name -> (lower bound, upper bound, objective), on the canonical domains.
-#
-# These are the nine of Section 5.1 of the MetaGen paper, taken from Molga and
-# Smutnicki. Eight of them have their global minimum at 0; MICHALEWICZ DOES NOT,
-# its minimum is about -1.8013 at (2.20, 1.57) in two dimensions. Nothing here
-# assumes a zero optimum -- every property is relative, comparing a run against
-# its own start or against random sampling on the same budget -- but anything
-# added later must not start assuming it either.
-FUNCTIONS = {
-    "Sphere": (-5.12, 5.12, _sphere),
-    "Rastrigin": (-5.12, 5.12, _rastrigin),
-    "Rosenbrock": (-2.048, 2.048, _rosenbrock),
-    "Ackley": (-32.768, 32.768, _ackley),
-    "Griewank": (-600.0, 600.0, _griewank),
-    "Schwefel": (-500.0, 500.0, _schwefel),
-    "Levy": (-10.0, 10.0, _levy),
-    "Michalewicz": (0.0, math.pi, _michalewicz),
-    "Zakharov": (-5.0, 10.0, _zakharov),
+class _Problem:
+    """A domain to search and an objective to minimize over it.
+
+    A problem carries its own domain rather than the benchmark assuming one, which
+    is what lets the hyperparameter problem below sit next to the nine functions:
+    its domain mixes integers, a categorical and a real, and none of them is called
+    x or y.
+    """
+
+    def __init__(self, build_domain, objective) -> None:
+        self.build_domain = build_domain
+        self.objective = objective
+
+    def domain(self, connector=None) -> Domain:
+        return self.build_domain(connector)
+
+
+def _two_reals(low: float, high: float, objective) -> _Problem:
+    """A problem over two real variables on the same interval, x and y."""
+
+    def build_domain(connector):
+        domain = Domain(connector=connector) if connector is not None else Domain()
+        domain.define_real("x", low, high)
+        domain.define_real("y", low, high)
+        return domain
+
+    return _Problem(build_domain, lambda solution: objective(solution["x"], solution["y"]))
+
+
+def _decision_tree():
+    """Tuning a decision tree, which is what the package is actually for.
+
+    Nine functions of two real variables cannot say anything about the case MetaGen
+    is sold on: a hyperparameter domain mixes integers, categoricals and reals, of
+    quite different widths, and several findings only bite there. F-32's absolute
+    alteration limit and F-33's integer crossover are both invisible on a domain
+    that holds nothing but two reals of the same range.
+
+    Deliberately cheap. The published example tunes a 100-tree random forest with
+    ten-fold cross validation, which costs 543 ms per evaluation: the benchmark
+    spends about 14000 of them per problem, so that would be two hours. A single
+    tree on one split costs 1.2 ms and the whole problem fits in about 17 seconds.
+
+    The objective is the log loss, not the accuracy. Accuracy on 90 held-out samples
+    takes 17 distinct values over a thousand random configurations, so 14 % of random
+    pairs tie -- and since property 4 compares with <=, ties count as wins and
+    RandomSearch scored 9 of 10 against itself, which means the property had stopped
+    measuring anything. Log loss gives 154 distinct values over a ten times wider
+    range, and it already minimizes, which is the direction MetaGen works in.
+    """
+    from sklearn.datasets import make_classification
+    from sklearn.metrics import log_loss
+    from sklearn.model_selection import train_test_split
+    from sklearn.tree import DecisionTreeClassifier
+
+    features, labels = make_classification(
+        n_samples=300, n_features=6, n_informative=4, n_redundant=0,
+        random_state=0, shuffle=False)
+    train_x, test_x, train_y, test_y = train_test_split(
+        features, labels, test_size=0.3, random_state=0)
+
+    def build_domain(connector):
+        domain = Domain(connector=connector) if connector is not None else Domain()
+        domain.define_integer("max_depth", 1, 20)
+        domain.define_integer("min_samples_leaf", 1, 40)
+        domain.define_categorical("criterion", ["gini", "entropy", "log_loss"])
+        domain.define_real("ccp_alpha", 0.0, 0.05)
+        return domain
+
+    def objective(solution) -> float:
+        tree = DecisionTreeClassifier(
+            max_depth=solution["max_depth"],
+            min_samples_leaf=solution["min_samples_leaf"],
+            criterion=solution["criterion"],
+            ccp_alpha=solution["ccp_alpha"],
+            random_state=0)
+        tree.fit(train_x, train_y)
+        return log_loss(test_y, tree.predict_proba(test_x), labels=[0, 1])
+
+    return _Problem(build_domain, objective)
+
+
+# The nine of Section 5.1 of the MetaGen paper, taken from Molga and Smutnicki, on
+# their canonical domains. Eight have their global minimum at 0; MICHALEWICZ DOES
+# NOT, its minimum is about -1.8013 at (2.20, 1.57) in two dimensions. Nothing here
+# assumes a zero optimum -- every property is relative, comparing a run against its
+# own start or against random sampling on the same budget -- but anything added
+# later must not start assuming it either.
+PROBLEMS = {
+    "Sphere": _two_reals(-5.12, 5.12, _sphere),
+    "Rastrigin": _two_reals(-5.12, 5.12, _rastrigin),
+    "Rosenbrock": _two_reals(-2.048, 2.048, _rosenbrock),
+    "Ackley": _two_reals(-32.768, 32.768, _ackley),
+    "Griewank": _two_reals(-600.0, 600.0, _griewank),
+    "Schwefel": _two_reals(-500.0, 500.0, _schwefel),
+    "Levy": _two_reals(-10.0, 10.0, _levy),
+    "Michalewicz": _two_reals(0.0, math.pi, _michalewicz),
+    "Zakharov": _two_reals(-5.0, 10.0, _zakharov),
+    "DecisionTree": _decision_tree(),
 }
-
-
-def _domain(bounds, connector=None) -> Domain:
-    low, high, _ = bounds
-    domain = Domain(connector=connector) if connector is not None else Domain()
-    domain.define_real("x", low, high)
-    domain.define_real("y", low, high)
-    return domain
 
 
 class _CountingFitness:
     """The objective, counting calls so every algorithm can be charged its own budget."""
 
-    def __init__(self, objective) -> None:
-        self.objective = objective
+    def __init__(self, problem: _Problem) -> None:
+        self.problem = problem
         self.evaluations = 0
 
     def __call__(self, solution) -> float:
         self.evaluations += 1
-        return self.objective(solution["x"], solution["y"])
+        return self.problem.objective(solution)
 
 
-def _build(name: str, bounds, fitness, seed: int, log_dir: str):
+def _build(name: str, problem: _Problem, fitness, seed: int, log_dir: str):
     if name == "RandomSearch":
-        return RandomSearch(_domain(bounds), fitness, population_size=10,
+        return RandomSearch(problem.domain(), fitness, population_size=10,
                             max_iterations=15, seed=seed, log_dir=log_dir)
     if name == "SA":
-        return SA(_domain(bounds), fitness, max_iterations=15, seed=seed, log_dir=log_dir)
+        return SA(problem.domain(), fitness, max_iterations=15, seed=seed, log_dir=log_dir)
     if name == "HillClimbing":
-        return HillClimbing(_domain(bounds), fitness, population_size=10,
+        return HillClimbing(problem.domain(), fitness, population_size=10,
                             max_iterations=15, seed=seed, log_dir=log_dir)
     if name == "GA":
-        return GA(_domain(bounds, GAConnector()), fitness, population_size=10,
+        return GA(problem.domain(GAConnector()), fitness, population_size=10,
                   max_iterations=15, seed=seed, log_dir=log_dir)
     if name == "SSGA":
-        return SSGA(_domain(bounds, GAConnector()), fitness, population_size=10,
+        return SSGA(problem.domain(GAConnector()), fitness, population_size=10,
                     max_iterations=15, seed=seed, log_dir=log_dir)
     if name == "TPE":
-        return TPE(_domain(bounds), fitness, max_iterations=15,
+        return TPE(problem.domain(), fitness, max_iterations=15,
                    warmup_iterations=5, seed=seed, log_dir=log_dir)
     if name == "Memetic":
-        return Memetic(_domain(bounds, GAConnector()), fitness, population_size=10,
+        return Memetic(problem.domain(GAConnector()), fitness, population_size=10,
                        max_iterations=15, neighbor_population_size=3, seed=seed,
                        log_dir=log_dir)
     raise ValueError(f"unknown algorithm: {name}")
 
 
-def _best_of_random_sampling(bounds, evaluations: int, seed: int) -> float:
+def _best_of_random_sampling(problem: _Problem, evaluations: int, seed: int) -> float:
     """Best of `evaluations` solutions drawn at random: the baseline to beat."""
     set_seed(100_000 + seed)
-    domain = _domain(bounds)
-    objective = bounds[2]
-    return min(objective(Solution(domain)["x"], Solution(domain)["y"])
-               for _ in range(evaluations))
+    domain = problem.domain()
+    return min(problem.objective(Solution(domain)) for _ in range(evaluations))
 
 
 @pytest.fixture(scope="module")
@@ -178,19 +267,19 @@ def runs(tmp_path_factory):
     """Run every algorithm on every function once per seed, and reuse that."""
     log_dir = str(tmp_path_factory.mktemp("behavior"))
     measured = {}
-    for function_name, bounds in FUNCTIONS.items():
+    for function_name, problem in PROBLEMS.items():
         for name in ALGORITHMS:
             rows = []
             for seed in SEEDS:
-                fitness = _CountingFitness(bounds[2])
-                algorithm = _build(name, bounds, fitness, seed, log_dir)
+                fitness = _CountingFitness(problem)
+                algorithm = _build(name, problem, fitness, seed, log_dir)
                 solution = algorithm.run()
                 rows.append({
                     "final": solution.get_fitness(),
                     "history": list(algorithm.best_solution_fitnesses),
                     "evaluations": fitness.evaluations,
                     "random_baseline": _best_of_random_sampling(
-                        bounds, fitness.evaluations, seed),
+                        problem, fitness.evaluations, seed),
                 })
             measured[(function_name, name)] = rows
     return measured
@@ -200,76 +289,73 @@ def runs(tmp_path_factory):
 # The (function, algorithm) pairs expected to fail a statistical property.
 # --------------------------------------------------------------------------
 
-_SA = ("SA now improves on its own start everywhere and clears five of the nine here, "
-       "after F-30 tied the cooling schedule to the budget and the default neighborhood "
-       "went from one candidate to five, 134 wins out of 270 to 214 over 30 seeds. The "
-       "four it still misses are the hardest of the set for a single walking point on "
-       "81 evaluations: Rastrigin's forest of local optima, Rosenbrock's curved valley, "
-       "deceptive Schwefel and needle-in-a-haystack Michalewicz")
+_SA = ("SA is third of the seven overall since F-30 tied the cooling schedule to the "
+       "budget and the default neighborhood went from one candidate to five. What it "
+       "misses is what a single walking point on 81 evaluations misses: Rosenbrock's "
+       "curved valley, deceptive Schwefel, and a hyperparameter domain it cannot walk "
+       "smoothly because two of its four variables are integers and one is categorical")
 
-_GA = ("GA clears random sampling overall since F-33, 62 wins of 90 against its 50, "
-       "and what it still misses are the three functions that couple the variables or "
-       "hide the optimum: Rosenbrock's curved valley, Zakharov's weighted sum and "
-       "deceptive Schwefel. It has no local search to walk a valley with, and 160 "
-       "evaluations of blind recombination do not find one")
+_GA = ("GA clears random sampling overall since F-33 gave its numeric types a "
+       "real-coded crossover, but it has no local search, so a valley it must walk "
+       "rather than sample defeats it: Rosenbrock, Zakharov's weighted sum and "
+       "deceptive Schwefel. On 160 evaluations, blind recombination does not find one")
 
 _SSGA = ("A-01 gave it parent selection and F-33 a crossover that produces new values, "
-         "which took it from 38 wins of 90 to 51, just past random sampling's 50. What "
-         "is left is the budget: two evaluations per iteration make 40 in all, a "
-         "quarter of what GA spends and a fifteenth of the memetic algorithm's. A-05, "
-         "which used to be blamed here, was refuted")
+         "which took it past random sampling overall. What is left is the budget: two "
+         "evaluations per iteration make 40 in all, a quarter of GA's and a fifteenth "
+         "of the memetic algorithm's. A-05, which used to be blamed here, was refuted")
 
 _DECEPTIVE = ("Schwefel is deceptive: its global optimum sits near the corner of the "
               "domain, at (420.97, 420.97), with a wide field of better-looking local "
               "optima between it and the middle, so a climber that only ever moves "
-              "uphill is led away from it. On 210 evaluations it scores exactly what "
-              "RandomSearch scores, 6 of 10, which is a tie rather than a defeat. F-32 "
-              "was blamed here and is now closed; the relative neighbourhood took this "
-              "from 4 to 6, and the memetic algorithm, on 610 evaluations, clears it")
-
-_MICHALEWICZ = ("Michalewicz is a needle in a haystack, and it is the function rather "
-                "than the algorithms that decides this one: measured on a 1200x1200 "
-                "grid, the median of the landscape is -0.015 against an optimum of "
-                "-1.8013, and only 0.43 % of the domain sits below -1.5. With almost "
-                "no structure to exploit, every algorithm TIES with random sampling "
-                "rather than losing to it -- the counts sit at 4-6 of 10 around the 7 "
-                "the threshold asks for, and the means land in the same range as the "
-                "baselines. Only the memetic algorithm gets past it, on four times the "
-                "budget of any other")
+              "uphill is led away from it. It scores exactly what RandomSearch scores, "
+              "6 of 10, which is a tie rather than a defeat. F-32 was blamed here and "
+              "is closed; only the memetic algorithm, on 610 evaluations, clears it")
 
 _ZAKHAROV = ("Zakharov couples the variables through a weighted sum raised to the "
              "fourth power, so what makes a solution good is the combination, not "
-             "either coordinate on its own. F-33 took GA here from 0 wins of 10 to 5, "
-             "the largest single jump the finding produced, and it still falls short: "
-             "recombining blindly is not how a coupled valley gets walked")
+             "either coordinate on its own. F-33 produced its largest single jump "
+             "here, and it still falls short: recombining is not how a coupled valley "
+             "gets walked")
 
 _TPE = ("TPE models each variable on its own, which suits a separable bowl. Rosenbrock "
         "couples x and y along a curved valley, Rastrigin oscillates faster than the "
-        "model resolves, and Schwefel is deceptive: 15 iterations of an independent "
-        "model do not beat dice on any of the three")
+        "model resolves and Schwefel is deceptive: 15 iterations of an independent "
+        "model beat dice on none of the three")
+
+_HYPERPARAMETERS = (
+    "The hyperparameter problem is the only one here whose domain is heterogeneous -- "
+    "two integers, a categorical and a real, of quite different widths -- and it "
+    "separates the algorithms differently from the nine functions: HillClimbing takes "
+    "8 of 10 and the memetic algorithm 6, while the model-based and population methods "
+    "sit at or below random sampling's own 4. Worth watching rather than explaining "
+    "away: TPE scores 3, and hyperparameter search is what TPE exists for")
 
 # Measured, not guessed, and kept per property: a pair can fail one and pass the
 # other, so a single shared table would turn the passes into XPASS(strict).
-# Only TPE is left here: every other algorithm improves on its own starting point
-# on all nine functions, which was not true of any of them when P-05 opened.
+# Only TPE is left here. Every other algorithm, RandomSearch included, improves on
+# its own starting point on every problem, which was true of none of them when P-05
+# opened.
 _IMPROVES_ON_ITS_START = {
-    **{("Rosenbrock", n): r for n, r in (("TPE", _TPE),)},
-    **{("Schwefel", n): r for n, r in (("TPE", _TPE),)},
+    ("Rosenbrock", "TPE"): _TPE,
+    ("Schwefel", "TPE"): _TPE,
+    ("DecisionTree", "TPE"): _HYPERPARAMETERS,
 }
 
 _BEATS_RANDOM = {
-    **{("Sphere", n): r for n, r in (("SSGA", _SSGA),)},
-    **{("Rastrigin", n): r for n, r in (("SA", _SA), ("TPE", _TPE))},
+    **{("Sphere", n): r for n, r in (("GA", _GA), ("SSGA", _SSGA))},
+    **{("Rastrigin", n): r for n, r in (("SSGA", _SSGA), ("TPE", _TPE))},
     **{("Rosenbrock", n): r for n, r in (("SA", _SA), ("GA", _GA), ("SSGA", _SSGA),
-                                         ("TPE", _TPE))},
+                                         ("TPE", _TPE), ("Memetic", _DECEPTIVE))},
     **{("Ackley", n): r for n, r in (("SSGA", _SSGA),)},
     **{("Griewank", n): r for n, r in (("SSGA", _SSGA),)},
     **{("Schwefel", n): r for n, r in (("SA", _SA), ("GA", _GA), ("SSGA", _SSGA),
                                        ("TPE", _TPE), ("HillClimbing", _DECEPTIVE))},
-    **{("Levy", n): r for n, r in (("SSGA", _SSGA),)},
-    # Michalewicz beats three of the seven, and the reason is the landscape.
-    **{("Michalewicz", n): _MICHALEWICZ for n in ("SA", "TPE")},
+    **{("Levy", n): r for n, r in (("GA", _GA),)},
     **{("Zakharov", n): r for n, r in (("GA", _ZAKHAROV), ("SSGA", _SSGA))},
+    # The heterogeneous domain, which only HillClimbing clears.
+    **{("DecisionTree", n): _HYPERPARAMETERS
+       for n in ("SA", "GA", "SSGA", "TPE", "Memetic")},
 }
 
 
@@ -277,7 +363,7 @@ def _pairs(expected=None, exclude=()):
     """Build the (function, algorithm) parameter list, marking the known failures."""
     expected = expected or {}
     parameters = []
-    for function_name in FUNCTIONS:
+    for function_name in PROBLEMS:
         for name in ALGORITHMS:
             if name in exclude:
                 continue
