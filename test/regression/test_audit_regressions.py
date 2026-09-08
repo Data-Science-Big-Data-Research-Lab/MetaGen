@@ -1875,3 +1875,60 @@ def test_f32_un_numero_sigue_significando_un_limite_absoluto():
             f"sin limite la mutacion deberia alcanzar todo el dominio, y llega al "
             f"{100 * entero:.1f} % desde el centro"
         )
+
+
+# --------------------------------------------------------------------------------
+# F-30 · La temperatura de SA no llega a enfriarse: es un paseo aleatorio
+# --------------------------------------------------------------------------------
+
+def test_f30_la_temperatura_recorre_su_rango_en_las_iteraciones_disponibles():
+    """F-30: con `initial_temp=50`, `cooling_rate=0.99` y `max_iterations=20`, la
+    temperatura acababa en 40.9 y llegar a 0.1 habria exigido 618 iteraciones, treinta
+    veces el presupuesto. A esas temperaturas el criterio de Metropolis no discrimina:
+    medido sobre las nueve funciones, SA aceptaba entre el 8.8 % de los empeoramientos
+    (Schwefel) y el 99.6 % (Michalewicz) sin que nada en su configuracion lo dijera.
+    Ahora la tasa se deriva del presupuesto, asi que la temperatura llega al suelo
+    cualquiera que sea el numero de iteraciones."""
+    from metagen.metaheuristics import SA
+
+    dominio, fitness = _dominio_y_fitness_de_prueba()
+
+    for iteraciones in (10, 20, 100):
+        algoritmo = SA(dominio, fitness, max_iterations=iteraciones, seed=0)
+        algoritmo.run()
+        assert algoritmo.current_temp == pytest.approx(algoritmo.T_min), (
+            f"con {iteraciones} iteraciones la temperatura acaba en "
+            f"{algoritmo.current_temp}, no en el suelo {algoritmo.T_min}: el "
+            "enfriamiento no esta ligado al presupuesto"
+        )
+
+
+def test_f30_una_tasa_de_enfriamiento_dada_a_mano_se_respeta():
+    """Lo que no debe cambiar: quien pase su propia tasa sigue mandando."""
+    from metagen.metaheuristics import SA
+
+    dominio, fitness = _dominio_y_fitness_de_prueba()
+    algoritmo = SA(dominio, fitness, max_iterations=20, cooling_rate=0.99, seed=0)
+    assert algoritmo.cooling_rate == 0.99
+
+
+def test_f30_cada_run_arranca_a_la_misma_temperatura():
+    """`current_temp` solo se fijaba en el constructor, asi que un segundo `run()`
+    continuaba donde lo dejo el primero. No se notaba mientras el enfriamiento apenas
+    se movia; con una temperatura que llega al suelo, romperia la garantia de A-06 de
+    que una semilla reproduce una ejecucion."""
+    from metagen.metaheuristics import SA
+
+    dominio, fitness = _dominio_y_fitness_de_prueba()
+    # Una tasa que si llega al suelo: con la de 0.99 de antes la temperatura apenas
+    # se movia entre ejecuciones y el fallo quedaba invisible.
+    algoritmo = SA(dominio, fitness, max_iterations=10, initial_temp=50.0,
+                   cooling_rate=0.2, seed=3)
+
+    primera = algoritmo.run().get_fitness()
+    segunda = algoritmo.run().get_fitness()
+
+    assert primera == segunda, (
+        f"la misma semilla da {primera} y luego {segunda}: la segunda ejecucion "
+        "hereda la temperatura de la primera"
+    )

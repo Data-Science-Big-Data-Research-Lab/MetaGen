@@ -121,7 +121,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ⬜ | `F-27` | `p_isolation` significa lo contrario de lo que dice su nombre |
 | ⬜ | `F-28` | Tres parámetros de CVOA no son los que sugiere el artículo |
 | ⬜ | `F-29` | CVOA no reproduce entre procesos: itera conjuntos de soluciones |
-| ⬜ | `F-30` | La temperatura de SA no llega a enfriarse: es un paseo aleatorio |
+| ✅ | `F-30` | La temperatura de SA no llega a enfriarse: es un paseo aleatorio |
 | ⬜ | `F-31` | Los genéticos no admiten estructuras dinámicas: el cruce no existe |
 | ✅ | `F-32` | El `alteration_limit` por defecto es absoluto, no relativo al dominio |
 | ⬜ | `F-33` | El cruce es uniforme: sobre variables reales no crea ningún valor nuevo |
@@ -1224,7 +1224,7 @@ dos gemelos.
 tomada hasta ahora**, incluidas las de `F-23` y `F-10` de este documento, que se hicieron
 en procesos distintos.
 
-### [ ] F-30 (R) · La temperatura de SA no llega a enfriarse: es un paseo aleatorio
+### [x] F-30 (R) · La temperatura de SA no llega a enfriarse: es un paseo aleatorio
 `src/metagen/metaheuristics/sa/sa.py:92-93` · descubierto al cerrar `F-20`
 
 Los valores por defecto son `initial_temp=50.0`, `cooling_rate=0.99` y
@@ -1265,6 +1265,72 @@ avisar cuando no cuadren.
 el framework no conoce. Una temperatura absoluta por defecto es discutible para
 cualquier problema; puede tener más sentido una relativa a la dispersión observada en
 el warmup. Es decisión de algoritmia, no de auditoría.
+
+*Cerrado con la primera opción, ligar el enfriamiento al presupuesto.* `cooling_rate`
+pasa a ser `Optional[float] = None`, y cuando no se da se deriva de modo que la
+temperatura recorra su rango entero en las iteraciones disponibles:
+
+```python
+self.cooling_rate = (self.T_min / self.initial_temp) ** (1 / max(1, self.max_iterations))
+```
+
+Quien pase su propia tasa sigue mandando, así que nada escrito antes cambia de
+comportamiento.
+
+**El diagnóstico se queda corto: hay una segunda mitad que es peor que la primera.**
+Que la temperatura no baje es solo la mitad. Medido sobre las nueve funciones, con la
+misma `T=43` en todas:
+
+| función | \|Δ\| medio | P(aceptar un empeoramiento) |
+|---|---|---|
+| Michalewicz | 0.20 | **0.9958** |
+| Ackley | 0.92 | 0.9810 |
+| Sphere | 5.28 | 0.8973 |
+| Rosenbrock | 133.4 | 0.3423 |
+| **Schwefel** | 334.4 | **0.0877** |
+
+`initial_temp=50` es **absoluto** frente a un fitness cuya escala fija el problema, así
+que con la misma configuración SA va de **paseo aleatorio puro** en Michalewicz a **hill
+climbing codicioso** en Schwefel, y el usuario no tiene forma de saber cuál le toca. Es
+la misma enfermedad que `F-32`, en el eje de la temperatura.
+
+**La nota que este hallazgo dejaba fuera de la auditoría —derivar `initial_temp` de la
+dispersión del warmup— se probó y NO sale a cuenta.** Es la opción por la que yo
+apostaba. Con inicialización por tasa de aceptación (`T₀` para aceptar un
+empeoramiento típico con probabilidad 0.8, `T_min` con 0.01), 30 semillas:
+
+| variante | gana al azar | mejora sobre su inicio | evals |
+|---|---|---|---|
+| antes | 134/270 | 168/270 | 21 |
+| **tasa desde el presupuesto** | **161/270** | **195/270** | 21 |
+| tasa + temperatura del warmup | 138/270 | **161/270** | 21 |
+
+Empeora «mejora sobre su inicio», que es la propiedad que delata si el algoritmo aporta
+algo sobre su punto de partida. El motivo está en la trayectoria: con la tasa derivada
+la temperatura cae a `0.57` en tres iteraciones y SA pasa el **80 % del presupuesto
+escalando**; con la del warmup se queda en el mismo orden de magnitud toda la ejecución
+—a mitad de camino aún acepta el 71 % de los empeoramientos— y deambula. Con 15
+iteraciones, escalar gana. **La escala del fitness sigue siendo un problema abierto de
+diseño; lo que queda descartado es esta forma concreta de resolverlo.**
+
+**Segundo bug, del mismo hallazgo y sin diagnosticar:** `current_temp` solo se fijaba en
+el constructor, así que un segundo `run()` continuaba donde lo dejó el primero —50 → 43
+→ 36.99—. No se notaba mientras el enfriamiento apenas se movía; con una temperatura que
+llega al suelo **rompe la garantía de `A-06`** de que una semilla reproduce una
+ejecución. Se reinicia en `pre_execution()`.
+
+**Lo que sigue faltándole a SA no es de este hallazgo.** Con la tasa arreglada queda en
+161/270, todavía por debajo del muestreo aleatorio. El que pesa el doble es
+`neighbor_population_size=1`, la nota que dejó abierta `F-25`: con un solo vecino no hay
+entre qué elegir. Medido, sube a **214/270**. Va en su propio commit.
+
+Un `xfail` se retira (`Zakharov-SA`, mejora sobre su inicio) y se añade otro
+(`Rastrigin-SA`, gana al azar): es una celda al borde que baja de 7 a 5 mientras el
+agregado sube 27 puntos sobre 270.
+
+Tests: `test_f30_la_temperatura_recorre_su_rango_en_las_iteraciones_disponibles`,
+`test_f30_una_tasa_de_enfriamiento_dada_a_mano_se_respeta` y
+`test_f30_cada_run_arranca_a_la_misma_temperatura`.
 
 ### [ ] F-31 (R) · Los genéticos no admiten estructuras dinámicas: el cruce no está implementado
 `src/metagen/metaheuristics/ga/ga_tools.py:62` y `:160` · descubierto al plantear `A-07`
