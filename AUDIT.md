@@ -1,9 +1,10 @@
 # Auditoría de MetaGen
 
 Revisión completa de `src/metagen` sobre el commit `74f104e` (2025-03-21).
-55 hallazgos con identificadores estables: los 46 de la revisión inicial más
+56 hallazgos con identificadores estables: los 46 de la revisión inicial más
 `P-11` (al montar el CI), `F-25` (al medir el comportamiento real de las
-metaheurísticas para `P-05`) y `F-26` (al verificar `F-04`). Los marcados **(R)** se reprodujeron
+metaheurísticas para `P-05`), `F-26` (al verificar `F-04`) y `F-33` (al medir
+`A-01`). Los marcados **(R)** se reprodujeron
 ejecutando el paquete instalado en Python 3.11 sin Ray ni TensorFlow.
 
 **CVOA va aparte.** Sus cuestiones abiertas, sus discrepancias con el artículo original
@@ -34,7 +35,7 @@ Marcar aquí el hallazgo como `[x]` al cerrarlo.
 | Bloque | Cantidad | Qué son |
 |---|---|---|
 | `F-01`…`F-13` | 13 | Críticos: corrompen resultados o bloquean la ejecución |
-| `F-14`…`F-32` | 19 | Importantes: fallan en casos concretos o desperdician cómputo |
+| `F-14`…`F-33` | 20 | Importantes: fallan en casos concretos o desperdician cómputo |
 | `A-01`…`A-12` | 12 | Algoritmia y diseño: decisiones discutibles, no bugs |
 | `P-01`…`P-11` | 11 | Empaquetado, tests y documentación |
 
@@ -136,6 +137,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ⬜ | `F-30` | La temperatura de SA no llega a enfriarse: es un paseo aleatorio |
 | ⬜ | `F-31` | Los genéticos no admiten estructuras dinámicas: el cruce no existe |
 | ⬜ | `F-32` | El `alteration_limit` por defecto es absoluto, no relativo al dominio |
+| ⬜ | `F-33` | El cruce es uniforme: sobre variables reales no crea ningún valor nuevo |
 | ⬜ | `A-01` | Sin selección de padres: todos los cruces usan la misma pareja |
 | ✅ | `A-02` | La búsqueda tabú es en realidad hill climbing |
 | ✅ | `A-03` | El vecindario tabú se genera en cadena, no alrededor de la solución |
@@ -1364,6 +1366,48 @@ que es peor porque el framework sí conoce el dominio.
 
 **Ojo:** cambiar el valor por defecto **mueve los resultados de tres algoritmos**, así
 que debería hacerse midiendo antes y después sobre las seis funciones, no a ojo.
+
+### [ ] F-33 (R) · El cruce es uniforme: sobre variables reales no crea ningún valor nuevo
+`src/metagen/metaheuristics/ga/ga_tools.py:112-127` · descubierto al medir `A-01`
+
+`GASolution.crossover` reparte variables enteras entre los hijos, y cada rama del bucle
+**copia el valor de uno de los dos padres**:
+
+```python
+child1.set(variable_name, copy(other.get(variable_name)))   # valor del padre 2
+child2.set(variable_name, copy(self.get(variable_name)))    # valor del padre 1
+```
+
+Eso es cruce **uniforme**, el operador natural de una codificación discreta. Sobre
+variables reales significa que el cruce **solo baraja coordenadas que ya existían**: la
+descendencia vive siempre en la rejilla que forman los valores de la población inicial,
+y todo valor nuevo tiene que venir de la mutación, que dispara con probabilidad 0.1.
+
+Medido sobre la esfera, 15 generaciones de 10 individuos:
+
+```
+valores de x en la poblacion inicial:        10
+valores de x vistos en las 15 generaciones:  19   (9 nuevos, todos de mutaciones)
+```
+
+**Con una sola variable el cruce degenera en devolver los padres.** La guarda
+`if len(basic_variables) > 1` deja `variables_to_exchange = []`, así que `hijo1 = padre1`
+e `hijo2 = padre2`, las 200 veces de 200 que se probó. No es un error del código —con una
+variable ningún operador de cruce puede inventar nada, e intercambiarla daría los padres
+otra vez— pero **el ejemplo de la docstring del memético usa exactamente un dominio de
+una variable**, así que lo publicado enseña un genético cuyo cruce no hace nada.
+
+Es la causa que queda de que el GA no llegue al umbral en cuatro de las seis funciones
+después de cerrar `A-01`, y la razón de fondo de que al memético le rentara tanto
+intensificar: si el cruce no aporta material nuevo, la búsqueda local es su única fuente
+de novedad.
+
+**Arreglo** No es un bug sino un operador que no encaja con el tipo de variable, así que
+es funcionalidad: registrar para `RealDefinition` un cruce de codificación real —BLX-α,
+SBX o aritmético, que **interpolan** entre los padres y sí producen coordenadas nuevas—
+dejando el uniforme para enteras, categóricas y estructuras. Encaja con el mecanismo del
+conector, que ya elige el tipo por definición. **Debe medirse antes y después sobre las
+seis funciones**, como `F-32`, porque mueve los resultados de los tres genéticos.
 
 ---
 
