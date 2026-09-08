@@ -14,11 +14,11 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-from metagen.framework import Domain, Solution
+from metagen.framework import Domain, RelativeAlteration, Solution
 from metagen.metaheuristics.tools import random_exploration
 import math
 from copy import deepcopy
-from typing import Optional, Callable, Tuple, List
+from typing import Any, Optional, Callable, Tuple, List
 from metagen.metaheuristics.base import Metaheuristic
 from metagen.framework.rng import get_rng
 
@@ -61,8 +61,10 @@ class SA(Metaheuristic):
     :type fitness_function: Callable[[Solution], float]
     :param max_iterations: Maximum number of iterations to run, defaults to 20
     :type max_iterations: int, optional
-    :param alteration_limit: Maximum proportion of solution to alter when generating neighbors, defaults to 0.1
-    :type alteration_limit: float, optional
+    :param alteration_limit: How far a neighbor may move from the current solution.
+        Defaults to a fifth of each variable's own range; a plain number is an
+        absolute amount instead, and None lets a mutation land anywhere in the domain.
+    :type alteration_limit: RelativeAlteration or float or None, optional
     :param initial_temp: Initial temperature for annealing process, defaults to 50.0
     :type initial_temp: float, optional
     :param cooling_rate: Rate at which temperature decreases, defaults to 0.99
@@ -76,8 +78,8 @@ class SA(Metaheuristic):
 
     :ivar max_iterations: Maximum number of iterations
     :vartype max_iterations: int
-    :ivar alteration_limit: Maximum proportion of solution to alter
-    :vartype alteration_limit: float
+    :ivar alteration_limit: How far a neighbor may move from the current solution
+    :vartype alteration_limit: RelativeAlteration or float or None
     :ivar initial_temp: Current temperature in the annealing process
     :vartype initial_temp: float
     :ivar cooling_rate: Rate of temperature decrease
@@ -89,7 +91,7 @@ class SA(Metaheuristic):
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
                  warmup_iterations: int = 5,
                  max_iterations: int = 20,
-                 alteration_limit: int = 1, initial_temp: float = 50.0,
+                 alteration_limit: Any = RelativeAlteration(0.2), initial_temp: float = 50.0,
                  cooling_rate: float = 0.99, neighbor_population_size: int = 1,
                  distributed=False, log_dir: Optional[str] = None,
                  seed: Optional[int] = None) -> None:
@@ -102,8 +104,9 @@ class SA(Metaheuristic):
         :type fitness_function: Callable[[Solution], float]
         :param max_iterations: Maximum number of iterations to run, defaults to 20
         :type max_iterations: int, optional
-        :param alteration_limit: Maximum proportion of solution to alter when generating neighbors, defaults to 0.1
-        :type alteration_limit: float, optional
+        :param alteration_limit: How far a neighbor may move from the current solution,
+            defaults to a fifth of each variable's own range
+        :type alteration_limit: RelativeAlteration or float or None, optional
         :param initial_temp: Initial temperature for annealing process, defaults to 50.0
         :type initial_temp: float, optional
         :param cooling_rate: Rate at which temperature decreases, defaults to 0.99

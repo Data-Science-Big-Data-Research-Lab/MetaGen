@@ -19,6 +19,7 @@ from typing import Any
 from metagen.framework.domain import RealDefinition
 
 from .base import BaseType
+from metagen.framework.alteration import RelativeAlteration
 from metagen.framework.rng import get_rng
 
 
@@ -58,11 +59,15 @@ class Real(BaseType):
         # rejects (F-01).
         self.set(self._generate_numerical(min_value, max_value, step))
 
-    def mutate(self, alteration_limit: float = None) -> None:
+    def mutate(self, alteration_limit: Any = None) -> None:
         """
         Modify the value of this Real instance to a rs value from its definition.
 
-        :param alteration_limit: The determined how much the mutation will alter the current value. If not provided, the mutation can replace the current value with any within the domain.
+        :param alteration_limit: How far the mutation may move the current value. A
+            number is an absolute amount; a :py:class:`~metagen.framework.alteration.RelativeAlteration`
+            is a fraction of this variable's own range (F-32). If not provided, the
+            mutation can replace the current value with any within the domain.
+        :type alteration_limit: float or RelativeAlteration or None
         """
         _, min_value, max_value, step = self.get_definition().get_attributes()
         # Kept before the alteration limit narrows the interval: the grid belongs to
@@ -70,7 +75,12 @@ class Real(BaseType):
         # off the grid every other call (F-01).
         domain_min_value = min_value
 
-        if alteration_limit != None:
+        # Resolved here rather than by the caller because the caller has one number
+        # for the whole solution, and every variable has a range of its own (F-32).
+        if isinstance(alteration_limit, RelativeAlteration):
+            alteration_limit = alteration_limit.of(min_value, max_value)
+
+        if alteration_limit is not None:
             limited_min_value = self.get() - alteration_limit
             limited_max_value = self.get() + alteration_limit
 

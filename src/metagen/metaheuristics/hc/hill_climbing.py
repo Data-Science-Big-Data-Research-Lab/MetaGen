@@ -1,7 +1,7 @@
 from collections import deque
-from metagen.framework import Domain, Solution
+from metagen.framework import Domain, RelativeAlteration, Solution
 from collections.abc import Callable
-from typing import List, Tuple, Deque, Optional
+from typing import Any, List, Tuple, Deque, Optional
 
 from metagen.metaheuristics.tools import local_search_with_tabu
 from metagen.metaheuristics.base import Metaheuristic
@@ -39,8 +39,10 @@ class HillClimbing(Metaheuristic):
     :type max_iterations: int, optional
     :param tabu_size: Maximum size of the tabu list, defaults to 5
     :type tabu_size: int, optional
-    :param alteration_limit: Maximum proportion of solution to alter in local search, defaults to 1.0
-    :type alteration_limit: float, optional
+    :param alteration_limit: How far a neighbor may move from the current solution.
+        Defaults to a fifth of each variable's own range; a plain number is an
+        absolute amount instead, and None lets a mutation land anywhere in the domain.
+    :type alteration_limit: RelativeAlteration or float or None, optional
     :param distributed: Whether to use distributed computation, defaults to False
     :type distributed: bool, optional
     :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
@@ -52,13 +54,14 @@ class HillClimbing(Metaheuristic):
     :vartype tabu_size: int
     :ivar tabu_list: Solutions already visited, skipped when sampling neighbours
     :vartype tabu_list: Deque[Solution]
-    :ivar alteration_limit: Maximum proportion of solution to alter in local search
-    :vartype alteration_limit: float
+    :ivar alteration_limit: How far a neighbor may move from the current solution
+    :vartype alteration_limit: RelativeAlteration or float or None
     """
 
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
                  population_size: int = 10, warmup_iterations:int = 5,
-                 max_iterations: int = 20, tabu_size: int = 5, alteration_limit: float = 1.0,
+                 max_iterations: int = 20, tabu_size: int = 5,
+                 alteration_limit: Any = RelativeAlteration(0.2),
                  gamma_config: Optional[GammaConfig] = None, distributed=False, log_dir: Optional[str] = None,
                  seed: Optional[int] = None):
         """
@@ -74,8 +77,9 @@ class HillClimbing(Metaheuristic):
         :type max_iterations: int, optional
         :param tabu_size: Maximum size of the tabu list, defaults to 5
         :type tabu_size: int, optional
-        :param alteration_limit: Maximum proportion of solution to alter in local search, defaults to 1.0
-        :type alteration_limit: float, optional
+        :param alteration_limit: How far a neighbor may move from the current solution,
+            defaults to a fifth of each variable's own range
+        :type alteration_limit: RelativeAlteration or float or None, optional
         :param distributed: Whether to use distributed computation, defaults to False
         :type distributed: bool, optional
         :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
@@ -85,7 +89,7 @@ class HillClimbing(Metaheuristic):
         self.max_iterations = max_iterations
         self.tabu_size = tabu_size
         self.tabu_list:Deque[Solution] = deque(maxlen=tabu_size)
-        self.alteration_limit: float = alteration_limit
+        self.alteration_limit: Any = alteration_limit
         self.gamma_config = gamma_config
 
     def initialize(self, num_solutions: int = 10) -> Tuple[List[Solution], Solution]:
