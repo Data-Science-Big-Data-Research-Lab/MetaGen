@@ -138,7 +138,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ⬜ | `F-31` | Los genéticos no admiten estructuras dinámicas: el cruce no existe |
 | ⬜ | `F-32` | El `alteration_limit` por defecto es absoluto, no relativo al dominio |
 | ⬜ | `F-33` | El cruce es uniforme: sobre variables reales no crea ningún valor nuevo |
-| ⬜ | `A-01` | Sin selección de padres: todos los cruces usan la misma pareja |
+| ✅ | `A-01` | Sin selección de padres: todos los cruces usan la misma pareja |
 | ✅ | `A-02` | La búsqueda tabú es en realidad hill climbing |
 | ✅ | `A-03` | El vecindario tabú se genera en cadena, no alrededor de la solución |
 | ✅ | `A-04` | Random Search descarta el último individuo, no el peor |
@@ -1415,7 +1415,7 @@ seis funciones**, como `F-32`, porque mueve los resultados de los tres genético
 
 Aquí el código hace lo que dice hacer; lo discutible es qué dice hacer.
 
-- **[ ] A-01 (R)** `ga/ga.py:71-79`, `mm/memetic.py:111-119` — **sin selección de padres**: `best_parents` se calcula fuera del bucle y los `n/2` cruces usan siempre la misma pareja. No hay torneo, ruleta ni ranking. *Propuesta*: función de selección intercambiable, torneo binario por defecto.
+- **[x] A-01 (R)** `ga/ga.py:71-79`, `mm/memetic.py:111-119` — **sin selección de padres**: `best_parents` se calcula fuera del bucle y los `n/2` cruces usan siempre la misma pareja. No hay torneo, ruleta ni ranking. *Propuesta*: función de selección intercambiable, torneo binario por defecto.
 
   *Arreglado en GA y en el memético con un torneo de tamaño configurable.* Se descartó
   la «función de selección intercambiable» de la propuesta: el punto de extensión que
@@ -1473,10 +1473,30 @@ Aquí el código hace lo que dice hacer; lo discutible es qué dice hacer.
   la búsqueda local. **Decisión de David: mantenerlo**, con la tabla completa a la
   vista. Cuando se cierre `F-32` este equilibrio se moverá y habrá que volver a medir.
 
-  Falta SSGA, que tiene el mismo problema por otra vía y va en su propio commit.
+  **SSGA se incluyó aunque el hallazgo no lo cita**, decisión de David tras medirlo.
+  Solo hace un cruce por iteración, así que lo de «los cinco cruces usan la misma
+  pareja» no le aplica; lo que hacía era coger siempre al mejor y al segundo, que es
+  truncamiento con el corte más agresivo posible. **Desde la tercera iteración los dos
+  padres eran el mismo punto y ahí se quedaba**, 13 de 15 cruces, con lo que la guarda
+  `if child1 != child2` descartaba la iteración entera el **62 %** de las veces: SSGA
+  evaluaba 150 cruces para aprovechar 47.
 
-  Tests: `test_a01_el_torneo_no_es_seleccion_por_truncamiento` y
-  `test_a01_los_cruces_de_una_generacion_no_usan_la_misma_pareja`, parametrizado.
+  | SSGA, diez semillas | dos mejores | torneo |
+  |---|---|---|
+  | iteraciones descartadas | 62 % | **26 %** |
+  | mejora sobre su inicio, sumando las seis | 23/60 | **36/60** |
+  | gana al azar, sumando las seis | 19/60 | **25/60** |
+
+  Mejora en las seis funciones y en las tres medidas; dos `xfail` más se retiran,
+  Rastrigin y Schwefel en «mejora sobre su inicio». **El reemplazo *steady state* no se
+  toca**, que era la duda razonable: lo que hace steady state a este algoritmo es que
+  solo se sustituyan los dos peores, no cómo se eligen los padres. De hecho el steady
+  state canónico —el GENITOR de Whitley— **sí lleva selección**, por ranking, así que
+  el torneo lo acerca al modelo publicado en vez de alejarlo.
+
+  Tests: `test_a01_el_torneo_no_es_seleccion_por_truncamiento`,
+  `test_a01_los_cruces_de_una_generacion_no_usan_la_misma_pareja` (parametrizado por GA
+  y memético) y `test_a01_ssga_no_cruza_un_punto_consigo_mismo_casi_siempre`.
 - **[x] A-02 (R)** `ts/tabu.py:123-124`, `tools.py:45` — **tabú es hill climbing**: se explora siempre desde `self.best_solution` y `local_search_with_tabu` nunca devuelve algo peor que el punto de partida, así que la lista tabú no puede desviar al algoritmo de nada. *Propuesta*: `current_solution` separada del mejor histórico, moverse al mejor vecino no tabú aunque empeore, criterio de aspiración.
 
   *Cerrado renombrando, no reescribiendo.* Decisión de David: **el algoritmo es bueno y

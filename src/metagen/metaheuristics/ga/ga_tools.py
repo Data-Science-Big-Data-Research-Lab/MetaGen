@@ -16,7 +16,7 @@
 """
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from copy import copy
 from typing import Tuple, List, cast
 
@@ -190,7 +190,7 @@ class GAConnector(BaseConnector):
         self.register(StaticStructureDefinition, (GAStructure, "static"), list)
 
 
-def tournament_selection(solutions: List[Solution], tournament_size: int = 2) -> Solution:
+def tournament_selection(solutions: Sequence[Solution], tournament_size: int = 2) -> Solution:
     """
     Pick a parent by tournament: draw a few individuals at random and keep the best.
 
@@ -205,7 +205,7 @@ def tournament_selection(solutions: List[Solution], tournament_size: int = 2) ->
     picking the best individual outright.
 
     :param solutions: The population to choose from.
-    :type solutions: List[:py:class:`~metagen.framework.Solution`]
+    :type solutions: Sequence[:py:class:`~metagen.framework.Solution`]
     :param tournament_size: How many individuals compete, at least 1, defaults to 2.
     :type tournament_size: int
     :return: The best of the drawn individuals.
