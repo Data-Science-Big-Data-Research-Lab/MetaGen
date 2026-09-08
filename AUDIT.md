@@ -2213,9 +2213,35 @@ Aquí el código hace lo que dice hacer; lo discutible es qué dice hacer.
   de los dos algoritmos que evalúa el artículo. No se convierte en hallazgo sin
   investigarlo, pero queda anotado.
 
-  **En «mejora sobre su inicio» solo queda TPE** con marcador, en Rosenbrock, Schwefel
-  y el árbol. Los otros seis, `RandomSearch` incluida, mejoran sobre su punto de
-  partida en los diez problemas.
+  **En «mejora sobre su inicio» solo queda TPE** con marcador, en Rosenbrock y
+  Schwefel. Los otros seis, `RandomSearch` incluida, mejoran sobre su punto de partida
+  en todos los problemas.
+
+  **Al problema del árbol solo se le exigen las dos propiedades estructurales, y el
+  motivo es una lección que costó un CI en rojo.** Los números de arriba están medidos
+  aquí; el CI corre en Linux x86 con numpy 2.4 y la última scikit-learn, frente a
+  macOS arm64 con numpy 1.26 y scikit-learn 1.5. **Entrenar un modelo no es
+  aritmética**: el árbol ajusta cortes ligeramente distintos, la log-loss de cada
+  configuración cambia, y el paisaje no es el mismo. `Memetic` da 6/10 aquí y ≥7 allí,
+  y como estaba anotado `xfail(strict=True)` —«se espera que no llegue»— el CI lo
+  reportó como error.
+
+  Y no hay forma de anotarlo bien: **cualquier umbral fijo será correcto en una máquina
+  e incorrecto en la otra**. Con el marcador, rojo en el CI; sin él, rojo aquí. Dos de
+  las seis celdas del problema están a un solo punto del umbral, así que basta un
+  desplazamiento mínimo del paisaje.
+
+  Las dos propiedades **estructurales** sí se exigen, y en las siete combinaciones:
+  miran la contabilidad interna del algoritmo —que el historial no empeore, que
+  devuelva lo mejor que vio— y no cuánto vale el fitness, así que dan igual en
+  cualquier máquina. Son además las comprobaciones más fuertes del módulo. Lo que se
+  pierde es afirmar un umbral estadístico sobre ese problema; lo que se conserva es
+  **recorrer un dominio heterogéneo de punta a punta con los siete algoritmos**, que
+  era lo que faltaba. Las estadísticas se siguen pudiendo medir a mano: así salió lo
+  de TPE.
+
+  `_Problem` gana una bandera `reproducible` que documenta la distinción; las nueve
+  funciones la tienen a cierto porque son aritmética pura.
 
   Los tests de SA, GA y SSGA nacen `xfail(strict=True)` citando el hallazgo culpable: al arreglar `F-20`, `F-04` o `A-05` saltarán a `XPASS` avisando de que ya se puede quitar el marcador. Se comprobó además que estos resultados **son idénticos antes de `A-06`**, ejecutando el código en `1016e8a`: no son un efecto del cambio de semilla, que solo los ha hecho medibles.
 - **[x] P-06** No hay `.github/workflows`. Con `mypy` ya configurado en `setup.cfg` y una suite que corre en 3 s, un workflow mínimo con matriz 3.10–3.12 captura buena parte de lo anterior. *Cerrado*: `.github/workflows/ci.yml` con dos jobs, `tests` (matriz 3.10–3.12, bloqueante) y `types` (`mypy src`, informativo hasta que cierre `P-11`). Dos cosas salieron a la luz al montarlo: la suite necesita `pytest-csv-params`, que no declara ni `install_requires` ni ningún extra (ver `P-08`), y **el CI no instala los extras a propósito**. Aquello valía cuando el test de `F-24` se saltaba con Ray instalado; al cerrar ese hallazgo se reescribió para bloquear Ray en un subproceso y ahora corre en todas partes. El único test que sigue necesitando Ray de verdad es el de `F-21`.
