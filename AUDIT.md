@@ -124,7 +124,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ✅ | `F-30` | La temperatura de SA no llega a enfriarse: es un paseo aleatorio |
 | ⬜ | `F-31` | Los genéticos no admiten estructuras dinámicas: el cruce no existe |
 | ✅ | `F-32` | El `alteration_limit` por defecto es absoluto, no relativo al dominio |
-| ⬜ | `F-33` | El cruce es uniforme: sobre variables reales no crea ningún valor nuevo |
+| ✅ | `F-33` | El cruce es uniforme: sobre variables reales no crea ningún valor nuevo |
 | ✅ | `A-01` | Sin selección de padres: todos los cruces usan la misma pareja |
 | ✅ | `A-02` | La búsqueda tabú es en realidad hill climbing |
 | ✅ | `A-03` | El vecindario tabú se genera en cadena, no alrededor de la solución |
@@ -1506,7 +1506,7 @@ Tests: `test_f32_el_vecindario_por_defecto_escala_con_el_dominio`,
 `test_f32_un_numero_sigue_significando_un_limite_absoluto`, este último para proteger lo
 que **no** debe cambiar.
 
-### [ ] F-33 (R) · El cruce es uniforme: sobre variables reales no crea ningún valor nuevo
+### [x] F-33 (R) · El cruce es uniforme: sobre variables reales no crea ningún valor nuevo
 `src/metagen/metaheuristics/ga/ga_tools.py:112-127` · descubierto al medir `A-01`
 
 `GASolution.crossover` reparte variables enteras entre los hijos, y cada rama del bucle
@@ -1547,6 +1547,82 @@ SBX o aritmético, que **interpolan** entre los padres y sí producen coordenada
 dejando el uniforme para enteras, categóricas y estructuras. Encaja con el mecanismo del
 conector, que ya elige el tipo por definición. **Debe medirse antes y después sobre las
 nueve funciones**, como `F-32`, porque mueve los resultados de los tres genéticos.
+
+*Cerrado con BLX-α y α = 0.5, y con más alcance del que propone el arreglo.* `GAReal` y
+`GAInteger` se registran en `GAConnector` junto a `GAStructure`, y `GASolution.crossover`
+pasa a **preguntar por la capacidad en vez de por el builtin**: quien sabe cruzarse se
+cruza, quien no —la categórica— se intercambia como antes. El mecanismo es el conector,
+así que quien prefiera SBX registra su propia clase.
+
+**Los enteros entran, aunque el hallazgo solo cite los reales.** Tienen el mismo problema
+y pesan en el caso de uso que vende el paquete, lleno de `n_estimators` y `max_depth`. No
+se puede medir con el banco actual, que es todo real; va sostenido por el argumento.
+
+**La primera propuesta fue repartir los dos niveles**, idea de David: unas variables
+heredadas de un padre —conserva combinaciones— y otras mezcladas —aporta valores nuevos—.
+El razonamiento es bueno y la medición lo tumbó. En el banco de dos variables da 575/810
+frente a 581 de mezclarlo todo, pero ese banco no puede juzgarlo: con dos variables no
+hay combinaciones que conservar. Repetido **en diez variables**, incluida una Zakharov
+que las acopla y es el mejor caso posible para el argumento:
+
+| reparto | Sphere-10 | Rastrigin-10 | Zakharov-10 | total |
+|---|---|---|---|---|
+| todo heredado | 30/30 | 28/30 | 16/30 | 74/90 |
+| mezcla 50 % | 30/30 | 30/30 | 28/30 | 88/90 |
+| **todo mezclado** | 30/30 | 30/30 | **30/30** | **90/90** |
+
+**La premisa que yo había trasladado era mala:** BLX no destruye la combinación de los
+padres, la **muestrea alrededor**, porque el intervalo está centrado en sus dos valores.
+El bloque no se pierde, se perturba. Y hay un motivo formal para no hacer las dos cosas
+sobre la misma variable: **BLX es simétrico**, así que si se mezcla, intercambiar deja de
+significar nada.
+
+**α = 0.5 es el valor del artículo original de Eshelman y Schaffer.** Medido sobre las
+nueve funciones y 30 semillas, 0.25, 0.5 y 0.75 son indistinguibles —576, 576 y 590 sobre
+810—, así que se elige el de la literatura por no tener que defender un número propio.
+
+**Las estructuras delegan en sus elementos**, misma regla que un nivel más arriba: un
+vector de reales se mezcla componente a componente, que es como BLX está definido para un
+vector. **Esto no se puede medir con el banco actual**, que no tiene ninguna estructura, y
+así consta.
+
+Resultado sobre las nueve funciones, presupuesto igualado:
+
+| | Sph | Ras | Ros | Ack | Gri | Sch | Levy | Mich | Zak | total |
+|---|---|---|---|---|---|---|---|---|---|---|
+| GA, antes | 7 | 4 | 3 | 7 | 4 | 4 | 7 | 4 | 0 | 40/90 |
+| **GA, ahora** | **9** | **7** | 5 | **9** | **7** | **6** | 7 | **7** | **5** | **62/90** |
+| SSGA, antes | 3 | 5 | 5 | 3 | 3 | 6 | 6 | 5 | 2 | 38/90 |
+| **SSGA, ahora** | **5** | **8** | 6 | **6** | **6** | 4 | 6 | **7** | 3 | **51/90** |
+| Memetic, antes | 10 | 10 | 9 | 10 | 9 | 10 | 10 | 8 | 10 | 86/90 |
+| **Memetic, ahora** | 10 | 10 | 9 | 10 | 9 | 9 | 10 | **10** | 10 | **87/90** |
+
+**Con esto los siete algoritmos alcanzan o superan al muestreo aleatorio**, que empata
+consigo mismo en 50/90. Once `xfail` se retiran, y en «mejora sobre su inicio» **solo
+queda TPE**: los otros seis mejoran sobre su punto de partida en las nueve funciones.
+
+**Hubo que reformular un test de regresión de un hallazgo cerrado**, `F-04`, con permiso
+de David. Comprobaba que alguna variable del hijo 2 valiera *exactamente* lo que vale en
+la madre, que era como el cruce uniforme trasladaba la herencia: copiando. Con BLX el
+valor se sortea del intervalo de los dos padres, lleva información de ambos y no coincide
+con ninguno, así que el test daba un falso positivo. Ahora comprueba la propiedad —el
+hijo 2 no es copia del padre, cambia si cambia la madre, y sus valores caen dentro del
+intervalo— y **se verificó reintroduciendo el bug de `F-04`**: dos de las tres aserciones
+fallan con él.
+
+Cierra un error de mypy, que baja de 168 a **167**. Los `cast` de `GAReal` y `GAInteger`
+son deliberados: `BaseType.get_definition()` está declarado como la unión entera de
+definiciones, que es deuda de `P-11`.
+
+**Queda algo vivo, sin medir:** dentro de una `GAStructure` los elementos ya se mezclan,
+pero un vector de **categóricas** sigue solo barajando posiciones, que es lo correcto para
+ese tipo. Y el `randint(1, len - 1)` que excluía intercambiar *todas* las variables ahora
+solo se aplica cuando ninguna se mezcla, porque su premisa —que intercambiarlas todas
+devuelve a los padres— deja de valer en cuanto algo se mezcla.
+
+Tests: `test_f33_el_cruce_produce_valores_que_no_tenia_ningun_padre`,
+`test_f33_la_categorica_se_sigue_intercambiando_entera` y
+`test_f33_el_cruce_no_se_sale_del_dominio`.
 
 ---
 
@@ -2059,10 +2135,10 @@ Aquí el código hace lo que dice hacer; lo discutible es qué dice hacer.
   | RandomSearch | 8 | 5 | 3 | 8 | 7 | 6 | 5 | 3 | 5 | 50/90 |
   | SA | 10 | 6 | 6 | 10 | 10 | 4 | 10 | 6 | 9 | **71/90** (31) |
   | HillClimbing | 10 | 10 | 8 | 10 | 9 | 6 | 9 | 7 | 10 | **79/90** (70) |
-  | GA | 7 | 4 | 3 | 7 | 4 | 4 | 7 | 4 | 0 | 40/90 |
-  | SSGA | 3 | 5 | 5 | 3 | 3 | 6 | 6 | 5 | 2 | 38/90 |
+  | GA | 9 | 7 | 5 | 9 | 7 | 6 | 7 | 7 | 5 | **62/90** (40) |
+  | SSGA | 5 | 8 | 6 | 6 | 6 | 4 | 6 | 7 | 3 | **51/90** (38) |
   | TPE | 10 | 6 | 6 | 10 | 8 | 5 | 8 | 6 | 8 | 67/90 |
-  | **Memetic** | 10 | 10 | 9 | 10 | 9 | 10 | 10 | 8 | 10 | **86/90** (75) |
+  | **Memetic** | 10 | 10 | 9 | 10 | 9 | 9 | 10 | 10 | 10 | **87/90** (75) |
 
   Tres cosas que las seis funciones no dejaban ver:
 
@@ -2070,9 +2146,9 @@ Aquí el código hace lo que dice hacer; lo discutible es qué dice hacer.
     nueve. `HillClimbing` va segundo, SA tercero desde `F-30` y TPE cuarto. Con la
     esfera sola parecía que dominaba `HillClimbing`; con seis, que el más robusto era
     TPE. Ninguna de las dos lecturas se sostiene con las nueve.
-  - **GA y SSGA siguen por debajo del muestreo aleatorio**, que suma 50/90 empatando
-    consigo mismo; hoy la causa es `F-33`. **SA estaba con ellos** —31/90, el peor del
-    paquete— y salió al cerrar `F-30` y subir su número de vecinos.
+  - **Los siete alcanzan o superan al muestreo aleatorio**, que suma 50/90 empatando
+    consigo mismo. No era así al abrir la sesión del 8 de septiembre de 2026: SA estaba
+    en 31/90, GA en 40 y SSGA en 38. Los sacaron `A-01`, `F-30`, `F-32` y `F-33`.
   - **Michalewicz derrota a seis de los siete, y la culpa es de la función.** Medido
     sobre una rejilla de 1200×1200, la mediana del paisaje es **−0.015** frente a un
     óptimo de −1.8013, y solo el **0.43 %** del dominio baja de −1.5. Es un pajar con

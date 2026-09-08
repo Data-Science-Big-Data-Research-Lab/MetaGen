@@ -28,6 +28,114 @@ from metagen.framework.domain import (BaseDefinition, CategoricalDefinition,
                                       StaticStructureDefinition)
 from metagen.framework.rng import get_rng
 
+#: Width of the BLX interval, as a share of the distance between the two parents,
+#: added at each end. Eshelman and Schaffer's own recommendation; measured over the
+#: nine benchmark functions and 30 seeds, anything from 0.25 to 0.75 performs the
+#: same, so the value from the literature is the one that needs no defending.
+BLX_ALPHA = 0.5
+
+
+def blend_interval(first: float, second: float, min_value: float, max_value: float,
+                   alpha: float = BLX_ALPHA) -> Tuple[float, float]:
+    """
+    The interval a BLX-alpha child is drawn from, clipped to the domain.
+
+    Uniform crossover hands a whole variable to one child or the other, so on a
+    numerical variable the offspring can only ever hold values the population
+    already had; every value the search has not seen has to come from a mutation
+    (F-33). BLX draws instead from the interval the two parents span, widened by
+    ``alpha`` of its width at each end, which is what lets a crossover produce a
+    value neither parent held.
+
+    It is symmetric in its two arguments, so which parent is which does not matter
+    -- that is why a blended variable is not also exchanged.
+
+    :param first: One parent's value.
+    :type first: float
+    :param second: The other parent's value.
+    :type second: float
+    :param min_value: Lower bound of the variable's definition.
+    :type min_value: float
+    :param max_value: Upper bound of the variable's definition.
+    :type max_value: float
+    :param alpha: Share of the parents' distance added at each end.
+    :type alpha: float
+    :return: The interval to draw the child's value from.
+    :rtype: Tuple[float, float]
+    """
+    spread = abs(first - second) * alpha
+    return (max(min_value, min(first, second) - spread),
+            min(max_value, max(first, second) + spread))
+
+
+class GAReal(types.Real):
+    """
+    A real variable that knows how to cross over, by BLX-alpha.
+
+    :ivar connector: The connector used to link different types
+    :vartype connector: BaseConnector
+    """
+
+    def crossover(self, other: GAReal) -> Tuple[GAReal, GAReal]:
+        """
+        Draw two children from the BLX-alpha interval this variable spans with another.
+
+        :param other: The other parent's value for this variable.
+        :type other: GAReal
+        :return: Two new values, each drawn independently.
+        :rtype: Tuple[GAReal, GAReal]
+        """
+        # Cast because BaseType.get_definition() is declared as the whole union of
+        # definitions, so mypy sees a five-element unpack among the possibilities. A
+        # GAReal always holds a RealDefinition; the declared type is what is too wide
+        # (P-11). types.Real has the same three errors and no cast, for now.
+        definition = cast(RealDefinition, self.get_definition())
+        _, min_value, max_value, step = definition.get_attributes()
+        left, right = blend_interval(self.get(), other.get(), min_value, max_value)
+
+        children = []
+        for _ in range(2):
+            child = GAReal(definition, connector=self.connector)
+            # Through _generate_numerical so the value lands on the domain's own grid
+            # when the definition has a step, anchored at its minimum (F-01).
+            child.set(self._generate_numerical(left, right, step, origin=min_value))
+            children.append(child)
+        return children[0], children[1]
+
+
+class GAInteger(types.Integer):
+    """
+    An integer variable that knows how to cross over, by BLX-alpha.
+
+    Integers have the same problem as reals -- a uniform swap never produces a value
+    the population did not hold -- and it matters most in the case the package is
+    sold on, hyperparameter optimization, whose domains are full of them.
+
+    :ivar connector: The connector used to link different types
+    :vartype connector: BaseConnector
+    """
+
+    def crossover(self, other: GAInteger) -> Tuple[GAInteger, GAInteger]:
+        """
+        Draw two children from the BLX-alpha interval, rounded to the definition's grid.
+
+        :param other: The other parent's value for this variable.
+        :type other: GAInteger
+        :return: Two new values, each drawn independently.
+        :rtype: Tuple[GAInteger, GAInteger]
+        """
+        definition = cast(IntegerDefinition, self.get_definition())
+        _, min_value, max_value, step = definition.get_attributes()
+        left, right = blend_interval(self.get(), other.get(), min_value, max_value)
+
+        children = []
+        for _ in range(2):
+            child = GAInteger(definition, connector=self.connector)
+            child.set(int(round(self._generate_numerical(
+                left, right, step or 1, origin=min_value))))
+            children.append(child)
+        return children[0], children[1]
+
 
 class GAStructure(types.Structure):
     """
@@ -63,7 +171,14 @@ class GAStructure(types.Structure):
             raise NotImplementedError()
         else:
             for i in range(current_size):
-                if i in indexes_to_change:
+                # An element that knows how to cross over does its own recombining,
+                # the same rule GASolution follows one level up: a structure of reals
+                # blends component by component, which is how BLX is defined for a
+                # vector, instead of only shuffling values between positions (F-33).
+                # Elements that do not, categoricals among them, swap positions.
+                if hasattr(self.get(i), "crossover"):
+                    child1[i], child2[i] = self.get(i).crossover(other.get(i))
+                elif i in indexes_to_change:
                     child1[i], child2[i] = copy(other.get(i)), copy(self.get(i))
                 else:
                     child1[i], child2[i] = copy(self.get(i)), copy(other.get(i))
@@ -93,22 +208,24 @@ class GASolution(Solution):
         """
         assert self.get_variables().keys() == other.get_variables().keys()
 
-        basic_variables = []
+        # The question is what a variable can do, not what builtin it maps to. Asking
+        # for the builtin put reals and integers in with the categoricals, so the only
+        # thing that ever happened to a number was being handed whole to one child or
+        # the other: the offspring could not hold a value the population did not
+        # already have (F-33). Since GAReal and GAInteger cross over themselves, what
+        # is left here are the variables that cannot be blended, categoricals.
+        swappable = [variable_name
+                     for variable_name, variable_value in self.get_variables().items()
+                     if not hasattr(variable_value, "crossover")]
 
-        for variable_name, variable_value in self.get_variables().items():
-
-            if isinstance(variable_value, GAStructure):
-                variable_value = (variable_value, "static")
-
-            if self.connector.get_builtin(variable_value) in [int, float, str]:
-                basic_variables.append(variable_name)
-
-        if len(basic_variables) > 1:
-            n_variables_to_exchange = get_rng().randint(
-                1, len(basic_variables) - 1)
-
+        if swappable:
+            # Exchanging every one of them would hand the parents straight back when
+            # there is nothing else being recombined, which is why the count used to
+            # stop one short. It only does so when nothing blends.
+            most = len(swappable) - 1 if len(swappable) == len(self.get_variables()) \
+                else len(swappable)
             variables_to_exchange = get_rng().sample(
-                basic_variables, n_variables_to_exchange)
+                swappable, get_rng().randint(1, most)) if most >= 1 else []
         else:
             variables_to_exchange = []
 
@@ -117,7 +234,7 @@ class GASolution(Solution):
 
         for variable_name, variable_value in self.get_variables().items():  # Iterate over all variables
 
-            if variable_name not in basic_variables:
+            if variable_name not in swappable:
                 variable_child1, variable_child2 = variable_value.crossover(
                     other.get(variable_name))
                 child1.set(variable_name, copy(variable_child1))
@@ -168,13 +285,15 @@ class GAConnector(BaseConnector):
 
     This connector links the following classes:
     * BaseDefinition - GASolution - dict
-    * IntegerDefinition - types.Integer - int
-    * RealDefinition - types.Real - float
+    * IntegerDefinition - GAInteger - int
+    * RealDefinition - GAReal - float
     * CategoricalDefinition - types.Categorical - str
     * StaticStructureDefinition - GAStructure - list
 
-    The Solution and Structure original classes have been replaced by custom GA classes.
-    When instantiating a StaticStructureDefinition, the GAStructure will be employed.
+    Every type but the categorical is replaced by a GA one, and what they add is a
+    crossover operator: a categorical has no meaningful blend between two values, so
+    it keeps the uniform swap. Bringing another operator -- SBX instead of BLX, say --
+    is a matter of registering another class here, which is what the connector is for.
     """
 
     def __init__(self) -> None:
@@ -184,8 +303,8 @@ class GAConnector(BaseConnector):
         super().__init__()
 
         self.register(BaseDefinition, GASolution, dict)
-        self.register(IntegerDefinition, types.Integer, int)
-        self.register(RealDefinition, types.Real, float)
+        self.register(IntegerDefinition, GAInteger, int)
+        self.register(RealDefinition, GAReal, float)
         self.register(CategoricalDefinition, types.Categorical, str)
         self.register(StaticStructureDefinition, (GAStructure, "static"), list)
 

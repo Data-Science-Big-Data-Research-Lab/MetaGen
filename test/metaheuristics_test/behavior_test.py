@@ -207,17 +207,17 @@ _SA = ("SA now improves on its own start everywhere and clears five of the nine 
        "81 evaluations: Rastrigin's forest of local optima, Rosenbrock's curved valley, "
        "deceptive Schwefel and needle-in-a-haystack Michalewicz")
 
-_GA = ("A-01 is closed and the parents are drawn by tournament now, but with two real "
-       "variables the crossover can only swap coordinates between the parents: every "
-       "value it has never seen has to come from a mutation, which fires with "
-       "probability 0.1. Measured on the sphere, 15 generations of 10 individuals see "
-       "19 distinct values of x against the 10 they started with")
+_GA = ("GA clears random sampling overall since F-33, 62 wins of 90 against its 50, "
+       "and what it still misses are the three functions that couple the variables or "
+       "hide the optimum: Rosenbrock's curved valley, Zakharov's weighted sum and "
+       "deceptive Schwefel. It has no local search to walk a valley with, and 160 "
+       "evaluations of blind recombination do not find one")
 
-_SSGA = ("A-01 is closed and the parents are drawn by tournament now, which took the "
-         "iterations thrown away for yielding two identical children from 62 % down to "
-         "26 %. What is left is the smallest budget of the seven, 40 evaluations, spent "
-         "with the crossover of F-33, which never produces a value the population did "
-         "not already hold. A-05, which used to be blamed here, was refuted")
+_SSGA = ("A-01 gave it parent selection and F-33 a crossover that produces new values, "
+         "which took it from 38 wins of 90 to 51, just past random sampling's 50. What "
+         "is left is the budget: two evaluations per iteration make 40 in all, a "
+         "quarter of what GA spends and a fifteenth of the memetic algorithm's. A-05, "
+         "which used to be blamed here, was refuted")
 
 _DECEPTIVE = ("Schwefel is deceptive: its global optimum sits near the corner of the "
               "domain, at (420.97, 420.97), with a wide field of better-looking local "
@@ -239,10 +239,9 @@ _MICHALEWICZ = ("Michalewicz is a needle in a haystack, and it is the function r
 
 _ZAKHAROV = ("Zakharov couples the variables through a weighted sum raised to the "
              "fourth power, so what makes a solution good is the combination, not "
-             "either coordinate on its own. Swapping one coordinate between parents is "
-             "all the uniform crossover of F-33 can do, and it destroys exactly that. "
-             "GA does not take a single seed of the ten, mean 3.6915 against 0.3973 "
-             "for random sampling: its worst showing on the nine")
+             "either coordinate on its own. F-33 took GA here from 0 wins of 10 to 5, "
+             "the largest single jump the finding produced, and it still falls short: "
+             "recombining blindly is not how a coupled valley gets walked")
 
 _TPE = ("TPE models each variable on its own, which suits a separable bowl. Rosenbrock "
         "couples x and y along a curved valley, Rastrigin oscillates faster than the "
@@ -251,30 +250,25 @@ _TPE = ("TPE models each variable on its own, which suits a separable bowl. Rose
 
 # Measured, not guessed, and kept per property: a pair can fail one and pass the
 # other, so a single shared table would turn the passes into XPASS(strict).
-# SA no longer appears here: with five neighbors it improves on its own starting
-# point on all nine functions.
+# Only TPE is left here: every other algorithm improves on its own starting point
+# on all nine functions, which was not true of any of them when P-05 opened.
 _IMPROVES_ON_ITS_START = {
-    **{("Sphere", n): r for n, r in (("SSGA", _SSGA),)},
-    **{("Rosenbrock", n): r for n, r in (("SSGA", _SSGA), ("TPE", _TPE))},
-    **{("Ackley", n): r for n, r in (("SSGA", _SSGA),)},
-    **{("Griewank", n): r for n, r in (("SSGA", _SSGA),)},
-    **{("Schwefel", n): r for n, r in (("GA", _GA), ("TPE", _TPE))},
-    **{("Levy", n): r for n, r in (("SSGA", _SSGA),)},
+    **{("Rosenbrock", n): r for n, r in (("TPE", _TPE),)},
+    **{("Schwefel", n): r for n, r in (("TPE", _TPE),)},
 }
 
 _BEATS_RANDOM = {
     **{("Sphere", n): r for n, r in (("SSGA", _SSGA),)},
-    **{("Rastrigin", n): r for n, r in (("SA", _SA), ("GA", _GA), ("SSGA", _SSGA),
-                                        ("TPE", _TPE))},
+    **{("Rastrigin", n): r for n, r in (("SA", _SA), ("TPE", _TPE))},
     **{("Rosenbrock", n): r for n, r in (("SA", _SA), ("GA", _GA), ("SSGA", _SSGA),
                                          ("TPE", _TPE))},
     **{("Ackley", n): r for n, r in (("SSGA", _SSGA),)},
-    **{("Griewank", n): r for n, r in (("GA", _GA), ("SSGA", _SSGA))},
+    **{("Griewank", n): r for n, r in (("SSGA", _SSGA),)},
     **{("Schwefel", n): r for n, r in (("SA", _SA), ("GA", _GA), ("SSGA", _SSGA),
                                        ("TPE", _TPE), ("HillClimbing", _DECEPTIVE))},
     **{("Levy", n): r for n, r in (("SSGA", _SSGA),)},
-    # Michalewicz beats five of the seven, and the reason is the landscape.
-    **{("Michalewicz", n): _MICHALEWICZ for n in ("SA", "GA", "SSGA", "TPE")},
+    # Michalewicz beats three of the seven, and the reason is the landscape.
+    **{("Michalewicz", n): _MICHALEWICZ for n in ("SA", "TPE")},
     **{("Zakharov", n): r for n, r in (("GA", _ZAKHAROV), ("SSGA", _SSGA))},
 }
 
