@@ -30,10 +30,15 @@ is deliberate too: every property here is relative, so nothing may assume the
 optimum sits at zero.
 
 Properties 1 and 2 are structural, and are asked of every algorithm on every
-function: an optimizer that reports an improving history and then hands back
-something else is broken whatever the problem. Properties 3 and 4 are
-statistical, and the pairs that fail them carry an xfail naming what is
-responsible.
+problem: an optimizer that reports an improving history and then hands back
+something else is broken whatever the problem, and whatever machine it runs on.
+Properties 3 and 4 are statistical -- they compare a count against a fixed
+threshold -- and are asked only of the problems whose objective returns the same
+number everywhere. That leaves the hyperparameter problem out of them: training a
+model is not arithmetic, so its landscape shifts a little with the scikit-learn
+version and the processor, and a threshold measured on one machine is a
+prediction that only holds there. The pairs that fail them carry an xfail naming
+what is responsible.
 
 Property 4 is not asked of RandomSearch: it *is* random sampling, so tying with
 the baseline is the correct outcome and not a defect. Watch its row anyway: it is
@@ -123,11 +128,21 @@ class _Problem:
     is what lets the hyperparameter problem below sit next to the nine functions:
     its domain mixes integers, a categorical and a real, and none of them is called
     x or y.
+
+    ``reproducible`` says whether the objective returns the same number on every
+    machine. The nine functions do: they are arithmetic. Training a model does not
+    -- scikit-learn's algorithms change between versions and the arithmetic rounds
+    differently on another processor -- so its landscape is not quite the same
+    landscape, and the statistical properties, which compare a measured count
+    against a fixed threshold, cannot be asserted on it. The structural properties
+    can: they look at the algorithm's own bookkeeping, not at what the fitness is
+    worth.
     """
 
-    def __init__(self, build_domain, objective) -> None:
+    def __init__(self, build_domain, objective, reproducible: bool = True) -> None:
         self.build_domain = build_domain
         self.objective = objective
+        self.reproducible = reproducible
 
     def domain(self, connector=None) -> Domain:
         return self.build_domain(connector)
@@ -165,6 +180,20 @@ def _decision_tree():
     RandomSearch scored 9 of 10 against itself, which means the property had stopped
     measuring anything. Log loss gives 154 distinct values over a ten times wider
     range, and it already minimizes, which is the direction MetaGen works in.
+
+    Only the structural properties are asked of it, because its landscape is not the
+    same landscape on another machine: see _Problem.reproducible. What the statistical
+    ones measured here, on 2026-09-08, is worth writing down even though it is no
+    longer asserted. Wins against random sampling on the same budget, out of ten
+    seeds: HillClimbing 8, Memetic 6, GA 5, RandomSearch 4 against itself, SSGA 4,
+    SA 3, TPE 3. The heterogeneous domain sorts the algorithms differently from the
+    nine functions, and the signal of this landscape is almost entirely in one
+    variable: the best 5 % has min_samples_leaf averaging 7.5 against 20.7 over the
+    whole space, while max_depth barely matters. What separates them is whether they
+    learn that. Measured by thirds of each run, HillClimbing takes min_samples_leaf
+    from 19.1 to 7.0 and the memetic algorithm from 15.4 to 7.7, while TPE only
+    reaches 16.3 on more than twice HillClimbing's budget -- and hyperparameter
+    search is what TPE exists for.
     """
     from sklearn.datasets import make_classification
     from sklearn.metrics import log_loss
@@ -195,7 +224,7 @@ def _decision_tree():
         tree.fit(train_x, train_y)
         return log_loss(test_y, tree.predict_proba(test_x), labels=[0, 1])
 
-    return _Problem(build_domain, objective)
+    return _Problem(build_domain, objective, reproducible=False)
 
 
 # The nine of Section 5.1 of the MetaGen paper, taken from Molga and Smutnicki, on
@@ -333,14 +362,6 @@ _TPE = ("TPE models each variable on its own, which suits a separable bowl. Rose
         "model resolves and Schwefel is deceptive: 15 iterations of an independent "
         "model beat dice on none of the three")
 
-_HYPERPARAMETERS = (
-    "The hyperparameter problem is the only one here whose domain is heterogeneous -- "
-    "two integers, a categorical and a real, of quite different widths -- and it "
-    "separates the algorithms differently from the nine functions: HillClimbing takes "
-    "8 of 10 and the memetic algorithm 6, while the model-based and population methods "
-    "sit at or below random sampling's own 4. Worth watching rather than explaining "
-    "away: TPE scores 3, and hyperparameter search is what TPE exists for")
-
 # Measured, not guessed, and kept per property: a pair can fail one and pass the
 # other, so a single shared table would turn the passes into XPASS(strict).
 # Only TPE is left here. Every other algorithm, RandomSearch included, improves on
@@ -349,7 +370,6 @@ _HYPERPARAMETERS = (
 _IMPROVES_ON_ITS_START = {
     ("Rosenbrock", "TPE"): _TPE,
     ("Schwefel", "TPE"): _TPE,
-    ("DecisionTree", "TPE"): _HYPERPARAMETERS,
 }
 
 _BEATS_RANDOM = {
@@ -363,17 +383,25 @@ _BEATS_RANDOM = {
                                        ("TPE", _TPE), ("HillClimbing", _DECEPTIVE))},
     **{("Levy", n): r for n, r in (("GA", _GA),)},
     **{("Zakharov", n): r for n, r in (("GA", _ZAKHAROV), ("SSGA", _SSGA))},
-    # The heterogeneous domain, which only HillClimbing clears.
-    **{("DecisionTree", n): _HYPERPARAMETERS
-       for n in ("SA", "GA", "SSGA", "TPE", "Memetic")},
 }
 
 
-def _pairs(expected=None, exclude=()):
-    """Build the (function, algorithm) parameter list, marking the known failures."""
+def _pairs(expected=None, exclude=(), reproducible_only=False):
+    """Build the (problem, algorithm) parameter list, marking the known failures.
+
+    ``reproducible_only`` leaves out the problems whose objective is not the same
+    number on every machine. It is asked for by the two statistical properties,
+    which assert a count against a fixed threshold: a threshold measured here would
+    be a prediction that only holds here, and a pair sitting one win from it -- two
+    of the six do on the hyperparameter problem -- flips on another machine. Marking
+    it either way then breaks one of the two: with the xfail the CI goes red, and
+    without it this machine does.
+    """
     expected = expected or {}
     parameters = []
-    for function_name in PROBLEMS:
+    for function_name, problem in PROBLEMS.items():
+        if reproducible_only and not problem.reproducible:
+            continue
         for name in ALGORITHMS:
             if name in exclude:
                 continue
@@ -408,7 +436,8 @@ def test_the_returned_solution_is_the_best_one_seen(runs, function_name, name):
         )
 
 
-@pytest.mark.parametrize("function_name,name", _pairs(_IMPROVES_ON_ITS_START))
+@pytest.mark.parametrize("function_name,name",
+                         _pairs(_IMPROVES_ON_ITS_START, reproducible_only=True))
 def test_the_run_ends_better_than_it_started(runs, function_name, name):
     """Searching has to pay off: the end of the history beats its beginning."""
     rows = runs[(function_name, name)]
@@ -421,7 +450,8 @@ def test_the_run_ends_better_than_it_started(runs, function_name, name):
 
 
 @pytest.mark.parametrize("function_name,name",
-                         _pairs(_BEATS_RANDOM, exclude=("RandomSearch",)))
+                         _pairs(_BEATS_RANDOM, exclude=("RandomSearch",),
+                                reproducible_only=True))
 def test_it_beats_random_sampling_on_the_same_budget(runs, function_name, name):
     """An optimizer must do better than spending its evaluations on dice rolls."""
     rows = runs[(function_name, name)]
