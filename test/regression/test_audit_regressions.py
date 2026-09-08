@@ -1754,3 +1754,38 @@ def test_a01_los_cruces_de_una_generacion_no_usan_la_misma_pareja(nombre, monkey
         f"{nombre} cruza la misma pareja en los cinco cruces de una generacion: "
         f"{primera_generacion}"
     )
+
+
+def test_a01_ssga_no_cruza_un_punto_consigo_mismo_casi_siempre(monkeypatch):
+    """A-01 en SSGA, que llega por otra via. Solo hace un cruce por iteracion, asi que
+    no le aplica lo de «los cinco cruces usan la misma pareja»; lo que hacia era coger
+    siempre al mejor y al segundo, que es truncamiento con el corte mas agresivo
+    posible. Medido antes del arreglo: desde la tercera iteracion los dos padres eran
+    el mismo punto y ahi se quedaba, 13 de 15 cruces, con lo que el cruce devolvia ese
+    punto dos veces y la guarda `if child1 != child2` descartaba la iteracion entera
+    el 62 % de las veces.
+
+    El reemplazo steady state no se toca: lo que hace steady state a este algoritmo es
+    que solo se sustituyan los dos peores, no como se eligen los padres.
+    """
+    import metagen.metaheuristics.ga.ssga as modulo
+    from metagen.metaheuristics import SSGA
+
+    original = modulo.yield_two_children
+    parejas = []
+
+    def espia(padres, mutation_rate, fitness_function):
+        parejas.append(tuple(
+            tuple(round(padre[nombre], 9) for nombre in ("x", "y")) for padre in padres))
+        return original(padres, mutation_rate, fitness_function)
+
+    monkeypatch.setattr(modulo, "yield_two_children", espia)
+
+    dominio, fitness = _dominio_ga()
+    SSGA(dominio, fitness, population_size=10, max_iterations=15, seed=0).run()
+
+    mismo_punto = sum(1 for padre, madre in parejas if padre == madre)
+    assert mismo_punto < len(parejas) / 2, (
+        f"SSGA cruza un punto consigo mismo en {mismo_punto} de los {len(parejas)} "
+        "cruces, asi que el cruce no recombina nada"
+    )

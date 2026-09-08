@@ -20,7 +20,8 @@ from copy import deepcopy
 from typing import Optional, List, Tuple, cast
 
 from metagen.framework import Domain, Solution
-from .ga_tools import GASolution, yield_two_children, require_crossover
+from .ga_tools import (GASolution, yield_two_children, require_crossover,
+                       tournament_selection)
 from metagen.metaheuristics.base import Metaheuristic
 from metagen.metaheuristics.tools import random_exploration
 from ...logging.metagen_logger import metagen_logger
@@ -40,6 +41,9 @@ class SSGA(Metaheuristic):
     :type mutation_rate: float, optional
     :param n_iterations: The number of generations to run the algorithm (default is 50).
     :type n_iterations: int, optional
+    :param tournament_size: How many individuals compete to become a parent (default is 2,
+        the mildest tournament). Raising it makes the search greedier.
+    :type tournament_size: int, optional
 
     :ivar population_size: The size of the population.
     :vartype population_size: int
@@ -55,6 +59,7 @@ class SSGA(Metaheuristic):
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
                  population_size: int = 10,
                  max_iterations: int = 50, mutation_rate: float = 0.1,
+                 tournament_size: int = 2,
                  distributed: bool = False, log_dir: Optional[str] = None,
                  seed: Optional[int] = None):
         super().__init__(domain, fitness_function, population_size=population_size, distributed=distributed, log_dir=log_dir, seed=seed)
@@ -64,6 +69,7 @@ class SSGA(Metaheuristic):
         require_crossover(domain, "SSGA")
         self.mutation_rate = mutation_rate
         self.max_iterations = max_iterations
+        self.tournament_size = tournament_size
 
     def initialize(self, num_solutions=10) -> Tuple[List[Solution], Solution]:
         current_solutions, best_solution = random_exploration(self.domain, self.fitness_function, num_solutions)
@@ -73,10 +79,15 @@ class SSGA(Metaheuristic):
         """
         Iterate the algorithm for one generation.
         """
-        best_parents = heapq.nsmallest(2, solutions, key=lambda sol: sol.get_fitness())
-
-        father = cast(GASolution, best_parents[0])
-        mother = cast(GASolution, best_parents[1])
+        # A-01: crossing the top two every single iteration is truncation selection at
+        # its most extreme. The population converged on that pair within three
+        # iterations and stayed there, and since crossing a point with itself gives it
+        # back, 69 % of the crossovers came out with two identical children and the
+        # iteration below was skipped whole. The steady state replacement is untouched:
+        # what makes this algorithm steady state is that only the two worst are
+        # replaced, not how the parents are chosen.
+        father = cast(GASolution, tournament_selection(solutions, self.tournament_size))
+        mother = cast(GASolution, tournament_selection(solutions, self.tournament_size))
 
         child1, child2 = yield_two_children((father,mother), self.mutation_rate, self.fitness_function)
 

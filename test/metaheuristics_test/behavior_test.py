@@ -178,9 +178,11 @@ _GA = ("A-01 is closed and the parents are drawn by tournament now, but with two
        "probability 0.1. Measured on the sphere, 15 generations of 10 individuals see "
        "19 distinct values of x against the 10 they started with")
 
-_SSGA = ("Steady state with no selection pressure: it always crosses the top two and "
-         "replaces the bottom two, 40 evaluations of a population that converges on "
-         "its first pair. A-05, which used to be blamed here, was refuted")
+_SSGA = ("A-01 is closed and the parents are drawn by tournament now, which took the "
+         "iterations thrown away for yielding two identical children from 62 % down to "
+         "26 %. What is left is the smallest budget of the seven, 40 evaluations, spent "
+         "with the crossover of F-33, which never produces a value the population did "
+         "not already hold. A-05, which used to be blamed here, was refuted")
 
 _WIDE = ("F-32: alteration_limit defaults to an absolute 1.0, about a thousandth of "
          "this domain's range, so the local search cannot go anywhere")
@@ -194,12 +196,10 @@ _TPE = ("TPE models each variable on its own, which suits a separable bowl. Rose
 # other, so a single shared table would turn the passes into XPASS(strict).
 _IMPROVES_ON_ITS_START = {
     **{("Sphere", n): r for n, r in (("SA", _SA), ("SSGA", _SSGA))},
-    **{("Rastrigin", n): r for n, r in (("SSGA", _SSGA),)},
     **{("Rosenbrock", n): r for n, r in (("SSGA", _SSGA), ("TPE", _TPE))},
     **{("Ackley", n): r for n, r in (("SA", _SA), ("SSGA", _SSGA))},
     **{("Griewank", n): r for n, r in (("SA", _SA), ("SSGA", _SSGA))},
-    **{("Schwefel", n): r for n, r in (("SA", _SA), ("GA", _GA), ("SSGA", _SSGA),
-                                       ("TPE", _TPE))},
+    **{("Schwefel", n): r for n, r in (("SA", _SA), ("GA", _GA), ("TPE", _TPE))},
 }
 
 _BEATS_RANDOM = {
