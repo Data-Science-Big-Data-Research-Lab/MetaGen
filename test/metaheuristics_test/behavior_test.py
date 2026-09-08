@@ -16,9 +16,10 @@ verdicts below are ratios over ten seeds instead of single runs.
 The problems are the nine of Section 5.1 of the MetaGen paper, the classics of
 continuous optimization, each on its own canonical domain. Keeping the canonical
 domains rather than normalizing them is deliberate, and it is what turned up
-F-32: the default alteration_limit of 1.0 means something quite different on
-[-2.048, 2.048] than on [-600, 600], and the two algorithms built around local
-search fall below random sampling on the wide domains for exactly that reason.
+F-32: an absolute alteration_limit of 1.0 means something quite different on
+[-2.048, 2.048] than on [-600, 600], and the algorithms built around local search
+fell below random sampling on the wide domains for exactly that reason. The
+default is a fraction of each variable's own range since that finding closed.
 
 Michalewicz has a negative global minimum, about -1.8013 in two dimensions. That
 is deliberate too: every property here is relative, so nothing may assume the
@@ -215,8 +216,13 @@ _SSGA = ("A-01 is closed and the parents are drawn by tournament now, which took
          "with the crossover of F-33, which never produces a value the population did "
          "not already hold. A-05, which used to be blamed here, was refuted")
 
-_WIDE = ("F-32: alteration_limit defaults to an absolute 1.0, about a thousandth of "
-         "this domain's range, so the local search cannot go anywhere")
+_DECEPTIVE = ("Schwefel is deceptive: its global optimum sits near the corner of the "
+              "domain, at (420.97, 420.97), with a wide field of better-looking local "
+              "optima between it and the middle, so a climber that only ever moves "
+              "uphill is led away from it. On 210 evaluations it scores exactly what "
+              "RandomSearch scores, 6 of 10, which is a tie rather than a defeat. F-32 "
+              "was blamed here and is now closed; the relative neighbourhood took this "
+              "from 4 to 6, and the memetic algorithm, on 610 evaluations, clears it")
 
 _MICHALEWICZ = ("Michalewicz is a needle in a haystack, and it is the function rather "
                 "than the algorithms that decides this one: measured on a 1200x1200 "
@@ -247,27 +253,24 @@ _IMPROVES_ON_ITS_START = {
     **{("Rosenbrock", n): r for n, r in (("SSGA", _SSGA), ("TPE", _TPE))},
     **{("Ackley", n): r for n, r in (("SA", _SA), ("SSGA", _SSGA))},
     **{("Griewank", n): r for n, r in (("SA", _SA), ("SSGA", _SSGA))},
-    **{("Schwefel", n): r for n, r in (("SA", _SA), ("GA", _GA), ("TPE", _TPE))},
+    **{("Schwefel", n): r for n, r in (("GA", _GA), ("TPE", _TPE))},
     **{("Levy", n): r for n, r in (("SA", _SA), ("SSGA", _SSGA))},
+    **{("Michalewicz", n): r for n, r in (("SA", _SA),)},
     **{("Zakharov", n): r for n, r in (("SA", _SA),)},
 }
 
 _BEATS_RANDOM = {
     **{("Sphere", n): r for n, r in (("SA", _SA), ("SSGA", _SSGA))},
-    **{("Rastrigin", n): r for n, r in (("SA", _SA), ("GA", _GA), ("SSGA", _SSGA),
-                                        ("TPE", _TPE))},
+    **{("Rastrigin", n): r for n, r in (("GA", _GA), ("SSGA", _SSGA), ("TPE", _TPE))},
     **{("Rosenbrock", n): r for n, r in (("SA", _SA), ("GA", _GA), ("SSGA", _SSGA),
                                          ("TPE", _TPE))},
     **{("Ackley", n): r for n, r in (("SA", _SA), ("SSGA", _SSGA))},
-    **{("Griewank", n): r for n, r in (("SA", _SA), ("GA", _GA), ("SSGA", _SSGA),
-                                       ("HillClimbing", _WIDE), ("Memetic", _WIDE))},
+    **{("Griewank", n): r for n, r in (("SA", _SA), ("GA", _GA), ("SSGA", _SSGA))},
     **{("Schwefel", n): r for n, r in (("SA", _SA), ("GA", _GA), ("SSGA", _SSGA),
-                                       ("TPE", _TPE), ("HillClimbing", _WIDE),
-                                       ("Memetic", _WIDE))},
+                                       ("TPE", _TPE), ("HillClimbing", _DECEPTIVE))},
     **{("Levy", n): r for n, r in (("SA", _SA), ("SSGA", _SSGA))},
-    # Michalewicz beats six of the seven, and the reason is the landscape.
-    **{("Michalewicz", n): _MICHALEWICZ
-       for n in ("SA", "HillClimbing", "GA", "SSGA", "TPE")},
+    # Michalewicz beats five of the seven, and the reason is the landscape.
+    **{("Michalewicz", n): _MICHALEWICZ for n in ("SA", "GA", "SSGA", "TPE")},
     **{("Zakharov", n): r for n, r in (("SA", _SA), ("GA", _ZAKHAROV),
                                        ("SSGA", _SSGA))},
 }

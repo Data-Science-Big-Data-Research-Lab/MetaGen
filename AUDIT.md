@@ -123,7 +123,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ⬜ | `F-29` | CVOA no reproduce entre procesos: itera conjuntos de soluciones |
 | ⬜ | `F-30` | La temperatura de SA no llega a enfriarse: es un paseo aleatorio |
 | ⬜ | `F-31` | Los genéticos no admiten estructuras dinámicas: el cruce no existe |
-| ⬜ | `F-32` | El `alteration_limit` por defecto es absoluto, no relativo al dominio |
+| ✅ | `F-32` | El `alteration_limit` por defecto es absoluto, no relativo al dominio |
 | ⬜ | `F-33` | El cruce es uniforme: sobre variables reales no crea ningún valor nuevo |
 | ✅ | `A-01` | Sin selección de padres: todos los cruces usan la misma pareja |
 | ✅ | `A-02` | La búsqueda tabú es en realidad hill climbing |
@@ -1315,7 +1315,7 @@ Mientras tanto, lo que sí cabe en la auditoría es que el fallo se explique: ho
 `ValueError` sobre el conector y un `NotImplementedError` sin mensaje, y ninguno de los
 dos dice «los genéticos no admiten estructuras dinámicas todavía». Ver `A-07`.
 
-### [ ] F-32 (R) · El `alteration_limit` por defecto es absoluto, no relativo al dominio
+### [x] F-32 (R) · El `alteration_limit` por defecto es absoluto, no relativo al dominio
 `hc/hill_climbing.py:50`, `mm/memetic.py:72`, `sa/sa.py:92` · descubierto al ampliar el banco de pruebas
 
 Los tres algoritmos con búsqueda local traen `alteration_limit=1.0` por defecto, un
@@ -1353,6 +1353,80 @@ que es peor porque el framework sí conoce el dominio.
 
 **Ojo:** cambiar el valor por defecto **mueve los resultados de tres algoritmos**, así
 que debería hacerse midiendo antes y después sobre las nueve funciones, no a ojo.
+
+*Cerrado con la primera opción: el límite por defecto pasa a ser relativo.* Y el
+diagnóstico se queda corto en algo que decidió el diseño: **`alteration_limit` es un
+solo número que `Solution.mutate` reparte a todas las variables**, así que derivarlo del
+dominio en los tres algoritmos —que era lo más contenido— arregla el banco de pruebas,
+que es homogéneo, y deja roto el caso de uso que vende el paquete. Medido sobre un
+dominio de hiperparámetros con el 1.0 de entonces:
+
+```
+learning_rate  rango    1    salto maximo   0.4997  =  49.97 % de su rango
+n_estimators   rango  999    salto maximo        1  =   0.10 % de su rango
+```
+
+En la misma llamada, una variable se resortea entera y la otra está congelada. **Ningún
+número único puede arreglar eso.**
+
+Va una clase, `metagen.framework.RelativeAlteration`, que expresa el vecindario como
+**fracción del rango de cada variable**, y son `Real.mutate` e `Integer.mutate` quienes
+la resuelven contra su propia definición. **Un número sigue significando un límite
+absoluto y `None` sigue siendo el dominio entero**, así que nada escrito contra el
+comportamiento anterior cambia; lo único que cambia es el valor por defecto de
+`HillClimbing`, `Memetic` y `SA`, que pasa de `1.0` a `RelativeAlteration(0.2)`.
+
+**La fracción se eligió midiendo, y el proceso importa más que el número.** Cuántas de
+10 semillas gana cada algoritmo al azar, sumando las nueve funciones:
+
+| | 1.0 (antes) | 10 % | 15 % | 20 % | 35 % | 50 % | 100 % |
+|---|---|---|---|---|---|---|---|
+| HillClimbing | 70 | 79 | 75 | **79** | 73 | 71 | 73 |
+| Memetic | 75 | 83 | **88** | 86 | 85 | 78 | 73 |
+
+**Hay punto de inflexión**, que era la comprobación que había que hacer: si «cuanto más
+grande, mejor» se hubiera cumplido, el arreglo no sería un vecindario relativo sino
+renunciar a la búsqueda local. Entre el 10 % y el 20 % **la diferencia es ruido**:
+el memético en Rosenbrock parecía caer de 9/10 a 5/10 con el 10 %, y con **30** semillas
+resulta ser 22/30 frente a 18/30 con la misma media (0.0476 y 0.0458). Se eligió el
+20 % por los agregados —204/270 y 228/270 en las dos propiedades, frente a 199 y 218 del
+10 %— y porque deja la suite más limpia: una celda nueva marcada como fallo esperado en
+vez de cuatro.
+
+**El argumento de «el 10 % conserva el comportamiento actual» no se sostenía**, y hubo
+que retirarlo: el `1.0` de antes vale entre el **0.083 %** del rango en Griewank y el
+**32 %** en Michalewicz. No hay fracción que reproduzca lo de hoy en todas partes.
+
+Resultado, presupuesto igualado, diez semillas, las nueve funciones:
+
+| | Sph | Ras | Ros | Ack | Gri | Sch | Levy | Mich | Zak | total |
+|---|---|---|---|---|---|---|---|---|---|---|
+| HillClimbing, antes | 10 | 10 | 7 | 10 | 3 | 4 | 10 | 6 | 10 | 70/90 |
+| **HillClimbing, ahora** | 10 | 10 | 8 | 10 | **9** | **6** | 9 | **7** | 10 | **79/90** |
+| Memetic, antes | 10 | 10 | 9 | 10 | 6 | 2 | 10 | 8 | 10 | 75/90 |
+| **Memetic, ahora** | 10 | 10 | 9 | 10 | **9** | **10** | 10 | 8 | 10 | **86/90** |
+
+El memético pasa a ser el mejor o a empatar **en las nueve**. SA sube de 31/90 a 39/90 y
+**sigue por debajo del muestreo aleatorio**, que empata consigo mismo en 50/90: ahí manda
+`F-30` y este arreglo no lo toca.
+
+Se retiran **seis** `xfail` —Griewank y Michalewicz de `HillClimbing`, Griewank y
+Schwefel del memético, Rastrigin y Schwefel de SA— y se añade uno, `Michalewicz-SA`,
+citando `F-30` junto a los seis que ese hallazgo ya tenía.
+
+**Las docstrings decían que era una proporción**, literalmente *«Maximum proportion of
+solution to alter»* en los tres algoritmos, y era falso. Corregidas. La documentación
+publicada además lo declara con otro valor: `docs/source/metagen_in_action/duc/sa.rst`
+usa `alteration_limit: float = 0.1` mientras el paquete traía `1.0`. Es un tutorial de
+«escribe tu propia metaheurística», no la API, así que se deja como está.
+
+Cierra dos errores de mypy, que baja de 170 a 168: las anotaciones eran demasiado
+estrechas.
+
+Tests: `test_f32_el_vecindario_por_defecto_escala_con_el_dominio`,
+`test_f32_cada_variable_resuelve_el_limite_con_su_propio_rango` y
+`test_f32_un_numero_sigue_significando_un_limite_absoluto`, este último para proteger lo
+que **no** debe cambiar.
 
 ### [ ] F-33 (R) · El cruce es uniforme: sobre variables reales no crea ningún valor nuevo
 `src/metagen/metaheuristics/ga/ga_tools.py:112-127` · descubierto al medir `A-01`

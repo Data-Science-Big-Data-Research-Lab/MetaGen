@@ -1789,3 +1789,89 @@ def test_a01_ssga_no_cruza_un_punto_consigo_mismo_casi_siempre(monkeypatch):
         f"SSGA cruza un punto consigo mismo en {mismo_punto} de los {len(parejas)} "
         "cruces, asi que el cruce no recombina nada"
     )
+
+
+# --------------------------------------------------------------------------------
+# F-32 · El alteration_limit por defecto es absoluto, no relativo al dominio
+# --------------------------------------------------------------------------------
+
+def _salto_maximo(bajo, alto, alteration_limit, variable="x", muestras=2000):
+    """Lo mas lejos que una mutacion mueve una variable desde el centro de su rango."""
+    from metagen.framework.rng import set_seed
+
+    dominio = Domain()
+    dominio.define_real(variable, bajo, alto)
+    set_seed(0)
+    solucion = Solution(dominio)
+    centro = (bajo + alto) / 2
+    saltos = []
+    for _ in range(muestras):
+        solucion.set(variable, centro)
+        solucion.mutate(alteration_limit=alteration_limit)
+        saltos.append(abs(solucion[variable] - centro))
+    return max(saltos)
+
+
+def test_f32_el_vecindario_por_defecto_escala_con_el_dominio():
+    """F-32: los tres algoritmos con busqueda local traian `alteration_limit=1.0`, un
+    valor absoluto. Ese 1.0 es el 9.8 % del rango en [-5.12, 5.12] y el 0.083 % en
+    [-600, 600], asi que en el segundo la busqueda local no llegaba a ninguna parte:
+    HillClimbing y el memetico caian por debajo del muestreo aleatorio en Griewank y
+    Schwefel, que son los dos dominios anchos."""
+    from metagen.metaheuristics import HillClimbing
+
+    dominio, fitness = _dominio_y_fitness_de_prueba()
+    por_defecto = HillClimbing(dominio, fitness).alteration_limit
+
+    for bajo, alto in ((-5.12, 5.12), (-600.0, 600.0)):
+        fraccion = _salto_maximo(bajo, alto, por_defecto) / (alto - bajo)
+        assert fraccion == pytest.approx(0.2, abs=0.02), (
+            f"en [{bajo}, {alto}] el vecindario por defecto es el {100 * fraccion:.3f} % "
+            "del rango, cuando deberia ser el mismo porcentaje en todos los dominios"
+        )
+
+
+def test_f32_cada_variable_resuelve_el_limite_con_su_propio_rango():
+    """La otra mitad, y la que importa para el caso de uso que vende el paquete: el
+    limite es un solo numero que `Solution.mutate` reparte a todas las variables, y en
+    un dominio de hiperparametros las variables no tienen la misma anchura. Con el 1.0
+    de antes, un real en [0, 1] saltaba hasta el 50 % de su rango —volver a sortearlo—
+    mientras un entero en [1, 1000] se movia 1 de 999 y estaba practicamente congelado.
+    """
+    from metagen.framework import RelativeAlteration
+    from metagen.framework.rng import set_seed
+
+    dominio = Domain()
+    dominio.define_real("learning_rate", 0.0, 1.0)
+    dominio.define_integer("n_estimators", 1, 1000)
+
+    set_seed(0)
+    solucion = Solution(dominio)
+    saltos = {"learning_rate": [], "n_estimators": []}
+    for _ in range(3000):
+        solucion.set("learning_rate", 0.5)
+        solucion.set("n_estimators", 500)
+        solucion.mutate(alteration_limit=RelativeAlteration(0.2))
+        saltos["learning_rate"].append(abs(solucion["learning_rate"] - 0.5))
+        saltos["n_estimators"].append(abs(solucion["n_estimators"] - 500))
+
+    for variable, rango in (("learning_rate", 1.0), ("n_estimators", 999)):
+        fraccion = max(saltos[variable]) / rango
+        assert fraccion == pytest.approx(0.2, abs=0.02), (
+            f"{variable} se mueve el {100 * fraccion:.2f} % de su rango, no el 20 %: "
+            "el limite no se esta resolviendo con los limites de cada variable"
+        )
+
+
+def test_f32_un_numero_sigue_significando_un_limite_absoluto():
+    """Lo que no debe cambiar. Quien pase un numero sigue pidiendo esas unidades, en
+    cualquier dominio, y `None` sigue siendo el dominio entero."""
+    for bajo, alto in ((-5.12, 5.12), (-600.0, 600.0)):
+        assert _salto_maximo(bajo, alto, 1.0) == pytest.approx(1.0, abs=0.01), (
+            "un alteration_limit numerico ha dejado de ser un limite absoluto"
+        )
+        entero = _salto_maximo(bajo, alto, None) / (alto - bajo)
+        assert entero > 0.45, (
+            f"sin limite la mutacion deberia alcanzar todo el dominio, y llega al "
+            f"{100 * entero:.1f} % desde el centro"
+        )

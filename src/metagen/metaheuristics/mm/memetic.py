@@ -1,8 +1,8 @@
 import heapq
 from copy import deepcopy
-from typing import Optional, Callable, Tuple, List, cast
+from typing import Any, Optional, Callable, Tuple, List, cast
 
-from metagen.framework import Domain, Solution
+from metagen.framework import Domain, RelativeAlteration, Solution
 from metagen.metaheuristics.tools import random_exploration
 from metagen.metaheuristics.base import Metaheuristic
 from metagen.metaheuristics.ga import GASolution
@@ -33,7 +33,8 @@ class Memetic(Metaheuristic):
     :param mutation_rate: The mutation rate, defaults to 0.1
     :param tournament_size: How many individuals compete to become a parent, defaults to 2
     :param neighbor_population_size: The size of neighborhood in local search, defaults to 10
-    :param alteration_limit: The maximum alteration allowed in local search, defaults to 1.0
+    :param alteration_limit: How far a neighbor may move in the local search, defaults
+        to a fifth of each variable's own range; a plain number is an absolute amount
     :param distributed: Whether to use distributed computation, defaults to False
     :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
     :param distribution_level: The level of distribution (0=none), defaults to 0
@@ -44,7 +45,7 @@ class Memetic(Metaheuristic):
     :type mutation_rate: float
     :type tournament_size: int
     :type neighbor_population_size: int
-    :type alteration_limit: float
+    :type alteration_limit: RelativeAlteration or float or None
     :type distributed: bool
     :type log_dir: str or None, optional
     :type distribution_level: int
@@ -72,7 +73,8 @@ class Memetic(Metaheuristic):
                  population_size: int = 10,
                  max_iterations: int = 20, mutation_rate: float = 0.1,
                  tournament_size: int = 2,
-                 neighbor_population_size: int = 10, alteration_limit: float = 1.0,
+                 neighbor_population_size: int = 10,
+                 alteration_limit: Any = RelativeAlteration(0.2),
                  distributed: bool = False, log_dir: Optional[str] = None,
                  distribution_level: int = 0, seed: Optional[int] = None) -> None:
         """Initialize the Memetic Algorithm with the given parameters."""
