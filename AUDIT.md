@@ -56,9 +56,10 @@ propósito, cada una con su motivo. No están en el índice porque no son hallaz
 | Qué | Por qué está aparte | Dónde |
 |---|---|---|
 | **Revisión de CVOA** | El diseño es de Paco Martínez-Álvarez y el código es multihilo con Ray encima. `F-27`, `F-28`, `F-29`, `A-09` y seis discrepancias más con el artículo | `metagen-auditoria/CVOA-cuestiones.md` |
-| **`mypy src` a cero** | 170 errores, no los 8 que se creían; trabajo fichero a fichero | `P-11` |
+| **`mypy src` a cero** | 167 errores, no los 8 que se creían; trabajo fichero a fichero | `P-11` |
 | **Implementar una búsqueda tabú de verdad** | Lo que había no lo era y se renombró a `HillClimbing` (`A-02`). La tabú canónica es un algoritmo nuevo, no un arreglo | ver abajo |
 | **Estructuras dinámicas en los genéticos** | El cruce para longitudes variables no existe; es funcionalidad, no arreglo | `F-31` |
+| **Implementar un TPE canónico** | El de MetaGen funciona y no se toca; el canónico es otro algoritmo, con dos piezas que van juntas | ver abajo |
 
 ### Implementar `TabuSearch`
 
@@ -78,8 +79,79 @@ seguro si llega en una versión **posterior** a la del renombrado, dejando una v
 la que el `ImportError` avisa.
 
 **Y hay que medirla contra `HillClimbing` en el banco completo antes de sacar
-conclusiones**: `HillClimbing` empata o gana al resto en cinco de las nueve funciones y
-suma **70/90** contra el muestreo aleatorio, segundo solo tras el memético (75/90).
+conclusiones**: `HillClimbing` suma **89/100** contra el muestreo aleatorio sobre los
+diez problemas, segundo solo tras el memético (91/100), y es **el que mejor resuelve el
+problema de hiperparámetros**, con 8 de 10.
+
+### Implementar un TPE canónico
+
+**El TPE de MetaGen no se toca**, decisión de David del 8 de septiembre de 2026, y los
+números la respaldan: sobre las nueve funciones matemáticas es el cuarto de siete, con
+**70/100** contra el muestreo aleatorio, muy por encima de este. No está roto.
+
+Lo que sigue está **medido y no se convierte en hallazgo**, porque no hay un defecto que
+corregir sino una diferencia de diseño con el algoritmo publicado.
+
+**Dónde se queda corto.** En el problema de hiperparámetros del banco —el único con un
+dominio heterogéneo, que es para lo que TPE existe— saca **3 de 10** contra el azar,
+por debajo del 4 de la propia `RandomSearch`, mientras `HillClimbing` saca 8. Y en diez
+semillas **nunca alcanza el óptimo** que sí encuentran `RandomSearch`, GA, SSGA,
+`HillClimbing` y el memético.
+
+La señal de ese paisaje está casi entera en una variable: el 5 % mejor tiene
+`min_samples_leaf` en torno a 7.5 frente a 20.7 en todo el espacio. Medida por tercios
+de ejecución, la media que **evalúa** cada algoritmo:
+
+| | 1er tercio | 2º tercio | último tercio |
+|---|---|---|---|
+| `HillClimbing` (206 evals) | 19.1 | 7.5 | **7.0** |
+| Memetic (610 evals) | 15.4 | 8.7 | **7.7** |
+| **TPE (480 evals)** | 19.6 | 17.2 | **16.3** |
+| *RandomSearch* | *20.5* | *19.1* | *19.0* |
+
+**TPE apenas concentra**: su modelo casi no dirige la búsqueda.
+
+**El mecanismo, medido instrumentando `sample_from_values`.** De cada valor que TPE
+propone:
+
+```
+de la gaussiana de las MEJORES soluciones    25.7 %
+de la de las PEORES                          65.6 %
+uniforme (sigma cero)                         8.7 %
+```
+
+**Dos de cada tres propuestas se muestrean de la distribución de las peores.** Eso se
+aparta del algoritmo de Bergstra, donde se muestrean candidatos de ℓ(x) y se elige el
+que maximiza ℓ(x)/g(x); de g(x) no se muestrea nunca. Y la regla se realimenta al revés:
+la mezcla usa la densidad del valor *actual* bajo cada modelo, y como el conjunto de las
+mejores es estrecho y el de las peores ancho, **cuanto mejor definida está la región
+buena, menos veces la visita**.
+
+**Las dos correcciones evidentes empeoran, y por eso esto no es un hallazgo:**
+
+| variante de muestreo | total sobre los diez problemas |
+|---|---|
+| como está | **70/100** |
+| solo de ℓ(x) | 63/100 |
+| canónico: 24 candidatos de ℓ(x), el que maximiza ℓ/g | **26/100** |
+
+El canónico se hunde porque el modelo es **una única gaussiana por variable**, mientras
+que el de Bergstra es una **mezcla de núcleos** —uno por observación más un prior
+ancho—. Con una sola gaussiana, elegir con avidez colapsa la búsqueda en una región
+minúscula de la que no sale. Dicho de otro modo: **ese 65.6 % desde las peores está
+haciendo de exploración**, y sostiene a un modelo demasiado simple.
+
+**Qué haría falta**, si algún día se implementa, y son **dos piezas que van juntas**:
+
+- el **modelo**: mezcla de núcleos, uno por observación, con anchura derivada de la
+  separación entre vecinos, más un prior ancho;
+- la **selección**: candidatos de ℓ(x) y quedarse con el que maximiza ℓ/g.
+
+Poner solo la segunda sobre el modelo actual es lo que da 26/100.
+
+**Cuidado con el nombre, igual que con `TabuSearch`:** TPE es **uno de los dos
+algoritmos que evalúa el artículo publicado**, así que sustituir el existente cambiaría
+resultados publicados. Un canónico tendría que llegar como clase nueva, al lado.
 
 *Completar el banco de pruebas salió de aquí el 8 de septiembre de 2026: ver `P-05`.*
 
