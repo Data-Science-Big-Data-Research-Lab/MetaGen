@@ -492,21 +492,54 @@ def test_f03_el_warmup_no_se_descarta():
 
 
 def test_f04_el_segundo_hijo_hereda_del_segundo_padre():
+    """F-04: el hijo 2 salia copia exacta del padre 1, porque las dos ramas del bucle
+    leian `variable_value`, que venia de `self`.
+
+    **Reformulado al cerrar `F-33`**, decision de David del 8 de septiembre de 2026.
+    Comprobaba que alguna variable del hijo 2 valiera *exactamente* lo que vale en la
+    madre, que era como el cruce uniforme trasladaba la herencia: copiando. Con BLX el
+    valor se sortea dentro del intervalo que abarcan los dos padres, asi que lleva
+    informacion de ambos y no coincide con ninguno, y el test daba un falso positivo.
+    Lo que se comprueba ahora es la propiedad y no el mecanismo. Verificado
+    reintroduciendo el bug: las dos primeras aserciones fallan con el. La tercera no lo
+    caza —los valores del padre caen trivialmente dentro del intervalo— y protege otra
+    cosa: que el operador nuevo no invente valores fuera de el.
+    """
     from metagen.metaheuristics import GAConnector
-    from metagen.metaheuristics.ga.ga_tools import GASolution
+    from metagen.metaheuristics.ga.ga_tools import GASolution, blend_interval
+
+    nombres = ("a", "b", "c", "d")
+    dom = Domain(connector=GAConnector())
+    for nombre in nombres:
+        dom.define_integer(nombre, 0, 1000)
+    foto = lambda solucion: {k: solucion[k] for k in nombres}
 
     set_seed(3)
-    dom = Domain(connector=GAConnector())
-    for nombre in ("a", "b", "c", "d"):
-        dom.define_integer(nombre, 0, 1000)
     padre = GASolution(dom, connector=dom.get_connector())
     madre = GASolution(dom, connector=dom.get_connector())
-    _, hijo2 = padre.crossover(madre)
+    set_seed(50)
+    otra_madre = GASolution(dom, connector=dom.get_connector())
+    assert [k for k in nombres if padre[k] != madre[k]], (
+        "los dos padres son identicos; cambia la semilla")
 
-    distintas = [k for k in padre if padre[k] != madre[k]]
-    assert distintas, "los dos padres son identicos; cambia la semilla"
-    heredadas = [k for k in distintas if hijo2[k] == madre[k]]
-    assert heredadas, "el hijo 2 no hereda ninguna variable de la madre"
+    set_seed(7)
+    _, hijo2 = padre.crossover(madre)
+    set_seed(7)
+    _, hijo2_con_otra = padre.crossover(otra_madre)
+
+    assert foto(hijo2) != foto(padre), (
+        f"el hijo 2 es copia exacta del padre 1, que es F-04: {foto(hijo2)}")
+
+    assert foto(hijo2) != foto(hijo2_con_otra), (
+        "cruzar con otra madre da el mismo hijo 2, asi que no depende de la madre")
+
+    for nombre in nombres:
+        izquierda, derecha = blend_interval(padre[nombre], madre[nombre], 0, 1000)
+        assert izquierda <= hijo2[nombre] <= derecha, (
+            f"{nombre} vale {hijo2[nombre]} en el hijo 2, fuera del intervalo "
+            f"[{izquierda}, {derecha}] que abarcan sus padres "
+            f"({padre[nombre]}, {madre[nombre]})"
+        )
 
 
 def test_f20_sa_no_evalua_una_poblacion_entera_al_inicializar():
@@ -1932,3 +1965,93 @@ def test_f30_cada_run_arranca_a_la_misma_temperatura():
         f"la misma semilla da {primera} y luego {segunda}: la segunda ejecucion "
         "hereda la temperatura de la primera"
     )
+
+
+# --------------------------------------------------------------------------------
+# F-33 · El cruce es uniforme: sobre variables reales no crea ningun valor nuevo
+# --------------------------------------------------------------------------------
+
+def _padres_de_todos_los_tipos():
+    """Un dominio con cada tipo del framework, y dos padres inicializados."""
+    from metagen.metaheuristics import GAConnector
+    from metagen.metaheuristics.ga.ga_tools import GASolution
+
+    dominio = Domain(connector=GAConnector())
+    dominio.define_integer("n", 0, 1000)
+    dominio.define_real("x", -5.0, 5.0)
+    dominio.define_categorical("c", ["a", "b", "c"])
+    dominio.define_group("g")
+    dominio.define_real_in_group("g", "gx", -5.0, 5.0)
+    dominio.define_static_structure("s", 3)
+    dominio.set_structure_to_real("s", -5.0, 5.0)
+
+    set_seed(0)
+    padre = GASolution(dominio, connector=dominio.get_connector())
+    madre = GASolution(dominio, connector=dominio.get_connector())
+    padre.initialize()
+    madre.initialize()
+    return padre, madre
+
+
+def test_f33_el_cruce_produce_valores_que_no_tenia_ningun_padre():
+    """F-33: cada rama del cruce copiaba el valor de uno de los dos padres, asi que la
+    descendencia solo podia contener valores que la poblacion ya tenia y todo valor
+    nuevo dependia de una mutacion al 0.1. Medido antes del arreglo sobre un dominio
+    con los seis tipos: 600 hijos, cero valores nuevos, en las seis posiciones."""
+    padre, madre = _padres_de_todos_los_tipos()
+
+    nuevos = {"n": 0, "x": 0, "g.gx": 0, "s": 0}
+    for _ in range(200):
+        for hijo in padre.crossover(madre):
+            if hijo["n"] not in (padre["n"], madre["n"]):
+                nuevos["n"] += 1
+            if hijo["x"] not in (padre["x"], madre["x"]):
+                nuevos["x"] += 1
+            if hijo["g"]["gx"].get() not in (padre["g"]["gx"].get(),
+                                             madre["g"]["gx"].get()):
+                nuevos["g.gx"] += 1
+            de_los_padres = [v.get() for v in padre["s"]] + [v.get() for v in madre["s"]]
+            if any(v.get() not in de_los_padres for v in hijo["s"]):
+                nuevos["s"] += 1
+
+    for variable, cuenta in nuevos.items():
+        assert cuenta > 200, (
+            f"{variable}: solo {cuenta} de 400 hijos traen un valor que no estaba en "
+            "ninguno de los padres, asi que el cruce sigue barajando en vez de mezclar"
+        )
+
+
+def test_f33_la_categorica_se_sigue_intercambiando_entera():
+    """Lo que NO debe cambiar: entre dos categorias no hay mezcla posible, asi que una
+    categorica se sigue heredando de un padre o del otro, nunca inventada."""
+    padre, madre = _padres_de_todos_los_tipos()
+
+    for _ in range(200):
+        for hijo in padre.crossover(madre):
+            assert hijo["c"] in (padre["c"], madre["c"]), (
+                f"la categorica vale {hijo['c']}, que no es de ninguno de los padres")
+
+
+def test_f33_el_cruce_no_se_sale_del_dominio():
+    """El operador ensancha el intervalo de los padres, asi que puede apuntar fuera del
+    dominio; tiene que recortarse. Con los padres pegados a los extremos es cuando mas
+    se nota."""
+    from metagen.metaheuristics import GAConnector
+    from metagen.metaheuristics.ga.ga_tools import GASolution
+
+    dominio = Domain(connector=GAConnector())
+    dominio.define_real("x", -5.0, 5.0)
+    dominio.define_integer("n", 0, 100)
+
+    set_seed(1)
+    padre = GASolution(dominio, connector=dominio.get_connector())
+    madre = GASolution(dominio, connector=dominio.get_connector())
+    padre.set("x", -5.0)
+    padre.set("n", 0)
+    madre.set("x", 5.0)
+    madre.set("n", 100)
+
+    for _ in range(300):
+        for hijo in padre.crossover(madre):
+            assert -5.0 <= hijo["x"] <= 5.0, f"x se ha salido del dominio: {hijo['x']}"
+            assert 0 <= hijo["n"] <= 100, f"n se ha salido del dominio: {hijo['n']}"
