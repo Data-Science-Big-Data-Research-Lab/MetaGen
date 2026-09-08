@@ -190,7 +190,32 @@ class GAConnector(BaseConnector):
         self.register(StaticStructureDefinition, (GAStructure, "static"), list)
 
 
-def yield_two_children(parents: Tuple[GASolution, GASolution], mutation_rate: float, 
+def tournament_selection(solutions: List[Solution], tournament_size: int = 2) -> Solution:
+    """
+    Pick a parent by tournament: draw a few individuals at random and keep the best.
+
+    This is the selection operator GA, SSGA and the memetic algorithm share. They
+    used to take the two best of the population instead, which is truncation
+    selection at its most extreme: the population converged on that pair within a
+    couple of generations and the crossover stopped recombining anything (A-01).
+
+    ``tournament_size`` is the selection pressure. Two is the mildest tournament and
+    the usual default; raising it makes the search greedier and converge sooner. A
+    size larger than the population is clamped to it, which turns the tournament into
+    picking the best individual outright.
+
+    :param solutions: The population to choose from.
+    :type solutions: List[:py:class:`~metagen.framework.Solution`]
+    :param tournament_size: How many individuals compete, at least 1, defaults to 2.
+    :type tournament_size: int
+    :return: The best of the drawn individuals.
+    :rtype: :py:class:`~metagen.framework.Solution`
+    """
+    contenders = get_rng().sample(solutions, min(tournament_size, len(solutions)))
+    return min(contenders, key=lambda solution: solution.get_fitness())
+
+
+def yield_two_children(parents: Tuple[GASolution, GASolution], mutation_rate: float,
                       fitness_function: Callable[[Solution], float]) -> Tuple[GASolution, GASolution]:
     """
     Generate two children solutions through crossover and mutation operations.

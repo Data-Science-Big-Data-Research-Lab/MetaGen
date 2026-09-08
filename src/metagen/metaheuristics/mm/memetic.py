@@ -6,7 +6,8 @@ from metagen.framework import Domain, Solution
 from metagen.metaheuristics.tools import random_exploration
 from metagen.metaheuristics.base import Metaheuristic
 from metagen.metaheuristics.ga import GASolution
-from metagen.metaheuristics.ga.ga_tools import yield_two_children, require_crossover
+from metagen.metaheuristics.ga.ga_tools import (yield_two_children, require_crossover,
+                                                tournament_selection)
 from metagen.metaheuristics.mm.mm_tools import local_search_of_two_children
 
 
@@ -20,7 +21,7 @@ class Memetic(Metaheuristic):
 
     The algorithm combines genetic algorithms with local search strategies to enhance solution quality.
     Each generation involves:
-    1. Selection of best parents
+    1. Selection of the parents by tournament
     2. Genetic operations (crossover and mutation)
     3. Local search improvement
     4. Population update
@@ -30,6 +31,7 @@ class Memetic(Metaheuristic):
     :param population_size: The population size, defaults to 10
     :param max_iterations: The maximum number of iterations, defaults to 20
     :param mutation_rate: The mutation rate, defaults to 0.1
+    :param tournament_size: How many individuals compete to become a parent, defaults to 2
     :param neighbor_population_size: The size of neighborhood in local search, defaults to 10
     :param alteration_limit: The maximum alteration allowed in local search, defaults to 1.0
     :param distributed: Whether to use distributed computation, defaults to False
@@ -40,6 +42,7 @@ class Memetic(Metaheuristic):
     :type population_size: int
     :type max_iterations: int
     :type mutation_rate: float
+    :type tournament_size: int
     :type neighbor_population_size: int
     :type alteration_limit: float
     :type distributed: bool
@@ -68,6 +71,7 @@ class Memetic(Metaheuristic):
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
                  population_size: int = 10,
                  max_iterations: int = 20, mutation_rate: float = 0.1,
+                 tournament_size: int = 2,
                  neighbor_population_size: int = 10, alteration_limit: float = 1.0,
                  distributed: bool = False, log_dir: Optional[str] = None,
                  distribution_level: int = 0, seed: Optional[int] = None) -> None:
@@ -80,6 +84,7 @@ class Memetic(Metaheuristic):
 
         self.mutation_rate = mutation_rate
         self.max_generations = max_iterations
+        self.tournament_size = tournament_size
         self.neighbor_population_size = neighbor_population_size
         self.alteration_limit = alteration_limit
 
@@ -103,7 +108,7 @@ class Memetic(Metaheuristic):
         """Perform one iteration of the memetic algorithm.
 
         This method:
-        1. Selects the best parents
+        1. Selects the parents by tournament
         2. Creates offspring through genetic operations
         3. Improves offspring through local search
         4. Updates the population
@@ -114,14 +119,18 @@ class Memetic(Metaheuristic):
         :rtype: Tuple[List[:py:class:`~metagen.framework.Solution`], :py:class:`~metagen.framework.Solution`]
         """
         num_solutions = len(solutions)
-        best_parents = heapq.nsmallest(2, solutions, key=lambda sol: sol.get_fitness())
+        elite = heapq.nsmallest(2, solutions, key=lambda sol: sol.get_fitness())
         best_solution = deepcopy(self.best_solution)
-        current_solutions = [deepcopy(best_parents[0]), deepcopy(best_parents[1])]
+        current_solutions = [deepcopy(elite[0]), deepcopy(elite[1])]
 
         for _ in range(num_solutions // 2):
 
-            father = cast(GASolution, best_parents[0])
-            mother = cast(GASolution, best_parents[1])
+            # A-01: the pair is drawn again for every crossover, as in GA. Taking the
+            # two best once, outside the loop, bred the same pair every time and the
+            # population converged on a couple of points. The two best still go
+            # through untouched, as the elite above.
+            father = cast(GASolution, tournament_selection(solutions, self.tournament_size))
+            mother = cast(GASolution, tournament_selection(solutions, self.tournament_size))
             child1, child2 = yield_two_children((father, mother), self.mutation_rate, self.fitness_function)
             lc_child1, lc_child2 = local_search_of_two_children((child1, child2), self.fitness_function,
                                                                 self.neighbor_population_size,

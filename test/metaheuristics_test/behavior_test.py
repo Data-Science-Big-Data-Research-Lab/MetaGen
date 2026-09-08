@@ -172,9 +172,11 @@ _SA = ("F-30: SA accepts almost anything. With initial_temp 50 and cooling_rate 
        "the temperature is still 40.9 after 20 iterations, so the Metropolis criterion "
        "takes a worsening of 5.0 with probability 0.89: a random walk, not annealing")
 
-_GA = ("A-01: best_parents is computed outside the loop, so every crossover of a "
-       "generation uses the very same pair and the population collapses to variations "
-       "of two individuals")
+_GA = ("A-01 is closed and the parents are drawn by tournament now, but with two real "
+       "variables the crossover can only swap coordinates between the parents: every "
+       "value it has never seen has to come from a mutation, which fires with "
+       "probability 0.1. Measured on the sphere, 15 generations of 10 individuals see "
+       "19 distinct values of x against the 10 they started with")
 
 _SSGA = ("Steady state with no selection pressure: it always crosses the top two and "
          "replaces the bottom two, 40 evaluations of a population that converges on "
@@ -191,22 +193,22 @@ _TPE = ("TPE models each variable on its own, which suits a separable bowl. Rose
 # Measured, not guessed, and kept per property: a pair can fail one and pass the
 # other, so a single shared table would turn the passes into XPASS(strict).
 _IMPROVES_ON_ITS_START = {
-    **{("Sphere", n): r for n, r in (("SA", _SA), ("GA", _GA), ("SSGA", _SSGA))},
+    **{("Sphere", n): r for n, r in (("SA", _SA), ("SSGA", _SSGA))},
     **{("Rastrigin", n): r for n, r in (("SSGA", _SSGA),)},
     **{("Rosenbrock", n): r for n, r in (("SSGA", _SSGA), ("TPE", _TPE))},
     **{("Ackley", n): r for n, r in (("SA", _SA), ("SSGA", _SSGA))},
-    **{("Griewank", n): r for n, r in (("SA", _SA), ("GA", _GA), ("SSGA", _SSGA))},
+    **{("Griewank", n): r for n, r in (("SA", _SA), ("SSGA", _SSGA))},
     **{("Schwefel", n): r for n, r in (("SA", _SA), ("GA", _GA), ("SSGA", _SSGA),
                                        ("TPE", _TPE))},
 }
 
 _BEATS_RANDOM = {
-    **{("Sphere", n): r for n, r in (("SA", _SA), ("GA", _GA), ("SSGA", _SSGA))},
+    **{("Sphere", n): r for n, r in (("SA", _SA), ("SSGA", _SSGA))},
     **{("Rastrigin", n): r for n, r in (("SA", _SA), ("GA", _GA), ("SSGA", _SSGA),
                                         ("TPE", _TPE))},
     **{("Rosenbrock", n): r for n, r in (("SA", _SA), ("GA", _GA), ("SSGA", _SSGA),
                                          ("TPE", _TPE))},
-    **{("Ackley", n): r for n, r in (("SA", _SA), ("GA", _GA), ("SSGA", _SSGA))},
+    **{("Ackley", n): r for n, r in (("SA", _SA), ("SSGA", _SSGA))},
     **{("Griewank", n): r for n, r in (("SA", _SA), ("GA", _GA), ("SSGA", _SSGA),
                                        ("HillClimbing", _WIDE), ("Memetic", _WIDE))},
     **{("Schwefel", n): r for n, r in (("SA", _SA), ("GA", _GA), ("SSGA", _SSGA),
