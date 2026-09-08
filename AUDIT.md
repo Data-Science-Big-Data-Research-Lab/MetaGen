@@ -59,7 +59,6 @@ propósito, cada una con su motivo. No están en el índice porque no son hallaz
 | **`mypy src` a cero** | 170 errores, no los 8 que se creían; trabajo fichero a fichero | `P-11` |
 | **Implementar una búsqueda tabú de verdad** | Lo que había no lo era y se renombró a `HillClimbing` (`A-02`). La tabú canónica es un algoritmo nuevo, no un arreglo | ver abajo |
 | **Estructuras dinámicas en los genéticos** | El cruce para longitudes variables no existe; es funcionalidad, no arreglo | `F-31` |
-| **Completar el banco con las nueve del artículo** | Hoy tiene seis; faltan Levy, Michalewicz y Zakharov | ver abajo |
 
 ### Implementar `TabuSearch`
 
@@ -79,22 +78,10 @@ seguro si llega en una versión **posterior** a la del renombrado, dejando una v
 la que el `ImportError` avisa.
 
 **Y hay que medirla contra `HillClimbing` en el banco completo antes de sacar
-conclusiones**: hoy `HillClimbing` es el mejor del paquete en cuatro de seis funciones.
+conclusiones**: `HillClimbing` empata o gana al resto en cinco de las nueve funciones y
+suma **70/90** contra el muestreo aleatorio, segundo solo tras el memético (75/90).
 
-### Completar el banco de pruebas
-
-La Sección 5.1 del artículo evalúa sobre **nueve** funciones; `behavior_test.py` tiene
-seis, con los mismos dominios. Faltan:
-
-| Función | Dominio | Mínimo |
-|---|---|---|
-| Levy | [−10, 10] | 0 en (1,…,1) |
-| Michalewicz | [0, π] | **≈ −1.8013** en 2D |
-| Zakharov | [−5, 10] | 0 en (0,…,0) |
-
-**Michalewicz tiene el mínimo negativo**, así que rompe la suposición «todas tienen su
-óptimo en 0» que hoy documenta el módulo. Completarlo dejaría el banco siendo
-exactamente el conjunto publicado.
+*Completar el banco de pruebas salió de aquí el 8 de septiembre de 2026: ver `P-05`.*
 
 ---
 
@@ -1365,7 +1352,7 @@ dejarlo como está y avisar en la documentación de que hay que ajustarlo al pro
 que es peor porque el framework sí conoce el dominio.
 
 **Ojo:** cambiar el valor por defecto **mueve los resultados de tres algoritmos**, así
-que debería hacerse midiendo antes y después sobre las seis funciones, no a ojo.
+que debería hacerse midiendo antes y después sobre las nueve funciones, no a ojo.
 
 ### [ ] F-33 (R) · El cruce es uniforme: sobre variables reales no crea ningún valor nuevo
 `src/metagen/metaheuristics/ga/ga_tools.py:112-127` · descubierto al medir `A-01`
@@ -1397,7 +1384,7 @@ variable ningún operador de cruce puede inventar nada, e intercambiarla daría 
 otra vez— pero **el ejemplo de la docstring del memético usa exactamente un dominio de
 una variable**, así que lo publicado enseña un genético cuyo cruce no hace nada.
 
-Es la causa que queda de que el GA no llegue al umbral en cuatro de las seis funciones
+Es la causa que queda de que el GA no llegue al umbral en seis de las nueve funciones
 después de cerrar `A-01`, y la razón de fondo de que al memético le rentara tanto
 intensificar: si el cruce no aporta material nuevo, la búsqueda local es su única fuente
 de novedad.
@@ -1407,7 +1394,7 @@ es funcionalidad: registrar para `RealDefinition` un cruce de codificación real
 SBX o aritmético, que **interpolan** entre los padres y sí producen coordenadas nuevas—
 dejando el uniforme para enteras, categóricas y estructuras. Encaja con el mecanismo del
 conector, que ya elige el tipo por definición. **Debe medirse antes y después sobre las
-seis funciones**, como `F-32`, porque mueve los resultados de los tres genéticos.
+nueve funciones**, como `F-32`, porque mueve los resultados de los tres genéticos.
 
 ---
 
@@ -1895,6 +1882,52 @@ Aquí el código hace lo que dice hacer; lo discutible es qué dice hacer.
   La tabla de `xfail` va **por propiedad**, no compartida: hay pares que fallan «gana al
   azar» y pasan «mejora sobre su inicio», y una tabla común los convertiría en
   `XPASS(strict)`.
+
+  **Completado el 8 de septiembre de 2026 a las nueve del artículo**, añadiendo Levy
+  `[−10, 10]`, Michalewicz `[0, π]` y Zakharov `[−5, 10]` con sus dominios canónicos.
+  `behavior_test.py` es ya **exactamente el conjunto de la Sección 5.1**. De 162 casos
+  de prueba a 243, y la suite completa de 28 s a 34 s.
+
+  **Michalewicz rompe la suposición de que todas tienen el óptimo en 0**: el suyo es
+  **−1.8013** en 2D. No hubo que cambiar nada, porque las cuatro propiedades son
+  relativas —cada ejecución se compara con su propio inicio o con el azar a su mismo
+  presupuesto—, pero ahora el módulo lo dice, para que nadie añada después una
+  comprobación que lo dé por supuesto.
+
+  **Las dos propiedades estructurales siguen pasando en las 63 combinaciones**, sin
+  excepciones.
+
+  Cuántas de 10 semillas gana cada algoritmo al muestreo aleatorio con **su mismo
+  presupuesto**, medido tras cerrar `A-01`:
+
+  | | Sph | Ras | Ros | Ack | Gri | Sch | Levy | Mich | Zak | total |
+  |---|---|---|---|---|---|---|---|---|---|---|
+  | RandomSearch | 8 | 5 | 3 | 8 | 7 | 6 | 5 | 3 | 5 | 50/90 |
+  | SA | 4 | 3 | 5 | 3 | 3 | 2 | 2 | 6 | 3 | **31/90** |
+  | HillClimbing | 10 | 10 | 7 | 10 | 3 | 4 | 10 | 6 | 10 | 70/90 |
+  | GA | 7 | 4 | 3 | 7 | 4 | 4 | 7 | 4 | 0 | 40/90 |
+  | SSGA | 3 | 5 | 5 | 3 | 3 | 6 | 6 | 5 | 2 | 38/90 |
+  | TPE | 10 | 6 | 6 | 10 | 8 | 5 | 8 | 6 | 8 | 67/90 |
+  | **Memetic** | 10 | 10 | 9 | 10 | 6 | 2 | 10 | 8 | 10 | **75/90** |
+
+  Tres cosas que las seis funciones no dejaban ver:
+
+  - **El memético es el mejor del paquete, no `HillClimbing`.** 75/90, y empata o gana
+    en siete de las nueve. `HillClimbing` va segundo con 70/90 y TPE tercero con 67/90.
+    Con la esfera sola parecía que dominaba `HillClimbing`; con seis, que el más
+    robusto era TPE. Ninguna de las dos lecturas se sostiene con las nueve.
+  - **SA, GA y SSGA quedan por debajo del muestreo aleatorio**, que suma 50/90 empatando
+    consigo mismo. SA es el peor del paquete con 31/90, lo que apunta a `F-30`.
+  - **Michalewicz derrota a seis de los siete, y la culpa es de la función.** Medido
+    sobre una rejilla de 1200×1200, la mediana del paisaje es **−0.015** frente a un
+    óptimo de −1.8013, y solo el **0.43 %** del dominio baja de −1.5. Es un pajar con
+    una aguja: sin estructura que explotar, todos **empatan** con el azar en vez de
+    perder, con recuentos de 4 a 6 alrededor del umbral de 7. Solo el memético lo pasa,
+    con cuatro veces el presupuesto de cualquier otro.
+  - **Zakharov es el peor resultado del GA en las nueve: 0 de 10.** Acopla las variables
+    mediante una suma ponderada elevada a la cuarta, así que lo que hace buena a una
+    solución es la **combinación**; intercambiar una coordenada entre padres, que es
+    todo lo que el cruce uniforme de `F-33` sabe hacer, la destruye.
 
   Los tests de SA, GA y SSGA nacen `xfail(strict=True)` citando el hallazgo culpable: al arreglar `F-20`, `F-04` o `A-05` saltarán a `XPASS` avisando de que ya se puede quitar el marcador. Se comprobó además que estos resultados **son idénticos antes de `A-06`**, ejecutando el código en `1016e8a`: no son un efecto del cambio de semilla, que solo los ha hecho medibles.
 - **[x] P-06** No hay `.github/workflows`. Con `mypy` ya configurado en `setup.cfg` y una suite que corre en 3 s, un workflow mínimo con matriz 3.10–3.12 captura buena parte de lo anterior. *Cerrado*: `.github/workflows/ci.yml` con dos jobs, `tests` (matriz 3.10–3.12, bloqueante) y `types` (`mypy src`, informativo hasta que cierre `P-11`). Dos cosas salieron a la luz al montarlo: la suite necesita `pytest-csv-params`, que no declara ni `install_requires` ni ningún extra (ver `P-08`), y **el CI no instala los extras a propósito**. Aquello valía cuando el test de `F-24` se saltaba con Ray instalado; al cerrar ese hallazgo se reescribió para bloquear Ray en un subproceso y ahora corre en todas partes. El único test que sigue necesitando Ray de verdad es el de `F-21`.

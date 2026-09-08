@@ -13,12 +13,16 @@ objects to. These tests check the properties that make an optimizer an optimizer
 Every run is seeded, so the outcome is fixed rather than a coin toss, and the
 verdicts below are ratios over ten seeds instead of single runs.
 
-The problems are the six classics of continuous optimization, each on its own
-canonical domain. Keeping the canonical domains rather than normalizing them is
-deliberate, and it is what turned up F-32: the default alteration_limit of 1.0
-means something quite different on [-2.048, 2.048] than on [-600, 600], and the
-two algorithms built around local search fall below random sampling on the wide
-domains for exactly that reason.
+The problems are the nine of Section 5.1 of the MetaGen paper, the classics of
+continuous optimization, each on its own canonical domain. Keeping the canonical
+domains rather than normalizing them is deliberate, and it is what turned up
+F-32: the default alteration_limit of 1.0 means something quite different on
+[-2.048, 2.048] than on [-600, 600], and the two algorithms built around local
+search fall below random sampling on the wide domains for exactly that reason.
+
+Michalewicz has a negative global minimum, about -1.8013 in two dimensions. That
+is deliberate too: every property here is relative, so nothing may assume the
+optimum sits at zero.
 
 Properties 1 and 2 are structural, and are asked of every algorithm on every
 function: an optimizer that reports an improving history and then hands back
@@ -75,8 +79,32 @@ def _schwefel(x: float, y: float) -> float:
     return 418.9829 * 2 - sum(v * math.sin(math.sqrt(abs(v))) for v in (x, y))
 
 
-# name -> (lower bound, upper bound, objective). Canonical domains, and all six
-# have their global minimum at 0.
+def _levy(x: float, y: float) -> float:
+    w = [1 + (v - 1) / 4 for v in (x, y)]
+    return (math.sin(math.pi * w[0]) ** 2
+            + (w[0] - 1) ** 2 * (1 + 10 * math.sin(math.pi * w[0] + 1) ** 2)
+            + (w[1] - 1) ** 2 * (1 + math.sin(2 * math.pi * w[1]) ** 2))
+
+
+def _michalewicz(x: float, y: float) -> float:
+    # Steepness m = 20 in the exponent, that is the usual m = 10 doubled.
+    return -sum(math.sin(v) * math.sin((i + 1) * v ** 2 / math.pi) ** 20
+                for i, v in enumerate((x, y)))
+
+
+def _zakharov(x: float, y: float) -> float:
+    weighted = 0.5 * 1 * x + 0.5 * 2 * y
+    return x ** 2 + y ** 2 + weighted ** 2 + weighted ** 4
+
+
+# name -> (lower bound, upper bound, objective), on the canonical domains.
+#
+# These are the nine of Section 5.1 of the MetaGen paper, taken from Molga and
+# Smutnicki. Eight of them have their global minimum at 0; MICHALEWICZ DOES NOT,
+# its minimum is about -1.8013 at (2.20, 1.57) in two dimensions. Nothing here
+# assumes a zero optimum -- every property is relative, comparing a run against
+# its own start or against random sampling on the same budget -- but anything
+# added later must not start assuming it either.
 FUNCTIONS = {
     "Sphere": (-5.12, 5.12, _sphere),
     "Rastrigin": (-5.12, 5.12, _rastrigin),
@@ -84,6 +112,9 @@ FUNCTIONS = {
     "Ackley": (-32.768, 32.768, _ackley),
     "Griewank": (-600.0, 600.0, _griewank),
     "Schwefel": (-500.0, 500.0, _schwefel),
+    "Levy": (-10.0, 10.0, _levy),
+    "Michalewicz": (0.0, math.pi, _michalewicz),
+    "Zakharov": (-5.0, 10.0, _zakharov),
 }
 
 
@@ -187,6 +218,23 @@ _SSGA = ("A-01 is closed and the parents are drawn by tournament now, which took
 _WIDE = ("F-32: alteration_limit defaults to an absolute 1.0, about a thousandth of "
          "this domain's range, so the local search cannot go anywhere")
 
+_MICHALEWICZ = ("Michalewicz is a needle in a haystack, and it is the function rather "
+                "than the algorithms that decides this one: measured on a 1200x1200 "
+                "grid, the median of the landscape is -0.015 against an optimum of "
+                "-1.8013, and only 0.43 % of the domain sits below -1.5. With almost "
+                "no structure to exploit, every algorithm TIES with random sampling "
+                "rather than losing to it -- the counts sit at 4-6 of 10 around the 7 "
+                "the threshold asks for, and the means land in the same range as the "
+                "baselines. Only the memetic algorithm gets past it, on four times the "
+                "budget of any other")
+
+_ZAKHAROV = ("Zakharov couples the variables through a weighted sum raised to the "
+             "fourth power, so what makes a solution good is the combination, not "
+             "either coordinate on its own. Swapping one coordinate between parents is "
+             "all the uniform crossover of F-33 can do, and it destroys exactly that. "
+             "GA does not take a single seed of the ten, mean 3.6915 against 0.3973 "
+             "for random sampling: its worst showing on the nine")
+
 _TPE = ("TPE models each variable on its own, which suits a separable bowl. Rosenbrock "
         "couples x and y along a curved valley, Rastrigin oscillates faster than the "
         "model resolves, and Schwefel is deceptive: 15 iterations of an independent "
@@ -200,6 +248,8 @@ _IMPROVES_ON_ITS_START = {
     **{("Ackley", n): r for n, r in (("SA", _SA), ("SSGA", _SSGA))},
     **{("Griewank", n): r for n, r in (("SA", _SA), ("SSGA", _SSGA))},
     **{("Schwefel", n): r for n, r in (("SA", _SA), ("GA", _GA), ("TPE", _TPE))},
+    **{("Levy", n): r for n, r in (("SA", _SA), ("SSGA", _SSGA))},
+    **{("Zakharov", n): r for n, r in (("SA", _SA),)},
 }
 
 _BEATS_RANDOM = {
@@ -214,6 +264,12 @@ _BEATS_RANDOM = {
     **{("Schwefel", n): r for n, r in (("SA", _SA), ("GA", _GA), ("SSGA", _SSGA),
                                        ("TPE", _TPE), ("HillClimbing", _WIDE),
                                        ("Memetic", _WIDE))},
+    **{("Levy", n): r for n, r in (("SA", _SA), ("SSGA", _SSGA))},
+    # Michalewicz beats six of the seven, and the reason is the landscape.
+    **{("Michalewicz", n): _MICHALEWICZ
+       for n in ("SA", "HillClimbing", "GA", "SSGA", "TPE")},
+    **{("Zakharov", n): r for n, r in (("SA", _SA), ("GA", _ZAKHAROV),
+                                       ("SSGA", _SSGA))},
 }
 
 
