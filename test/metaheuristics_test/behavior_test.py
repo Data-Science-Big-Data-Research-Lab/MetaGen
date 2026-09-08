@@ -200,11 +200,12 @@ def runs(tmp_path_factory):
 # The (function, algorithm) pairs expected to fail a statistical property.
 # --------------------------------------------------------------------------
 
-_SA = ("F-30 is closed and the temperature travels its whole range now, which took SA "
-       "from 134 wins out of 270 to 161 over 30 seeds. What is left is "
-       "neighbor_population_size defaulting to 1: with a single neighbor there is "
-       "nothing to choose between, so annealing is a walk with a Metropolis coin on "
-       "top. Raising it to 5 takes SA to 214 of 270, and F-25 left that decision open")
+_SA = ("SA now improves on its own start everywhere and clears five of the nine here, "
+       "after F-30 tied the cooling schedule to the budget and the default neighborhood "
+       "went from one candidate to five, 134 wins out of 270 to 214 over 30 seeds. The "
+       "four it still misses are the hardest of the set for a single walking point on "
+       "81 evaluations: Rastrigin's forest of local optima, Rosenbrock's curved valley, "
+       "deceptive Schwefel and needle-in-a-haystack Michalewicz")
 
 _GA = ("A-01 is closed and the parents are drawn by tournament now, but with two real "
        "variables the crossover can only swap coordinates between the parents: every "
@@ -250,31 +251,31 @@ _TPE = ("TPE models each variable on its own, which suits a separable bowl. Rose
 
 # Measured, not guessed, and kept per property: a pair can fail one and pass the
 # other, so a single shared table would turn the passes into XPASS(strict).
+# SA no longer appears here: with five neighbors it improves on its own starting
+# point on all nine functions.
 _IMPROVES_ON_ITS_START = {
-    **{("Sphere", n): r for n, r in (("SA", _SA), ("SSGA", _SSGA))},
+    **{("Sphere", n): r for n, r in (("SSGA", _SSGA),)},
     **{("Rosenbrock", n): r for n, r in (("SSGA", _SSGA), ("TPE", _TPE))},
-    **{("Ackley", n): r for n, r in (("SA", _SA), ("SSGA", _SSGA))},
-    **{("Griewank", n): r for n, r in (("SA", _SA), ("SSGA", _SSGA))},
+    **{("Ackley", n): r for n, r in (("SSGA", _SSGA),)},
+    **{("Griewank", n): r for n, r in (("SSGA", _SSGA),)},
     **{("Schwefel", n): r for n, r in (("GA", _GA), ("TPE", _TPE))},
-    **{("Levy", n): r for n, r in (("SA", _SA), ("SSGA", _SSGA))},
-    **{("Michalewicz", n): r for n, r in (("SA", _SA),)},
+    **{("Levy", n): r for n, r in (("SSGA", _SSGA),)},
 }
 
 _BEATS_RANDOM = {
-    **{("Sphere", n): r for n, r in (("SA", _SA), ("SSGA", _SSGA))},
+    **{("Sphere", n): r for n, r in (("SSGA", _SSGA),)},
     **{("Rastrigin", n): r for n, r in (("SA", _SA), ("GA", _GA), ("SSGA", _SSGA),
                                         ("TPE", _TPE))},
     **{("Rosenbrock", n): r for n, r in (("SA", _SA), ("GA", _GA), ("SSGA", _SSGA),
                                          ("TPE", _TPE))},
-    **{("Ackley", n): r for n, r in (("SA", _SA), ("SSGA", _SSGA))},
-    **{("Griewank", n): r for n, r in (("SA", _SA), ("GA", _GA), ("SSGA", _SSGA))},
+    **{("Ackley", n): r for n, r in (("SSGA", _SSGA),)},
+    **{("Griewank", n): r for n, r in (("GA", _GA), ("SSGA", _SSGA))},
     **{("Schwefel", n): r for n, r in (("SA", _SA), ("GA", _GA), ("SSGA", _SSGA),
                                        ("TPE", _TPE), ("HillClimbing", _DECEPTIVE))},
-    **{("Levy", n): r for n, r in (("SA", _SA), ("SSGA", _SSGA))},
+    **{("Levy", n): r for n, r in (("SSGA", _SSGA),)},
     # Michalewicz beats five of the seven, and the reason is the landscape.
     **{("Michalewicz", n): _MICHALEWICZ for n in ("SA", "GA", "SSGA", "TPE")},
-    **{("Zakharov", n): r for n, r in (("SA", _SA), ("GA", _ZAKHAROV),
-                                       ("SSGA", _SSGA))},
+    **{("Zakharov", n): r for n, r in (("GA", _ZAKHAROV), ("SSGA", _SSGA))},
 }
 
 
