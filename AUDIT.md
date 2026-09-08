@@ -56,7 +56,7 @@ propósito, cada una con su motivo. No están en el índice porque no son hallaz
 | Qué | Por qué está aparte | Dónde |
 |---|---|---|
 | **Revisión de CVOA** | El diseño es de Paco Martínez-Álvarez y el código es multihilo con Ray encima. `F-27`, `F-28`, `F-29`, `A-09` y seis discrepancias más con el artículo | `metagen-auditoria/CVOA-cuestiones.md` |
-| **`mypy src` a cero** | 136 errores tras la primera tanda, no los 8 que se creían; trabajo fichero a fichero | `P-11` |
+| **`mypy src` a cero** | 71 errores tras dos tandas, todos ya en `metaheuristics/` | `P-11` |
 | **Implementar una búsqueda tabú de verdad** | Lo que había no lo era y se renombró a `HillClimbing` (`A-02`). La tabú canónica es un algoritmo nuevo, no un arreglo | ver abajo |
 | **Estructuras dinámicas en los genéticos** | El cruce para longitudes variables no existe; es funcionalidad, no arreglo | `F-31` |
 | **Implementar un TPE canónico** | El de MetaGen funciona y no se toca; el canónico es otro algoritmo, con dos piezas que van juntas | ver abajo |
@@ -220,7 +220,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ✅ | `P-08` | Los extras de `setup.cfg` usan `;`, que PEP 508 lee como otra cosa |
 | ✅ | `P-09` | Falta `py.typed`: mypy trata `metagen` como `Any` desde fuera |
 | ✅ | `P-10` | Los ejemplos de las docstrings usan una API que no existe |
-| ⬜ | `P-11` | `mypy src` no pasa limpio: 136 errores en 22 ficheros |
+| ⬜ | `P-11` | `mypy src` no pasa limpio: 71 errores en 17 ficheros |
 
 ---
 
@@ -2545,3 +2545,79 @@ Aquí el código hace lo que dice hacer; lo discutible es qué dice hacer.
   del framework y conviene que conste.
 
   **Y destapó un bug de verdad, que es lo que este hallazgo anunciaba**: ver `F-34`.
+
+  ### Segunda tanda: `framework/` entero a cero
+
+  **136 → 71**, el mismo día. Toda la capa `framework/` queda limpia y lo que resta está
+  en `metaheuristics/`. Otra vez **una causa raíz por familia**, no sesenta problemas
+  distintos.
+
+  **Los tipos simples: 32 errores de un solo patrón.** `BaseType.get_definition()`
+  devuelve `Base`, cuyo `get_attributes()` es la unión de tuplas de dos a cinco
+  elementos, así que **ningún desempaquetado concreto podía comprobarse**. `Integer`,
+  `Real` y `Categorical` tienen una única clase de definición, así que basta
+  **estrechar `get_definition()` una vez por clase** —un `cast`— y todos sus
+  desempaquetados quedan bien. Es la familia que la ficha ya citaba con
+  `integer.py:68`.
+
+  **`Structure`, 22 errores y cuatro causas.** Su definición sí puede ser estática o
+  dinámica de verdad, con tuplas de tres y de cinco, así que en vez de un `cast` se
+  **guarda la definición en una local** y `isinstance` estrecha por sí solo. Además:
+  su constructor declaraba `BaseStructureDefinition`, que **no es un `Base`** y por
+  tanto no es lo que `BaseType` acepta; un ayudante nuevo, `_new_element`, concentra la
+  construcción de elementos, que sale de un registro que mypy no puede seguir; y la
+  firma de `_convert` seguía sin admitir los `BaseType` que **acepta desde `F-05`**.
+
+  **`base_solution.py`, 11.** Los mismos `TypeVar` sin ligar que `facades.py`, más
+  `alterations_number: int = None`, más el diccionario de variables, que puede guardar
+  una sub-`Solution`.
+
+  **Cambian tres anotaciones de la API pública de `Solution`**, y es la decisión de
+  fondo de esta tanda:
+
+  | método | antes | ahora |
+  |---|---|---|
+  | `get_variables()` | `Dict[str, BaseType]` | `Dict[str, Union[BaseType, Solution]]` |
+  | `get(variable)` | `BaseType` | `Union[BaseType, Solution]` |
+  | `set(variable, value)` | `InputValue \| BaseType` | `Union[InputValue, BaseType, Solution]` |
+
+  **Las de antes eran falsas:** con una variable de grupo, `get()` devuelve una
+  `Solution`, que **no es un `BaseType`** —su MRO es `['Solution', 'object']`—. Es
+  exactamente la mentira que en `F-05` habría roto las estructuras de grupos si se
+  hubiera aplicado el arreglo literal que proponía la auditoría.
+
+  **No rompe nada en ejecución**: las anotaciones son metadatos y el programa de un
+  usuario corre idéntico; comprobado ejecutando código de usuario que incluye las líneas
+  que mypy señala, más una optimización completa. Solo cambia lo que dice **mypy**, y
+  solo a quien lo ejecute sobre su propio código.
+
+  **Y hoy no lo ve nadie**: `master`, que es lo publicado, **no lleva `py.typed`**; lo
+  añadió `P-09` en esta auditoría y está sin publicar. Sin ese marcador mypy trata el
+  paquete entero como `Any` desde fuera. Es decir, **las anotaciones se harán visibles
+  todas de golpe en la primera versión tipada, y ese es el mejor momento posible para
+  que sean ciertas**.
+
+  **La molestia para quien no use grupos, medida y no supuesta.** De cinco usos típicos:
+
+  | uso | ¿le afecta? |
+  |---|---|
+  | `solucion["x"]`, el acceso de los tutoriales | no |
+  | `solucion.get("x").mutate()` | no |
+  | recorrer `get_variables()` y mutar | no |
+  | `variable: BaseType = solucion.get("x")` | **sí** |
+  | `solucion.get("x").get()` | **sí** |
+
+  Los dos que fallan **son los que asumen que no hay grupos**, así que mypy tiene razón;
+  se resuelven con un `isinstance` o un `cast` en el código del usuario. **Mejora futura
+  posible**, que sería añadir API y no toca a una tanda de tipado: un accesor aparte
+  —`get_group(nombre) -> Solution`— que daría cero fricción sin que la firma mienta.
+
+  **Dos trampas de este trabajo que conviene retener:**
+
+  - `types.BaseType | 'Solution'` **revienta en ejecución** con
+    `TypeError: unsupported operand type(s) for |: 'ABCMeta' and 'str'`, porque la firma
+    de un método se evalúa al definirlo. Dentro de la propia clase `Solution` la
+    referencia adelantada tiene que ir en `Union[...]`. Tiró la recolección de tres
+    ficheros de test.
+  - `cast` **evalúa su primer argumento**, así que un tipo importado solo bajo
+    `TYPE_CHECKING` hay que citarlo entre comillas.

@@ -14,7 +14,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-from typing import Any
+from typing import Any, cast
 
 from metagen.framework.domain import CategoricalDefinition
 
@@ -47,6 +47,20 @@ class Categorical(BaseType):
             _, categories = definition.get_attributes()
             raise ValueError(
                 f"The value provided must be a str in: {categories}")
+
+    def get_definition(self) -> CategoricalDefinition:
+        """
+        The definition this variable was built from.
+
+        Narrows what :py:meth:`~metagen.framework.solution.types.base.BaseType.get_definition`
+        declares, which is the union of every definition and whose ``get_attributes``
+        is therefore a union of tuples of two to five elements. Every unpacking here
+        is of a fixed width, so without the narrowing none of them type-checks (P-11).
+
+        :return: The definition of this variable.
+        :rtype: CategoricalDefinition
+        """
+        return cast(CategoricalDefinition, super().get_definition())
 
     def initialize(self) -> None:
         """
