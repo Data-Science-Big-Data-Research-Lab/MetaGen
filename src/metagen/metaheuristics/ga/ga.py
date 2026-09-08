@@ -17,7 +17,8 @@
 import heapq
 
 from metagen.framework import Domain, Solution
-from .ga_tools import GASolution, yield_two_children, require_crossover
+from .ga_tools import (GASolution, yield_two_children, require_crossover,
+                       tournament_selection)
 from metagen.metaheuristics.base import Metaheuristic
 from typing import Optional, Callable, List, Tuple, cast
 from copy import deepcopy
@@ -39,6 +40,9 @@ class GA(Metaheuristic):
     :type mutation_rate: float, optional
     :param n_generations: The number of generations to run the algorithm (default is 50).
     :type n_generations: int, optional
+    :param tournament_size: How many individuals compete to become a parent (default is 2,
+        the mildest tournament). Raising it makes the search greedier.
+    :type tournament_size: int, optional
 
     :ivar population_size: The size of the population.
     :vartype population_size: int
@@ -54,6 +58,7 @@ class GA(Metaheuristic):
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
                  population_size: int = 20,
                  max_iterations: int = 50, mutation_rate: float = 0.1,
+                 tournament_size: int = 2,
                  distributed: bool = False, log_dir: Optional[str] = None,
                  seed: Optional[int] = None):
         super().__init__(domain, fitness_function, population_size=population_size, distributed=distributed, log_dir=log_dir, seed=seed)
@@ -63,6 +68,7 @@ class GA(Metaheuristic):
         require_crossover(domain, "GA")
         self.mutation_rate = mutation_rate
         self.max_iterations = max_iterations
+        self.tournament_size = tournament_size
 
     def initialize(self, num_solutions=10) -> Tuple[List[Solution], Solution]:
         """Initialize the population"""
@@ -73,14 +79,19 @@ class GA(Metaheuristic):
     def iterate(self, solutions: List[Solution]) -> Tuple[List[Solution], Solution]:
         """Execute one generation of the genetic algorithm"""
         num_solutions = len(solutions)
-        best_parents = heapq.nsmallest(2, solutions, key=lambda sol: sol.get_fitness())
+        elite = heapq.nsmallest(2, solutions, key=lambda sol: sol.get_fitness())
         best_solution = deepcopy(self.best_solution)
-        current_solutions = [deepcopy(best_parents[0]), deepcopy(best_parents[1])]
+        current_solutions = [deepcopy(elite[0]), deepcopy(elite[1])]
 
         for _ in range(num_solutions // 2):
 
-            father = cast(GASolution, best_parents[0])
-            mother = cast(GASolution, best_parents[1])
+            # A-01: the pair is drawn again for every crossover. Taking the two best
+            # once, outside the loop, bred the same pair num_solutions // 2 times, so
+            # the generation held a handful of distinct points at most; the population
+            # then converged on one of them and crossing it with itself gave it back.
+            # The two best still go through untouched, as the elite above.
+            father = cast(GASolution, tournament_selection(solutions, self.tournament_size))
+            mother = cast(GASolution, tournament_selection(solutions, self.tournament_size))
             child1, child2 = yield_two_children((father, mother), self.mutation_rate, self.fitness_function)
             current_solutions.extend([child1, child2])
 

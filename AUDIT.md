@@ -1371,7 +1371,68 @@ que debería hacerse midiendo antes y después sobre las seis funciones, no a oj
 
 Aquí el código hace lo que dice hacer; lo discutible es qué dice hacer.
 
-- **[ ] A-01** `ga/ga.py:71-79`, `mm/memetic.py:111-119` — **sin selección de padres**: `best_parents` se calcula fuera del bucle y los `n/2` cruces usan siempre la misma pareja. No hay torneo, ruleta ni ranking. *Propuesta*: función de selección intercambiable, torneo binario por defecto.
+- **[ ] A-01 (R)** `ga/ga.py:71-79`, `mm/memetic.py:111-119` — **sin selección de padres**: `best_parents` se calcula fuera del bucle y los `n/2` cruces usan siempre la misma pareja. No hay torneo, ruleta ni ranking. *Propuesta*: función de selección intercambiable, torneo binario por defecto.
+
+  *Arreglado en GA y en el memético con un torneo de tamaño configurable.* Se descartó
+  la «función de selección intercambiable» de la propuesta: el punto de extensión que
+  documenta el framework es **el conector**, y añadir un segundo mecanismo solo para
+  esto no se paga. `tournament_size: int = 2` da la palanca que de verdad importa —la
+  presión selectiva— sin pedirle a nadie que escriba una función.
+
+  **El hallazgo se queda corto en el diagnóstico, y conviene ver el mecanismo entero.**
+  Medido sobre la esfera, con `population_size=10`:
+
+  ```
+  gen 0: padres (-0.239647, 0.853832) x (0.115453, -0.973474)   poblacion: 10 puntos distintos de 10
+  gen 1: padres ( 0.115453, 0.853832) x (0.115453,  0.853832)   poblacion:  5 puntos distintos de 10
+  gen 4: padres ( 0.115453, 0.853832) x (0.115453,  0.853832)   poblacion:  2 puntos distintos de 10
+  ```
+
+  No es solo que la pareja no cambie dentro de la generación. Es que **eso se
+  realimenta**: el cruce de dos variables reales intercambia exactamente una, así que
+  de una pareja fija salen dos hijos posibles; la población se llena de copias de esos
+  dos puntos; y **desde la generación 1 los dos mejores son el mismo punto**, con lo
+  que cruzar X con X devuelve X y el cruce deja de recombinar nada. Los dos padres
+  nunca son el mismo *objeto* —`nsmallest(2)` devuelve dos entradas distintas de la
+  lista—, pero sí el mismo *valor*.
+
+  **Resultado, presupuesto igualado y diez semillas.** El GA mejora en 10 de las 12
+  medidas:
+
+  | | Sphere | Rastrigin | Rosenbrock | Ackley | Griewank | Schwefel |
+  |---|---|---|---|---|---|---|
+  | gana al azar | 4 → **7** | 5 → 4 | 1 → 3 | 4 → **7** | 4 → 4 | 4 → 4 |
+  | mejora sobre su inicio | 6 → **8** | 9 → 9 | 8 → 8 | 7 → 7 | 6 → **10** | 5 → 6 |
+
+  Sumando las seis, **de 22/60 a 29/60** contra el muestreo aleatorio. Cuatro `xfail`
+  de `behavior_test.py` pasan a `XPASS` y se retiran: Sphere y Griewank en «mejora
+  sobre su inicio», Sphere y Ackley en «gana al azar».
+
+  **El GA sigue sin llegar al umbral en cuatro funciones, y la causa ya no es esta.**
+  Es `F-33`: el cruce uniforme solo baraja coordenadas que ya existían, así que todo
+  valor nuevo tiene que venir de una mutación al 0.1. Medido: 15 generaciones de 10
+  individuos ven 19 valores distintos de `x` frente a los 10 de partida.
+
+  **En el memético el arreglo es un intercambio, no una mejora limpia**, y hay que
+  decirlo. Media sobre **30** semillas, no diez —con diez, la caída de Rastrigin
+  parecía de 4.6× y es de un 24 %—:
+
+  | | Sphere | Rastrigin | Rosenbrock | Ackley | Griewank | Schwefel |
+  |---|---|---|---|---|---|---|
+  | dos mejores | **0.0002** | **0.1883** | **0.0291** | 3.5553 | 3.5188 | **120.46** |
+  | torneo | 0.0006 | 0.2344 | 0.0476 | **1.8352** | **1.8157** | 143.31 |
+
+  Empeora en cuatro y mejora a la mitad en dos; contra el azar sube de 44/60 a 47/60.
+  El patrón se explica: coger siempre a los dos mejores **intensifica**, y eso rinde
+  donde la búsqueda local llega al óptimo; el torneo **explora**, y eso es lo que
+  salva a Ackley y Griewank, que son los dominios anchos donde `F-32` deja inútil a
+  la búsqueda local. **Decisión de David: mantenerlo**, con la tabla completa a la
+  vista. Cuando se cierre `F-32` este equilibrio se moverá y habrá que volver a medir.
+
+  Falta SSGA, que tiene el mismo problema por otra vía y va en su propio commit.
+
+  Tests: `test_a01_el_torneo_no_es_seleccion_por_truncamiento` y
+  `test_a01_los_cruces_de_una_generacion_no_usan_la_misma_pareja`, parametrizado.
 - **[x] A-02 (R)** `ts/tabu.py:123-124`, `tools.py:45` — **tabú es hill climbing**: se explora siempre desde `self.best_solution` y `local_search_with_tabu` nunca devuelve algo peor que el punto de partida, así que la lista tabú no puede desviar al algoritmo de nada. *Propuesta*: `current_solution` separada del mejor histórico, moverse al mejor vecino no tabú aunque empeore, criterio de aspiración.
 
   *Cerrado renombrando, no reescribiendo.* Decisión de David: **el algoritmo es bueno y

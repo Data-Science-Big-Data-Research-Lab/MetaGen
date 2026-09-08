@@ -1680,3 +1680,77 @@ def test_p06_el_workflow_de_ci_ejecuta_la_suite_que_debe_estar_verde():
             f"la matriz del CI no cubre Python {version}, dentro del "
             "python_requires >=3.10 declarado en setup.cfg"
         )
+
+
+# --------------------------------------------------------------------------------
+# A-01 · Sin seleccion de padres: todos los cruces usan la misma pareja
+# --------------------------------------------------------------------------------
+
+def _dominio_ga():
+    """Dominio de dos variables reales con el conector que sabe cruzar."""
+    from metagen.metaheuristics import GAConnector
+
+    dominio = Domain(connector=GAConnector())
+    dominio.define_real("x", -5.12, 5.12)
+    dominio.define_real("y", -5.12, 5.12)
+    return dominio, lambda solucion: solucion["x"] ** 2 + solucion["y"] ** 2
+
+
+def test_a01_el_torneo_no_es_seleccion_por_truncamiento():
+    """A-01: coger siempre a los dos mejores es truncamiento con el corte mas
+    agresivo posible. El torneo tiene que poder devolver a otro."""
+    from metagen.framework.rng import set_seed
+    from metagen.metaheuristics.ga.ga_tools import tournament_selection
+
+    dominio, _ = _dominio_ga()
+    poblacion = []
+    for posicion in range(10):
+        individuo = Solution(dominio)
+        individuo.set_fitness(float(posicion))      # el 0 es el mejor
+        poblacion.append(individuo)
+
+    set_seed(0)
+    elegidos = {tournament_selection(poblacion).get_fitness() for _ in range(50)}
+
+    assert len(elegidos) > 1, (
+        f"el torneo devuelve siempre al mismo individuo: {elegidos}"
+    )
+    assert max(elegidos) < 9.0, (
+        "el torneo no ejerce ninguna presion: llega a devolver al peor de los diez"
+    )
+
+
+@pytest.mark.parametrize("nombre", ["GA", "Memetic"])
+def test_a01_los_cruces_de_una_generacion_no_usan_la_misma_pareja(nombre, monkeypatch):
+    """A-01: `best_parents` se calculaba fuera del bucle, asi que los cinco cruces de
+    cada generacion se hacian entre los dos mismos individuos. Medido antes del
+    arreglo: una sola pareja en las cinco, la poblacion pasaba de 10 puntos distintos
+    a 2, y desde la segunda generacion los dos padres eran el mismo punto, con lo que
+    el cruce devolvia al padre y dejaba de recombinar."""
+    import metagen.metaheuristics.ga.ga as modulo_ga
+    import metagen.metaheuristics.mm.memetic as modulo_mm
+    from metagen.metaheuristics import GA, GAConnector, Memetic
+
+    modulo = {"GA": modulo_ga, "Memetic": modulo_mm}[nombre]
+    original = modulo.yield_two_children
+    parejas = []
+
+    def espia(padres, mutation_rate, fitness_function):
+        parejas.append((id(padres[0]), id(padres[1])))
+        return original(padres, mutation_rate, fitness_function)
+
+    monkeypatch.setattr(modulo, "yield_two_children", espia)
+
+    dominio, fitness = _dominio_ga()
+    if nombre == "GA":
+        algoritmo = GA(dominio, fitness, population_size=10, max_iterations=3, seed=0)
+    else:
+        algoritmo = Memetic(dominio, fitness, population_size=10, max_iterations=3,
+                            neighbor_population_size=3, seed=0)
+    algoritmo.run()
+
+    primera_generacion = parejas[:5]          # population_size // 2 cruces
+    assert len(set(primera_generacion)) > 1, (
+        f"{nombre} cruza la misma pareja en los cinco cruces de una generacion: "
+        f"{primera_generacion}"
+    )
