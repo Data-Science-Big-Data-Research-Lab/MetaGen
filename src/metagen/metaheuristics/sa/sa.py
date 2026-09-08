@@ -67,8 +67,10 @@ class SA(Metaheuristic):
     :type alteration_limit: RelativeAlteration or float or None, optional
     :param initial_temp: Initial temperature for annealing process, defaults to 50.0
     :type initial_temp: float, optional
-    :param cooling_rate: Rate at which temperature decreases, defaults to 0.99
-    :type cooling_rate: float, optional
+    :param cooling_rate: Rate at which the temperature decreases each iteration.
+        Derived from the budget when not given, so that the temperature travels from
+        initial_temp down to T_min over the iterations available (F-30)
+    :type cooling_rate: float or None, optional
     :param neighbor_population_size: Number of neighbors to generate in each iteration, defaults to 1
     :type neighbor_population_size: int, optional
     :param distributed: Whether to use distributed computation, defaults to False
@@ -82,7 +84,7 @@ class SA(Metaheuristic):
     :vartype alteration_limit: RelativeAlteration or float or None
     :ivar initial_temp: Current temperature in the annealing process
     :vartype initial_temp: float
-    :ivar cooling_rate: Rate of temperature decrease
+    :ivar cooling_rate: Rate of temperature decrease, derived from the budget unless given
     :vartype cooling_rate: float
     :ivar neighbor_population_size: Number of neighbors per iteration
     :vartype neighbor_population_size: int
@@ -92,7 +94,7 @@ class SA(Metaheuristic):
                  warmup_iterations: int = 5,
                  max_iterations: int = 20,
                  alteration_limit: Any = RelativeAlteration(0.2), initial_temp: float = 50.0,
-                 cooling_rate: float = 0.99, neighbor_population_size: int = 1,
+                 cooling_rate: Optional[float] = None, neighbor_population_size: int = 1,
                  distributed=False, log_dir: Optional[str] = None,
                  seed: Optional[int] = None) -> None:
         """
@@ -109,8 +111,10 @@ class SA(Metaheuristic):
         :type alteration_limit: RelativeAlteration or float or None, optional
         :param initial_temp: Initial temperature for annealing process, defaults to 50.0
         :type initial_temp: float, optional
-        :param cooling_rate: Rate at which temperature decreases, defaults to 0.99
-        :type cooling_rate: float, optional
+        :param cooling_rate: Rate at which the temperature decreases each iteration.
+            Derived from the budget when not given, so that the temperature travels
+            from initial_temp down to T_min over max_iterations (F-30)
+        :type cooling_rate: float or None, optional
         :param neighbor_population_size: Number of neighbors to generate in each iteration, defaults to 1
         :type neighbor_population_size: int, optional
         :param distributed: Whether to use distributed computation, defaults to False
@@ -129,13 +133,34 @@ class SA(Metaheuristic):
         self.alteration_limit = alteration_limit
         self.initial_temp = initial_temp
         self.current_temp = self.initial_temp
-        self.cooling_rate = cooling_rate
         self.neighbor_population_size = neighbor_population_size
 
         # Floor of the cooling schedule, applied in iterate(). It was assigned and
         # never read, so the temperature decayed towards zero and the Metropolis
         # criterion silently stopped accepting anything worse (F-20).
         self.T_min = 1e-8
+
+        # Tied to the budget instead of being a loose rate. With the 0.99 this used
+        # to default to, 50 degrees became 43 over 15 iterations and reaching 0.1
+        # would have taken 618 of them, so the Metropolis criterion never got cold
+        # enough to discriminate and the search was a random walk (F-30). Derived,
+        # the temperature travels the whole way from initial_temp to T_min in the
+        # iterations actually available, whatever the budget. max() because a budget
+        # of zero iterations is legal and has no schedule to speak of.
+        self.cooling_rate = cooling_rate if cooling_rate is not None else (
+            (self.T_min / self.initial_temp) ** (1 / max(1, self.max_iterations)))
+
+    def pre_execution(self) -> None:
+        """
+        Reset the annealing schedule so that every run starts from the same state.
+
+        The temperature was only ever set in the constructor, so a second run() on
+        the same object picked up wherever the first left off. It went unnoticed
+        while the schedule barely moved (F-30); with a schedule that reaches T_min
+        it would break the guarantee that a seed reproduces a run (A-06).
+        """
+        super().pre_execution()
+        self.current_temp = self.initial_temp
 
     def initialize(self, num_solutions: int = 1) -> Tuple[List[Solution], Solution]:
         """
