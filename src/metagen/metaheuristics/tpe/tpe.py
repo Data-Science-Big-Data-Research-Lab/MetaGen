@@ -1,10 +1,10 @@
 import heapq
-from collections import Counter, deque
+from collections import Counter
 
 from scipy.optimize import minimize
 
 from metagen.metaheuristics.base import Metaheuristic
-from typing import Callable, Deque, List, Tuple, Optional, cast
+from typing import Callable, List, Tuple, Optional, cast
 import numpy as np
 from scipy.stats import norm
 from metagen.framework import Domain, Solution
@@ -96,7 +96,6 @@ class TPE(Metaheuristic):
         self.max_iterations = max_iterations
         self.candidate_pool_size = candidate_pool_size
         self.gamma_config = gamma_config if gamma_config else GammaConfig(gamma_function="sampled_based")
-        self.solution_history: Deque[Solution] = deque()
 
     def initialize(self, num_solutions=10) -> Tuple[List[Solution], Solution]:
         """
@@ -115,7 +114,6 @@ class TPE(Metaheuristic):
         for _ in range(num_solutions):
             solution = solution_type(self.domain, connector=self.domain.get_connector())
             solution.evaluate(self.fitness_function)
-            self.solution_history.append(solution)
             current_solutions.append(solution)
 
             if best_solution is None or solution.get_fitness() < best_solution.get_fitness():
@@ -132,17 +130,22 @@ class TPE(Metaheuristic):
         Executes one iteration of the TPE algorithm while controlling solution history growth.
         """
 
+        # The population is the history: what this returns is what it gets back next
+        # time. It used to live on self as well, and in distributed mode Ray runs
+        # iterate on a pickled copy, so the driver's history stayed empty and this
+        # divided by its length (F-40).
+        history = list(solutions)
         # Compute gamma dynamically based on the configured strategy
         gamma = compute_gamma(self.gamma_config, iteration=self.current_iteration,
-                              max_iterations=self.max_iterations, num_solutions=len(self.solution_history))
+                              max_iterations=self.max_iterations, num_solutions=len(history))
 
         # Determine the number of best solutions to consider
-        l = max(1, round(gamma * len(self.solution_history)))  # Ensure at least one solution is considered
+        l = max(1, round(gamma * len(history)))  # Ensure at least one solution is considered
 
         # Select the best and worst solutions using heapq for efficiency
-        best_solutions = heapq.nsmallest(l, self.solution_history, key=lambda sol: sol.get_fitness())
-        worst_solutions = heapq.nlargest(min(len(self.solution_history) - l, self.candidate_pool_size),
-                                         self.solution_history, key=lambda sol: sol.get_fitness())
+        best_solutions = heapq.nsmallest(l, history, key=lambda sol: sol.get_fitness())
+        worst_solutions = heapq.nlargest(min(len(history) - l, self.candidate_pool_size),
+                                         history, key=lambda sol: sol.get_fitness())
 
         # Generate candidate solutions and select the best one
         best_candidate = self.sample_new_solution(best_solutions, worst_solutions)
@@ -156,23 +159,30 @@ class TPE(Metaheuristic):
                 best_candidate = candidate  # Keep the best candidate
 
         # Add new best candidate while controlling history size
-        self.solution_history.append(best_candidate)
-        self._limit_solution_history(gamma)
+        history.append(best_candidate)
+        history = self._limit_solution_history(history, gamma)
 
         # Determine best solution so far
         local_best = min(self._best_so_far(), best_candidate, key=lambda sol: sol.get_fitness())
 
-        return list(self.solution_history), local_best
+        return history, local_best
 
 
-    def _limit_solution_history(self, gamma: float):
+    def _limit_solution_history(self, history: List[Solution], gamma: float) -> List[Solution]:
         """
-        Ensures the solution history does not grow indefinitely.
-        Keeps only the last `gamma * max_iterations` solutions.
+        Keeps the history from growing indefinitely: only the last
+        ``max(candidate_pool_size, gamma * max_iterations)`` solutions survive, the
+        oldest going first.
+
+        :param history: The solutions seen so far, oldest first.
+        :type history: List[Solution]
+        :param gamma: The fraction of best solutions in use this iteration.
+        :type gamma: float
+        :return: The history, trimmed.
+        :rtype: List[Solution]
         """
         max_history_size = max(self.candidate_pool_size, round(gamma * self.max_iterations))
-        while len(self.solution_history) > max_history_size:
-            self.solution_history.popleft()  # Remove oldest solutions
+        return history[max(0, len(history) - max_history_size):]
 
     def sample_new_solution(self, best_solutions: List[Solution], worst_solutions: List[Solution]) -> Solution:
         

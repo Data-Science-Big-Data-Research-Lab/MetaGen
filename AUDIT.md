@@ -204,7 +204,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ✅ | `F-37` | El valor de un grupo o de una estructura no es builtin más allá del primer nivel |
 | ✅ | `F-38` | Una estructura acepta cualquier longitud: nadie comprueba el recuento |
 | ✅ | `F-39` | El cruce de una estructura dinámica de grupos comparte los grupos con los padres |
-| ⬜ | `F-40` | En distribuido, el estado propio del algoritmo se actualiza en una copia y se pierde |
+| ✅ | `F-40` | En distribuido, el estado propio del algoritmo se actualiza en una copia y se pierde |
 | ✅ | `F-41` | `check_length` de la estructura dinámica ignora el paso de longitud |
 | ✅ | `A-01` | Sin selección de padres: todos los cruces usan la misma pareja |
 | ✅ | `A-02` | La búsqueda tabú es en realidad hill climbing |
@@ -2206,7 +2206,7 @@ línea que llama a `check_length` con un `range` de la longitud pedida. Ninguna 
 se mueve: el banco no tiene ninguna estructura con paso de longitud, y la regla del
 cruce ya era esta. La estática no cambia: su longitud es una.
 
-### [ ] F-40 (R) · En distribuido, el estado propio del algoritmo se actualiza en una copia y se pierde
+### [x] F-40 (R) · En distribuido, el estado propio del algoritmo se actualiza en una copia y se pierde
 `src/metagen/metaheuristics/base.py:102-140` (`_launch_distributed_method`), `tpe/tpe.py:118` y `:137`, `hc/hill_climbing.py:115` · descubierto al escribir `test/metaheuristics/test_extras.py` · tests: `test_f40_*`, que necesitan Ray y se saltan donde no esté
 
 `_launch_distributed_method` manda a Ray el método ligado, `self.initialize` o
@@ -2236,6 +2236,46 @@ TPE basta con alimentar `solution_history` en el driver con la población que de
 cada tarea; para `HillClimbing`, con añadir a la lista tabú en `post_iteration` en vez
 de en `iterate`. Y conviene dejar escrito en `Metaheuristic` que `initialize` e
 `iterate` **no deben mutar `self`**, porque en distribuido no se conserva.
+
+*Cerrado el 9 de septiembre de 2026 con las tres piezas.* El contrato está escrito en
+las docstrings de `initialize` e `iterate` de la clase base: **lo que el algoritmo
+necesite después tiene que estar en lo que devuelve**, y el estado que deba
+persistir se reconstruye en el driver, en `post_iteration`.
+
+**TPE: la población es el historial.** `iterate` ya devolvía `list(solution_history)`
+como población, así que lo que recibe en la iteración siguiente **es** su historial.
+Pasa a leerlo del argumento `solutions` y `self.solution_history` desaparece —nadie lo
+leía fuera de `tpe.py`, ni en tests ni en documentación—. En secuencial no cambia
+nada, comprobado valor a valor sobre la esfera con el presupuesto por defecto, con
+uno corto y sobre el dominio completo: fitness e historial idénticos en las 30
+ejecuciones. **En distribuido cada worker modela sobre el trozo de población que
+recibe** y devuelve ese trozo más su candidato; es la primera vez que TPE distribuido
+termina, así que no hay un comportamiento anterior que conservar, y así queda dicho.
+
+**`HillClimbing`: la lista tabú se alimenta en `post_iteration`.** Con el mismo
+elemento que antes: `local_search_with_tabu` nunca devuelve algo peor que su punto de
+partida (`A-02`), así que el mejor de la iteración o mejora al histórico y pasa a
+serlo, o es el histórico mismo; en los dos casos es lo que `_best_so_far()` devuelve
+en `post_iteration`. Idéntico valor a valor, también el tamaño de la lista al
+terminar, en 20 ejecuciones secuenciales.
+
+Distribuido sobre Ray, después: TPE termina y devuelve el mejor que vio, y la lista
+tabú de `HillClimbing` acaba llena. `test_extras.py` deja de marcar a TPE como fallo
+esperado.
+
+**Lo que sigue sin poderse afirmar es que distribuir no cambia el resultado**, y no es
+de este hallazgo: cada worker de Ray arranca con su propio estado de generador
+(`A-06`), así que ningún test puede comparar la búsqueda secuencial con la
+distribuida valor a valor hasta que se repartan semillas derivadas a los workers.
+
+De paso, la fitness del dominio completo de los tests se muda de
+`test_integration.py` a `conftest.py`, junto al dominio: el test de `F-39` la
+importaba por el nombre del módulo, y ejecutando solo `regression/` ese nombre
+resolvía a un paquete instalado que se llama igual.
+
+Tests: `test_f40_tpe_funciona_en_distribuido` y
+`test_f40_hill_climbing_conserva_su_lista_tabu_en_distribuido`, sin marcador; los dos
+necesitan Ray.
 
 ---
 
@@ -2446,7 +2486,7 @@ Aquí el código hace lo que dice hacer; lo discutible es qué dice hacer.
   - **La garantía solo valía dentro del mismo proceso hasta cerrar `F-26`.** Los tests de este hallazgo comprobaban dos ejecuciones seguidas en la misma sesión de Python, y ahí el fallo era invisible: `Solution.mutate` recorría un `set` de nombres de variable, cuyo orden depende de hashes que Python aleatoriza en cada arranque. Reproducibilidad entre ejecuciones distintas: ver `F-26`.
   - **Los siete helpers de la suite de regresión sembraban con `random.seed()`** y dejaron de ser deterministas al hacer este cambio: `test_f05_append_conserva_el_valor` llegó a pasar por azar (el entero aleatorio salió 7). Ahora siembran con `set_seed()`.
   - **NumPy cambia de algoritmo**: `default_rng()` (PCG64) en vez del Mersenne Twister de `np.random`. La secuencia de TPE ya no es la de la `0.2.0` publicada.
-  - **Sigue sin resolverse la concurrencia**: las cepas de CVOA local corren en hilos que comparten los generadores, y los workers de Ray arrancan con su propio estado. Ambas firmas lo advierten en su docstring. Cerrarlo del todo exige un generador por instancia, que es la propuesta original de este hallazgo.
+  - **Sigue sin resolverse la concurrencia**: las cepas de CVOA local corren en hilos que comparten los generadores, y los workers de Ray arrancan con su propio estado. Ambas firmas lo advierten en su docstring. Cerrarlo del todo exige un generador por instancia, que es la propuesta original de este hallazgo. *Consecuencia para los tests, vista al cerrar `F-40` el 9 de septiembre de 2026:* `test_extras.py` ejecuta los siete algoritmos sobre Ray y comprueba que cada uno devuelve el mejor que vio, pero **no puede afirmar que distribuir no cambia el resultado**, porque sin semillas derivadas para los workers la búsqueda distribuida no es reproducible. Es lo que falta para ese test.
 
   Tests: `test_a06_la_misma_semilla_reproduce_la_ejecucion`, `test_a06_semillas_distintas_dan_ejecuciones_distintas`, `test_a06_metagen_no_toca_el_generador_global_del_usuario`.
 - **[x] A-07 (R)** `ga`, `ssga`, `mm` — no validan que el dominio use `GAConnector`: con un `Domain()` normal mueren en la primera iteración con `AttributeError: 'Solution' object has no attribute 'crossover'`.

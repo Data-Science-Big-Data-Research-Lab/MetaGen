@@ -258,7 +258,11 @@ class Metaheuristic(ABC):
     def initialize(self, num_solutions=10) -> Tuple[List[Solution], Solution]:
         """
         Initialize the population/solutions for the metaheuristic.
-        Must set self.current_solutions and self.best_solution.
+
+        Everything the algorithm needs later has to be in what this returns. In
+        distributed mode Ray runs it on a pickled copy of the algorithm, so anything
+        it stores on self stays in the worker and is lost (F-40); state that must
+        persist is rebuilt on the driver, in post_iteration, from what came back.
 
         :param num_solutions: The number of solutions to initialize.
         :type num_solutions: int
@@ -278,6 +282,10 @@ class Metaheuristic(ABC):
     def iterate(self, solutions: List[Solution]) -> Tuple[List[Solution], Solution]:
         """
         Execute one iteration of the metaheuristic.
+
+        Same contract as initialize: in distributed mode this runs on a pickled copy,
+        on a slice of the population, so it must not rely on storing anything on self
+        between iterations (F-40). What it returns is what the next iteration gets.
 
         :param solutions: The current population of solutions.
         :type solutions: List[Solution]

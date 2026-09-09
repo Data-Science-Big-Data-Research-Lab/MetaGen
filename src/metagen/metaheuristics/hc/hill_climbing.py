@@ -145,11 +145,21 @@ class HillClimbing(Metaheuristic):
         if not current_solutions:
             current_solutions = solutions
             best_solution = deepcopy(self._best_so_far())
-        else:
-            if best_solution not in self.tabu_list:
-                self.tabu_list.append(best_solution)
-
+        # The tabu list is fed in post_iteration, not here: in distributed mode Ray
+        # runs iterate on a pickled copy and whatever it stores on self is lost, so
+        # the list ended every distributed run empty (F-40).
         return current_solutions, best_solution
+
+    def post_iteration(self) -> None:
+        """
+        Remembers the best solution of the iteration in the tabu list, so that the
+        next neighbourhood skips it. Runs on the driver, which is why the list
+        survives a distributed run (F-40).
+        """
+        super().post_iteration()
+        best_solution = self._best_so_far()
+        if best_solution not in self.tabu_list:
+            self.tabu_list.append(best_solution)
 
     def stopping_criterion(self) -> bool:
         """

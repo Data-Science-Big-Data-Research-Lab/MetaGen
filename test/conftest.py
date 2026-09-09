@@ -60,6 +60,20 @@ def build_full_domain(connector: Optional[BaseConnector] = None) -> Domain:
     return domain
 
 
+def full_domain_fitness(solution: Solution) -> float:
+    """A fitness for build_full_domain that touches every kind of variable, so an
+    algorithm that mishandles one shows. Lives with the domain so that every test
+    directory imports it from the same place."""
+    values = {name: solution[name] for name in solution}
+    return (
+        values["I"] + 100 * values["R"] + len(values["C"])
+        + values["L"]["EI"] + sum(values["SSI"]) + sum(values["SSR"])
+        + len(values["DSI"]) + sum(values["DSR"])
+        + sum(group["EI2"] for group in values["SSL"] + values["DSL"])
+        + sum(sum(inner) for inner in values["SSS"])
+    )
+
+
 @pytest.fixture
 def full_domain() -> Domain:
     return build_full_domain()

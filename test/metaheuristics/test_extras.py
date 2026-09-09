@@ -68,12 +68,7 @@ def _distributed(name: str, seed: int):
     }[name]()
 
 
-@pytest.mark.parametrize("name", [
-    "RandomSearch", "SA", "HillClimbing", "GA", "SSGA", "Memetic",
-    pytest.param("TPE", marks=pytest.mark.xfail(
-        reason="F-40: the history TPE keeps on itself is filled in the worker's copy "
-               "and lost, so iterate divides by its length, zero", strict=True)),
-])
+@pytest.mark.parametrize("name", ["RandomSearch", "SA", "HillClimbing", "TPE", "GA", "SSGA", "Memetic"])
 def test_every_algorithm_runs_distributed(ray_runtime, name):
     for seed in (0, 1):
         algorithm = _distributed(name, seed)

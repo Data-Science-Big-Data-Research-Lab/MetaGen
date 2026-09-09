@@ -44,6 +44,11 @@ Tres ideas que conviene tener presentes:
 - **El conector es el mecanismo de extensión.** GA y TPE registran sus propias
   subclases (`GAConnector`, `TPEConnector`). Un cambio en `BaseConnector` o en la
   jerarquía de tipos repercute en los dos.
+- **`initialize` e `iterate` no guardan estado en `self`.** En distribuido Ray los
+  ejecuta sobre una copia serializada del algoritmo, y lo que escriban en `self` se
+  queda en el worker (`F-40`): el estado que deba persistir va en lo que devuelven o
+  se reconstruye en `post_iteration`, que corre en el driver. Así lo hacen TPE, cuyo
+  historial es su propia población, y `HillClimbing` con su lista tabú.
 - **Nada en `src/` usa el RNG global.** Desde A-06, todo sorteo pasa por
   `framework/rng.py`, que guarda dos generadores propios del paquete: un
   `random.Random` y un `np.random.Generator` (TPE tira de NumPy, el resto de la
