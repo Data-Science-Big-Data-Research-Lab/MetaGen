@@ -12,7 +12,6 @@ import pytest
 
 from metagen.framework import Domain, RelativeAlteration, Solution
 from metagen.framework.rng import set_seed
-from metagen.framework.solution.types import BaseType
 from metagen.metaheuristics import GA, SSGA, TPE, GAConnector, HillClimbing, Memetic, RandomSearch, SA
 from metagen.metaheuristics.tools import solution_class
 
@@ -21,34 +20,16 @@ from conftest import build_full_domain
 SEEDS = range(10)
 
 
-def _builtin(value):
-    """The plain Python value behind what a solution hands out.
-
-    solution[name] is a builtin for a scalar, but for a group or a structure it is a
-    dict or a list whose elements are still Integer, Real, Categorical or Solution
-    objects (F-37), and the domain's check does not accept those. Until that is
-    fixed, this unwraps them; once it is, this is the identity."""
-    if isinstance(value, Solution):
-        return {name: _builtin(value[name]) for name in value}
-    if isinstance(value, BaseType):
-        return _builtin(value.value)
-    if isinstance(value, list):
-        return [_builtin(element) for element in value]
-    if isinstance(value, dict):
-        return {key: _builtin(element) for key, element in value.items()}
-    return value
-
-
 def _assert_valid(domain: Domain, solution: Solution) -> None:
     core = domain.get_core()
     for name in solution:
-        assert core.check(name, _builtin(solution[name])), (
-            f"{name} = {_builtin(solution[name])!r} is not valid for its definition")
+        assert core.check(name, solution[name]), (
+            f"{name} = {solution[name]!r} is not valid for its definition")
 
 
 def _fitness(solution: Solution) -> float:
     """Touches every kind of variable, so an algorithm that mishandles one shows."""
-    values = {name: _builtin(solution[name]) for name in solution}
+    values = {name: solution[name] for name in solution}
     return (
         values["I"] + 100 * values["R"] + len(values["C"])
         + values["L"]["EI"] + sum(values["SSI"]) + sum(values["SSR"])
@@ -88,7 +69,7 @@ def test_values_set_from_builtins_read_back_as_given(solution):
     for name, value in given.items():
         solution.set(name, value)
     for name, value in given.items():
-        assert _builtin(solution[name]) == value, name
+        assert solution[name] == value, name
     assert len(solution.get("DSI")) == 15
     assert len(solution.get("SSS").get(0)) == 2
 
@@ -102,10 +83,10 @@ def test_values_set_from_builtins_read_back_as_given(solution):
     ("SSI", [-6, 10, 0, 1, 2, 3, 4, 5, 6, 7]),
 ])
 def test_an_invalid_nested_value_is_rejected_at_its_level(solution, name, value):
-    before = _builtin(solution[name])
+    before = solution[name]
     with pytest.raises(ValueError):
         solution.set(name, value)
-    assert _builtin(solution[name]) == before, "a rejected value must leave the variable as it was"
+    assert solution[name] == before, "a rejected value must leave the variable as it was"
 
 
 def test_copy_and_pickle_preserve_equality_and_independence(full_domain, solution):
@@ -118,11 +99,11 @@ def test_copy_and_pickle_preserve_equality_and_independence(full_domain, solutio
         assert other.get_fitness() == solution.get_fitness()
         _assert_valid(full_domain, other)
 
-    frozen = {name: _builtin(solution[name]) for name in solution}
+    frozen = {name: solution[name] for name in solution}
     set_seed(1)
     twin.mutate(alterations_number=len(solution.get_variables()))
     assert twin != solution
-    assert {name: _builtin(solution[name]) for name in solution} == frozen, (
+    assert {name: solution[name] for name in solution} == frozen, (
         "mutating a copy must not reach the original")
 
 

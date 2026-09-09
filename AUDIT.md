@@ -200,7 +200,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ✅ | `F-34` | `get_builtin` del conector falla con cualquier estructura |
 | ✅ | `F-35` | TPE registra la estructura dinámica y revienta al usarla |
 | ✅ | `F-36` | `get_definition` del conector falla con una instancia de estructura |
-| ⬜ | `F-37` | El valor de un grupo o de una estructura no es builtin más allá del primer nivel |
+| ✅ | `F-37` | El valor de un grupo o de una estructura no es builtin más allá del primer nivel |
 | ✅ | `F-38` | Una estructura acepta cualquier longitud: nadie comprueba el recuento |
 | ✅ | `F-39` | El cruce de una estructura dinámica de grupos comparte los grupos con los padres |
 | ⬜ | `F-40` | En distribuido, el estado propio del algoritmo se actualiza en una copia y se pierde |
@@ -1957,7 +1957,7 @@ con un `cast` que dice lo que esa comprobación ya garantiza.
 
 Test: `test_f36_get_definition_acepta_una_instancia_de_estructura`, ya sin marcador.
 
-### [ ] F-37 (R) · El valor de un grupo o de una estructura no es builtin más allá del primer nivel
+### [x] F-37 (R) · El valor de un grupo o de una estructura no es builtin más allá del primer nivel
 `src/metagen/framework/solution/base_solution.py:441` (`__getitem__`), `types/structure.py:164` (`get`) y `:280` (`__getitem__`) · descubierto al escribir `test/framework/test_integration.py` · test: `test_f37_el_valor_de_un_grupo_o_estructura_es_builtin_hasta_el_fondo`
 
 `Solution.__getitem__` promete `:rtype: InputValue` y `Structure.get` «the builtin
@@ -1995,6 +1995,41 @@ contrato sobre valores, y es la solución la que no lo cumple.
 
 Mientras tanto, `test_integration.py` desenvuelve a mano con un ayudante que cita
 este hallazgo; cuando se cierre, el ayudante es la identidad y sobra.
+
+*Cerrado el 9 de septiembre de 2026 con la primera opción, decisión de David tras
+medir a quién rompía.* **Nadie en `src/` ni en la documentación publicada dependía de
+que salieran objetos**: el único ejemplo que recorre una estructura, el de TensorFlow,
+hace `layer["neurons"]` sobre cada elemento, que funciona igual con un objeto que con un
+diccionario. Los únicos rotos eran cuatro `.get()` de tests escritos esa misma semana
+—el banco del polinomio y los tests de `F-31` y `F-35`—, adaptados.
+
+**La regla que queda, y que es la que ya tenía `Solution`:** `[]` da el valor puro y
+`get` da el objeto. `solucion["L"]` devuelve `{"EI": 5, "ER": 0.25, "EC": "C4"}` y
+`solucion["SSS"]` devuelve `[[2, 3, 0], [2, 2, 5]]`, valores de Python a cualquier
+profundidad, que el `check` del dominio acepta y `json` serializa; `solucion.get("L")`
+sigue devolviendo la `Solution` y `estructura.get(i)` el objeto de la posición. **Se
+apartó de lo propuesto en una cosa: `Structure.get()` no cambia.** Es el accesor de
+objetos que usa todo el código interno —`resample` de TPE, el cruce, `_alterate`—, y
+hacer que devolviera valores puros habría obligado a reescribir una decena de sitios
+para acabar con dos accesores de valores puros y ninguno de objetos. Lo que sí cambia es
+su docstring, que decía «builtin» y mentía; la de `Structure.__getitem__` decía
+`BaseType` y también.
+
+Un ayudante, `builtin_value`, en `base_solution.py`, que `Solution.__getitem__` y
+`Structure.__getitem__` comparten. Ni una cifra se mueve: leer no consume sorteos, y la
+sonda de `F-38` da lo mismo valor a valor.
+
+El ayudante `_builtin` de `test_integration.py` desaparece, como estaba previsto, y
+`test_solution.py` compara ahora un grupo leído con el diccionario que se le dio.
+
+**De paso, sin arreglar:** `docs/source/metagen_in_action/suc/tensorflow.rst:85` hace
+`solution["ema"].value` sobre una categórica de primer nivel, que ya devolvía un
+valor puro antes de este hallazgo: esa línea no ha funcionado nunca. Y ese mismo
+ejemplo declara la categórica con `[True, False]`, booleanos, que no son valores
+básicos de categoría. Son de la documentación, no de este hallazgo.
+
+Test: `test_f37_el_valor_de_un_grupo_o_estructura_es_builtin_hasta_el_fondo`, ya sin
+marcador.
 
 ### [x] F-38 (R) · Una estructura acepta cualquier longitud: `set`, `append`, `insert` y `del` no la comprueban
 `src/metagen/framework/solution/types/structure.py:347` (`set`), `:334` (`append`), `:317` (`insert`), `:291` (`__delitem__`) · descubierto al escribir `test/framework/test_integration.py` · tests: `test_f38_*`

@@ -2039,11 +2039,10 @@ def test_f33_el_cruce_produce_valores_que_no_tenia_ningun_padre():
                 nuevos["n"] += 1
             if hijo["x"] not in (padre["x"], madre["x"]):
                 nuevos["x"] += 1
-            if hijo["g"]["gx"].get() not in (padre["g"]["gx"].get(),
-                                             madre["g"]["gx"].get()):
+            if hijo["g"]["gx"] not in (padre["g"]["gx"], madre["g"]["gx"]):
                 nuevos["g.gx"] += 1
-            de_los_padres = [v.get() for v in padre["s"]] + [v.get() for v in madre["s"]]
-            if any(v.get() not in de_los_padres for v in hijo["s"]):
+            de_los_padres = padre["s"] + madre["s"]
+            if any(v not in de_los_padres for v in hijo["s"]):
                 nuevos["s"] += 1
 
     for variable, cuenta in nuevos.items():
@@ -2143,7 +2142,7 @@ def test_f35_tpe_acepta_una_estructura_dinamica():
     dominio.set_structure_to_real("v", -3.0, 3.0)
 
     def fitness(solucion):
-        return sum(x.get() ** 2 for x in solucion["v"]) + 0.1 * len(solucion["v"])
+        return sum(x ** 2 for x in solucion["v"]) + 0.1 * len(solucion["v"])
 
     mejor = TPE(dominio, fitness, max_iterations=5, warmup_iterations=3, seed=0).run()
     assert 1 <= len(mejor["v"]) <= 6
@@ -2165,7 +2164,7 @@ def test_f31_los_geneticos_admiten_una_estructura_dinamica():
     dominio.set_structure_to_real("v", -3.0, 3.0)
 
     def fitness(solucion):
-        return sum(x.get() ** 2 for x in solucion["v"]) + 0.1 * len(solucion["v"])
+        return sum(x ** 2 for x in solucion["v"]) + 0.1 * len(solucion["v"])
 
     for algoritmo in (GA(dominio, fitness, population_size=6, max_iterations=4, seed=0),
                       SSGA(dominio, fitness, population_size=6, max_iterations=4, seed=0),
@@ -2245,8 +2244,6 @@ def _solo_builtins(valor) -> bool:
     return type(valor) in (int, float, str)
 
 
-@pytest.mark.xfail(reason="F-37: solution[nombre] devuelve objetos Integer, Real, Categorical "
-                          "y Solution dentro de un grupo o de una estructura", strict=True)
 def test_f37_el_valor_de_un_grupo_o_estructura_es_builtin_hasta_el_fondo():
     """F-37: `Solution.__getitem__` promete un `InputValue` y `Structure.get` «el valor
     builtin», pero solo desenvuelven el primer nivel: `solucion["I"]` es un `int`,
