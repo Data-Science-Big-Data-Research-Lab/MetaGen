@@ -176,7 +176,7 @@ def _polynomial_fit() -> _Problem:
         return domain
 
     def objective(solution) -> float:
-        coefficients = [c.get() for c in solution["coefficients"]]
+        coefficients = solution["coefficients"]
         error = sum((sum(c * x ** k for k, c in enumerate(coefficients)) - y) ** 2
                     for x, y in zip(grid, wanted)) / len(grid)
         return error + 0.001 * len(coefficients)

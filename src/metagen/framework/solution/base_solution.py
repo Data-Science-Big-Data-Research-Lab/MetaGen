@@ -32,6 +32,28 @@ if TYPE_CHECKING:
     from metagen.framework.solution.bounds import BaseTypeClass, SolutionClass
 
 
+def builtin_value(value: Any) -> Any:
+    """
+    The plain Python value behind a variable, at any depth.
+
+    A scalar type holds an int, a float or a str; a Structure holds a list of types;
+    a group is a Solution holding types of its own. Reading a variable used to
+    unwrap one level only, so a group came back as a dict of Integer, Real and
+    Categorical objects and a structure as a list of them: values the domain's own
+    check refused and json could not serialize (F-37).
+
+    :param value: A solution type, a solution, or a plain builtin.
+    :type value: Any
+    :return: The same value made of int, float, str, list and dict only.
+    :rtype: Any
+    """
+    if isinstance(value, Solution):
+        return {name: value[name] for name in value}
+    if isinstance(value, types.Structure):
+        return [builtin_value(element) for element in value.value]
+    return value.get() if isinstance(value, types.BaseType) else value
+
+
 def _hashable(value: Any) -> Any:
     """
     Build a hashable, canonical snapshot of a variable's value.
@@ -440,13 +462,15 @@ class Solution:
 
     def __getitem__(self, variable):
         """
-        Returns the value of a variable given its name.
+        Returns the value of a variable given its name, as plain Python values at any
+        depth: a group is a dict and a structure a list, of builtins all the way
+        down. Use get() for the underlying type object instead.
         :param variable: The name of the variable.
         :type variable: str
         :return: The value of the variable.
         :rtype: InputValue
         """
-        return self.value[variable].value
+        return builtin_value(self.value[variable])
 
     def __iter__(self):
         """

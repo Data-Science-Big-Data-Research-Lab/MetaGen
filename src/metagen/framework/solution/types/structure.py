@@ -21,6 +21,7 @@ from metagen.framework.domain.core import (BaseStructureDefinition,
                                            StaticStructureDefinition)
 from metagen.framework.solution.literals import InputValue, SolVector
 from metagen.framework.solution import Solution
+from metagen.framework.solution.base_solution import builtin_value
 
 from .base import BaseType
 from metagen.framework.rng import get_rng
@@ -165,7 +166,13 @@ class Structure(BaseType):
 
     def get(self, index=None) -> Any:
         """
-        Obtains the builtin value of the Structure or an specific index builtin value.
+        The elements of the Structure as type objects, all of them or the one at the
+        given index. Use [] for plain Python values instead (F-37).
+
+        :param index: The position wanted, or None for the whole list.
+        :type index: int | None
+        :return: The list of type objects, or the type object at the position.
+        :rtype: list | BaseType | Solution
         """
 
         if index is not None:
@@ -285,16 +292,17 @@ class Structure(BaseType):
         """
         return len(self.value)
 
-    def __getitem__(self, i) -> BaseType:
+    def __getitem__(self, i) -> Any:
         """
-        Returns the value at the given index in the Structure.
+        Returns the value at the given index in the Structure, as a plain Python
+        value at any depth (F-37). Use get(i) for the type object instead.
 
         :param i: The index of the value to return.
         :type i: int
         :return: The value at the given index.
-        :rtype: BaseType
+        :rtype: InputValue
         """
-        return self.value[i].value
+        return builtin_value(self.value[i])
 
     def __delitem__(self, i) -> None:
         """

@@ -8,8 +8,7 @@ import pytest
 
 from metagen.framework.rng import set_seed
 
-# (variable, value). Scalars compare through solution[name]; a group value is a
-# dict and compares through the sub-solution's variables.
+# (variable, value). A group value is a dict, and reads back as one (F-37).
 VALID = [
     ('I', 0),
     ('I', 1),
@@ -85,10 +84,7 @@ INVALID = [
 def test_a_valid_value_is_stored_as_given(solution, name, value):
     solution.set(name, value)
     assert solution.is_available(name)
-    if isinstance(value, dict):
-        assert solution.get(name).value == value
-    else:
-        assert solution[name] == value
+    assert solution[name] == value
 
 
 @pytest.mark.parametrize("name,value", INVALID)
@@ -116,8 +112,10 @@ def test_a_fresh_solution_is_consistent_with_its_domain(full_domain, solution):
     assert solution.get_fitness() == math.inf
     for name, variable in solution.get_variables().items():
         assert solution.is_available(name)
-        assert solution[name] == variable.value
-        assert solution.get(name) == variable
+        # get() hands out the type object; [] its plain value, valid for the domain
+        # at any depth (F-37).
+        assert solution.get(name) is variable
+        assert full_domain.get_core().check(name, solution[name])
 
 
 def test_a_copy_is_equal_until_it_is_mutated(solution):
