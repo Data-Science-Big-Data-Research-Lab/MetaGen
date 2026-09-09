@@ -7,7 +7,7 @@ Pablo de Olavide). Licencia: ver P-01 en `AUDIT.md` — hoy es contradictoria.
 ## Contexto de trabajo actual
 
 Estamos aplicando los arreglos de una auditoría de código. **Lee AUDIT.md antes
-de tocar nada**: contiene 51 hallazgos con identificadores estables (`F-01`…`F-28`
+de tocar nada**: contiene 62 hallazgos con identificadores estables (`F-01`…`F-39`
 críticos e importantes, `A-01`…`A-12` de diseño, `P-01`…`P-11` de proyecto), cada
 uno con fichero:línea, diagnóstico y arreglo propuesto.
 
@@ -113,8 +113,10 @@ La carpeta `test/` se reorganizó el 9 de septiembre de 2026:
 test/
   conftest.py            configuración compartida
   framework/             test_domain y test_solution, con los valores que antes vivían
-                         en CSV escritos en línea; el dominio «con una de cada cosa» es
-                         la fixture `full_domain` de conftest
+                         en CSV escritos en línea; test_connector, los tres conectores
+                         en las dos direcciones; test_integration, el framework de punta
+                         a punta sobre el dominio «con una de cada cosa», que es
+                         `build_full_domain` en conftest y anida estructuras a propósito
   metaheuristics/        test_behavior (el banco) y test_extras (opcional: Ray y TensorFlow)
   regression/            test_audit_regressions, un test por hallazgo
 examples/                catálogos de problemas (scikit-learn, TensorFlow, dummies) y
@@ -124,6 +126,14 @@ benchmark/               el material del artículo contra Optuna, Hyperopt y Ray
 
 El antiguo `unit_test.py`, dirigido por CSV y que exigía Ray **y** TensorFlow, se
 retiró: no corría ni en el CI y no comprobaba nada que el banco no compruebe mejor.
+
+Los tests de integración destaparon cuatro hallazgos el día que se escribieron, `F-36`
+a `F-39`, y uno de ellos —`F-39`, el cruce que comparte grupos entre padres e hijos—
+lo había introducido `F-31` esa misma semana sin que el banco lo viera: **el banco
+compara fitness almacenados entre sí, nunca contra una reevaluación**. Por eso
+`test_integration.py` reevalúa el resultado de cada algoritmo. Hasta que `F-37` se
+cierre, el ayudante `_builtin` de ese módulo desenvuelve a mano lo que `solucion[nombre]`
+devuelve como objetos.
 
 `test/metaheuristics/test_behavior.py` es el banco, desde P-05. **Sin dependencias
 opcionales**, así que corre siempre, también en el CI. Comprueba que cada

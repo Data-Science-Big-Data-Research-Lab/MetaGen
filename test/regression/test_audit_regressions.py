@@ -2187,3 +2187,174 @@ def test_f31_el_cruce_de_longitud_variable_crea_longitudes_nuevas_y_validas():
         "en 600 hijos no aparece ninguna longitud que no tuvieran los padres: el cruce "
         "no recombina las longitudes"
     )
+
+
+# --------------------------------------------------------------------------------
+# F-36 · get_definition del conector falla con una instancia de estructura
+# --------------------------------------------------------------------------------
+
+@pytest.mark.xfail(reason="F-36: get_definition busca una instancia por su clase pelada, "
+                          "y las estructuras estan registradas con discriminador", strict=True)
+def test_f36_get_definition_acepta_una_instancia_de_estructura():
+    """F-36: es el hermano de F-34, que solo arreglo `get_builtin`. Con una instancia
+    de estructura, `get_definition` construye la clave con la clase pelada, que no
+    esta en el registro, y responde que el objeto no esta registrado, imprimiendo
+    ademas sus valores. La instancia sabe cual de las dos definiciones es la suya."""
+    from metagen.framework.domain.core import (DynamicStructureDefinition,
+                                               StaticStructureDefinition)
+
+    dominio = Domain()
+    dominio.define_static_structure("s", 3)
+    dominio.set_structure_to_integer("s", 0, 9)
+    dominio.define_dynamic_structure("d", 1, 3)
+    dominio.set_structure_to_real("d", 0.0, 1.0)
+    set_seed(0)
+    solucion = Solution(dominio)
+    conector = dominio.get_connector()
+
+    assert conector.get_definition(solucion.get("s")) is StaticStructureDefinition
+    assert conector.get_definition(solucion.get("d")) is DynamicStructureDefinition
+
+
+# --------------------------------------------------------------------------------
+# F-37 · El valor de un grupo o de una estructura no es builtin mas alla del primer nivel
+# --------------------------------------------------------------------------------
+
+def _solo_builtins(valor) -> bool:
+    if isinstance(valor, dict):
+        return all(_solo_builtins(v) for v in valor.values())
+    if isinstance(valor, list):
+        return all(_solo_builtins(v) for v in valor)
+    return type(valor) in (int, float, str)
+
+
+@pytest.mark.xfail(reason="F-37: solution[nombre] devuelve objetos Integer, Real, Categorical "
+                          "y Solution dentro de un grupo o de una estructura", strict=True)
+def test_f37_el_valor_de_un_grupo_o_estructura_es_builtin_hasta_el_fondo():
+    """F-37: `Solution.__getitem__` promete un `InputValue` y `Structure.get` «el valor
+    builtin», pero solo desenvuelven el primer nivel: `solucion["I"]` es un `int`,
+    mientras que `solucion["L"]` es un dict de `Integer`, `Real` y `Categorical`, y
+    `solucion["SSI"]` una lista de `Integer`. El propio `check` del dominio rechaza
+    esos valores, y `json.dumps` no los admite."""
+    from conftest import build_full_domain
+
+    dominio = build_full_domain()
+    set_seed(0)
+    solucion = Solution(dominio)
+
+    for nombre in solucion:
+        valor = solucion[nombre]
+        assert _solo_builtins(valor), f"{nombre} devuelve {valor!r}"
+        assert dominio.get_core().check(nombre, valor), (
+            f"el dominio rechaza el valor que su propia solucion devuelve para {nombre}")
+
+
+# --------------------------------------------------------------------------------
+# F-38 · Una estructura acepta cualquier longitud: set, append, insert y del no la comprueban
+# --------------------------------------------------------------------------------
+
+@pytest.mark.xfail(reason="F-38: Structure.set no comprueba la longitud; los elementos se "
+                          "validan uno a uno y el recuento nunca", strict=True)
+@pytest.mark.parametrize("nombre,valor", [
+    ("SSI", [1, 2, 3]),                                        # tres elementos, son diez
+    ("DSI", [1] * 9),                                          # nueve, el minimo es diez
+    ("DSL", [{"EI2": 1, "ER2": 0.5, "EC2": "C1"}] * 5),        # cinco grupos, maximo cuatro
+    ("SSL", [{"EI2": 1, "ER2": 0.5, "EC2": "C1"}]),            # un grupo, son dos
+    ("SSS", [[0, 9], [1, 2, 3, 4]]),                           # cuatro dentro, maximo tres
+    ("SSS", [[0, 9]]),                                         # una interna, son dos
+])
+def test_f38_set_rechaza_una_lista_de_longitud_invalida(nombre, valor):
+    """F-38: `Structure.check` existe y si lanza con una longitud invalida, pero
+    `set` no lo llama: cada elemento pasa por `_convert`, que valida su valor, y el
+    recuento no lo mira nadie. Una estatica de diez acepta tres; una dinamica de
+    diez a cien acepta nueve, o doscientos. Un valor fuera de rango si se rechaza."""
+    from conftest import build_full_domain
+
+    dominio = build_full_domain()
+    set_seed(0)
+    solucion = Solution(dominio)
+    antes = len(solucion.get(nombre))
+
+    with pytest.raises(ValueError):
+        solucion.set(nombre, valor)
+    assert len(solucion.get(nombre)) == antes
+
+
+@pytest.mark.xfail(reason="F-38: append, insert y del no comprueban la longitud resultante",
+                   strict=True)
+def test_f38_crecer_o_encoger_fuera_de_los_limites_se_rechaza():
+    """F-38, segunda mitad: `append` deja una dinamica de uno a diez con diecisiete
+    elementos, `insert` una estatica de diez con once y `del` con nueve."""
+    from conftest import build_full_domain
+
+    dominio = build_full_domain()
+    set_seed(0)
+    solucion = Solution(dominio)
+    dinamica = solucion.get("DSR")          # entre 1 y 10 reales
+    estatica = solucion.get("SSI")          # exactamente 10 enteros
+
+    while len(dinamica) < 10:
+        dinamica.append(0.5)
+    with pytest.raises(ValueError):
+        dinamica.append(0.5)
+    assert len(dinamica) == 10
+
+    with pytest.raises(ValueError):
+        estatica.insert(0, 3)
+    with pytest.raises(ValueError):
+        del estatica[0]
+    assert len(estatica) == 10
+
+
+# --------------------------------------------------------------------------------
+# F-39 · El cruce de una estructura dinamica de grupos comparte los grupos con los padres
+# --------------------------------------------------------------------------------
+
+@pytest.mark.xfail(reason="F-39: cut_and_splice y prefix_and_tails copian las colas con "
+                          "copy(), y un grupo copiado asi comparte su diccionario", strict=True)
+def test_f39_el_cruce_no_comparte_grupos_entre_padres_e_hijos():
+    """F-39: en el camino dinamico del cruce, las colas que no se recombinan se copian
+    con `copy()`, que es superficial. Para un entero o un real da igual, su valor es
+    inmutable; para un grupo, que es una `Solution`, hijo y padre comparten el
+    diccionario de variables. Mutar al hijo cambia al padre."""
+    from metagen.metaheuristics import GAConnector
+    from metagen.metaheuristics.tools import solution_class
+
+    dominio = Domain(connector=GAConnector())
+    dominio.define_dynamic_structure("v", 2, 6)
+    dominio.define_group("g")
+    dominio.define_integer_in_group("g", "i", 0, 100)
+    dominio.define_real_in_group("g", "r", 0.0, 1.0)
+    dominio.set_structure_to_variable("v", "g")
+    clase = solution_class(dominio)
+
+    def valores(solucion):
+        return [(g["i"], g["r"]) for g in solucion["v"]]
+
+    for semilla in range(10):
+        set_seed(semilla)
+        padre, madre = clase(dominio), clase(dominio)
+        antes = valores(padre), valores(madre)
+        for hijo in padre.crossover(madre):
+            for _ in range(5):
+                hijo.mutate()
+        assert (valores(padre), valores(madre)) == antes, (
+            f"semilla {semilla}: mutar a los hijos ha cambiado a los padres")
+
+
+@pytest.mark.xfail(reason="F-39: el mejor del GA conserva el fitness de antes de que sus "
+                          "hijos lo alteraran", strict=True)
+def test_f39_el_ga_devuelve_un_fitness_que_es_el_de_sus_variables():
+    """F-39, la consecuencia: el mejor que registra el GA sigue en la poblacion, sus
+    hijos comparten con el sus grupos, y al mutar los hijos cambian sus variables sin
+    que su fitness se recalcule. En 2 de 10 semillas el resultado devuelto no vale lo
+    que dice. SSGA y el memetico no lo muestran en el mismo dominio."""
+    from conftest import build_full_domain
+    from test_integration import _fitness
+    from metagen.metaheuristics import GA, GAConnector
+
+    dominio = build_full_domain(connector=GAConnector())
+    for semilla in range(10):
+        mejor = GA(dominio, _fitness, population_size=4, max_iterations=3, seed=semilla).run()
+        assert mejor.get_fitness() == _fitness(mejor), (
+            f"semilla {semilla}: fitness almacenado {mejor.get_fitness()}, real {_fitness(mejor)}")

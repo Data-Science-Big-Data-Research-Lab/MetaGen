@@ -1,10 +1,11 @@
 # Auditoría de MetaGen
 
 Revisión completa de `src/metagen` sobre el commit `74f104e` (2025-03-21).
-58 hallazgos con identificadores estables: los 46 de la revisión inicial más
+62 hallazgos con identificadores estables: los 46 de la revisión inicial más
 `P-11` (al montar el CI), `F-25` (al medir el comportamiento real de las
 metaheurísticas para `P-05`), `F-26` (al verificar `F-04`), `F-33` (al medir `A-01`), `F-34` (al
-tipar el conector para `P-11`) y `F-35` (al diseñar `F-31`). Los marcados **(R)** se reprodujeron
+tipar el conector para `P-11`), `F-35` (al diseñar `F-31`) y `F-36` a `F-39` (al escribir los
+tests de integración del framework). Los marcados **(R)** se reprodujeron
 ejecutando el paquete instalado en Python 3.11 sin Ray ni TensorFlow.
 
 **CVOA va aparte.** Sus cuestiones abiertas, sus discrepancias con el artículo original
@@ -35,7 +36,7 @@ Marcar aquí el hallazgo como `[x]` al cerrarlo.
 | Bloque | Cantidad | Qué son |
 |---|---|---|
 | `F-01`…`F-13` | 13 | Críticos: corrompen resultados o bloquean la ejecución |
-| `F-14`…`F-35` | 22 | Importantes: fallan en casos concretos o desperdician cómputo |
+| `F-14`…`F-39` | 26 | Importantes: fallan en casos concretos o desperdician cómputo |
 | `A-01`…`A-12` | 12 | Algoritmia y diseño: decisiones discutibles, no bugs |
 | `P-01`…`P-11` | 11 | Empaquetado, tests y documentación |
 
@@ -198,6 +199,10 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ✅ | `F-33` | El cruce es uniforme: sobre variables reales no crea ningún valor nuevo |
 | ✅ | `F-34` | `get_builtin` del conector falla con cualquier estructura |
 | ✅ | `F-35` | TPE registra la estructura dinámica y revienta al usarla |
+| ⬜ | `F-36` | `get_definition` del conector falla con una instancia de estructura |
+| ⬜ | `F-37` | El valor de un grupo o de una estructura no es builtin más allá del primer nivel |
+| ⬜ | `F-38` | Una estructura acepta cualquier longitud: nadie comprueba el recuento |
+| ⬜ | `F-39` | El cruce de una estructura dinámica de grupos comparte los grupos con los padres |
 | ✅ | `A-01` | Sin selección de padres: todos los cruces usan la misma pareja |
 | ✅ | `A-02` | La búsqueda tabú es en realidad hill climbing |
 | ✅ | `A-03` | El vecindario tabú se genera en cadena, no alrededor de la solución |
@@ -1897,6 +1902,162 @@ queda vacío pero se conserva: la fixture no debe volver a dejar que un par tire
 módulo. Cinco `xfail` menos —los cuatro del par y el del test de regresión—.
 
 Test: `test_f35_tpe_acepta_una_estructura_dinamica`, ya sin marcador.
+
+### [ ] F-36 (R) · `get_definition` del conector falla con una instancia de estructura
+`src/metagen/framework/connector/connector.py:126-152` · descubierto al escribir `test/framework/test_connector.py` · test: `test_f36_get_definition_acepta_una_instancia_de_estructura`
+
+Es el hermano de `F-34`, que arregló `get_builtin` y dio por bueno `get_definition`
+porque «acepta la tupla». Con la tupla sí; con una **instancia** no:
+
+```
+get_definition((Structure, 'static'))   -> StaticStructureDefinition
+get_definition(una estructura)          -> ValueError: The object ['7', '4', '10', ...]
+                                           has not been registered in the connector.
+```
+
+La clave se construye con la clase pelada, `type(instancia)`, que no está en el
+registro porque las estructuras se registran con discriminador. Y el mensaje imprime
+los **valores** de la estructura en vez de la clave, el mismo detalle que `F-34`
+corrigió en el otro método.
+
+**Se diferencia de `F-34` en algo que decide el arreglo.** Allí las dos entradas de
+estructura responden `list`, así que consultarlas sin discriminador da una única
+respuesta. Aquí responden `StaticStructureDefinition` y `DynamicStructureDefinition`:
+dos, y la clase pelada no puede elegir. **La instancia sí puede**: lleva su propia
+definición, `instancia.get_definition()`, que es de una de las dos clases.
+
+**Nadie en `src/` lo llama con una instancia** —la fachada pasa siempre clases—, así
+que es superficie pública sin llamante interno, como quedó `F-34`.
+
+**Arreglo** Cuando llegue una instancia cuya clase pelada no sea clave, resolver por
+la definición que la instancia lleva: entre las entradas registradas con
+discriminador para esa clase, la que apunte a `type(instancia.get_definition())`. Y
+que el mensaje de error nombre la clave, no el objeto.
+
+### [ ] F-37 (R) · El valor de un grupo o de una estructura no es builtin más allá del primer nivel
+`src/metagen/framework/solution/base_solution.py:441` (`__getitem__`), `types/structure.py:164` (`get`) y `:280` (`__getitem__`) · descubierto al escribir `test/framework/test_integration.py` · test: `test_f37_el_valor_de_un_grupo_o_estructura_es_builtin_hasta_el_fondo`
+
+`Solution.__getitem__` promete `:rtype: InputValue` y `Structure.get` «the builtin
+value». Solo desenvuelven **un nivel**:
+
+| acceso | tipo que devuelve |
+|---|---|
+| `solucion["I"]` | `int` |
+| `solucion["L"]` | `dict` de **`Integer`, `Real`, `Categorical`** |
+| `solucion["SSI"]` | `list` de **`Integer`** |
+| `solucion["SSL"]` | `list` de **`Solution`** |
+| `solucion.get("SSI").get()` | `list` de **`Integer`** |
+
+Los objetos se comparan iguales a sus builtins y se imprimen igual, por eso no se
+nota a simple vista. Se nota en cuanto algo mira el tipo:
+
+- **El propio dominio rechaza lo que su solución devuelve.** `check("L", solucion["L"])`
+  y `check("SSI", solucion["SSI"])` dan `False` con valores válidos, porque
+  `IntegerDefinition.check_value` pide un entero y recibe un `Integer`.
+- `json.dumps(solucion["SSI"])`: *Object of type Integer is not JSON serializable*.
+- **La propia auditoría ya lo esquivaba sin nombrarlo**: el test de `F-35` escribe
+  `x.get() ** 2 for x in solucion["v"]`, y el banco del polinomio también.
+
+Y `Structure.__getitem__` documenta `:rtype: BaseType` cuando devuelve `.value`: las
+docstrings de los tres accesores se contradicen entre sí.
+
+**Arreglo** Que los accesores desenvuelvan **recursivamente**: `solucion[nombre]`
+builtin a cualquier profundidad, igual que ya lo es en el primer nivel, y las
+docstrings diciendo lo mismo. **Es un cambio visible en la API pública de `Solution`
+y de `Structure`**, aunque el código que hoy compara con `==` siga funcionando —los
+objetos ya se comparan iguales a sus builtins—; el que rompe es el que hace
+`.get()` sobre un elemento, como el test de `F-35`. Decisión de David. Lo que no es un
+arreglo es enseñar a `check_value` a aceptar objetos: las definiciones son el
+contrato sobre valores, y es la solución la que no lo cumple.
+
+Mientras tanto, `test_integration.py` desenvuelve a mano con un ayudante que cita
+este hallazgo; cuando se cierre, el ayudante es la identidad y sobra.
+
+### [ ] F-38 (R) · Una estructura acepta cualquier longitud: `set`, `append`, `insert` y `del` no la comprueban
+`src/metagen/framework/solution/types/structure.py:347` (`set`), `:334` (`append`), `:317` (`insert`), `:291` (`__delitem__`) · descubierto al escribir `test/framework/test_integration.py` · tests: `test_f38_*`
+
+`Structure.check` (línea 76) existe, y lanza con una longitud inválida. **No lo llama
+nadie de los cuatro.** `set` pasa cada elemento por `_convert`, que valida su valor
+contra la definición base, así que un valor fuera de rango se rechaza; el **recuento**
+no lo mira nadie. Medido por la vía pública, `Solution.set`:
+
+| operación | definición | resultado |
+|---|---|---|
+| `set([1, 2, 3])` | estática de **10** enteros | aceptado, longitud 3 |
+| `set([1] * 200)` | dinámica de **10 a 100** | aceptado, longitud 200 |
+| `set(cinco grupos)` | dinámica de **2 a 4** grupos | aceptado |
+| `append` × 15 | dinámica de **1 a 10** reales | longitud 17 |
+| `insert(0, 3)` | estática de **10** | longitud 11 |
+| `del s[0]` × 2 | estática de **10** | longitud 9 |
+| `set([1, 2, 3, 4])` en una interna | anidada, máximo **3** | aceptado |
+
+Un valor fuera de rango en la misma lista —`101` en un entero de 0 a 100, `1.5` en un
+real de 0 a 1— **sí** se rechaza: la validación es por elemento y nunca por conjunto.
+
+La consecuencia es que una solución puede dejar de ser válida para su dominio sin que
+nada lo diga, y llegar así a la función de fitness del usuario. `mutate` no lo
+provoca —`_resize` respeta los límites, comprobado en 10 semillas × 20 mutaciones
+sobre el dominio completo—, pero cualquier `set` del usuario, o de un operador que
+construya la estructura entera como hace el cruce de `F-31`, puede.
+
+**Arreglo** `set` comprueba la longitud contra la definición antes de sustituir el
+contenido; `append`, `insert` y `__delitem__` comprueban la longitud resultante con
+`check_length` y lanzan `ValueError` dejando la estructura como estaba. `Structure.check`
+ya sabe hacerlo; es cuestión de llamarlo.
+
+### [ ] F-39 (R) · El cruce de una estructura dinámica de grupos comparte los grupos con los padres
+`src/metagen/metaheuristics/ga/ga_tools.py:264` (`cut_and_splice`) y `:236` (`prefix_and_tails`) · descubierto al escribir `test/framework/test_integration.py` · tests: `test_f39_*`
+
+**Lo introdujo `F-31`, el 9 de septiembre de 2026, y hay que decirlo.** El cruce de
+longitud variable copia las colas que no se recombinan con `copy()`:
+
+```python
+tail1 = [copy(second.get(i)) for i in range(cut2, length2)]
+```
+
+`copy` es superficial. Para un `Integer`, un `Real` o una `Categorical` da igual, su
+valor es inmutable. Para un **grupo**, que es una `Solution`, la copia comparte el
+diccionario de variables con el original: hijo y padre son dos objetos con **las
+mismas variables dentro**. El prefijo compartido y todo el camino estático pasan por
+`_recombine_prefix`, que para grupos y estructuras recursa por `crossover` y crea
+objetos nuevos; por eso solo lo sufren las colas, y solo cuando el elemento es un grupo.
+
+Medido sobre el dominio completo de los tests, 10 semillas, contando contenedores
+internos con la misma identidad entre hijos y padres tras un cruce:
+
+| estructura | contenedores compartidos |
+|---|---|
+| `SSL`, estática de grupos | 0 |
+| `SSS`, estática de estructuras | 0 |
+| **`DSL`, dinámica de grupos** | **38** |
+
+Y mutando después a los hijos, **los padres cambian en 9 de 20**.
+
+**La consecuencia que lo hizo visible: el GA devuelve un mejor que no vale lo que
+dice.** El mejor registrado sigue en la población; sus hijos comparten con él sus
+grupos; al mutar los hijos cambian **sus** variables, y el fitness almacenado no se
+recalcula:
+
+```
+semilla 2: fitness almacenado 373.543   fitness real de sus variables 410.543
+semilla 3: fitness almacenado 370.833   fitness real de sus variables 374.833
+```
+
+2 de 10 semillas en el GA; 0 de 10 en SSGA y en el memético con el mismo dominio,
+que no conservan al mejor dentro de la población de la misma manera; 0 de 10 en el
+banco de nueve funciones, que no tiene estructuras. **Ninguna de las cuatro
+propiedades del banco lo detecta**: comparan fitness almacenados entre sí, nunca
+contra una reevaluación. Es exactamente para lo que se pidieron los tests de
+integración.
+
+`GASolution.crossover` y `_recombine_prefix` copian también con `copy()` las variables
+que se intercambian enteras. Hoy solo es la categórica, cuyo valor es una cadena, así
+que no hace daño; es la misma trampa esperando a un tipo con estado.
+
+**Arreglo** `deepcopy` en todo lo que el cruce copia entero: las colas de
+`cut_and_splice` y `prefix_and_tails`, y las ramas de intercambio de
+`_recombine_prefix` y `GASolution.crossover`. Y volver a medir el banco, porque
+cambia el flujo de sorteos en cero sitios pero conviene comprobarlo.
 
 ---
 
