@@ -75,10 +75,13 @@ class Structure(BaseType):
 
     def check(self, value: Any) -> None:
         """
-        Check if the input value is a valid Real value, according to the definition of the Real instance.
+        Check that a single element is valid for the base definition of this Structure.
 
-        :param value: The value to check.
-        :raises ValueError: if the value does not correspond to the definition.
+        This is about one element: what the whole list may hold, and how long it may
+        be, is checked by set().
+
+        :param value: The element to check.
+        :raises ValueError: if the value does not correspond to the base definition.
         """
 
         if not isinstance(value, BaseType) and not self.get_definition().get_base().check_value(value):
@@ -109,8 +112,6 @@ class Structure(BaseType):
             :meth:`get_definition`
         """
 
-        self.set([])
-
         size = 0
 
         # Bound to a local so that isinstance narrows it: the two definitions carry
@@ -128,9 +129,10 @@ class Structure(BaseType):
         elif isinstance(definition, StaticStructureDefinition):
             _, size, _ = definition.get_attributes()
 
-        for _ in range(size):
-            base_value = self._new_element()
-            self.append(base_value)
+        # Built as a list and handed over whole: set() checks the length, so growing
+        # from empty one append at a time would be rejected at the first element
+        # (F-38). Each element is initialized by its own constructor.
+        self.set([self._new_element() for _ in range(size)])
 
     def mutate(self, alteration_limit: Any = None) -> None:
         """
@@ -186,20 +188,26 @@ class Structure(BaseType):
         new_size = round(self._generate_numerical(
             min_size, max_size, step_size))
 
+        # On a copy, handed over whole at the end: every intermediate length would
+        # have to be valid otherwise, and set() checks it (F-38). The draws are the
+        # ones there always were, in the same order: each new element is initialized
+        # twice, once by its constructor and once here, and each deletion picks its
+        # index from the list as it shrinks.
+        values = list(self.get())
         if new_size > current_size:
             n_deletions = 0
             for _ in range(new_size - current_size):
                 new_value = self._new_element()
                 new_value.initialize()
-                self.append(new_value)
+                values.append(new_value)
         elif current_size > new_size:
             n_deletions = current_size - new_size
         else:
             n_deletions = 0
-
         for _ in range(n_deletions):
-            ri = get_rng().choice(range(len(self)))
-            del self[ri]
+            ri = get_rng().choice(range(len(values)))
+            del values[ri]
+        self.set(values)
 
     def _alterate(self, alteration_limit: Any=None) -> None:
         """
@@ -295,8 +303,11 @@ class Structure(BaseType):
         :param i: The index of the value to delete.
         :type i: int
         :return: None
+        :raises ValueError: if the Structure would be left with an invalid length.
         """
-        del self.value[i]
+        values = list(self.get())
+        del values[i]
+        self.set(values)
 
     def __setitem__(self, index: int, value: int | float | str | list | dict | BaseType) -> None:
         """
@@ -309,10 +320,9 @@ class Structure(BaseType):
         :return: None
         """
         self.check(value)
-
-        current_values = self.get()
-        current_values[index] = self._convert(value)
-        self.set(current_values)
+        values = list(self.get())
+        values[index] = value
+        self.set(values)
 
     def insert(self, index: int, value: int | float | str | list | dict | BaseType) -> None:
         """
@@ -323,13 +333,16 @@ class Structure(BaseType):
         :param value: The value to insert.
         :type value: int | float | str | list | dict | BaseType
         :return: None
+        :raises ValueError: if the Structure would be left with an invalid length.
         """
         self.check(value)
-        current_values = self.get()
-        # Was current_values[index].insert(...), which asked the element at that
-        # position to insert, not the list holding it (F-06).
-        current_values.insert(index, self._convert(value))
-        self.set(current_values)
+        # On a copy, so that a rejected length leaves the Structure as it was: get()
+        # returns the list itself, and inserting into it before set() could refuse
+        # would already have changed it (F-38). Was current_values[index].insert(...),
+        # which asked the element at that position to insert, not the list (F-06).
+        values = list(self.get())
+        values.insert(index, value)
+        self.set(values)
 
     def append(self, value: int | float | str | list | dict | BaseType | Solution) -> None:
         """
@@ -338,11 +351,10 @@ class Structure(BaseType):
         :param value: The value to append.
         :type value: int | float | str | list | dict | BaseType
         :return: None
+        :raises ValueError: if the Structure would be left with an invalid length.
         """
         self.check(value)
-        current_values = self.get()
-        current_values.append(self._convert(value))
-        self.set(current_values)
+        self.set(list(self.get()) + [value])
 
     def set(self, value: list[BaseType | Any]) -> None:
         """
@@ -351,7 +363,16 @@ class Structure(BaseType):
         :param value: The values to store, either builtins or already built types.
         :type value: list[BaseType | Any]
         :return: None
+        :raises ValueError: if the list has a length the definition does not allow.
         """
+        # The length first, against the definition's own rule: the elements were
+        # validated one by one and the count never, so a static structure of ten
+        # took three and a dynamic one grew past its maximum (F-38). Before
+        # converting, so that a rejected list costs no draws and changes nothing.
+        definition = self.get_definition()
+        if not definition.check_length(value):
+            raise ValueError(
+                f"A structure of {len(value)} elements is not valid for definition: {definition}")
         # Each element goes through the same conversion append and __setitem__ use.
         # Asking the connector for the type of the structure's own definition, as
         # this did, answered Structure and then tried to build one out of the base

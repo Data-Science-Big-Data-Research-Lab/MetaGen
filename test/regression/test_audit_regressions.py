@@ -251,6 +251,15 @@ def _estructura_estatica(longitud=3, semilla=4):
     return Solution(dom).get("v")
 
 
+def _estructura_dinamica(minimo=3, maximo=5, semilla=4):
+    """Para lo que hace crecer la estructura: una estatica no puede, desde F-38."""
+    set_seed(semilla)
+    dom = Domain()
+    dom.define_dynamic_structure("v", minimo, maximo)
+    dom.set_structure_to_integer("v", 0, 100)
+    return Solution(dom).get("v")
+
+
 def test_f05_asignar_un_elemento_conserva_el_valor():
     st = _estructura_estatica()
     st[0] = 42
@@ -258,21 +267,27 @@ def test_f05_asignar_un_elemento_conserva_el_valor():
 
 
 def test_f05_append_conserva_el_valor():
-    st = _estructura_estatica()
+    """Sobre una dinamica con margen: append alarga la estructura, y una estatica no
+    admite mas elementos de los que declara (F-38). Lo que se protege es que el
+    valor anadido sea el dado y no uno aleatorio."""
+    st = _estructura_dinamica()
+    assert len(st) < 5
     st.append(7)
     assert st[len(st) - 1] == 7
 
 
 def test_f05_una_estructura_de_grupos_conserva_el_valor():
-    """La vía del dict tenía el mismo _convert, y no la cubría ningún test."""
+    """La vía del dict tenía el mismo _convert, y no la cubría ningún test. Dinamica
+    de 2 a 4 grupos, porque append alarga y una estatica no lo admite (F-38)."""
     set_seed(4)
     dom = Domain()
     dom.define_group("g")
     dom.define_integer_in_group("g", "a", 0, 100)
-    dom.define_static_structure("v", 2)
+    dom.define_dynamic_structure("v", 2, 4)
     dom.set_structure_to_variable("v", "g")
 
     st = Solution(dom).get("v")
+    assert len(st) < 4
     st.append({"a": 33})
     assert st[len(st) - 1]["a"] == 33
 
@@ -294,8 +309,12 @@ def test_f06_set_admite_una_lista_de_builtins():
 
 
 def test_f06_insert_inserta_en_la_lista():
-    st = _estructura_estatica()
+    """Sobre una dinamica con margen, porque insert alarga la estructura y una
+    estatica no lo admite (F-38). Lo que se protege es que inserte en la lista y no
+    en el elemento."""
+    st = _estructura_dinamica()
     longitud = len(st)
+    assert longitud < 5
     st.insert(0, 5)
     assert len(st) == longitud + 1
     assert st[0] == 5
@@ -2253,8 +2272,6 @@ def test_f37_el_valor_de_un_grupo_o_estructura_es_builtin_hasta_el_fondo():
 # F-38 · Una estructura acepta cualquier longitud: set, append, insert y del no la comprueban
 # --------------------------------------------------------------------------------
 
-@pytest.mark.xfail(reason="F-38: Structure.set no comprueba la longitud; los elementos se "
-                          "validan uno a uno y el recuento nunca", strict=True)
 @pytest.mark.parametrize("nombre,valor", [
     ("SSI", [1, 2, 3]),                                        # tres elementos, son diez
     ("DSI", [1] * 9),                                          # nueve, el minimo es diez
@@ -2280,8 +2297,6 @@ def test_f38_set_rechaza_una_lista_de_longitud_invalida(nombre, valor):
     assert len(solucion.get(nombre)) == antes
 
 
-@pytest.mark.xfail(reason="F-38: append, insert y del no comprueban la longitud resultante",
-                   strict=True)
 def test_f38_crecer_o_encoger_fuera_de_los_limites_se_rechaza():
     """F-38, segunda mitad: `append` deja una dinamica de uno a diez con diecisiete
     elementos, `insert` una estatica de diez con once y `del` con nueve."""

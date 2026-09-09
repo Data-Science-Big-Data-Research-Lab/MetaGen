@@ -201,7 +201,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ✅ | `F-35` | TPE registra la estructura dinámica y revienta al usarla |
 | ⬜ | `F-36` | `get_definition` del conector falla con una instancia de estructura |
 | ⬜ | `F-37` | El valor de un grupo o de una estructura no es builtin más allá del primer nivel |
-| ⬜ | `F-38` | Una estructura acepta cualquier longitud: nadie comprueba el recuento |
+| ✅ | `F-38` | Una estructura acepta cualquier longitud: nadie comprueba el recuento |
 | ✅ | `F-39` | El cruce de una estructura dinámica de grupos comparte los grupos con los padres |
 | ⬜ | `F-40` | En distribuido, el estado propio del algoritmo se actualiza en una copia y se pierde |
 | ✅ | `A-01` | Sin selección de padres: todos los cruces usan la misma pareja |
@@ -1974,7 +1974,7 @@ contrato sobre valores, y es la solución la que no lo cumple.
 Mientras tanto, `test_integration.py` desenvuelve a mano con un ayudante que cita
 este hallazgo; cuando se cierre, el ayudante es la identidad y sobra.
 
-### [ ] F-38 (R) · Una estructura acepta cualquier longitud: `set`, `append`, `insert` y `del` no la comprueban
+### [x] F-38 (R) · Una estructura acepta cualquier longitud: `set`, `append`, `insert` y `del` no la comprueban
 `src/metagen/framework/solution/types/structure.py:347` (`set`), `:334` (`append`), `:317` (`insert`), `:291` (`__delitem__`) · descubierto al escribir `test/framework/test_integration.py` · tests: `test_f38_*`
 
 `Structure.check` (línea 76) existe, y lanza con una longitud inválida. **No lo llama
@@ -2005,6 +2005,49 @@ construya la estructura entera como hace el cruce de `F-31`, puede.
 contenido; `append`, `insert` y `__delitem__` comprueban la longitud resultante con
 `check_length` y lanzan `ValueError` dejando la estructura como estaba. `Structure.check`
 ya sabe hacerlo; es cuestión de llamarlo.
+
+*Cerrado el 9 de septiembre de 2026.* **Con una corrección al diagnóstico de arriba:**
+`Structure.check` **no** sabe de longitudes. Valida **un elemento** contra la definición
+base, y con una lista lanzaba porque una lista no es un entero válido, no por su
+recuento; su docstring decía además «a valid Real value». Quien sabe de longitudes es
+`check_length` de la definición, que nadie llamaba desde `Structure`.
+
+**Lo que decidió la forma del arreglo no estaba en la ficha:** `initialize` y `_resize`
+construían la estructura **elemento a elemento**, con `set([])` y un `append` por
+elemento, y `_resize` encogía con un `del` por elemento. Cualquier comprobación en
+`set` o en `append` habría rechazado el primer paso de la propia inicialización. Los
+dos construyen ahora su lista aparte y la entregan entera con un solo `set`, **con la
+misma secuencia de sorteos**: cada elemento nuevo se inicializa dos veces como antes
+—en su constructor y en `_resize`— y cada borrado sortea su índice sobre la lista que
+va encogiendo. Comprobado valor a valor: 10 semillas × 20 mutaciones sobre el dominio
+completo y cinco algoritmos sobre él, idénticos antes y después.
+
+Con eso, `set` comprueba la longitud con `check_length` **antes de convertir**, para que
+una lista rechazada no cueste sorteos ni cambie nada; y `append`, `insert`,
+`__setitem__` y `__delitem__` trabajan sobre **una copia** y la entregan a `set`. Hacía
+falta la copia: `get()` devuelve la lista interna, así que el `append` anterior ya la
+había alargado cuando llegaba al `set` que ahora podría rechazarla.
+
+**Tres tests de regresión de hallazgos cerrados hacían crecer una estática**, y se
+reformularon con permiso de David: `test_f05_append_conserva_el_valor`,
+`test_f05_una_estructura_de_grupos_conserva_el_valor` y
+`test_f06_insert_inserta_en_la_lista` metían un cuarto elemento en una estática de
+tres, que solo pasaba porque nadie lo comprobaba. Van sobre una dinámica con margen,
+con las mismas aserciones: lo que protegen —que el valor añadido sea el dado, que
+`insert` inserte en la lista y no en el elemento— no tiene que ver con la longitud. Las
+estáticas siguen cubiertas por los otros cuatro tests de F-05 y F-06, por los de este
+hallazgo y por el dominio completo de los tests, que tiene cinco.
+
+`check_length` pasa a declarar `Sized` en vez de `StrVal`: solo usa `len()`, y ahora
+recibe también listas de elementos ya construidos. mypy se queda en 40.
+
+**Queda fuera, y anotado:** `check_length` de la dinámica **ignora el paso** —acepta
+cualquier longitud entre el mínimo y el máximo— mientras `initialize` y el cruce de
+`F-31` sí respetan la rejilla. Es una regla del dominio, no de la estructura, y
+cambiarla es decisión aparte.
+
+Tests: `test_f38_set_rechaza_una_lista_de_longitud_invalida`, parametrizado en seis
+casos, y `test_f38_crecer_o_encoger_fuera_de_los_limites_se_rechaza`.
 
 ### [x] F-39 (R) · El cruce de una estructura dinámica de grupos comparte los grupos con los padres
 `src/metagen/metaheuristics/ga/ga_tools.py:264` (`cut_and_splice`) y `:236` (`prefix_and_tails`) · descubierto al escribir `test/framework/test_integration.py` · tests: `test_f39_*`
