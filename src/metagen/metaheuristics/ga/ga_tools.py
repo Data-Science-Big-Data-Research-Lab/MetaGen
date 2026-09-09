@@ -164,37 +164,137 @@ class GAStructure(types.Structure):
         """
         Performs crossover operation with another GAStructure instance.
 
+        A static structure recombines position by position. A dynamic one has to
+        decide what happens where the parents' lengths differ, and that is cut and
+        splice (F-31); the positions both parents share recombine by the same rule
+        either way.
+
         :param other: Another GAStructure instance to perform crossover with
         :type other: GAStructure
         :return: A tuple containing two new GAStructure instances (children)
         :rtype: Tuple[GAStructure, GAStructure]
-        :raises NotImplementedError: If the definition is a DynamicStructureDefinition
         """
+        definition = self.get_definition()
+        common = min(len(self), len(other))
 
-        child1 = GAStructure(self.get_definition(), connector=self.connector)
-        child2 = GAStructure(self.get_definition(), connector=self.connector)
-
-        current_size = min(len(self), len(other))
-        number_of_changes = get_rng().randint(1, current_size)
-        indexes_to_change = get_rng().sample(
-            list(range(0, current_size)), number_of_changes)
-
-        if isinstance(self.get_definition(), DynamicStructureDefinition):
-            raise NotImplementedError()
+        if isinstance(definition, DynamicStructureDefinition):
+            elements1, elements2 = cut_and_splice(self, other, definition)
         else:
-            for i in range(current_size):
-                # An element that knows how to cross over does its own recombining,
-                # the same rule GASolution follows one level up: a structure of reals
-                # blends component by component, which is how BLX is defined for a
-                # vector, instead of only shuffling values between positions (F-33).
-                # Elements that do not, categoricals among them, swap positions.
-                if hasattr(self.get(i), "crossover"):
-                    child1[i], child2[i] = self.get(i).crossover(other.get(i))
-                elif i in indexes_to_change:
-                    child1[i], child2[i] = copy(other.get(i)), copy(self.get(i))
-                else:
-                    child1[i], child2[i] = copy(self.get(i)), copy(other.get(i))
+            elements1, elements2 = self._recombine_prefix(other, common)
+
+        # Built whole, from the elements: a child initializes at a random length,
+        # so writing into it position by position would run off its end.
+        child1 = GAStructure(definition, connector=self.connector)
+        child2 = GAStructure(definition, connector=self.connector)
+        child1.set(elements1)
+        child2.set(elements2)
         return child1, child2
+
+    def _recombine_prefix(self, other: GAStructure, size: int) -> Tuple[list, list]:
+        """
+        Recombine the first ``size`` positions of this structure with another's.
+
+        An element that knows how to cross over does its own recombining, the same
+        rule GASolution follows one level up: a structure of reals blends component
+        by component, which is how BLX is defined for a vector, instead of only
+        shuffling values between positions (F-33). Elements that do not, categoricals
+        among them, swap positions, some of them chosen at random.
+
+        :param other: The other parent.
+        :type other: GAStructure
+        :param size: How many leading positions to recombine, at most the shorter length.
+        :type size: int
+        :return: The recombined leading elements of each child.
+        :rtype: Tuple[list, list]
+        """
+        head1: list = []
+        head2: list = []
+        if size == 0:
+            return head1, head2
+
+        number_of_changes = get_rng().randint(1, size)
+        indexes_to_change = get_rng().sample(list(range(size)), number_of_changes)
+
+        for i in range(size):
+            if hasattr(self.get(i), "crossover"):
+                first, second = self.get(i).crossover(other.get(i))
+            elif i in indexes_to_change:
+                first, second = copy(other.get(i)), copy(self.get(i))
+            else:
+                first, second = copy(self.get(i)), copy(other.get(i))
+            head1.append(first)
+            head2.append(second)
+        return head1, head2
+
+
+def _valid_length(definition: DynamicStructureDefinition, length: int) -> bool:
+    """Whether ``length`` is one the definition allows, step included."""
+    _, min_length, max_length, step, _ = definition.get_attributes()
+    return min_length <= length <= max_length and (length - min_length) % (step or 1) == 0
+
+
+def prefix_and_tails(first: GAStructure, second: GAStructure,
+                     definition: DynamicStructureDefinition) -> Tuple[list, list]:
+    """
+    Crossover for variable lengths that keeps the parents' lengths.
+
+    The positions both parents have recombine by the usual rule, and each child gets
+    one parent's tail, drawn at random, so one child is as long as one parent and the
+    other as long as the other. Lengths are valid by construction, which is why this
+    is what cut_and_splice falls back on when no cut gives two valid lengths.
+
+    It is the fallback and not the operator because it never produces a length the
+    population did not already hold, and that showed: measured over 30 seeds on the
+    polynomial problem, whose right length is four, GA settled at a mean length of
+    2.5 with this and 3.6 with cut and splice, and won 19 seeds against 24 (F-31).
+    It is F-33's lesson again, for lengths instead of values.
+
+    :return: The elements of each child.
+    :rtype: Tuple[list, list]
+    """
+    common = min(len(first), len(second))
+    head1, head2 = first._recombine_prefix(second, common)
+    tail1 = [copy(first.get(i)) for i in range(common, len(first))]
+    tail2 = [copy(second.get(i)) for i in range(common, len(second))]
+    if get_rng().random() < 0.5:
+        tail1, tail2 = tail2, tail1
+    return head1 + tail1, head2 + tail2
+
+
+def cut_and_splice(first: GAStructure, second: GAStructure,
+                   definition: DynamicStructureDefinition) -> Tuple[list, list]:
+    """
+    Crossover for variable lengths that recombines the lengths too.
+
+    Goldberg's cut and splice: each parent is cut at a point of its own and the
+    halves are crossed, so a child's length is the head of one parent plus the tail
+    of the other -- a length neither parent need have had. The cut points are drawn
+    among the pairs that give both children a length the definition allows, step
+    included; when no such pair exists the parents' own lengths are kept instead.
+    The positions both heads share recombine by the usual rule (F-31).
+
+    Chosen over keeping the parents' lengths by measurement: see prefix_and_tails.
+
+    :return: The elements of each child.
+    :rtype: Tuple[list, list]
+    """
+    length1, length2 = len(first), len(second)
+    pairs = [(cut1, cut2)
+             for cut1 in range(length1 + 1) for cut2 in range(length2 + 1)
+             if _valid_length(definition, cut1 + length2 - cut2)
+             and _valid_length(definition, cut2 + length1 - cut1)]
+    if not pairs:
+        return prefix_and_tails(first, second, definition)
+
+    cut1, cut2 = pairs[get_rng().randrange(len(pairs))]
+    shared = min(cut1, cut2)
+    head1, head2 = first._recombine_prefix(second, shared)
+    own1 = [copy(first.get(i)) for i in range(shared, cut1)]
+    own2 = [copy(second.get(i)) for i in range(shared, cut2)]
+    tail1 = [copy(second.get(i)) for i in range(cut2, length2)]
+    tail2 = [copy(first.get(i)) for i in range(cut1, length1)]
+    return head1 + own1 + tail1, head2 + own2 + tail2
+
 
 
 class GASolution(Solution):
@@ -301,6 +401,7 @@ class GAConnector(BaseConnector):
     * RealDefinition - GAReal - float
     * CategoricalDefinition - types.Categorical - str
     * StaticStructureDefinition - GAStructure - list
+    * DynamicStructureDefinition - GAStructure - list
 
     Every type but the categorical is replaced by a GA one, and what they add is a
     crossover operator: a categorical has no meaningful blend between two values, so
@@ -319,6 +420,7 @@ class GAConnector(BaseConnector):
         self.register(RealDefinition, GAReal, float)
         self.register(CategoricalDefinition, types.Categorical, str)
         self.register(StaticStructureDefinition, (GAStructure, "static"), list)
+        self.register(DynamicStructureDefinition, (GAStructure, "dynamic"), list)
 
 
 def tournament_selection(solutions: Sequence[Solution], tournament_size: int = 2) -> Solution:

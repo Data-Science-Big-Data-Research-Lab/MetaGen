@@ -58,7 +58,6 @@ propósito, cada una con su motivo. No están en el índice porque no son hallaz
 | **Revisión de CVOA** | El diseño es de Paco Martínez-Álvarez y el código es multihilo con Ray encima. `F-27`, `F-28`, `F-29`, `A-09` y seis discrepancias más con el artículo | `metagen-auditoria/CVOA-cuestiones.md` |
 | **`mypy src` a cero** | 40 errores tras tres tandas, todos en los cuatro ficheros de CVOA | `P-11` |
 | **Implementar una búsqueda tabú de verdad** | Lo que había no lo era y se renombró a `HillClimbing` (`A-02`). La tabú canónica es un algoritmo nuevo, no un arreglo | ver abajo |
-| **Estructuras dinámicas en los genéticos** | El cruce para longitudes variables no existe; es funcionalidad, no arreglo | `F-31` |
 | **Implementar un TPE canónico** | El de MetaGen funciona y no se toca; el canónico es otro algoritmo, con dos piezas que van juntas | ver abajo |
 
 ### Implementar `TabuSearch`
@@ -194,7 +193,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ⬜ | `F-28` | Tres parámetros de CVOA no son los que sugiere el artículo |
 | ⬜ | `F-29` | CVOA no reproduce entre procesos: itera conjuntos de soluciones |
 | ✅ | `F-30` | La temperatura de SA no llega a enfriarse: es un paseo aleatorio |
-| ⬜ | `F-31` | Los genéticos no admiten estructuras dinámicas: el cruce no existe |
+| ✅ | `F-31` | Los genéticos no admiten estructuras dinámicas: el cruce no existe |
 | ✅ | `F-32` | El `alteration_limit` por defecto es absoluto, no relativo al dominio |
 | ✅ | `F-33` | El cruce es uniforme: sobre variables reales no crea ningún valor nuevo |
 | ✅ | `F-34` | `get_builtin` del conector falla con cualquier estructura |
@@ -1418,7 +1417,7 @@ Tests: `test_f30_la_temperatura_recorre_su_rango_en_las_iteraciones_disponibles`
 `test_f30_una_tasa_de_enfriamiento_dada_a_mano_se_respeta` y
 `test_f30_cada_run_arranca_a_la_misma_temperatura`.
 
-### [ ] F-31 (R) · Los genéticos no admiten estructuras dinámicas: el cruce no está implementado
+### [x] F-31 (R) · Los genéticos no admiten estructuras dinámicas: el cruce no está implementado
 `src/metagen/metaheuristics/ga/ga_tools.py:62` y `:160` · descubierto al plantear `A-07`
 
 Con `GAConnector`, **ni siquiera se puede declarar** una estructura dinámica. Falla al
@@ -1466,6 +1465,71 @@ hacerlo más adelante** (7 de septiembre de 2026).
 Mientras tanto, lo que sí cabe en la auditoría es que el fallo se explique: hoy son un
 `ValueError` sobre el conector y un `NotImplementedError` sin mensaje, y ninguno de los
 dos dice «los genéticos no admiten estructuras dinámicas todavía». Ver `A-07`.
+
+*Cerrado el 9 de septiembre de 2026, como funcionalidad y con el operador elegido por
+medición.* `GAConnector` registra la variante dinámica y `GAStructure.crossover` deja de
+lanzar `NotImplementedError`. La pregunta de diseño era **qué recombina el cruce donde
+las longitudes difieren**, y se implementaron los dos candidatos para medirlos:
+
+- **Prefijo común y colas intercambiadas**: sobre `min(len1, len2)` la regla de `F-33`,
+  y cada hijo se lleva la cola de un padre al azar. Longitudes siempre válidas, pero
+  **el cruce nunca crea una longitud nueva**.
+- **Corte y empalme** (Goldberg): cada padre se corta por un punto propio y se cruzan
+  las mitades, `hijo1 = p1[:c1] + p2[c2:]`. Los cortes se sortean solo entre los pares
+  que dan a los dos hijos una longitud válida **y en la rejilla del paso**; si no hay
+  ninguno, se cae al primero. Sobre la región común, la regla de `F-33`.
+
+**Hacía falta un problema con estructura dinámica para medirlo**, porque el banco no
+tenía ninguno: entra el **ajuste polinómico de grado variable** —una estructura de
+reales como coeficientes, de 1 a 8, contra un cúbico objetivo en 21 puntos más 0.001
+por término—, que tiene una longitud correcta (4) y unos valores correctos que
+encontrar. Aritmética pura, así que `reproducible=True`. Es el undécimo problema.
+
+30 semillas, presupuesto igualado:
+
+| operador | GA | SSGA | Memetic |
+|---|---|---|---|
+| prefijo + colas | 19/30, media 0.194, **len 2.5** | 20/30, 0.430, len 3.1 | 28/30, 0.033, len 4.4 |
+| **corte y empalme** | **24/30**, 0.145, **len 3.6** | 21/30, 0.316, len 3.0 | 28/30, 0.045, len 4.6 |
+
+**Gana corte y empalme, y donde se ve es en la columna de la longitud**: con el operador
+que no crea longitudes el GA se queda en 2.5 de media, lejos del 4 correcto, porque solo
+la mutación puede alargarlo; con corte y empalme llega a 3.6. **Es la lección de `F-33`
+otra vez, para las longitudes en vez de para los valores.** El memético empata en
+victorias y pierde algo de media: su búsqueda local ya recombina por su cuenta. Prefijo
+y colas se conserva **como reserva** de corte y empalme para cuando ningún par de cortes
+da longitudes válidas, que es su uso real; su docstring recoge la medición.
+
+Los hijos se construyen enteros con `set(elementos)`, porque un hijo dinámico nace con
+longitud aleatoria y escribir en él posición a posición se saldría del final. Y nacen
+válidos **por construcción**, que hace falta: `Structure.set` no valida la longitud y
+`check_length` ignora el paso.
+
+Tabla del problema nuevo, diez semillas:
+
+| | evals | gana al azar | mejora | media | len |
+|---|---|---|---|---|---|
+| RandomSearch | 145 | 6/10 | 9/10 | 0.199 | 2.4 |
+| SA | 81 | 5/10 | 10/10 | 0.253 | 5.7 |
+| HillClimbing | 177 | **9/10** | 10/10 | 0.055 | 3.7 |
+| GA | 160 | **8/10** | 10/10 | 0.146 | 3.3 |
+| SSGA | 40 | 5/10 | 9/10 | 0.390 | 3.4 |
+| TPE | — | revienta | | | (`F-35`) |
+| **Memetic** | 610 | **9/10** | 10/10 | 0.054 | 4.6 |
+
+Dos `xfail` nuevos, SA y SSGA en «gana al azar», con motivo medido; los siete pasan las
+dos propiedades estructurales, salvo TPE, que **revienta** y salió como `F-35`. Para
+eso el arnés aprendió a **registrar que un par revienta** en vez de tirar el módulo
+entero: la excepción se guarda y las cuatro propiedades del par fallan sobre ella bajo
+un `xfail` que cita el hallazgo.
+
+**Ninguna cifra del resto del banco se movió**, aunque el cruce estático se
+refactorizó por el camino —`_recombine_prefix` es ahora común a los dos casos—: el
+orden de los sorteos se conservó a propósito.
+
+Tests: `test_f31_los_geneticos_admiten_una_estructura_dinamica` y
+`test_f31_el_cruce_de_longitud_variable_crea_longitudes_nuevas_y_validas`; los dos
+fallan con el código anterior, que no dejaba ni definir el dominio.
 
 ### [x] F-32 (R) · El `alteration_limit` por defecto es absoluto, no relativo al dominio
 `hc/hill_climbing.py:50`, `mm/memetic.py:72`, `sa/sa.py:92` · descubierto al ampliar el banco de pruebas

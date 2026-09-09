@@ -14,11 +14,14 @@ Every run is seeded, so the outcome is fixed rather than a coin toss, and the
 verdicts below are ratios over ten seeds instead of single runs.
 
 The problems are the nine of Section 5.1 of the MetaGen paper, the classics of
-continuous optimization on their canonical domains, and a tenth that tunes a
-scikit-learn model. The tenth is there because nine functions of two real
-variables say nothing about the case the package is sold on: a hyperparameter
-domain mixes integers, categoricals and reals of quite different widths, and
-findings like F-32 and F-33 are invisible without one. Keeping the canonical
+continuous optimization on their canonical domains, a tenth that tunes a
+scikit-learn model, and an eleventh that fits a polynomial of variable degree.
+The tenth is there because nine functions of two real variables say nothing
+about the case the package is sold on: a hyperparameter domain mixes integers,
+categoricals and reals of quite different widths, and findings like F-32 and
+F-33 are invisible without one. The eleventh is the only domain with a dynamic
+structure, which is what F-31 gave the genetic algorithms a crossover for and
+what F-35 found TPE crashes on. Keeping the canonical
 domains rather than normalizing them is deliberate, and it is what turned up
 F-32: an absolute alteration_limit of 1.0 means something quite different on
 [-2.048, 2.048] than on [-600, 600], and the algorithms built around local search
@@ -39,6 +42,10 @@ model is not arithmetic, so its landscape shifts a little with the scikit-learn
 version and the processor, and a threshold measured on one machine is a
 prediction that only holds there. The pairs that fail them carry an xfail naming
 what is responsible.
+
+A pair that crashes outright, rather than scoring badly, fails all four
+properties on the crash, under an xfail naming the finding responsible, and the
+fixture records the exception instead of letting it take the module down.
 
 Property 4 is not asked of RandomSearch: it *is* random sampling, so tying with
 the baseline is the correct outcome and not a defect. Watch its row anyway: it is
@@ -148,6 +155,35 @@ class _Problem:
         return self.build_domain(connector)
 
 
+def _polynomial_fit() -> _Problem:
+    """A polynomial of variable degree fitted to a cubic: the dynamic-structure problem.
+
+    The one problem whose domain holds a dynamic structure, which is what F-31 gave
+    the genetic algorithms a crossover for. The variable is the list of coefficients,
+    between one and eight of them, and the objective is the squared error against a
+    fixed cubic on a grid of points plus a small charge per coefficient, so both the
+    right length -- four -- and the right values have to be found. Pure arithmetic, so
+    it is reproducible on any machine.
+    """
+    target = [1.0, 0.3, -1.0, 0.5]                    # 1 + 0.3x - x^2 + 0.5x^3
+    grid = [-1.0 + 0.1 * i for i in range(21)]
+    wanted = [sum(c * x ** k for k, c in enumerate(target)) for x in grid]
+
+    def build_domain(connector):
+        domain = Domain(connector=connector) if connector is not None else Domain()
+        domain.define_dynamic_structure("coefficients", 1, 8)
+        domain.set_structure_to_real("coefficients", -3.0, 3.0)
+        return domain
+
+    def objective(solution) -> float:
+        coefficients = [c.get() for c in solution["coefficients"]]
+        error = sum((sum(c * x ** k for k, c in enumerate(coefficients)) - y) ** 2
+                    for x, y in zip(grid, wanted)) / len(grid)
+        return error + 0.001 * len(coefficients)
+
+    return _Problem(build_domain, objective)
+
+
 def _two_reals(low: float, high: float, objective) -> _Problem:
     """A problem over two real variables on the same interval, x and y."""
 
@@ -244,6 +280,7 @@ PROBLEMS = {
     "Michalewicz": _two_reals(0.0, math.pi, _michalewicz),
     "Zakharov": _two_reals(-5.0, 10.0, _zakharov),
     "DecisionTree": _decision_tree(),
+    "Polynomial": _polynomial_fit(),
 }
 
 
@@ -312,7 +349,14 @@ def runs(tmp_path_factory):
             for seed in SEEDS:
                 fitness = _CountingFitness(problem)
                 algorithm = _build(name, problem, fitness, seed, log_dir)
-                solution = algorithm.run()
+                try:
+                    solution = algorithm.run()
+                except Exception as error:  # noqa: BLE001 - recorded, asserted below
+                    # One pair blowing up must not take the whole module down with
+                    # it: the crash is kept and every property of that pair fails
+                    # on it, under an xfail naming the finding responsible.
+                    rows.append({"error": error})
+                    continue
                 rows.append({
                     "final": solution.get_fitness(),
                     "history": list(algorithm.best_solution_fitnesses),
@@ -357,6 +401,15 @@ _ZAKHAROV = ("Zakharov couples the variables through a weighted sum raised to th
              "here, and it still falls short: recombining is not how a coupled valley "
              "gets walked")
 
+_POLYNOMIAL_SA = ("SA walks one point whose structure resizes freely under mutation, "
+                  "so on the polynomial problem it drifts through lengths -- 5.7 on "
+                  "average against the right 4 -- and 81 evaluations do not settle "
+                  "both a length and its coefficients: 5 of 10 against random sampling")
+
+_POLYNOMIAL_SSGA = ("Forty evaluations, the smallest budget of the seven, on a problem "
+                    "where a length and its coefficients have to be found together: "
+                    "5 of 10 against random sampling")
+
 _TPE = ("TPE models each variable on its own, which suits a separable bowl. Rosenbrock "
         "couples x and y along a curved valley, Rastrigin oscillates faster than the "
         "model resolves and Schwefel is deceptive: 15 iterations of an independent "
@@ -383,7 +436,22 @@ _BEATS_RANDOM = {
                                        ("TPE", _TPE), ("HillClimbing", _DECEPTIVE))},
     **{("Levy", n): r for n, r in (("GA", _GA),)},
     **{("Zakharov", n): r for n, r in (("GA", _ZAKHAROV), ("SSGA", _SSGA))},
+    **{("Polynomial", n): r for n, r in (("SA", _POLYNOMIAL_SA), ("SSGA", _POLYNOMIAL_SSGA))},
 }
+
+
+_F35 = ("F-35: TPE registers the dynamic structure and crashes on it, IndexError "
+        "in TPEStructure.resample, which asks val.get(i) of reference solutions that "
+        "may be shorter than itself")
+
+# Pairs known to crash rather than to score badly. They fail every property, so
+# they are merged into every table.
+_CRASHES = {("Polynomial", "TPE"): _F35}
+
+
+def _crashed(rows, name, function_name):
+    errors = [row["error"] for row in rows if "error" in row]
+    assert not errors, f"{name} on {function_name} crashed: {errors[0]!r}"
 
 
 def _pairs(expected=None, exclude=(), reproducible_only=False):
@@ -397,7 +465,7 @@ def _pairs(expected=None, exclude=(), reproducible_only=False):
     it either way then breaks one of the two: with the xfail the CI goes red, and
     without it this machine does.
     """
-    expected = expected or {}
+    expected = {**_CRASHES, **(expected or {})}
     parameters = []
     for function_name, problem in PROBLEMS.items():
         if reproducible_only and not problem.reproducible:
@@ -415,6 +483,7 @@ def _pairs(expected=None, exclude=(), reproducible_only=False):
 @pytest.mark.parametrize("function_name,name", _pairs())
 def test_the_best_fitness_history_never_gets_worse(runs, function_name, name):
     """The record of the best solution so far can only improve or stay put."""
+    _crashed(runs[(function_name, name)], name, function_name)
     for seed, row in zip(SEEDS, runs[(function_name, name)]):
         history = row["history"]
         worsening = [(i, history[i], history[i + 1])
@@ -429,6 +498,7 @@ def test_the_best_fitness_history_never_gets_worse(runs, function_name, name):
 @pytest.mark.parametrize("function_name,name", _pairs())
 def test_the_returned_solution_is_the_best_one_seen(runs, function_name, name):
     """Whatever run() hands back must be the best point of the whole history."""
+    _crashed(runs[(function_name, name)], name, function_name)
     for seed, row in zip(SEEDS, runs[(function_name, name)]):
         assert row["final"] == pytest.approx(min(row["history"])), (
             f"{name} on {function_name}, seed {seed}: returned {row['final']} while "
@@ -441,6 +511,7 @@ def test_the_returned_solution_is_the_best_one_seen(runs, function_name, name):
 def test_the_run_ends_better_than_it_started(runs, function_name, name):
     """Searching has to pay off: the end of the history beats its beginning."""
     rows = runs[(function_name, name)]
+    _crashed(rows, name, function_name)
     improved = sum(1 for row in rows
                    if len(row["history"]) > 1 and row["history"][-1] < row["history"][0])
     assert improved >= REQUIRED_WINS, (
@@ -455,6 +526,7 @@ def test_the_run_ends_better_than_it_started(runs, function_name, name):
 def test_it_beats_random_sampling_on_the_same_budget(runs, function_name, name):
     """An optimizer must do better than spending its evaluations on dice rolls."""
     rows = runs[(function_name, name)]
+    _crashed(rows, name, function_name)
     wins = sum(1 for row in rows if row["final"] <= row["random_baseline"])
     mean = sum(row["final"] for row in rows) / len(SEEDS)
     mean_baseline = sum(row["random_baseline"] for row in rows) / len(SEEDS)
