@@ -652,16 +652,20 @@ class DynamicStructureDefinition(Base, BaseStructureDefinition):
 
     def check_length(self, value: Sized) -> bool:
         """
-        Checks whether the length of the given value is within the minimum and maximum length of the dynamic structure
-        definition.
+        Checks whether the length of the given value is one the dynamic structure
+        definition allows: between the minimum and the maximum, and on the grid the
+        step draws from the minimum. It used to ignore the step, so a length that
+        initialize, mutate and the crossover never produce was accepted by set (F-41).
 
-        :param value: A string value to be checked.
+        :param value: The value whose length is checked.
         :type value: Sized
 
-        :return: A boolean value indicating whether the length of the given value is within the minimum and maximum length of the dynamic structure definition.
+        :return: Whether the length is allowed by this definition.
         :rtype: bool
         """
-        return self.__min_length <= len(value) <= self.__max_length
+        length = len(value)
+        return (self.__min_length <= length <= self.__max_length
+                and (length - self.__min_length) % (self.__step_length or 1) == 0)
 
     def __str__(self):
         """
