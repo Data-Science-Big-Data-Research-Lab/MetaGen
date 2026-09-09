@@ -1,98 +1,128 @@
-"""
-    Copyright (C) 2023 David Gutierrez Avilés and Manuel Jesús Jiménez Navarro
+"""Setting values on a Solution: what each variable accepts and rejects, on the full
+domain of the conftest, and the properties a fresh solution has to satisfy. The valid
+and invalid values come from the original CSV-driven tests, inlined."""
+import copy
+import math
 
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <https://www.gnu.org/licenses/>.
-"""
-import json
-import pathlib
-import sys
 import pytest
-from pytest_csv_params.decorator import csv_params
-from os import path
 
-import sys
-import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from utils import solution, framework_parameters_resource_path
+from metagen.framework.rng import set_seed
+
+# (variable, value). Scalars compare through solution[name]; a group value is a
+# dict and compares through the sub-solution's variables.
+VALID = [
+    ('I', 0),
+    ('I', 1),
+    ('I', 2),
+    ('I', 100),
+    ('I', 99),
+    ('I', 50),
+    ('I', 25),
+    ('I', 75),
+    ('R', 0.0),
+    ('R', 1e-12),
+    ('R', 0.75),
+    ('R', 0.5),
+    ('R', 0.25),
+    ('R', 0.999999999999),
+    ('R', 1.0),
+    ('C', 'C1'),
+    ('C', 'C2'),
+    ('C', 'C3'),
+    ('C', 'C4'),
+    ('L', {'EI': 2}),
+    ('L', {'EI': 0}),
+    ('L', {'EI': 100}),
+    ('L', {'EI': 99}),
+    ('L', {'EI': 50}),
+    ('L', {'EI': 25}),
+    ('L', {'EI': 75}),
+    ('L', {'ER': 0.0}),
+    ('L', {'ER': 1e-12}),
+    ('L', {'ER': 0.75}),
+    ('L', {'ER': 0.5}),
+    ('L', {'ER': 0.25}),
+    ('L', {'ER': 0.999999999999}),
+    ('L', {'ER': 1.0}),
+    ('L', {'EC': 'C1'}),
+    ('L', {'EC': 'C2'}),
+    ('L', {'EC': 'C3'}),
+    ('L', {'EC': 'C4'}),
+]
+
+INVALID = [
+    ('I', -1),
+    ('I', -2),
+    ('I', 101),
+    ('I', 102),
+    ('I', 99999999),
+    ('I', -9999999),
+    ('R', -1e-09),
+    ('R', 1.0000000001),
+    ('R', 9999999999.99),
+    ('R', -0.5),
+    ('R', -0.25),
+    ('R', 1.999999999999),
+    ('C', 'C8'),
+    ('C', 'FJIHBIIOJNF'),
+    ('C', ''),
+    ('L', {'EI': -1}),
+    ('L', {'EI': -2}),
+    ('L', {'EI': 101}),
+    ('L', {'EI': -25}),
+    ('L', {'EI': 99999999}),
+    ('L', {'EI': -9999999}),
+    ('L', {'ER': -1e-12}),
+    ('L', {'ER': 999999999.99}),
+    ('L', {'ER': -999999999.9}),
+    ('L', {'ER': 1.000000000001}),
+    ('L', {'EC': 'C8'}),
+    ('L', {'EC': 'DFRGGFE'}),
+]
 
 
-def parse_input(type_col, value):
-    if type_col == "int":
-        value = int(value)
-    elif type_col == "float":
-        value = float(value)
-    elif type_col == "vector-int":
-        value = [int(v) for v in value.split(";") if v != ""]
-    elif type_col == "vector-float":
-        value = [float(v) for v in value.split(";") if v != ""]
-    elif type_col == "vector-str":
-        value = [v for v in value.split(";") if v != ""]
-    elif type_col == "layer":
-        value = json.loads(value)
-
-    return value
+@pytest.mark.parametrize("name,value", VALID)
+def test_a_valid_value_is_stored_as_given(solution, name, value):
+    solution.set(name, value)
+    assert solution.is_available(name)
+    if isinstance(value, dict):
+        assert solution.get(name).value == value
+    else:
+        assert solution[name] == value
 
 
-@csv_params(
-    data_file=framework_parameters_resource_path("positive.csv"),
-    data_casts={
-        "variable": str,
-        "type_var": str,
-        "value": str
-    },
-)
-def test_set_raw_positive(variable: str, type_var: str, value: str) -> None:
-    value = parse_input(type_var, value)
-    # To build an internal best solution, instantiate the Solution class with best=True and legacy_domain=legacy_domain
-    # TODO: El dominio debería ser el primer parámetro
-
-    solution.set(variable, value)
-
-    assert solution.get(variable).value == value
-    assert solution.is_available(variable)
-
-@csv_params(
-    data_file=framework_parameters_resource_path("negative.csv"),
-    data_casts={
-        "variable": str,
-        "type_var": str,
-        "value": str
-    },
-)
-def test_define_integer_domain_negative(variable: str, type_var: str, value: str) -> None:
-    value = parse_input(type_var, value)
-    # To build an internal best solution, instantiate the Solution class with best=True and legacy_domain=legacy_domain
-
+@pytest.mark.parametrize("name,value", INVALID)
+def test_an_invalid_value_is_rejected(solution, name, value):
     with pytest.raises(ValueError):
-        solution.set(variable, value)
+        solution.set(name, value)
 
 
-def test_define_integer_domain_negative_common_mistakes() -> None:
-    value = "EXAMPLE"
-    # To build an internal best solution, instantiate the Solution class with best=True and legacy_domain=legacy_domain
-
+def test_a_variable_the_domain_lacks_is_rejected(solution):
+    # A bare KeyError today, from the definition lookup: the message names the
+    # key and nothing else. DevSolution, which the old tests used, said "The
+    # variable X does not exists in the Domain" instead.
+    for name in ("THISVALUEDOESNOTEXISTS", None, -1):
+        with pytest.raises(KeyError):
+            solution.set(name, "EXAMPLE")
+    with pytest.raises(KeyError):
+        solution.set("L", {"THISVALUEDOESNOTEXISTS": "EXAMPLE"})
     with pytest.raises(ValueError):
-        solution.set("THISVALUEDOESNOTEXISTS", value)
+        solution.set("L", {"ER": "EXAMPLE"})
 
-    with pytest.raises(ValueError):
-        solution.set(None, value)
 
-    with pytest.raises(ValueError):
-        solution.set(-1, value)
+def test_a_fresh_solution_is_consistent_with_its_domain(full_domain, solution):
+    assert solution.get_definition() == full_domain.get_core()
+    assert solution.get_connector() == full_domain.get_connector()
+    assert solution.get_fitness() == math.inf
+    for name, variable in solution.get_variables().items():
+        assert solution.is_available(name)
+        assert solution[name] == variable.value
+        assert solution.get(name) == variable
 
-    with pytest.raises(ValueError):
-        solution.set("L", {"THISVALUEDOESNOTEXISTS": value})
 
-    with pytest.raises(ValueError):
-        solution.set("L", {"ER": value})
+def test_a_copy_is_equal_until_it_is_mutated(solution):
+    twin = copy.deepcopy(solution)
+    assert twin == solution
+    set_seed(1)
+    twin.mutate(alterations_number=len(solution.get_variables()))
+    assert twin != solution

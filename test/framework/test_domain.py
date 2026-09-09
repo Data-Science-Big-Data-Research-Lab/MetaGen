@@ -1,176 +1,84 @@
-import pathlib
-import sys
-from os import path
-
+"""Defining variables on a Domain: what is accepted, what is rejected, and what the
+definition then reports. The cases come from the original CSV-driven tests, inlined."""
 import pytest
-from pytest_csv_params.decorator import csv_params
 
 from metagen.framework import Domain
-from metagen.framework.domain.core import (CategoricalDefinition,
-                                           IntegerDefinition, RealDefinition)
-from metagen.framework.solution.literals import CATEGORICAL, INTEGER, REAL
+from metagen.framework.domain.literals import C as CATEGORICAL, I as INTEGER, R as REAL
 
-import sys
-import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from utils import framework_parameters_resource_path
+INTEGER_RANGES = [
+    ("I", 0, 100, None),
+    ("I", -100, 100, None),
+    ("I", -999999999999999999999, 999999999999999999999999, None),
+    ("I", 0, 1, None),
+    ("I", -1, 0, None),
+    ("I", -10, 10, 2),
+    ("I", -12, 12, 3),
+    ("I", -12, 12, 4),
+]
 
+REAL_RANGES = [
+    ("R", 0, 100, None),
+    ("R", -100, 100, None),
+    ("R", -999999999999, 999999999999, None),
+    ("R", 0, 1, None),
+    ("R", -1, 0, None),
+    ("R", -10, 10, 2),
+    ("R", -12, 12, 3),
+    ("R", -12, 12, 4),
+]
 
-@csv_params(
-    data_file=framework_parameters_resource_path("integer_test.csv"),
-    id_col="ID#",
-    data_casts={
-        "variable": str,
-        "minimum": int,
-        "maximum": int
-    },
-)
-
-def test_define_integer_domain_positive(variable: str, minimum: int, maximum: int, step: int | None) -> None:
-    if step == '':
-        step = None
-    else:
-        step = int(step)
-    domain: Domain = Domain()
-    domain.define_integer(variable, minimum, maximum, step)
-
-    assert domain is not None
-    assert domain.get_core().is_variable(variable)
-
-    variable_definition: IntegerDefinition = domain.get_core().get(variable)
-    assert variable_definition is not None
-    attributes = variable_definition.get_attributes()
-    assert attributes is not None
-    assert attributes[0] == INTEGER
-    assert attributes[1] == minimum
-    assert attributes[2] == maximum
-    assert variable_definition.check_value(minimum)
-    assert variable_definition.check_value(maximum)
-    assert variable_definition.check_value((maximum - minimum) // 2)
-    assert variable_definition.check_value(maximum - 1)
-    assert variable_definition.check_value(minimum + 1)
+CATEGORIES = [
+    ['C1', 'C2'],
+    ['C1', 'C2', 'C3', 'C4'],
+    ['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7', 'C8', 'C9', 'C10', 'C11'],
+]
 
 
-@csv_params(
-    data_file=framework_parameters_resource_path("integer_test.csv"),
-    id_col="ID#",
-    data_casts={
-        "variable": str,
-        "minimum": int,
-        "maximum": int
-    },
-)
-def test_define_integer_domain_negative(variable: str, minimum: int, maximum: int, step: int | None) -> None:
-    if step == '':
-        step = None
-    else:
-        step = int(step)
+@pytest.mark.parametrize("name,minimum,maximum,step", INTEGER_RANGES)
+def test_an_integer_is_defined_with_its_range(name, minimum, maximum, step):
+    domain = Domain()
+    domain.define_integer(name, minimum, maximum, step)
 
-    domain: Domain = Domain()
-
-    with pytest.raises(KeyError):
-        domain.get_core().get(variable)
-
-    assert not domain.get_core().is_variable(variable)
-
-    domain.define_integer(variable, minimum, maximum)
-
-    assert domain.get_core().is_variable(variable)
-
-    assert not domain.get_core().get(variable).check_value(minimum-1)
-    assert not domain.get_core().get(variable).check_value(maximum+1)
-
-# ******** REAL TESTS ********
-@csv_params(
-    data_file=framework_parameters_resource_path("real_test.csv"),
-    id_col="ID#",
-    data_casts={
-        "variable": str,
-        "minimum": float,
-        "maximum": float
-    },
-)
-def test_define_real_domain_positive(variable: str, minimum: float, maximum: float, step: float | None) -> None:
-    if step == '':
-        step = None
-    else:
-        step = float(step)
-    domain: Domain = Domain()
-    domain.define_real(variable, minimum, maximum, step)
-
-    assert domain is not None
-    assert domain.get_core().is_variable(variable)
-
-    variable_definition: RealDefinition = domain.get_core().get(variable)
-    assert variable_definition is not None
-    attributes = variable_definition.get_attributes()
-    assert attributes is not None
-    assert attributes[0] == REAL
-    assert attributes[1] == minimum
-    assert attributes[2] == maximum
-    assert variable_definition.check_value(minimum)
-    assert variable_definition.check_value(maximum)
-    assert variable_definition.check_value((maximum - minimum) // 2)
-    assert variable_definition.check_value(maximum - 1)
-    assert variable_definition.check_value(minimum + 1)
+    assert domain.get_core().is_variable(name)
+    definition = domain.get_core().get(name)
+    kind, low, high, _ = definition.get_attributes()
+    assert (kind, low, high) == (INTEGER, minimum, maximum)
+    for value in (minimum, maximum, (maximum - minimum) // 2, maximum - 1, minimum + 1):
+        assert definition.check_value(value)
+    assert not definition.check_value(minimum - 1)
+    assert not definition.check_value(maximum + 1)
 
 
-@csv_params(
-    data_file=framework_parameters_resource_path("real_test.csv"),
-    id_col="ID#",
-    data_casts={
-        "variable": str,
-        "minimum": float,
-        "maximum": float
-    },
-)
-def test_define_real_domain_negative(variable: str, minimum: float, maximum: float, step: float | None) -> None:
-    if step == '':
-        step = None
-    else:
-        step = float(step)
+@pytest.mark.parametrize("name,minimum,maximum,step", REAL_RANGES)
+def test_a_real_is_defined_with_its_range(name, minimum, maximum, step):
+    domain = Domain()
+    domain.define_real(name, minimum, maximum, step)
 
-    domain: Domain = Domain()
-
-    with pytest.raises(KeyError):
-        domain.get_core().get(variable)
-
-    assert not domain.get_core().is_variable(variable)
-
-    domain.define_real(variable, minimum, maximum)
-
-    assert domain.get_core().is_variable(variable)
-
-    assert not domain.get_core().get(variable).check_value(minimum-0.001)
-    assert not domain.get_core().get(variable).check_value(maximum+0.001)
+    assert domain.get_core().is_variable(name)
+    definition = domain.get_core().get(name)
+    kind, low, high, _ = definition.get_attributes()
+    assert (kind, low, high) == (REAL, minimum, maximum)
+    for value in (minimum, maximum, (maximum - minimum) // 2, maximum - 1, minimum + 1):
+        assert definition.check_value(value)
+    assert not definition.check_value(minimum - 0.001)
+    assert not definition.check_value(maximum + 0.001)
 
 
-# ******** CATEGORICAL TESTS ********
-@csv_params(
-    data_file=framework_parameters_resource_path("categorical_positive_test.csv"),
-    id_col="ID#",
-    data_casts={
-        "variable": str,
-        "categories": str
-    },
-)
-def test_define_categorical_domain_positive(variable: str, categories: str) -> None:
-    categories = categories.split(';')
-    domain: Domain = Domain()
-    domain.define_categorical(variable, categories)
+@pytest.mark.parametrize("categories", CATEGORIES)
+def test_a_categorical_is_defined_with_its_categories(categories):
+    domain = Domain()
+    domain.define_categorical("C", categories)
 
-    assert domain is not None
-    assert domain.get_core().is_variable(variable)
-
-    variable_definition: CategoricalDefinition = domain.get_core().get(variable)
-    assert variable_definition is not None
-    attributes = variable_definition.get_attributes()
-    assert attributes is not None
-    assert attributes[0] == CATEGORICAL
-    assert attributes[1] == categories
-
+    definition = domain.get_core().get("C")
+    kind, allowed = definition.get_attributes()
+    assert (kind, allowed) == (CATEGORICAL, categories)
     for category in categories:
-        assert variable_definition.check_value(category)
+        assert definition.check_value(category)
+        assert not definition.check_value(category + "$random_string%")
 
-    for category in categories:
-        assert not variable_definition.check_value(category+"$random_string%")
+
+def test_an_undefined_variable_is_not_in_the_domain():
+    domain = Domain()
+    assert not domain.get_core().is_variable("nothing")
+    with pytest.raises(KeyError):
+        domain.get_core().get("nothing")

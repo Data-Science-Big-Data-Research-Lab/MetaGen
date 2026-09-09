@@ -16,7 +16,6 @@ esperados. Los detalles de cada hallazgo están en ``AUDIT.md``.
 
 import copy
 import importlib.util
-from importlib.metadata import requires
 import os
 import math
 import pathlib
@@ -1014,17 +1013,29 @@ def test_p01_la_licencia_declarada_es_la_del_fichero_license():
     assert "license_files = LICENSE" in setup
 
 
+
+def _extra_test_de_setup_cfg() -> list[str]:
+    """Los requisitos del extra `test` tal y como los declara `setup.cfg`. Se lee el
+    fichero y no la metadata instalada: esta refleja la ultima `pip install -e .`,
+    no lo que hay en el arbol, y con ella el test aprobaba una declaracion antigua."""
+    import configparser
+
+    config = configparser.ConfigParser()
+    config.read(_raiz_del_repo() / "setup.cfg")
+    extra = config["options.extras_require"]["test"]
+    return [l.strip() for l in extra.splitlines() if l.strip() and not l.startswith("#")]
+
 def test_p08_los_extras_declaran_un_requisito_por_linea():
     """P-08: los extras se separaban con ";", que PEP 508 lee como el comienzo de un
     marcador de entorno. En un `.cfg` setuptools parte por ahi y funciona de milagro,
     pero el mismo texto en un `pyproject.toml` perderia en silencio todo lo que vaya
     detras del primer requisito.
 
-    Y comprueba lo que el diagnostico no listaba: que `pytest-csv-params`, que la
-    suite necesita, este declarado en alguna parte.
+    Y comprueba lo que el diagnostico no listaba: que lo que la suite necesita y no
+    es dependencia del paquete lo declare el extra `test`. Fue `pytest-csv-params`
+    hasta que los tests dirigidos por CSV se reescribieron en linea; hoy es
+    `scikit-learn`, que el problema de hiperparametros del banco necesita (P-05).
     """
-    from importlib.metadata import requires
-
     setup = (_raiz_del_repo() / "setup.cfg").read_text()
     seccion = setup[setup.index("[options.extras_require]"):]
     seccion = seccion.split("\n[")[0]
@@ -1034,9 +1045,8 @@ def test_p08_los_extras_declaran_un_requisito_por_linea():
     for linea in lineas:
         assert ";" not in linea, f"el extra sigue usando ';': {linea!r}"
 
-    declarados = requires("pymetagen-datalabupo") or []
-    assert any("pytest-csv-params" in r for r in declarados), (
-        "pytest-csv-params, que la suite necesita, no lo declara ningun extra"
+    assert any("scikit-learn" in r for r in _extra_test_de_setup_cfg()), (
+        "scikit-learn, que el banco necesita, no lo declara el extra `test`"
     )
 
 
@@ -1069,7 +1079,9 @@ def test_p07_los_csv_de_parametros_no_estan_ignorados():
     """P-07: `.gitignore` excluia `*.csv`, y los parametros de los tests son CSV, asi
     que cualquiera nuevo se quedaba fuera del commit sin que `git status` lo dijera."""
     raiz = _raiz_del_repo()
-    candidato = "test/test_parameters/framework_parameters/nuevo_ejemplo.csv"
+    # test_parameters/ went away when the CSV-driven tests were inlined; the rule
+    # now covers any CSV under test/, which is what the finding was about.
+    candidato = "test/framework/nuevo_ejemplo.csv"
 
     resultado = subprocess.run(
         ["git", "check-ignore", "-q", candidato],
@@ -1664,9 +1676,9 @@ def test_p06_el_workflow_de_ci_ejecuta_la_suite_que_debe_estar_verde():
     tienen que seguir siendo ciertas o el CI deja de servir para lo que se monto:
 
     - ejecuta la suite que debe estar verde;
-    - acaba teniendo `pytest-csv-params`, sin el cual `solution_test.py` ni se
-      recolecta. Desde P-08 lo declara el extra `test`, asi que vale con que el
-      CI lo instale por su nombre o por el extra;
+    - instala el extra `test`, que es donde se declara lo que la suite necesita
+      y el paquete no (hoy `scikit-learn`, para el banco; fue `pytest-csv-params`
+      mientras hubo tests dirigidos por CSV);
     - **no** instala los extras opcionales, porque un entorno sin Ray es el
       unico donde F-24 es observable.
 
@@ -1688,14 +1700,14 @@ def test_p06_el_workflow_de_ci_ejecuta_la_suite_que_debe_estar_verde():
         for linea in texto.splitlines()
         if "pip install" in linea
     ]
-    # Por su nombre, o por el extra que lo declara desde P-08. Lo que se protege
-    # es que el CI acabe teniendolo, no como se escriba la linea.
-    por_el_nombre = any("pytest-csv-params" in linea for linea in instalaciones)
+    # Por el extra que lo declara desde P-08, o por su nombre. Lo que se protege
+    # es que el CI acabe teniendo lo que la suite necesita, no como se escriba.
     por_el_extra = any("[test]" in linea for linea in instalaciones) and any(
-        "pytest-csv-params" in r for r in (requires("pymetagen-datalabupo") or []))
-    assert por_el_nombre or por_el_extra, (
-        "el CI no acaba con pytest-csv-params: framework_test/solution_test.py no "
-        "se llegaria a recolectar"
+        "scikit-learn" in r for r in _extra_test_de_setup_cfg())
+    por_el_nombre = any("scikit-learn" in linea for linea in instalaciones)
+    assert por_el_extra or por_el_nombre, (
+        "el CI no acaba con scikit-learn: el problema de hiperparametros del banco "
+        "no se podria ejecutar"
     )
 
     extras = [
