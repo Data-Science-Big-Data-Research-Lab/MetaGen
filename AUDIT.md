@@ -197,7 +197,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ⬜ | `F-31` | Los genéticos no admiten estructuras dinámicas: el cruce no existe |
 | ✅ | `F-32` | El `alteration_limit` por defecto es absoluto, no relativo al dominio |
 | ✅ | `F-33` | El cruce es uniforme: sobre variables reales no crea ningún valor nuevo |
-| ⬜ | `F-34` | `get_builtin` del conector falla con cualquier estructura |
+| ✅ | `F-34` | `get_builtin` del conector falla con cualquier estructura |
 | ✅ | `A-01` | Sin selección de padres: todos los cruces usan la misma pareja |
 | ✅ | `A-02` | La búsqueda tabú es en realidad hill climbing |
 | ✅ | `A-03` | El vecindario tabú se genera en cadena, no alrededor de la solución |
@@ -1697,7 +1697,7 @@ Tests: `test_f33_el_cruce_produce_valores_que_no_tenia_ningun_padre`,
 `test_f33_la_categorica_se_sigue_intercambiando_entera` y
 `test_f33_el_cruce_no_se_sale_del_dominio`.
 
-### [ ] F-34 (R) · `BaseConnector.get_builtin` falla con cualquier estructura
+### [x] F-34 (R) · `BaseConnector.get_builtin` falla con cualquier estructura
 `src/metagen/framework/connector/connector.py:158-180` · descubierto al tipar el conector para `P-11`
 
 El registro guarda las estructuras con un discriminador, porque un `list` mapea a la
@@ -1746,6 +1746,28 @@ clase pelada no está, probar las variantes con discriminador; o, mejor, guardar
 builtin bajo la clase sin discriminador, ya que las dos estructuras devuelven `list` y el
 discriminador no aporta nada en ese diccionario concreto. Hay que decidir cuál, y
 comprobar que ningún conector propio dependa de la forma actual de las claves.
+
+*Cerrado con la primera opción, arreglando la búsqueda y no el registro.* `register` es
+la API de extensión y la forma de sus claves es lo que un conector propio puede haber
+imitado, así que no se toca. Cuando la clave pelada no está, `get_builtin` consulta las
+entradas registradas bajo un discriminador para esa clase: si todas dan el mismo
+builtin, lo devuelve; si dan varios distintos, lanza un `ValueError` que pide la clase
+con su discriminador. **No asume los nombres `'static'` y `'dynamic'`**, así que vale
+para cualquier conector.
+
+Acepta instancia, clase o tupla, que es lo que ya aceptaba en la práctica y la firma
+no decía: declaraba `types.BaseType` a secas.
+
+Comprobado el caso ambiguo registrando a propósito la variante dinámica con `tuple`
+como builtin: `get_builtin(Structure)` pasa a lanzar
+*«registered under discriminators that map to different builtins, ['list', 'tuple']:
+pass the class paired with its discriminator»*, que es lo que debe.
+
+El ejemplo publicado de `docs/advanced_topics/extending_framework.rst`, que usa
+`get_builtin` con el patrón antiguo del cruce, deja de tropezar con las estructuras
+sin cambiarlo.
+
+Test: `test_f34_get_builtin_acepta_una_estructura`, ampliado a la clase pelada.
 
 ---
 

@@ -2061,9 +2061,6 @@ def test_f33_el_cruce_no_se_sale_del_dominio():
 # F-34 · get_builtin del conector falla con cualquier estructura
 # --------------------------------------------------------------------------------
 
-@pytest.mark.xfail(reason="F-34: el registro guarda las estructuras con un "
-                          "discriminador y get_builtin busca la clase pelada",
-                   strict=True)
 def test_f34_get_builtin_acepta_una_estructura():
     """F-34: el conector registra las estructuras como `(Structure, 'static')` y
     `(Structure, 'dynamic')`, porque un `list` mapea a las dos definiciones. Pero
@@ -2091,3 +2088,7 @@ def test_f34_get_builtin_acepta_una_estructura():
         assert conector.get_builtin(solucion.get(variable)) is list, (
             f"get_builtin no reconoce la estructura {variable}"
         )
+    # Y la clase pelada, sin discriminador: las dos variantes dan list.
+    assert conector.get_builtin(type(solucion.get("s"))) is list, (
+        "get_builtin no reconoce la clase Structure sin discriminador"
+    )
