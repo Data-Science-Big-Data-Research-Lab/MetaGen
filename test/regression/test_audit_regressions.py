@@ -2355,15 +2355,14 @@ def test_f39_el_ga_devuelve_un_fitness_que_es_el_de_sus_variables():
     hijos comparten con el sus grupos, y al mutar los hijos cambian sus variables sin
     que su fitness se recalcule. En 2 de 10 semillas el resultado devuelto no vale lo
     que dice. SSGA y el memetico no lo muestran en el mismo dominio."""
-    from conftest import build_full_domain
-    from test_integration import _fitness
+    from conftest import build_full_domain, full_domain_fitness
     from metagen.metaheuristics import GA, GAConnector
 
     dominio = build_full_domain(connector=GAConnector())
     for semilla in range(10):
-        mejor = GA(dominio, _fitness, population_size=4, max_iterations=3, seed=semilla).run()
-        assert mejor.get_fitness() == _fitness(mejor), (
-            f"semilla {semilla}: fitness almacenado {mejor.get_fitness()}, real {_fitness(mejor)}")
+        mejor = GA(dominio, full_domain_fitness, population_size=4, max_iterations=3, seed=semilla).run()
+        assert mejor.get_fitness() == full_domain_fitness(mejor), (
+            f"semilla {semilla}: fitness almacenado {mejor.get_fitness()}, real {full_domain_fitness(mejor)}")
 
 
 # --------------------------------------------------------------------------------
@@ -2377,8 +2376,6 @@ def _esfera_2d():
     return dominio, (lambda s: s["x"] ** 2 + s["y"] ** 2)
 
 
-@pytest.mark.xfail(reason="F-40: el historial de TPE se rellena en la copia del worker y "
-                          "el del driver sigue vacio; iterate divide por su longitud", strict=True)
 def test_f40_tpe_funciona_en_distribuido():
     """F-40: Ray ejecuta `initialize` e `iterate` sobre una copia serializada del
     algoritmo. Lo que esas llamadas guarden en `self` se queda en el worker. TPE guarda
@@ -2393,8 +2390,6 @@ def test_f40_tpe_funciona_en_distribuido():
     assert mejor.get_fitness() == esfera(mejor)
 
 
-@pytest.mark.xfail(reason="F-40: la lista tabu de HillClimbing se rellena en la copia del "
-                          "worker y la del driver sigue vacia", strict=True)
 def test_f40_hill_climbing_conserva_su_lista_tabu_en_distribuido():
     """F-40, la misma perdida sin reventar: `HillClimbing` anade a su lista tabu
     dentro de `iterate`, y en distribuido esa lista acaba con cero entradas donde en

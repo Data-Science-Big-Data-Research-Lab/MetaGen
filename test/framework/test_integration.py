@@ -15,7 +15,7 @@ from metagen.framework.rng import set_seed
 from metagen.metaheuristics import GA, SSGA, TPE, GAConnector, HillClimbing, Memetic, RandomSearch, SA
 from metagen.metaheuristics.tools import solution_class
 
-from conftest import build_full_domain
+from conftest import build_full_domain, full_domain_fitness
 
 SEEDS = range(10)
 
@@ -25,18 +25,6 @@ def _assert_valid(domain: Domain, solution: Solution) -> None:
     for name in solution:
         assert core.check(name, solution[name]), (
             f"{name} = {solution[name]!r} is not valid for its definition")
-
-
-def _fitness(solution: Solution) -> float:
-    """Touches every kind of variable, so an algorithm that mishandles one shows."""
-    values = {name: solution[name] for name in solution}
-    return (
-        values["I"] + 100 * values["R"] + len(values["C"])
-        + values["L"]["EI"] + sum(values["SSI"]) + sum(values["SSR"])
-        + len(values["DSI"]) + sum(values["DSR"])
-        + sum(group["EI2"] for group in values["SSL"] + values["DSL"])
-        + sum(sum(inner) for inner in values["SSS"])
-    )
 
 
 def test_a_fresh_solution_satisfies_its_domain(full_domain):
@@ -90,7 +78,7 @@ def test_an_invalid_nested_value_is_rejected_at_its_level(solution, name, value)
 
 
 def test_copy_and_pickle_preserve_equality_and_independence(full_domain, solution):
-    solution.evaluate(_fitness)
+    solution.evaluate(full_domain_fitness)
     twin = copy.deepcopy(solution)
     revived = pickle.loads(pickle.dumps(solution))
     for other in (twin, revived):
@@ -121,13 +109,13 @@ def test_genetic_crossover_stays_inside_the_domain():
 
 def _algorithms(domain: Domain, ga_domain: Domain, seed: int):
     return {
-        "RandomSearch": RandomSearch(domain, _fitness, population_size=4, max_iterations=3, seed=seed),
-        "SA": SA(domain, _fitness, warmup_iterations=1, max_iterations=3, neighbor_population_size=2, seed=seed),
-        "HillClimbing": HillClimbing(domain, _fitness, population_size=4, warmup_iterations=1, max_iterations=3, seed=seed),
-        "TPE": TPE(domain, _fitness, warmup_iterations=2, max_iterations=3, seed=seed),
-        "GA": GA(ga_domain, _fitness, population_size=4, max_iterations=3, seed=seed),
-        "SSGA": SSGA(ga_domain, _fitness, population_size=4, max_iterations=3, seed=seed),
-        "Memetic": Memetic(ga_domain, _fitness, population_size=4, max_iterations=3,
+        "RandomSearch": RandomSearch(domain, full_domain_fitness, population_size=4, max_iterations=3, seed=seed),
+        "SA": SA(domain, full_domain_fitness, warmup_iterations=1, max_iterations=3, neighbor_population_size=2, seed=seed),
+        "HillClimbing": HillClimbing(domain, full_domain_fitness, population_size=4, warmup_iterations=1, max_iterations=3, seed=seed),
+        "TPE": TPE(domain, full_domain_fitness, warmup_iterations=2, max_iterations=3, seed=seed),
+        "GA": GA(ga_domain, full_domain_fitness, population_size=4, max_iterations=3, seed=seed),
+        "SSGA": SSGA(ga_domain, full_domain_fitness, population_size=4, max_iterations=3, seed=seed),
+        "Memetic": Memetic(ga_domain, full_domain_fitness, population_size=4, max_iterations=3,
                            neighbor_population_size=2, seed=seed),
     }
 
@@ -139,7 +127,7 @@ def test_every_algorithm_searches_the_full_domain(name):
         algorithm = _algorithms(domain, ga_domain, seed)[name]
         best = algorithm.run()
         _assert_valid(algorithm.domain, best)
-        assert best.get_fitness() == _fitness(best)
+        assert best.get_fitness() == full_domain_fitness(best)
         assert not math.isinf(best.get_fitness())
         history = algorithm.best_solution_fitnesses
         assert history == sorted(history, reverse=True), f"{name} reports a history that worsens"
