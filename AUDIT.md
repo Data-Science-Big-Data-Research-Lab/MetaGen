@@ -199,7 +199,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ✅ | `F-33` | El cruce es uniforme: sobre variables reales no crea ningún valor nuevo |
 | ✅ | `F-34` | `get_builtin` del conector falla con cualquier estructura |
 | ✅ | `F-35` | TPE registra la estructura dinámica y revienta al usarla |
-| ⬜ | `F-36` | `get_definition` del conector falla con una instancia de estructura |
+| ✅ | `F-36` | `get_definition` del conector falla con una instancia de estructura |
 | ⬜ | `F-37` | El valor de un grupo o de una estructura no es builtin más allá del primer nivel |
 | ✅ | `F-38` | Una estructura acepta cualquier longitud: nadie comprueba el recuento |
 | ✅ | `F-39` | El cruce de una estructura dinámica de grupos comparte los grupos con los padres |
@@ -1904,7 +1904,7 @@ módulo. Cinco `xfail` menos —los cuatro del par y el del test de regresión�
 
 Test: `test_f35_tpe_acepta_una_estructura_dinamica`, ya sin marcador.
 
-### [ ] F-36 (R) · `get_definition` del conector falla con una instancia de estructura
+### [x] F-36 (R) · `get_definition` del conector falla con una instancia de estructura
 `src/metagen/framework/connector/connector.py:126-152` · descubierto al escribir `test/framework/test_connector.py` · test: `test_f36_get_definition_acepta_una_instancia_de_estructura`
 
 Es el hermano de `F-34`, que arregló `get_builtin` y dio por bueno `get_definition`
@@ -1934,6 +1934,28 @@ que es superficie pública sin llamante interno, como quedó `F-34`.
 la definición que la instancia lleva: entre las entradas registradas con
 discriminador para esa clase, la que apunte a `type(instancia.get_definition())`. Y
 que el mensaje de error nombre la clave, no el objeto.
+
+*Cerrado el 9 de septiembre de 2026, con el arreglo propuesto y la misma forma que
+`F-34`.* `get_definition` acepta instancia, clase o tupla. Si la clave pelada no está,
+consulta las entradas discriminadas de esa clase: **con una instancia, responde la que
+coincide con `type(instancia.get_definition())`**; con una clase pelada y una sola
+entrada, esa; con varias, `ValueError` pidiendo el discriminador o una instancia, que es
+la novedad respecto a `get_builtin`, donde todas las entradas daban lo mismo y no hacía
+falta elegir. El mensaje de «no registrado» nombra la clave.
+
+```
+get_definition(estructura estatica)   -> StaticStructureDefinition
+get_definition(estructura dinamica)   -> DynamicStructureDefinition
+get_definition(Structure)             -> ValueError: ... registered under discriminators
+                                         that map to different definitions ...
+```
+
+`register` no se toca, por el mismo motivo que en `F-34`. `test_connector.py` pide ahora
+a la instancia de estructura las dos cosas, `get_builtin` y `get_definition`, en los
+tres conectores. mypy se queda en 40: `inspect.isclass` no estrecha, y la instancia va
+con un `cast` que dice lo que esa comprobación ya garantiza.
+
+Test: `test_f36_get_definition_acepta_una_instancia_de_estructura`, ya sin marcador.
 
 ### [ ] F-37 (R) · El valor de un grupo o de una estructura no es builtin más allá del primer nivel
 `src/metagen/framework/solution/base_solution.py:441` (`__getitem__`), `types/structure.py:164` (`get`) y `:280` (`__getitem__`) · descubierto al escribir `test/framework/test_integration.py` · test: `test_f37_el_valor_de_un_grupo_o_estructura_es_builtin_hasta_el_fondo`

@@ -15,7 +15,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 import inspect
-from typing import Any, Dict, Tuple, TypeAlias, Union, cast
+from typing import Any, Dict, Optional, Tuple, TypeAlias, Union, cast
 
 import metagen.framework.domain as definitions
 import metagen.framework.solution as types
@@ -127,29 +127,57 @@ class BaseConnector:
         """
         Retrieves the domain type based on the input solution type.
 
+        Takes an instance, a class, or a class paired with its discriminator. A
+        structure is registered under a discriminator, because a list stands for both
+        the static and the dynamic definition, and this used to look an instance up by
+        its bare class and fail on every structure (F-36). An instance carries its own
+        definition, which says which of the entries registered for its class is the
+        right one; a bare class alone cannot, so it has to come with its discriminator.
+
         :param solution_type: The solution type or type object for which to retrieve the domain type.
         :type solution_type: `types.BaseType` | `types.Solution` | type[`types.BaseType` | `types.Solution`] |
                              Tuple[type[`types.BaseType`], str]
         :return: The corresponding domain type.
         :rtype: type[definitions.Base]
-        :raises ValueError: If the solution type is not registered in the connector.
+        :raises ValueError: If the solution type is not registered in the connector, or
+            if a bare class is registered under several discriminators.
         """
-        try:
-            # A local rather than reassigning the parameter, which arrives as an
-            # instance or as a class and would otherwise hold both types at once.
-            key: SolutionEntry = cast(SolutionEntry, (
-                solution_type
-                if inspect.isclass(solution_type) or isinstance(solution_type, tuple)
-                else type(solution_type)))
+        # A local rather than reassigning the parameter, which arrives as an
+        # instance or as a class and would otherwise hold both types at once.
+        # The cast says what inspect.isclass established and mypy cannot follow: what
+        # is left here is an instance, or nothing.
+        instance = cast(Optional[Union[types.BaseType, types.Solution]],
+                        None if inspect.isclass(solution_type) or isinstance(solution_type, tuple)
+                        else solution_type)
+        key: SolutionEntry = cast(SolutionEntry, (
+            solution_type if instance is None else type(instance)))
 
-            if isinstance(key, tuple) or issubclass(key, (types.BaseType, types.Solution)):
-                return self._solution_to_domain[key]
-            else:
-                raise ValueError(
-                    f"The class {solution_type} must be an instance of BaseType.")
-        except KeyError:
+        if not issubclass(_solution_class(key), (types.BaseType, types.Solution)):
             raise ValueError(
-                f"The object {solution_type} has not been registered in the connector.")
+                f"The class {solution_type} must be an instance of BaseType.")
+
+        if key in self._solution_to_domain:
+            return self._solution_to_domain[key]
+
+        # Not a key on its own: look at what is registered under a discriminator
+        # for this class. Only reachable with a bare class or an instance, since a
+        # tuple key that is missing is simply unregistered.
+        registered = {entry: domain for entry, domain in self._solution_to_domain.items()
+                      if _solution_class(entry) is key}
+        if instance is not None:
+            # The instance knows: its own definition is an instance of one of them.
+            definition_class = type(instance.get_definition())
+            if definition_class in registered.values():
+                return definition_class
+        elif len(registered) == 1:
+            return next(iter(registered.values()))
+        elif registered:
+            raise ValueError(
+                f"The class {key} is registered under discriminators that map to "
+                f"different definitions, {sorted(d.__name__ for d in registered.values())}: "
+                f"pass the class paired with its discriminator, or an instance.")
+        raise ValueError(
+            f"The object {key} has not been registered in the connector.")
 
     def get_builtin(self, solution_type: types.BaseType | types.Solution | SolutionEntry) -> BuiltinType:
         """

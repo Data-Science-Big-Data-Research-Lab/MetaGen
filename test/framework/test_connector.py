@@ -93,9 +93,10 @@ def test_instances_answer_like_their_classes(connector_class):
         variable = solution.get(name)
         assert type(variable) is _bare(table[definition][0])
         assert isinstance(variable.get_definition(), definition)
-        # A structure instance answers get_builtin since F-34. It does not answer
-        # get_definition yet: see F-36 in the regression suite.
+        # A structure instance answers get_builtin since F-34 and get_definition
+        # since F-36: its own definition picks the right discriminated entry.
         assert domain.get_connector().get_builtin(variable) is list
+        assert domain.get_connector().get_definition(variable) is definition
 
 
 def test_a_connector_of_its_own_can_replace_one_type():
