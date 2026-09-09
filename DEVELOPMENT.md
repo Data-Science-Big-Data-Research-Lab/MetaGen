@@ -61,13 +61,12 @@ mypy src                # configurado en setup.cfg
 ```
 
 Desde P-05 la suite verde es **el árbol completo**, `pytest test`, y no un
-subconjunto: `test/metaheuristics_test/behavior_test.py` tiene que ejecutarse.
+subconjunto: `test/metaheuristics/test_behavior.py` tiene que ejecutarse.
 Antes se usaba `pytest test/framework_test test/regression`, que lo dejaba fuera.
 
-`test/metaheuristics_test/unit_test.py` depende de `ray` y `tensorflow` (extras
-opcionales, este último importado de forma transitiva vía el dispatcher). Desde
-P-04 se **salta limpiamente** cuando faltan, en vez de abortar la recolección de
-toda la suite: es el `1 skipped` que verás en una instalación sin extras.
+`test/metaheuristics/test_extras.py` es el único módulo que depende de `ray` y
+`tensorflow` (extras opcionales) y se **salta limpiamente** cuando faltan, en vez
+de abortar la recolección de toda la suite, que es lo que `P-04` protege.
 
 Ojo con `pytest-csv-params`: `framework_test/solution_test.py` lo necesita y no lo
 declara ni `install_requires` ni ningún extra (ver P-08). Sin él, ese módulo ni
@@ -94,14 +93,27 @@ salta en el CI: es el `1 skipped` que se ve allí, junto al de `unit_test.py`.
 
 ## Cómo se prueban las metaheurísticas
 
-Hay dos ficheros y conviene no confundirlos:
+La carpeta `test/` se reorganizó el 9 de septiembre de 2026:
 
-- `test/metaheuristics_test/unit_test.py` — el de siempre, dirigido por los CSV de
-  `test/test_parameters/`. Exige Ray y TensorFlow, así que **casi nunca se ejecuta**.
-- `test/metaheuristics_test/behavior_test.py` — desde P-05. **Sin dependencias
-  opcionales**, así que corre siempre, también en el CI. Comprueba que cada
-  algoritmo optimiza de verdad: historial monótono, el resultado es el mejor visto,
-  mejora sobre su inicio, y **gana a muestrear al azar con sus mismas evaluaciones**.
+```
+test/
+  conftest.py            configuración compartida
+  framework/             test_domain, test_solution, test_alteration, y desde la
+                         reorganización test_connector y test_integration
+  metaheuristics/        test_behavior (el banco) y test_extras (opcional: Ray y TensorFlow)
+  regression/            test_audit_regressions, un test por hallazgo
+examples/                catálogos de problemas (scikit-learn, TensorFlow, dummies) y
+                         los scripts de CVOA: no son tests
+benchmark/               el material del artículo contra Optuna, Hyperopt y Ray Tune
+```
+
+El antiguo `unit_test.py`, dirigido por CSV y que exigía Ray **y** TensorFlow, se
+retiró: no corría ni en el CI y no comprobaba nada que el banco no compruebe mejor.
+
+`test/metaheuristics/test_behavior.py` es el banco, desde P-05. **Sin dependencias
+opcionales**, así que corre siempre, también en el CI. Comprueba que cada
+algoritmo optimiza de verdad: historial monótono, el resultado es el mejor visto,
+mejora sobre su inicio, y **gana a muestrear al azar con sus mismas evaluaciones**.
 
 Las estadísticas van sobre 10 semillas fijas con umbral de 7, no sobre una
 ejecución suelta: un algoritmo sano queda en 8-10 y uno roto en 0-4.
