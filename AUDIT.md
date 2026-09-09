@@ -56,7 +56,7 @@ propósito, cada una con su motivo. No están en el índice porque no son hallaz
 | Qué | Por qué está aparte | Dónde |
 |---|---|---|
 | **Revisión de CVOA** | El diseño es de Paco Martínez-Álvarez y el código es multihilo con Ray encima. `F-27`, `F-28`, `F-29`, `A-09` y seis discrepancias más con el artículo | `metagen-auditoria/CVOA-cuestiones.md` |
-| **`mypy src` a cero** | 71 errores tras dos tandas, todos ya en `metaheuristics/` | `P-11` |
+| **`mypy src` a cero** | 40 errores tras tres tandas, todos en los cuatro ficheros de CVOA | `P-11` |
 | **Implementar una búsqueda tabú de verdad** | Lo que había no lo era y se renombró a `HillClimbing` (`A-02`). La tabú canónica es un algoritmo nuevo, no un arreglo | ver abajo |
 | **Estructuras dinámicas en los genéticos** | El cruce para longitudes variables no existe; es funcionalidad, no arreglo | `F-31` |
 | **Implementar un TPE canónico** | El de MetaGen funciona y no se toca; el canónico es otro algoritmo, con dos piezas que van juntas | ver abajo |
@@ -220,7 +220,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ✅ | `P-08` | Los extras de `setup.cfg` usan `;`, que PEP 508 lee como otra cosa |
 | ✅ | `P-09` | Falta `py.typed`: mypy trata `metagen` como `Any` desde fuera |
 | ✅ | `P-10` | Los ejemplos de las docstrings usan una API que no existe |
-| ⬜ | `P-11` | `mypy src` no pasa limpio: 71 errores en 17 ficheros |
+| ⬜ | `P-11` | `mypy src` no pasa limpio: 40 errores, todos en CVOA |
 
 ---
 
@@ -2621,3 +2621,52 @@ Aquí el código hace lo que dice hacer; lo discutible es qué dice hacer.
     ficheros de test.
   - `cast` **evalúa su primer argumento**, así que un tipo importado solo bajo
     `TYPE_CHECKING` hay que citarlo entre comillas.
+
+  ### Tercera tanda: todo lo que no es CVOA, a cero
+
+  **71 → 40**, 9 de septiembre de 2026. Los 40 que quedan viven en los cuatro ficheros
+  de CVOA, que van a su sesión. La suite no se mueve.
+
+  **La mitad de los 31 era una sola cosa:** `Metaheuristic.best_solution` está declarado
+  `Optional[Solution]`, y es cierto —vale `None` hasta `_initialize()`—, pero **no en
+  ningún punto desde el que lo lee una subclase**: `iterate()` y los *callbacks* solo
+  corren después de inicializar. Catorce errores en ocho ficheros. Va un accesor
+  privado, `_best_so_far()`, que estrecha con un `RuntimeError` que dice qué pasa, en
+  vez de catorce `cast`; leerlo antes de tiempo daba un `AttributeError` sobre `None`
+  sin pista de la causa.
+
+  **Cuatro sitios pedían al conector «la clase del núcleo» con la misma línea**, y
+  con `get_type` declarando `BaseType | Solution` desde la primera tanda los cuatro
+  fallaban igual. Ahora es una función, `tools.solution_class(domain)`, el único sitio
+  que afirma que el núcleo —una `BaseDefinition`— se corresponde con una clase de
+  `Solution`. TPE la estrecha además a `TPESolution`, que es lo que su conector
+  instala (`F-13`).
+
+  **Un `Protocol`, `Crossable`, para la capacidad de cruzar.** `GASolution.crossover`
+  pregunta con `hasattr` desde `F-33`, y eso es lo correcto —el conector es el punto de
+  extensión, un tipo propio con su operador vale (`A-07`)— pero mypy no estrecha por
+  `hasattr`. El protocolo es lo que significa haber pasado la comprobación.
+
+  **`Memetic.iterate` declaraba `List[GASolution]`** donde la clase base declara
+  `List[Solution]`, una violación de Liskov que además era innecesaria: los padres ya
+  se convierten con `cast` al salir del torneo.
+
+  **`BaseType.get_connector()` estrecha con error.** El conector es opcional en el
+  constructor —un tipo simple puede construirse sin él y no necesitarlo nunca— pero
+  una estructura no puede, porque construye sus elementos a través del registro.
+  Leerlo sin conector fallaba una línea más tarde, sobre el `None`.
+
+  **Y un intento equivocado que conviene dejar escrito.** Los dos errores de las
+  estructuras en `core.py` venían de que `DymAttr`/`StaAttr` declaran la base como
+  `Union[BaseAttr, DefAttr, None]` —básico o grupo— mientras `get_base()` devuelve
+  `Base`. Mi primer arreglo fue **estrechar `get_base()`** con un alias que afirmaba
+  «una estructura nunca contiene otra estructura». **Era falso**, y solo lo supe porque
+  lo probé antes de darlo por bueno: `set_structure_to_variable` acepta cualquier
+  variable ya definida, y una estructura de estructuras **se inicializa, muta y
+  reporta** `('STATIC', 3, ('STATIC', 2, ('REAL', …)))`. Revertido. Lo estrecho de
+  verdad eran los literales, que ahora son recursivos —`Optional["Attributes"]`—, como
+  ya lo era `DefAttr`. **Anidar estructuras es una capacidad real del paquete** y no
+  está documentada más que en la docstring de ese método.
+
+  De paso, `TPE.initialize` con cero soluciones devolvía `None` en silencio y fallaba
+  en la primera comparación; ahora es un `ValueError` que dice qué falta.

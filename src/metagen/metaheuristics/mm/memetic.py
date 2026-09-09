@@ -106,7 +106,7 @@ class Memetic(Metaheuristic):
         current_solutions, best_solution = random_exploration(self.domain, self.fitness_function, num_solutions)
         return current_solutions, best_solution
 
-    def iterate(self, solutions: List[GASolution]) -> Tuple[List[Solution], Solution]:
+    def iterate(self, solutions: List[Solution]) -> Tuple[List[Solution], Solution]:
         """Perform one iteration of the memetic algorithm.
 
         This method:
@@ -116,13 +116,13 @@ class Memetic(Metaheuristic):
         4. Updates the population
 
         :param solutions: The current population
-        :type solutions: List[:py:class:`~metagen.metaheuristics.ga.GASolution`]
+        :type solutions: List[:py:class:`~metagen.framework.Solution`]
         :return: A tuple containing the updated population and the best solution
         :rtype: Tuple[List[:py:class:`~metagen.framework.Solution`], :py:class:`~metagen.framework.Solution`]
         """
         num_solutions = len(solutions)
         elite = heapq.nsmallest(2, solutions, key=lambda sol: sol.get_fitness())
-        best_solution = deepcopy(self.best_solution)
+        best_solution = deepcopy(self._best_so_far())
         current_solutions = [deepcopy(elite[0]), deepcopy(elite[1])]
 
         for _ in range(num_solutions // 2):

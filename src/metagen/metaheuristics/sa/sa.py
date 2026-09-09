@@ -192,7 +192,7 @@ class SA(Metaheuristic):
         :rtype: Tuple[List[Solution], Solution]
         """
         current_solution = deepcopy(solutions[0])
-        best_solution = deepcopy(self.best_solution)
+        best_solution = deepcopy(self._best_so_far())
 
         # Generate the first neighbor and initialize best_neighbor
         neighbor = deepcopy(current_solution)

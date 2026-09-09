@@ -558,7 +558,7 @@ class BaseStructureDefinition(ABC):
         self.__base_type_defined()
         return cast(Base, self.__base)
 
-    def set_base(self, base: Base):
+    def set_base(self, base: Base) -> None:
         """
         Set the base type.
 
