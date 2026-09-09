@@ -3,7 +3,7 @@ from metagen.framework import Domain, RelativeAlteration, Solution
 from collections.abc import Callable
 from typing import Any, List, Tuple, Deque, Optional
 
-from metagen.metaheuristics.tools import local_search_with_tabu
+from metagen.metaheuristics.tools import local_search_with_tabu, solution_class
 from metagen.metaheuristics.base import Metaheuristic
 from copy import deepcopy
 
@@ -99,7 +99,7 @@ class HillClimbing(Metaheuristic):
         Creates an initial solution and explores its neighborhood while respecting
         the tabu list constraints.
         """
-        solution_type: type[Solution] = self.domain.get_connector().get_type(self.domain.get_core())
+        solution_type = solution_class(self.domain)
         first_solution = solution_type(self.domain, connector=self.domain.get_connector())
         first_solution.evaluate(self.fitness_function)
 
@@ -137,13 +137,14 @@ class HillClimbing(Metaheuristic):
 
         # Aplicar búsqueda local con tabú respetando el tamaño `l`
         current_solutions, best_solution = local_search_with_tabu(
-            self.best_solution, self.fitness_function, l, self.alteration_limit, list(self.tabu_list)
+            self._best_so_far(), self.fitness_function, l, self.alteration_limit,
+            list(self.tabu_list)
         )
 
         # Si no se generan soluciones válidas, mantener la población anterior
         if not current_solutions:
             current_solutions = solutions
-            best_solution = deepcopy(self.best_solution)
+            best_solution = deepcopy(self._best_so_far())
         else:
             if best_solution not in self.tabu_list:
                 self.tabu_list.append(best_solution)

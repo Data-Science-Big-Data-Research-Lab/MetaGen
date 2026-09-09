@@ -18,7 +18,7 @@ from tensorboardX import SummaryWriter
 from datetime import datetime
 import uuid
 import os
-from typing import List
+from typing import List, cast
 import numpy as np
 from metagen.framework import Solution
 
@@ -89,11 +89,13 @@ class TensorBoardLogger:
             
             if isinstance(value, dict):
                 # Recursively log nested dictionaries
-                nested_solutions = [s[key] for s in solutions_dict]
+                # A variable whose value is a dict is a group, that is, a Solution.
+                nested_solutions = cast(List[Solution], [s[key] for s in solutions_dict])
                 self._log_solution_components(nested_solutions, iteration, f"{prefix}{key}/")
             elif isinstance(value, (int, float)):
                 # Log numeric values as distribution/histogram
-                value = sum([s[key].value for s in solutions_dict]) / len(solutions_dict)
+                numbers = cast(List[float], [s[key].value for s in solutions_dict])
+                value = sum(numbers) / len(solutions_dict)
                 self.writer.add_scalar(f"{prefix}average_{key}", value, iteration)
             elif isinstance(value, (list, tuple)):
                 # Log collection metrics

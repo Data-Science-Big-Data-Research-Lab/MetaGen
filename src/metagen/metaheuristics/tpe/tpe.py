@@ -4,10 +4,12 @@ from collections import Counter, deque
 from scipy.optimize import minimize
 
 from metagen.metaheuristics.base import Metaheuristic
-from typing import Callable, List, Tuple, Optional
+from typing import Callable, Deque, List, Tuple, Optional, cast
 import numpy as np
 from scipy.stats import norm
 from metagen.framework import Domain, Solution
+from metagen.metaheuristics.tools import solution_class
+from metagen.metaheuristics.tpe.tpe_tools import TPESolution
 from copy import deepcopy
 from metagen.framework.domain.literals import I, R, C
 from metagen.metaheuristics.gamma_schedules import GammaConfig, compute_gamma
@@ -94,7 +96,7 @@ class TPE(Metaheuristic):
         self.max_iterations = max_iterations
         self.candidate_pool_size = candidate_pool_size
         self.gamma_config = gamma_config if gamma_config else GammaConfig(gamma_function="sampled_based")
-        self.solution_history = deque()
+        self.solution_history: Deque[Solution] = deque()
 
     def initialize(self, num_solutions=10) -> Tuple[List[Solution], Solution]:
         """
@@ -106,10 +108,10 @@ class TPE(Metaheuristic):
         :rtype: Tuple[List[Solution], Solution]
         """
 
-        solution_type: type[Solution] = self.domain.get_connector().get_type(self.domain.get_core())
+        solution_type = solution_class(self.domain)
 
-        best_solution = None
-        current_solutions = []
+        best_solution: Optional[Solution] = None
+        current_solutions: List[Solution] = []
         for _ in range(num_solutions):
             solution = solution_type(self.domain, connector=self.domain.get_connector())
             solution.evaluate(self.fitness_function)
@@ -119,6 +121,10 @@ class TPE(Metaheuristic):
             if best_solution is None or solution.get_fitness() < best_solution.get_fitness():
                 best_solution = solution
 
+        # Zero initial solutions used to hand back None here and fail later, on the
+        # first comparison against it, with nothing pointing at the cause.
+        if best_solution is None:
+            raise ValueError("TPE needs at least one initial solution")
         return current_solutions, best_solution
 
     def iterate(self, solutions: List[Solution]) -> Tuple[List[Solution], Solution]:
@@ -154,7 +160,7 @@ class TPE(Metaheuristic):
         self._limit_solution_history(gamma)
 
         # Determine best solution so far
-        local_best = min(self.best_solution, best_candidate, key=lambda sol: sol.get_fitness())
+        local_best = min(self._best_so_far(), best_candidate, key=lambda sol: sol.get_fitness())
 
         return list(self.solution_history), local_best
 
@@ -170,7 +176,10 @@ class TPE(Metaheuristic):
 
     def sample_new_solution(self, best_solutions: List[Solution], worst_solutions: List[Solution]) -> Solution:
         
-        solution_type: type[Solution] = self.domain.get_connector().get_type(self.domain.get_core())
+        # TPE's domain always carries TPEConnector -- the constructor copies the
+        # domain and installs it (F-13) -- so the class built here is TPESolution,
+        # the one that knows how to resample.
+        solution_type = cast(type[TPESolution], solution_class(self.domain))
         new_solution = solution_type(self.domain, connector=self.domain.get_connector())
 
         new_solution.resample(best_solutions, worst_solutions)

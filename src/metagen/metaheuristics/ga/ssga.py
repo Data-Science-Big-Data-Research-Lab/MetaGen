@@ -91,7 +91,7 @@ class SSGA(Metaheuristic):
 
         child1, child2 = yield_two_children((father,mother), self.mutation_rate, self.fitness_function)
 
-        best_solution = deepcopy(self.best_solution)
+        best_solution = deepcopy(self._best_so_far())
 
         if child1 != child2:
             # By index. This is not a bug fix: looking the individuals up with

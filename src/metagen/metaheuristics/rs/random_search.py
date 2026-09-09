@@ -105,7 +105,7 @@ class RandomSearch(Metaheuristic):
         :return: A tuple containing the updated population and the best solution found
         :rtype: Tuple[List[Solution], Solution]
         """
-        best_solution = deepcopy(self.best_solution)
+        best_solution = deepcopy(self._best_so_far())
         current_solutions = [best_solution]
 
         # The elite copy above takes one slot, so one individual has to go, and it

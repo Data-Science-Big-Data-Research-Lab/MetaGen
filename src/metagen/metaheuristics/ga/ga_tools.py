@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from copy import copy
-from typing import Tuple, List, cast
+from typing import Any, Protocol, Tuple, List, cast
 
 import metagen.framework.solution as types
 from metagen.framework import BaseConnector, Solution, Domain
@@ -27,6 +27,18 @@ from metagen.framework.domain import (BaseDefinition, CategoricalDefinition,
                                       IntegerDefinition, RealDefinition,
                                       StaticStructureDefinition)
 from metagen.framework.rng import get_rng
+
+class Crossable(Protocol):
+    """
+    What GASolution.crossover asks of a variable: that it knows how to cross over.
+
+    It is a capability and not a class on purpose -- the connector is the extension
+    point, and a user's own type with its own operator qualifies (A-07) -- so the
+    check is hasattr and this is what passing it means to the type checker.
+    """
+
+    def crossover(self, other: Any) -> Tuple[Any, Any]: ...
+
 
 #: Width of the BLX interval, as a share of the distance between the two parents,
 #: added at each end. Eshelman and Schaffer's own recommendation; measured over the
@@ -235,7 +247,7 @@ class GASolution(Solution):
         for variable_name, variable_value in self.get_variables().items():  # Iterate over all variables
 
             if variable_name not in swappable:
-                variable_child1, variable_child2 = variable_value.crossover(
+                variable_child1, variable_child2 = cast(Crossable, variable_value).crossover(
                     other.get(variable_name))
                 child1.set(variable_name, copy(variable_child1))
                 child2.set(variable_name, copy(variable_child2))

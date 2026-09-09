@@ -46,9 +46,13 @@ RealAttr: TypeAlias = Tuple[R_META, float, float, Optional[float]]
 CatAttr: TypeAlias = Tuple[C_META, CatVal]
 BaseAttr: TypeAlias = Union[IntAttr, RealAttr, CatAttr]
 DefAttr: TypeAlias = Tuple[DF_META, Mapping[str, Union[BaseAttr, "DefAttr"]]]
-DymAttr: TypeAlias = Tuple[D_META, int, int,
-                           Optional[int], Union[BaseAttr, DefAttr, None]]
-StaAttr: TypeAlias = Tuple[S_META, int, Union[BaseAttr, DefAttr, None]]
+# The last slot of a structure's attributes is its base's own attributes, and the
+# base may be any definition, a structure included: Domain.set_structure_to_variable
+# accepts any variable already defined, and a structure of structures initializes and
+# mutates. These used to leave that out, as Union[BaseAttr, DefAttr, None], which was
+# the one thing here narrower than the code (P-11). Recursive, like DefAttr above.
+DymAttr: TypeAlias = Tuple[D_META, int, int, Optional[int], Optional["Attributes"]]
+StaAttr: TypeAlias = Tuple[S_META, int, Optional["Attributes"]]
 Attributes: TypeAlias = Union[BaseAttr, DefAttr, DymAttr, StaAttr]
 
 DefType: TypeAlias = Mapping[str, Attributes]

@@ -227,6 +227,26 @@ class Metaheuristic(ABC):
 
         return population, self.best_solution
 
+    def _best_so_far(self) -> Solution:
+        """
+        The best solution found, once the run is under way.
+
+        ``best_solution`` is declared Optional because it is None until
+        ``_initialize()`` sets it, and that is true of the object's whole life. It
+        is not true of any point a subclass reads it from -- ``iterate()`` and the
+        callbacks only run after initialization -- so this narrows it there, and
+        turns the AttributeError on None that reading it too early used to raise
+        into an error that says what happened (P-11).
+
+        :return: The best solution so far.
+        :rtype: Solution
+        :raises RuntimeError: If read before the run has initialized it.
+        """
+        if self.best_solution is None:
+            raise RuntimeError(
+                "best_solution is not available yet: run() has not initialized it")
+        return self.best_solution
+
     def pre_execution(self) -> None:
         """
         Callback executed before algorithm execution starts.
@@ -285,7 +305,7 @@ class Metaheuristic(ABC):
         """
         metagen_logger.debug(f'[ITERATION {self.current_iteration}] POPULATION ({len(self.current_solutions)}): {self.current_solutions}')
         metagen_logger.info(f'[ITERATION {self.current_iteration}] BEST SOLUTION: {self.best_solution}')
-        self.best_solution_fitnesses.append(self.best_solution.get_fitness())
+        self.best_solution_fitnesses.append(self._best_so_far().get_fitness())
         if self.logger: 
             # Log iteration metrics
             self.logger.writer.add_scalar('Population Size',
@@ -294,7 +314,7 @@ class Metaheuristic(ABC):
             self.logger.log_iteration(
                 self.current_iteration, 
                 self.current_solutions, 
-                self.best_solution
+                self._best_so_far()
             )
 
     def post_execution(self) -> None:
@@ -304,7 +324,7 @@ class Metaheuristic(ABC):
         """
         if self.logger:
             # Log final results
-            self.logger.log_final_results(self.best_solution)
+            self.logger.log_final_results(self._best_so_far())
             self.logger.close()
 
     def run(self) -> Solution:
@@ -350,4 +370,4 @@ class Metaheuristic(ABC):
         if started_ray and ray.is_initialized():
             ray.shutdown()
 
-        return deepcopy(self.best_solution)
+        return deepcopy(self._best_so_far())

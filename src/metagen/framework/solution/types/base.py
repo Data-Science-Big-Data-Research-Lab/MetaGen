@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 
 class BaseType(ABC):
 
-    def __init__(self, definition: Base, connector: BaseConnector = None) -> None:
+    def __init__(self, definition: Base, connector: BaseConnector | None = None) -> None:
         """
         This class represents an abstraction of the types included in a Solution. Note that the class support a Domain or a Base definition and the type is initialized in the constructor.
 
@@ -45,6 +45,21 @@ class BaseType(ABC):
         self.initialize()
 
     def get_connector(self) -> BaseConnector:
+        """
+        The connector this variable was built with.
+
+        A simple type can be built without one and never need it; a structure cannot,
+        since it builds its elements through the connector's registry. Reading it when
+        there is none used to fail one line later, on the None, with nothing pointing
+        at the cause (P-11).
+
+        :return: The connector.
+        :rtype: BaseConnector
+        :raises RuntimeError: If this variable was built without a connector.
+        """
+        if self.connector is None:
+            raise RuntimeError(
+                f"{type(self).__name__} was built without a connector and needs one here")
         return self.connector
 
     @abstractmethod

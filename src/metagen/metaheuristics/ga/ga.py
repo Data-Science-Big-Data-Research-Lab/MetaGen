@@ -80,7 +80,7 @@ class GA(Metaheuristic):
         """Execute one generation of the genetic algorithm"""
         num_solutions = len(solutions)
         elite = heapq.nsmallest(2, solutions, key=lambda sol: sol.get_fitness())
-        best_solution = deepcopy(self.best_solution)
+        best_solution = deepcopy(self._best_so_far())
         current_solutions = [deepcopy(elite[0]), deepcopy(elite[1])]
 
         for _ in range(num_solutions // 2):

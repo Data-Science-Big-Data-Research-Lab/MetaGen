@@ -1,13 +1,30 @@
 from copy import deepcopy
-from typing import Callable, Tuple, List, Set
+from typing import Callable, Tuple, List, Set, cast
 
 from metagen.framework import Domain, Solution
+
+
+def solution_class(domain: Domain) -> type[Solution]:
+    """
+    The Solution class the domain's connector builds for the domain's core.
+
+    The core is a BaseDefinition, and every connector maps that to a Solution class
+    -- Solution itself, or a subclass such as GASolution or TPESolution. The connector
+    is a runtime registry, so its get_type() can only promise a BaseType or a Solution
+    and mypy cannot tell which; this is the one place that says which (P-11).
+
+    :param domain: The domain to build solutions for.
+    :type domain: Domain
+    :return: The class to instantiate a solution of this domain with.
+    :rtype: type[Solution]
+    """
+    return cast(type[Solution], domain.get_connector().get_type(domain.get_core()))
 
 
 def random_exploration (domain: Domain, fitness_function: Callable[[Solution], float], num_solutions: int) \
                                                                             -> Tuple[List[Solution], Solution]:
 
-    solution_type: type[Solution] = domain.get_connector().get_type(domain.get_core())
+    solution_type = solution_class(domain)
 
     potential:Solution = solution_type(domain, connector=domain.get_connector())
     potential.evaluate(fitness_function)
