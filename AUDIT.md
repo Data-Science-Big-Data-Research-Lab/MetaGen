@@ -1,10 +1,10 @@
 # Auditoría de MetaGen
 
 Revisión completa de `src/metagen` sobre el commit `74f104e` (2025-03-21).
-57 hallazgos con identificadores estables: los 46 de la revisión inicial más
+58 hallazgos con identificadores estables: los 46 de la revisión inicial más
 `P-11` (al montar el CI), `F-25` (al medir el comportamiento real de las
-metaheurísticas para `P-05`), `F-26` (al verificar `F-04`), `F-33` (al medir `A-01`) y `F-34` (al
-tipar el conector para `P-11`). Los marcados **(R)** se reprodujeron
+metaheurísticas para `P-05`), `F-26` (al verificar `F-04`), `F-33` (al medir `A-01`), `F-34` (al
+tipar el conector para `P-11`) y `F-35` (al diseñar `F-31`). Los marcados **(R)** se reprodujeron
 ejecutando el paquete instalado en Python 3.11 sin Ray ni TensorFlow.
 
 **CVOA va aparte.** Sus cuestiones abiertas, sus discrepancias con el artículo original
@@ -35,7 +35,7 @@ Marcar aquí el hallazgo como `[x]` al cerrarlo.
 | Bloque | Cantidad | Qué son |
 |---|---|---|
 | `F-01`…`F-13` | 13 | Críticos: corrompen resultados o bloquean la ejecución |
-| `F-14`…`F-34` | 21 | Importantes: fallan en casos concretos o desperdician cómputo |
+| `F-14`…`F-35` | 22 | Importantes: fallan en casos concretos o desperdician cómputo |
 | `A-01`…`A-12` | 12 | Algoritmia y diseño: decisiones discutibles, no bugs |
 | `P-01`…`P-11` | 11 | Empaquetado, tests y documentación |
 
@@ -198,6 +198,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ✅ | `F-32` | El `alteration_limit` por defecto es absoluto, no relativo al dominio |
 | ✅ | `F-33` | El cruce es uniforme: sobre variables reales no crea ningún valor nuevo |
 | ✅ | `F-34` | `get_builtin` del conector falla con cualquier estructura |
+| ⬜ | `F-35` | TPE registra la estructura dinámica y revienta al usarla |
 | ✅ | `A-01` | Sin selección de padres: todos los cruces usan la misma pareja |
 | ✅ | `A-02` | La búsqueda tabú es en realidad hill climbing |
 | ✅ | `A-03` | El vecindario tabú se genera en cadena, no alrededor de la solución |
@@ -1768,6 +1769,43 @@ El ejemplo publicado de `docs/advanced_topics/extending_framework.rst`, que usa
 sin cambiarlo.
 
 Test: `test_f34_get_builtin_acepta_una_estructura`, ampliado a la clase pelada.
+
+### [ ] F-35 (R) · TPE registra la estructura dinámica y revienta al usarla
+`src/metagen/metaheuristics/tpe/tpe_tools.py:117-121` · descubierto al diseñar `F-31`
+
+`TPEConnector` es el único conector, junto al base, que registra la variante dinámica
+(`(TPEStructure, 'dynamic')`). Pero `TPEStructure.resample` da por hecho que todas las
+soluciones de referencia miden lo mismo que ella:
+
+```python
+for i in range(len(self)):
+    self.get(i).resample([val.get(i) for val in best_values], [val.get(i) for val in worst_values])
+```
+
+Con una estructura dinámica, las mejores y las peores soluciones tienen longitudes
+distintas, y `val.get(i)` sobre una más corta que `self` es un `IndexError`. Reproducido
+con un dominio de una sola estructura dinámica de reales, longitud 1 a 6:
+
+```
+RandomSearch  con estructura dinamica -> ok
+HillClimbing  con estructura dinamica -> ok
+SA            con estructura dinamica -> ok
+TPE           con estructura dinamica -> IndexError: list index out of range
+```
+
+Es decir: **TPE es el único que dice admitirla y el único que no la admite.** Los tres
+que no la registran de forma especial la manejan sin problema, porque `Structure.mutate`
+ya sabe redimensionar (`F-19`).
+
+**Arreglo** Que `resample` trabaje sobre las posiciones que existen en cada solución de
+referencia —filtrar las que sean más cortas, o remuestrear solo hasta la longitud
+mínima común—, y decidir aparte cómo se remuestrea la **longitud**, que hoy TPE no
+modela en absoluto: una estructura dinámica en TPE conservaría la longitud con la que
+nació. Es la misma decisión que `F-31` toma para el cruce.
+
+**Queda abierto**, con test en `xfail`, por decisión de David: TPE no se toca de pasada.
+Nótese que no es una diferencia de diseño con el TPE canónico, como lo del trabajo
+aplazado, sino un fallo que se reproduce con cualquier estructura dinámica.
 
 ---
 
