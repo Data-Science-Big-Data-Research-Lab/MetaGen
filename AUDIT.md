@@ -197,7 +197,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ✅ | `F-32` | El `alteration_limit` por defecto es absoluto, no relativo al dominio |
 | ✅ | `F-33` | El cruce es uniforme: sobre variables reales no crea ningún valor nuevo |
 | ✅ | `F-34` | `get_builtin` del conector falla con cualquier estructura |
-| ⬜ | `F-35` | TPE registra la estructura dinámica y revienta al usarla |
+| ✅ | `F-35` | TPE registra la estructura dinámica y revienta al usarla |
 | ✅ | `A-01` | Sin selección de padres: todos los cruces usan la misma pareja |
 | ✅ | `A-02` | La búsqueda tabú es en realidad hill climbing |
 | ✅ | `A-03` | El vecindario tabú se genera en cadena, no alrededor de la solución |
@@ -1834,7 +1834,7 @@ sin cambiarlo.
 
 Test: `test_f34_get_builtin_acepta_una_estructura`, ampliado a la clase pelada.
 
-### [ ] F-35 (R) · TPE registra la estructura dinámica y revienta al usarla
+### [x] F-35 (R) · TPE registra la estructura dinámica y revienta al usarla
 `src/metagen/metaheuristics/tpe/tpe_tools.py:117-121` · descubierto al diseñar `F-31`
 
 `TPEConnector` es el único conector, junto al base, que registra la variante dinámica
@@ -1867,9 +1867,36 @@ mínima común—, y decidir aparte cómo se remuestrea la **longitud**, que hoy
 modela en absoluto: una estructura dinámica en TPE conservaría la longitud con la que
 nació. Es la misma decisión que `F-31` toma para el cruce.
 
-**Queda abierto**, con test en `xfail`, por decisión de David: TPE no se toca de pasada.
-Nótese que no es una diferencia de diseño con el TPE canónico, como lo del trabajo
-aplazado, sino un fallo que se reproduce con cualquier estructura dinámica.
+~~**Queda abierto**, con test en `xfail`, por decisión de David: TPE no se toca de
+pasada.~~ Nótese que no es una diferencia de diseño con el TPE canónico, como lo del
+trabajo aplazado, sino un fallo que se reproduce con cualquier estructura dinámica.
+
+*Cerrado el 9 de septiembre de 2026 con la primera mitad sola.* `TPEStructure.resample`
+remuestrea cada posición **solo con las referencias que la tienen**; una posición a la
+que no llega ninguna se queda con el valor con que nació. La longitud no se remuestrea:
+la estructura nueva conserva la que le dio `initialize()`, uniforme en su rango.
+
+**La segunda mitad se prototipó y se midió, y no se aplica.** Modelar la longitud con la
+propia regla de mezcla de TPE —ajustar dos normales a las longitudes de las mejores y las
+peores referencias, como hace `sample_from_values` con un escalar— sobre el problema
+polinómico, 20 semillas:
+
+| variante | gana al azar | mejora | media | len |
+|---|---|---|---|---|
+| solo valores | 16/20 | 15/20 | 0.0809 | 3.8 |
+| valores + longitud | 17/20 | 17/20 | 0.0702 | 3.2 |
+
+**Es ruido**, y la segunda obliga a reproducir la regla de muestreo de TPE para un valor
+más, que es justo lo que se decidió no tocar. Se queda la primera, y la medición en la
+docstring.
+
+Con la corrección, **TPE pasa las cuatro propiedades del banco en el polinómico**
+—8/10 contra el azar y 8/10 en mejora sobre su inicio, con diez semillas—, mejor de lo
+que hace en el problema de hiperparámetros. El par deja de estar en `_CRASHES`, que
+queda vacío pero se conserva: la fixture no debe volver a dejar que un par tire el
+módulo. Cinco `xfail` menos —los cuatro del par y el del test de regresión—.
+
+Test: `test_f35_tpe_acepta_una_estructura_dinamica`, ya sin marcador.
 
 ---
 

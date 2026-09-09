@@ -21,7 +21,7 @@ about the case the package is sold on: a hyperparameter domain mixes integers,
 categoricals and reals of quite different widths, and findings like F-32 and
 F-33 are invisible without one. The eleventh is the only domain with a dynamic
 structure, which is what F-31 gave the genetic algorithms a crossover for and
-what F-35 found TPE crashes on. Keeping the canonical
+what F-35 found TPE used to crash on. Keeping the canonical
 domains rather than normalizing them is deliberate, and it is what turned up
 F-32: an absolute alteration_limit of 1.0 means something quite different on
 [-2.048, 2.048] than on [-600, 600], and the algorithms built around local search
@@ -440,13 +440,10 @@ _BEATS_RANDOM = {
 }
 
 
-_F35 = ("F-35: TPE registers the dynamic structure and crashes on it, IndexError "
-        "in TPEStructure.resample, which asks val.get(i) of reference solutions that "
-        "may be shorter than itself")
-
 # Pairs known to crash rather than to score badly. They fail every property, so
-# they are merged into every table.
-_CRASHES = {("Polynomial", "TPE"): _F35}
+# they are merged into every table. Empty since F-35 closed; the mechanism stays,
+# because the fixture must never let one pair take the module down.
+_CRASHES: dict = {}
 
 
 def _crashed(rows, name, function_name):
