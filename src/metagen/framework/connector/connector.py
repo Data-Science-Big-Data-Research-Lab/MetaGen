@@ -151,30 +151,54 @@ class BaseConnector:
             raise ValueError(
                 f"The object {solution_type} has not been registered in the connector.")
 
-    def get_builtin(self, solution_type: types.BaseType) -> type[int | float | str | list | dict]:
+    def get_builtin(self, solution_type: types.BaseType | types.Solution | SolutionEntry) -> BuiltinType:
         """
         Retrieves the built-in type based on the input solution type.
 
+        Takes an instance, a class, or a class paired with its discriminator. A
+        structure is registered under a discriminator, because a list stands for both
+        the static and the dynamic definition, and this used to look a structure up by
+        its bare class and fail on every one (F-34). When the bare class is not a key,
+        the entries registered under a discriminator for that class are consulted:
+        they all map to the same builtin, so no discriminator is needed to answer.
+
         :param solution_type: The solution type for which to retrieve the built-in type.
-        :type solution_type: `types.BaseType`
+        :type solution_type: `types.BaseType` | `types.Solution` | type | Tuple[type, str]
         :return: The corresponding built-in type.
         :rtype: type[int | float | str | list | dict]
-        :raises ValueError: If the solution type is not registered in the connector.
+        :raises ValueError: If the solution type is not registered in the connector,
+            or if it is registered under discriminators that map to different builtins.
         """
-        try:
-            key: SolutionEntry
-            if isinstance(solution_type, tuple):
-                key = (solution_type[0] if inspect.isclass(solution_type[0])
-                       else type(solution_type[0]), solution_type[1])
-            else:
-                key = (solution_type if inspect.isclass(solution_type)
-                       else type(solution_type))
+        # Same cast as in get_definition: the parameter arrives as an instance or as
+        # a class, and mypy cannot tell which of the two type() is applied to.
+        key: SolutionEntry
+        if isinstance(solution_type, tuple):
+            key = cast(SolutionEntry, (
+                solution_type[0] if inspect.isclass(solution_type[0])
+                else type(solution_type[0]), solution_type[1]))
+        else:
+            key = cast(SolutionEntry, (
+                solution_type if inspect.isclass(solution_type)
+                else type(solution_type)))
 
-            if issubclass(_solution_class(key), (types.BaseType, types.Solution)):
-                return self._solution_to_builtin[key]
-            else:
-                raise ValueError(
-                    f"The object {solution_type} must be an instance of BaseType.")
-        except KeyError:
+        if not issubclass(_solution_class(key), (types.BaseType, types.Solution)):
             raise ValueError(
-                f"The object {key} has not been registered in the connector.")
+                f"The object {solution_type} must be an instance of BaseType.")
+
+        if key in self._solution_to_builtin:
+            return self._solution_to_builtin[key]
+
+        # Not a key on its own: look at what is registered under a discriminator
+        # for this class. Only reachable with a bare class, since a tuple key that
+        # is missing is simply unregistered.
+        registered = {builtin for entry, builtin in self._solution_to_builtin.items()
+                      if _solution_class(entry) is key}
+        if len(registered) == 1:
+            return registered.pop()
+        if registered:
+            raise ValueError(
+                f"The class {key} is registered under discriminators that map to "
+                f"different builtins, {sorted(b.__name__ for b in registered)}: pass "
+                f"the class paired with its discriminator.")
+        raise ValueError(
+            f"The object {key} has not been registered in the connector.")
