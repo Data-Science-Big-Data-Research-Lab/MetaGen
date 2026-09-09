@@ -151,12 +151,7 @@ def _algorithms(domain: Domain, ga_domain: Domain, seed: int):
     }
 
 
-@pytest.mark.parametrize("name", [
-    "RandomSearch", "SA", "HillClimbing", "TPE", "SSGA", "Memetic",
-    pytest.param("GA", marks=pytest.mark.xfail(
-        reason="F-39: the best the GA returns can carry the fitness of variables its "
-               "children have since altered", strict=True)),
-])
+@pytest.mark.parametrize("name", ["RandomSearch", "SA", "HillClimbing", "TPE", "GA", "SSGA", "Memetic"])
 def test_every_algorithm_searches_the_full_domain(name):
     domain, ga_domain = build_full_domain(), build_full_domain(connector=GAConnector())
     for seed in (0, 1, 2):
