@@ -2118,3 +2118,62 @@ def test_f35_tpe_acepta_una_estructura_dinamica():
 
     mejor = TPE(dominio, fitness, max_iterations=5, warmup_iterations=3, seed=0).run()
     assert 1 <= len(mejor["v"]) <= 6
+
+
+# --------------------------------------------------------------------------------
+# F-31 · Los geneticos no admiten estructuras dinamicas: el cruce no existe
+# --------------------------------------------------------------------------------
+
+def test_f31_los_geneticos_admiten_una_estructura_dinamica():
+    """F-31: con GAConnector ni siquiera se podia declarar una estructura dinamica
+    —fallaba al definir el dominio— porque el conector no registraba la variante, y
+    no la registraba porque el cruce para longitudes variables era un
+    `NotImplementedError`. Ahora se registra y los tres geneticos corren con ella."""
+    from metagen.metaheuristics import GA, SSGA, GAConnector, Memetic
+
+    dominio = Domain(connector=GAConnector())
+    dominio.define_dynamic_structure("v", 2, 7)
+    dominio.set_structure_to_real("v", -3.0, 3.0)
+
+    def fitness(solucion):
+        return sum(x.get() ** 2 for x in solucion["v"]) + 0.1 * len(solucion["v"])
+
+    for algoritmo in (GA(dominio, fitness, population_size=6, max_iterations=4, seed=0),
+                      SSGA(dominio, fitness, population_size=6, max_iterations=4, seed=0),
+                      Memetic(dominio, fitness, population_size=6, max_iterations=4,
+                              neighbor_population_size=2, seed=0)):
+        mejor = algoritmo.run()
+        assert 2 <= len(mejor["v"]) <= 7, (
+            f"{type(algoritmo).__name__} devuelve una estructura de longitud invalida")
+
+
+def test_f31_el_cruce_de_longitud_variable_crea_longitudes_nuevas_y_validas():
+    """La otra mitad: el operador es corte y empalme, elegido por medicion porque
+    recombina las longitudes ademas de los valores. De dos padres de longitudes 2 y 7
+    tienen que salir hijos de longitudes intermedias, y nunca fuera de [2, 7]."""
+    from metagen.metaheuristics import GAConnector
+    from metagen.metaheuristics.ga.ga_tools import GASolution
+
+    dominio = Domain(connector=GAConnector())
+    dominio.define_dynamic_structure("v", 2, 7)
+    dominio.set_structure_to_real("v", -3.0, 3.0)
+
+    set_seed(1)
+    padre = GASolution(dominio, connector=dominio.get_connector())
+    madre = GASolution(dominio, connector=dominio.get_connector())
+    # Lengths fixed by hand rather than left to the seed: the shortest and the
+    # longest the definition allows, so every length in between is a new one.
+    padre.get("v").set([0.5, -0.5])
+    madre.get("v").set([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7])
+
+    longitudes = set()
+    for _ in range(300):
+        for hijo in padre.crossover(madre):
+            longitud = len(hijo["v"])
+            assert 2 <= longitud <= 7, f"hijo de longitud {longitud}, fuera de [2, 7]"
+            longitudes.add(longitud)
+
+    assert longitudes - {2, 7}, (
+        "en 600 hijos no aparece ninguna longitud que no tuvieran los padres: el cruce "
+        "no recombina las longitudes"
+    )
