@@ -68,23 +68,37 @@ Antes se usaba `pytest test/framework_test test/regression`, que lo dejaba fuera
 `tensorflow` (extras opcionales) y se **salta limpiamente** cuando faltan, en vez
 de abortar la recolección de toda la suite, que es lo que `P-04` protege.
 
-Ojo con `pytest-csv-params`: `framework_test/solution_test.py` lo necesita y no lo
-declara ni `install_requires` ni ningún extra (ver P-08). Sin él, ese módulo ni
-siquiera se recolecta.
+La suite no necesita nada que el paquete no declare: el extra `test` lleva
+`pytest` y `scikit-learn` (para el problema de hiperparámetros del banco). Los
+tests dirigidos por CSV, y con ellos `pytest-csv-params`, se reescribieron en
+línea el 9 de septiembre de 2026.
 
 ## Integración continua
 
 Desde P-06, `.github/workflows/ci.yml` corre en cada push y PR sobre `master` y
 `dev`, con dos jobs:
 
-- **`tests`** — matriz 3.10 / 3.11 / 3.12, **bloqueante**. Instala `pip install -e .`
-  más `pytest` y `pytest-csv-params`, y ejecuta la suite que debe estar verde.
+- **`tests`** — matriz 3.10 / 3.11 / 3.12, **bloqueante**. Instala
+  `pip install -e .[test]` y ejecuta la suite que debe estar verde.
 - **`types`** — `mypy src`, **informativo** (`continue-on-error: true`) mientras
-  P-11 siga abierto. De 14 al abrir la auditoría van 7 en el CI, tras cerrar F-01, F-05
-  y A-11; el resto pertenece a la familia F-14/A-10 y a deuda propia de P-11. Cuando el
-  contador llegue a cero, quitar el `continue-on-error` y la comprobación pasa a
-  bloquear. **En local pueden salir 8**: `mypy 1.1.1` da un error en `connector.py:91`
-  que la versión del CI no da.
+  P-11 siga abierto. El contador va por **40 en local**, desde los 167 con que empezó a
+  medirse bien, y **los 40 están en los cuatro ficheros de CVOA**, que tienen sesión
+  propia: todo lo demás está a cero. Cuando llegue a cero, quitar el
+  `continue-on-error` y la comprobación pasa a bloquear.
+
+  Dos ayudantes que existen para que el tipado sea honesto, y que conviene usar en
+  código nuevo: `Metaheuristic._best_so_far()` en vez de leer `self.best_solution`
+  desde `iterate()` (es `Optional` solo antes de inicializar), y
+  `tools.solution_class(domain)` en vez de `get_connector().get_type(get_core())`.
+
+  **El CI da unos pocos menos que el local**, porque
+  ejecuta una versión de mypy más nueva que la 1.1.1 de esta máquina; no es una
+  discrepancia del código y no hay que perseguirla.
+
+  Dos trampas al tipar, las dos vividas: `A | 'B'` en la firma de un método **revienta
+  al importar** (la firma se evalúa al definirla), así que una referencia adelantada va
+  en `Union[...]`; y `cast` evalúa su primer argumento, así que un tipo importado solo
+  bajo `TYPE_CHECKING` hay que citarlo entre comillas.
 
 El CI **no instala los extras a propósito**. Hasta cerrar `F-24` era el único sitio
 donde ese hallazgo se observaba; hoy su test bloquea Ray en un subproceso y corre en
@@ -98,8 +112,9 @@ La carpeta `test/` se reorganizó el 9 de septiembre de 2026:
 ```
 test/
   conftest.py            configuración compartida
-  framework/             test_domain, test_solution, test_alteration, y desde la
-                         reorganización test_connector y test_integration
+  framework/             test_domain y test_solution, con los valores que antes vivían
+                         en CSV escritos en línea; el dominio «con una de cada cosa» es
+                         la fixture `full_domain` de conftest
   metaheuristics/        test_behavior (el banco) y test_extras (opcional: Ray y TensorFlow)
   regression/            test_audit_regressions, un test por hallazgo
 examples/                catálogos de problemas (scikit-learn, TensorFlow, dummies) y
@@ -118,17 +133,65 @@ mejora sobre su inicio, y **gana a muestrear al azar con sus mismas evaluaciones
 Las estadísticas van sobre 10 semillas fijas con umbral de 7, no sobre una
 ejecución suelta: un algoritmo sano queda en 8-10 y uno roto en 0-4.
 
-Desde `F-32` el banco son **seis funciones**, las clásicas del campo, cada una con
-su dominio canónico: Sphere, Rastrigin, Rosenbrock, Ackley, Griewank y Schwefel.
-Los dominios **no se normalizan a propósito** — es lo que destapó `F-32`, porque
-`alteration_limit=1.0` significa algo muy distinto en `[-2.048, 2.048]` que en
-`[-600, 600]`.
+El banco son **las nueve funciones de la Sección 5.1 del artículo** con su dominio
+canónico —Sphere, Rastrigin, Rosenbrock, Ackley, Griewank, Schwefel, Levy,
+Michalewicz y Zakharov—, **un décimo problema que afina un árbol de decisión de
+scikit-learn** sobre un dominio heterogéneo (dos enteros, una categórica y un real),
+y **un undécimo, el ajuste polinómico de grado variable**, el único con una
+estructura dinámica (`F-31`). Un par que reviente se registra en la fixture
+(`_CRASHES`) y falla sus cuatro propiedades bajo `xfail`, sin tirar el módulo; hoy
+la tabla está vacía, desde que `F-35` cerró. Ese décimo es el único que mide el caso de uso que vende el paquete, y por
+él `scikit-learn` está en el extra `test`. Su objetivo es la **log-loss**, no la
+exactitud: la exactitud solo toma 17 valores distintos, así que los empates
+—que cuentan como victoria bajo `<=`— descalibraban la comparación.
 
-Las dos primeras propiedades son estructurales y se exigen a **las 42
+**La fila de `RandomSearch` es la calibración**: compite contra sí misma, así que
+debe salir cerca de 5 de 10. Si se aleja, la comparación está rota, no el
+algoritmo.
+
+**Al problema del árbol solo se le exigen las dos propiedades estructurales.** Las
+dos estadísticas comparan un recuento con un umbral fijo, y entrenar un modelo no
+es aritmética: el CI corre en Linux con numpy 2 y la última scikit-learn, así que
+el árbol ajusta cortes distintos y el paisaje no es el mismo. Un umbral medido en
+una máquina es una predicción que solo vale allí — costó un CI en rojo. Lo marca
+la bandera `reproducible` de `_Problem`. **Cualquier problema nuevo cuyo fitness
+no sea aritmética pura debe declararse `reproducible=False`.**
+
+Cada problema trae **su propio dominio y su propia función de fitness** (`_Problem`
+en `behavior_test.py`), así que añadir uno nuevo no exige que tenga una `x` y una
+`y`. La suite completa tarda ~66 s, la mitad el problema del árbol. Los dominios **no se normalizan a propósito** — es lo
+que destapó `F-32`, porque un `alteration_limit` absoluto significa algo muy
+distinto en `[-2.048, 2.048]` que en `[-600, 600]`. Desde que `F-32` está cerrado, el
+defecto de `HillClimbing`, `Memetic` y `SA` es `RelativeAlteration(0.2)`: **una
+fracción del rango de cada variable, resuelta por la variable misma** en `Real.mutate`
+e `Integer.mutate`. Un número sigue siendo un límite absoluto y `None` sigue siendo el
+dominio entero.
+
+**Michalewicz tiene el mínimo negativo** (≈ −1.8013 en 2D). Ninguna propiedad
+supone que el óptimo esté en 0 —todas son relativas—, y lo que se añada después
+tampoco debe suponerlo.
+
+Las dos primeras propiedades son estructurales y se exigen a **las 63
 combinaciones**, sin excepciones: hoy pasan todas. Las dos estadísticas llevan una
 tabla de `xfail` por propiedad, medida y no supuesta, donde cada par que falla cita
 lo que lo explica. Ojo: la tabla va **por propiedad**, porque hay pares que fallan
 una y pasan la otra.
+
+Con los diez problemas, **el mejor del paquete es el memético** (91/100 contra el
+azar), seguido de `HillClimbing` (89), SA (77), TPE (70), GA (62), `RandomSearch`
+(56, que es la línea base) y SSGA (54). **Los siete alcanzan o superan al muestreo
+aleatorio**; no era así antes de cerrar `A-01`, `F-30`, `F-32` y `F-33`. En el
+problema del árbol el orden cambia: `HillClimbing` 8/10 y **TPE 3/10**, por debajo
+del azar, pese a ser el algoritmo pensado para hiperparámetros.
+
+En una estructura dinámica el cruce es **corte y empalme** desde `F-31`, elegido
+por medición sobre prefijo-común-con-colas (que queda de reserva): recombina las
+longitudes, no solo los valores, y los hijos nacen con longitud válida y en la
+rejilla del paso por construcción — hace falta, porque `Structure.set` no valida la
+longitud. El cruce de los genéticos es **BLX-α con α = 0.5** desde `F-33`, no el
+intercambio uniforme: `GAReal` y `GAInteger` lo traen y se registran en `GAConnector`, y
+`GASolution.crossover` pregunta por la capacidad (`hasattr(valor, "crossover")`) en vez
+de por el builtin. Las categóricas se siguen intercambiando enteras, que es lo correcto.
 
 ## Cómo funcionan los tests de regresión
 

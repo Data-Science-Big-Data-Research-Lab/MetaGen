@@ -1,7 +1,0 @@
-ID#,variable,min_size,max_size,step_size,categories
-1,V,1,3,,C1;C2;C3;C4;C5
-2,V,2,100,10,C1;C2
-3,V,2,100,2,C1;C2
-4,V,2,100,5,C1;C2
-5,V,1,99999999,,C1;C2;C3;C4;C5;C6;C7;C8;C9;C10
-6,V,1,2,,C1;C2;C3;C4;C5

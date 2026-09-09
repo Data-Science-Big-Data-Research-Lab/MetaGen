@@ -16,7 +16,7 @@ logs/
 CLAUDE.md
 *.xlsx
 *.csv
-# ...pero los parametros de los tests son CSV, y quedaban fuera del commit sin
-# aviso: `git status` ni los mencionaba (P-07).
-!test/test_parameters/**/*.csv
+# ...but test data may be CSV, and it used to be left out of the commit without a
+# word: `git status` did not even mention it (P-07).
+!test/**/*.csv
 *.tex
