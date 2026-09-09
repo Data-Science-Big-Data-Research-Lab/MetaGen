@@ -5,7 +5,7 @@ from metagen.logging.metagen_logger import metagen_logger, set_metagen_logger_le
 from metagen.metaheuristics.cvoa import distributed_cvoa_launcher
 
 from metagen.metaheuristics.cvoa.common_tools import StrainProperties
-from metaheuristics_test.problems.dispatcher import problem_dispatcher
+from examples.problems.dispatcher import problem_dispatcher   # run from the repository root
 
 
 def main():

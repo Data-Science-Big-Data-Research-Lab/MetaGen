@@ -25,10 +25,10 @@ jobs:
           cache: pip
 
       - name: Install the package and the test tooling
-        # pytest-csv-params is a hard requirement of framework_test/solution_test.py
-        # and, since P-08, the test extra declares it. The optional extras (ray,
-        # tensorflow) are deliberately left out: without them unit_test.py skips
-        # cleanly, which is what P-04 fixed.
+        # The optional extras (ray, tensorflow) are deliberately left out: the
+        # suite must collect and pass without them, which is what P-04 fixed, and
+        # the one module that needs them, test/metaheuristics/test_extras.py,
+        # skips cleanly.
         run: |
           python -m pip install --upgrade pip
           # The test extra, rather than naming the tools here: since P-08 the
@@ -37,8 +37,8 @@ jobs:
           pip install -e .[test]
 
       - name: Run the suite that must stay green
-        # The whole tree since P-05: metaheuristics_test/behavior_test.py has to
-        # run here, and unit_test.py skips cleanly without the optional extras.
+        # The whole tree since P-05: test/metaheuristics/test_behavior.py has to
+        # run here.
         run: pytest test -q -rxX
 
   types:

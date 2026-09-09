@@ -1092,10 +1092,11 @@ def test_p09_el_paquete_lleva_el_marcador_py_typed():
 
 
 def test_p04_la_suite_completa_se_recolecta_sin_los_extras_opcionales():
-    """P-04: ``pytest test`` abortaba en la recoleccion porque
-    ``test/metaheuristics_test/unit_test.py`` importa ``ray`` y, de forma
-    transitiva via el dispatcher, ``tensorflow``. Sin esos extras opcionales el
-    modulo debe saltarse limpiamente, no tumbar la recoleccion de toda la suite.
+    """P-04: ``pytest test`` abortaba en la recoleccion porque el antiguo
+    ``unit_test.py`` importaba ``ray`` y, de forma transitiva via el dispatcher,
+    ``tensorflow``. Ese modulo se retiro al reorganizar los tests; lo que se protege
+    es la garantia: sin los extras opcionales, la recoleccion de toda la suite no
+    debe abortar nunca, venga de donde venga la importacion.
     """
     ray_presente = importlib.util.find_spec("ray") is not None
     tf_presente = importlib.util.find_spec("tensorflow") is not None
