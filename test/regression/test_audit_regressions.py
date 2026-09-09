@@ -2358,3 +2358,52 @@ def test_f39_el_ga_devuelve_un_fitness_que_es_el_de_sus_variables():
         mejor = GA(dominio, _fitness, population_size=4, max_iterations=3, seed=semilla).run()
         assert mejor.get_fitness() == _fitness(mejor), (
             f"semilla {semilla}: fitness almacenado {mejor.get_fitness()}, real {_fitness(mejor)}")
+
+
+# --------------------------------------------------------------------------------
+# F-40 · En distribuido, el estado propio del algoritmo se actualiza en una copia y se pierde
+# --------------------------------------------------------------------------------
+
+def _esfera_2d():
+    dominio = Domain()
+    dominio.define_real("x", -5.12, 5.12)
+    dominio.define_real("y", -5.12, 5.12)
+    return dominio, (lambda s: s["x"] ** 2 + s["y"] ** 2)
+
+
+@pytest.mark.xfail(reason="F-40: el historial de TPE se rellena en la copia del worker y "
+                          "el del driver sigue vacio; iterate divide por su longitud", strict=True)
+def test_f40_tpe_funciona_en_distribuido():
+    """F-40: Ray ejecuta `initialize` e `iterate` sobre una copia serializada del
+    algoritmo. Lo que esas llamadas guarden en `self` se queda en el worker. TPE guarda
+    ahi su historial de soluciones, que es su modelo, asi que en el driver sigue vacio
+    y la primera iteracion revienta con `ZeroDivisionError`. Con cualquier warmup.
+    Necesita Ray de verdad: se salta donde no este."""
+    pytest.importorskip("ray")
+    from metagen.metaheuristics import TPE
+
+    dominio, esfera = _esfera_2d()
+    mejor = TPE(dominio, esfera, warmup_iterations=2, max_iterations=3, distributed=True, seed=0).run()
+    assert mejor.get_fitness() == esfera(mejor)
+
+
+@pytest.mark.xfail(reason="F-40: la lista tabu de HillClimbing se rellena en la copia del "
+                          "worker y la del driver sigue vacia", strict=True)
+def test_f40_hill_climbing_conserva_su_lista_tabu_en_distribuido():
+    """F-40, la misma perdida sin reventar: `HillClimbing` anade a su lista tabu
+    dentro de `iterate`, y en distribuido esa lista acaba con cero entradas donde en
+    secuencial acaba con varias. El algoritmo corre, pero sin la memoria que dice
+    tener. Necesita Ray de verdad: se salta donde no este."""
+    pytest.importorskip("ray")
+    from metagen.metaheuristics import HillClimbing
+
+    dominio, esfera = _esfera_2d()
+    secuencial = HillClimbing(dominio, esfera, population_size=6, warmup_iterations=1,
+                              max_iterations=5, distributed=False, seed=0)
+    secuencial.run()
+    distribuido = HillClimbing(dominio, esfera, population_size=6, warmup_iterations=1,
+                               max_iterations=5, distributed=True, seed=0)
+    distribuido.run()
+
+    assert len(secuencial.tabu_list) > 0, "en secuencial la lista tabu tiene que llenarse"
+    assert len(distribuido.tabu_list) > 0, "en distribuido la lista tabu se queda vacia"

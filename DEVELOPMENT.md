@@ -7,7 +7,7 @@ Pablo de Olavide). Licencia: ver P-01 en `AUDIT.md` — hoy es contradictoria.
 ## Contexto de trabajo actual
 
 Estamos aplicando los arreglos de una auditoría de código. **Lee AUDIT.md antes
-de tocar nada**: contiene 62 hallazgos con identificadores estables (`F-01`…`F-39`
+de tocar nada**: contiene 63 hallazgos con identificadores estables (`F-01`…`F-40`
 críticos e importantes, `A-01`…`A-12` de diseño, `P-01`…`P-11` de proyecto), cada
 uno con fichero:línea, diagnóstico y arreglo propuesto.
 
@@ -103,7 +103,9 @@ Desde P-06, `.github/workflows/ci.yml` corre en cada push y PR sobre `master` y
 El CI **no instala los extras a propósito**. Hasta cerrar `F-24` era el único sitio
 donde ese hallazgo se observaba; hoy su test bloquea Ray en un subproceso y corre en
 todas partes. El único que sigue necesitando Ray instalado es el de `F-21`, que se
-salta en el CI: es el `1 skipped` que se ve allí, junto al de `unit_test.py`.
+salta en el CI, igual que los de `F-11` y `F-40` y que todo `test_extras.py`: son
+los `skipped` que se ven allí. En una máquina con Ray solo se salta el problema de
+TensorFlow de `test_extras.py`.
 
 ## Cómo se prueban las metaheurísticas
 
@@ -117,7 +119,9 @@ test/
                          en las dos direcciones; test_integration, el framework de punta
                          a punta sobre el dominio «con una de cada cosa», que es
                          `build_full_domain` en conftest y anida estructuras a propósito
-  metaheuristics/        test_behavior (el banco) y test_extras (opcional: Ray y TensorFlow)
+  metaheuristics/        test_behavior (el banco) y test_extras: los siete algoritmos
+                         con distributed=True sobre Ray, y el problema de TensorFlow
+                         de examples/, cada uno saltándose donde falte su extra
   regression/            test_audit_regressions, un test por hallazgo
 examples/                catálogos de problemas (scikit-learn, TensorFlow, dummies) y
                          los scripts de CVOA: no son tests

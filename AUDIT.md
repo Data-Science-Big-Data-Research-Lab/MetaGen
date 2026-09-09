@@ -1,11 +1,11 @@
 # Auditoría de MetaGen
 
 Revisión completa de `src/metagen` sobre el commit `74f104e` (2025-03-21).
-62 hallazgos con identificadores estables: los 46 de la revisión inicial más
+63 hallazgos con identificadores estables: los 46 de la revisión inicial más
 `P-11` (al montar el CI), `F-25` (al medir el comportamiento real de las
 metaheurísticas para `P-05`), `F-26` (al verificar `F-04`), `F-33` (al medir `A-01`), `F-34` (al
-tipar el conector para `P-11`), `F-35` (al diseñar `F-31`) y `F-36` a `F-39` (al escribir los
-tests de integración del framework). Los marcados **(R)** se reprodujeron
+tipar el conector para `P-11`), `F-35` (al diseñar `F-31`), `F-36` a `F-39` (al escribir los
+tests de integración del framework) y `F-40` (al escribir los tests con Ray). Los marcados **(R)** se reprodujeron
 ejecutando el paquete instalado en Python 3.11 sin Ray ni TensorFlow.
 
 **CVOA va aparte.** Sus cuestiones abiertas, sus discrepancias con el artículo original
@@ -36,7 +36,7 @@ Marcar aquí el hallazgo como `[x]` al cerrarlo.
 | Bloque | Cantidad | Qué son |
 |---|---|---|
 | `F-01`…`F-13` | 13 | Críticos: corrompen resultados o bloquean la ejecución |
-| `F-14`…`F-39` | 26 | Importantes: fallan en casos concretos o desperdician cómputo |
+| `F-14`…`F-40` | 27 | Importantes: fallan en casos concretos o desperdician cómputo |
 | `A-01`…`A-12` | 12 | Algoritmia y diseño: decisiones discutibles, no bugs |
 | `P-01`…`P-11` | 11 | Empaquetado, tests y documentación |
 
@@ -203,6 +203,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ⬜ | `F-37` | El valor de un grupo o de una estructura no es builtin más allá del primer nivel |
 | ⬜ | `F-38` | Una estructura acepta cualquier longitud: nadie comprueba el recuento |
 | ⬜ | `F-39` | El cruce de una estructura dinámica de grupos comparte los grupos con los padres |
+| ⬜ | `F-40` | En distribuido, el estado propio del algoritmo se actualiza en una copia y se pierde |
 | ✅ | `A-01` | Sin selección de padres: todos los cruces usan la misma pareja |
 | ✅ | `A-02` | La búsqueda tabú es en realidad hill climbing |
 | ✅ | `A-03` | El vecindario tabú se genera en cadena, no alrededor de la solución |
@@ -2058,6 +2059,37 @@ que no hace daño; es la misma trampa esperando a un tipo con estado.
 `cut_and_splice` y `prefix_and_tails`, y las ramas de intercambio de
 `_recombine_prefix` y `GASolution.crossover`. Y volver a medir el banco, porque
 cambia el flujo de sorteos en cero sitios pero conviene comprobarlo.
+
+### [ ] F-40 (R) · En distribuido, el estado propio del algoritmo se actualiza en una copia y se pierde
+`src/metagen/metaheuristics/base.py:102-140` (`_launch_distributed_method`), `tpe/tpe.py:118` y `:137`, `hc/hill_climbing.py:115` · descubierto al escribir `test/metaheuristics/test_extras.py` · tests: `test_f40_*`, que necesitan Ray y se saltan donde no esté
+
+`_launch_distributed_method` manda a Ray el método ligado, `self.initialize` o
+`self.iterate`, y Ray **serializa el objeto entero** para cada tarea: el worker trabaja
+sobre **una copia** del algoritmo. Lo que el método devuelve vuelve al driver; lo que
+guarde en `self` se queda en el worker y se tira con él.
+
+Dos algoritmos guardan estado en `self` dentro de esos métodos, y a los dos les pasa:
+
+| algoritmo | estado que toca dentro de `iterate` / `initialize` | en distribuido |
+|---|---|---|
+| **TPE** | `solution_history`, que es su modelo | **revienta**: `ZeroDivisionError` en `gamma_sample_based`, con cualquier `warmup_iterations` |
+| **`HillClimbing`** | `tabu_list` | corre, pero la lista acaba con **0** entradas donde en secuencial acaba con 3 |
+
+TPE **nunca ha funcionado en distribuido**: el historial se rellena en la copia del
+worker durante `initialize`, el del driver sigue vacío, y la primera `iterate` divide
+por su longitud. SA no lo sufre porque enfría en `post_iteration`, que corre en el
+driver; RS, GA, SSGA y el memético no guardan nada entre iteraciones fuera de la
+población, que sí vuelve.
+
+Los tests de metaheurísticas nunca lo vieron porque el banco no distribuye y el CI no
+instala Ray. `test_extras.py` marca a TPE como fallo esperado citando esto.
+
+**Arreglo** El estado que un algoritmo mantiene entre iteraciones tiene que
+**volver** del worker o **construirse en el driver** a partir de lo que vuelve. Para
+TPE basta con alimentar `solution_history` en el driver con la población que devuelve
+cada tarea; para `HillClimbing`, con añadir a la lista tabú en `post_iteration` en vez
+de en `iterate`. Y conviene dejar escrito en `Metaheuristic` que `initialize` e
+`iterate` **no deben mutar `self`**, porque en distribuido no se conserva.
 
 ---
 
