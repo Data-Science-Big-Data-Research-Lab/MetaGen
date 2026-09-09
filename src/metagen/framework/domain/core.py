@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import numbers
 from abc import ABC, abstractmethod
-from typing import Any, Dict, cast
+from typing import Any, Dict, Sized, cast
 
 from metagen.framework.domain.literals import (DF, METAGEN_TYPE, Attributes, C,
                                                CatAttr, CatVal, D, DefAttr,
@@ -521,7 +521,7 @@ class BaseStructureDefinition(ABC):
             raise ValueError(Messages.BASE_TYPE_NOT_DEFINED)
 
     @abstractmethod
-    def check_length(self, value: Any) -> bool:
+    def check_length(self, value: Sized) -> bool:
         """
         Abstract method to check if the value has the correct length.
 
@@ -650,13 +650,13 @@ class DynamicStructureDefinition(Base, BaseStructureDefinition):
         return D, self.__min_length, self.__max_length, \
             self.__step_length, super().get_base().get_attributes()
 
-    def check_length(self, value: StrVal) -> bool:
+    def check_length(self, value: Sized) -> bool:
         """
         Checks whether the length of the given value is within the minimum and maximum length of the dynamic structure
         definition.
 
         :param value: A string value to be checked.
-        :type value: StrVal
+        :type value: Sized
 
         :return: A boolean value indicating whether the length of the given value is within the minimum and maximum length of the dynamic structure definition.
         :rtype: bool
@@ -730,12 +730,12 @@ class StaticStructureDefinition(Base, BaseStructureDefinition):
         """
         return S, self.__length, super().get_base().get_attributes()
 
-    def check_length(self, value: StrVal) -> bool:
+    def check_length(self, value: Sized) -> bool:
         """
         Checks if the given value has the correct length for this StaticStructureDefinition.
 
         :param value: The value to check.
-        :type value: StrVal
+        :type value: Sized
         :return: True if the given value has the correct length for this StaticStructureDefinition, False otherwise.
         :rtype: bool
         """
