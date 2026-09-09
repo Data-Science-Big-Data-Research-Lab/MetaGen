@@ -17,7 +17,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
-from copy import copy
+from copy import deepcopy
 from typing import Any, Protocol, Tuple, List, cast
 
 import metagen.framework.solution as types
@@ -219,9 +219,9 @@ class GAStructure(types.Structure):
             if hasattr(self.get(i), "crossover"):
                 first, second = self.get(i).crossover(other.get(i))
             elif i in indexes_to_change:
-                first, second = copy(other.get(i)), copy(self.get(i))
+                first, second = deepcopy(other.get(i)), deepcopy(self.get(i))
             else:
-                first, second = copy(self.get(i)), copy(other.get(i))
+                first, second = deepcopy(self.get(i)), deepcopy(other.get(i))
             head1.append(first)
             head2.append(second)
         return head1, head2
@@ -254,8 +254,8 @@ def prefix_and_tails(first: GAStructure, second: GAStructure,
     """
     common = min(len(first), len(second))
     head1, head2 = first._recombine_prefix(second, common)
-    tail1 = [copy(first.get(i)) for i in range(common, len(first))]
-    tail2 = [copy(second.get(i)) for i in range(common, len(second))]
+    tail1 = [deepcopy(first.get(i)) for i in range(common, len(first))]
+    tail2 = [deepcopy(second.get(i)) for i in range(common, len(second))]
     if get_rng().random() < 0.5:
         tail1, tail2 = tail2, tail1
     return head1 + tail1, head2 + tail2
@@ -289,10 +289,10 @@ def cut_and_splice(first: GAStructure, second: GAStructure,
     cut1, cut2 = pairs[get_rng().randrange(len(pairs))]
     shared = min(cut1, cut2)
     head1, head2 = first._recombine_prefix(second, shared)
-    own1 = [copy(first.get(i)) for i in range(shared, cut1)]
-    own2 = [copy(second.get(i)) for i in range(shared, cut2)]
-    tail1 = [copy(second.get(i)) for i in range(cut2, length2)]
-    tail2 = [copy(first.get(i)) for i in range(cut1, length1)]
+    own1 = [deepcopy(first.get(i)) for i in range(shared, cut1)]
+    own2 = [deepcopy(second.get(i)) for i in range(shared, cut2)]
+    tail1 = [deepcopy(second.get(i)) for i in range(cut2, length2)]
+    tail2 = [deepcopy(first.get(i)) for i in range(cut1, length1)]
     return head1 + own1 + tail1, head2 + own2 + tail2
 
 
@@ -349,14 +349,14 @@ class GASolution(Solution):
             if variable_name not in swappable:
                 variable_child1, variable_child2 = cast(Crossable, variable_value).crossover(
                     other.get(variable_name))
-                child1.set(variable_name, copy(variable_child1))
-                child2.set(variable_name, copy(variable_child2))
+                child1.set(variable_name, deepcopy(variable_child1))
+                child2.set(variable_name, deepcopy(variable_child2))
             elif variable_name in variables_to_exchange:
-                child1.set(variable_name, copy(other.get(variable_name)))
-                child2.set(variable_name, copy(self.get(variable_name)))
+                child1.set(variable_name, deepcopy(other.get(variable_name)))
+                child2.set(variable_name, deepcopy(self.get(variable_name)))
             else:
-                child1.set(variable_name, copy(self.get(variable_name)))
-                child2.set(variable_name, copy(other.get(variable_name)))
+                child1.set(variable_name, deepcopy(self.get(variable_name)))
+                child2.set(variable_name, deepcopy(other.get(variable_name)))
 
         return child1, child2
 

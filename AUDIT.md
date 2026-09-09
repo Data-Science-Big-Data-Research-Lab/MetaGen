@@ -202,7 +202,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ⬜ | `F-36` | `get_definition` del conector falla con una instancia de estructura |
 | ⬜ | `F-37` | El valor de un grupo o de una estructura no es builtin más allá del primer nivel |
 | ⬜ | `F-38` | Una estructura acepta cualquier longitud: nadie comprueba el recuento |
-| ⬜ | `F-39` | El cruce de una estructura dinámica de grupos comparte los grupos con los padres |
+| ✅ | `F-39` | El cruce de una estructura dinámica de grupos comparte los grupos con los padres |
 | ⬜ | `F-40` | En distribuido, el estado propio del algoritmo se actualiza en una copia y se pierde |
 | ✅ | `A-01` | Sin selección de padres: todos los cruces usan la misma pareja |
 | ✅ | `A-02` | La búsqueda tabú es en realidad hill climbing |
@@ -2006,7 +2006,7 @@ contenido; `append`, `insert` y `__delitem__` comprueban la longitud resultante 
 `check_length` y lanzan `ValueError` dejando la estructura como estaba. `Structure.check`
 ya sabe hacerlo; es cuestión de llamarlo.
 
-### [ ] F-39 (R) · El cruce de una estructura dinámica de grupos comparte los grupos con los padres
+### [x] F-39 (R) · El cruce de una estructura dinámica de grupos comparte los grupos con los padres
 `src/metagen/metaheuristics/ga/ga_tools.py:264` (`cut_and_splice`) y `:236` (`prefix_and_tails`) · descubierto al escribir `test/framework/test_integration.py` · tests: `test_f39_*`
 
 **Lo introdujo `F-31`, el 9 de septiembre de 2026, y hay que decirlo.** El cruce de
@@ -2059,6 +2059,23 @@ que no hace daño; es la misma trampa esperando a un tipo con estado.
 `cut_and_splice` y `prefix_and_tails`, y las ramas de intercambio de
 `_recombine_prefix` y `GASolution.crossover`. Y volver a medir el banco, porque
 cambia el flujo de sorteos en cero sitios pero conviene comprobarlo.
+
+*Cerrado el 9 de septiembre de 2026, el mismo día que se anotó.* `deepcopy` en los doce
+sitios donde el cruce copiaba con `copy()`: las colas y los tramos propios de
+`cut_and_splice` y `prefix_and_tails`, las ramas de intercambio de `_recombine_prefix`
+y las cuatro de `GASolution.crossover`. **Ninguna cifra del banco se mueve**, como se
+esperaba: copiar no consume sorteos. Comprobado con la suite entera, sin ningún `XPASS`
+en las tablas de `test_behavior.py`, y valor a valor: el GA devuelve **el mismo fitness
+semilla a semilla** en la esfera y en el dominio completo, también en las dos semillas
+que estaban desfasadas. Lo que cambia no es el número que reporta, sino que ahora sus
+variables valen ese número.
+
+Se retiran los tres marcadores: los dos tests de regresión y el del GA en
+`test_integration.py`, que vuelve a exigir a los siete algoritmos que el mejor que
+devuelven valga lo que dice su fitness.
+
+Tests: `test_f39_el_cruce_no_comparte_grupos_entre_padres_e_hijos` y
+`test_f39_el_ga_devuelve_un_fitness_que_es_el_de_sus_variables`.
 
 ### [ ] F-40 (R) · En distribuido, el estado propio del algoritmo se actualiza en una copia y se pierde
 `src/metagen/metaheuristics/base.py:102-140` (`_launch_distributed_method`), `tpe/tpe.py:118` y `:137`, `hc/hill_climbing.py:115` · descubierto al escribir `test/metaheuristics/test_extras.py` · tests: `test_f40_*`, que necesitan Ray y se saltan donde no esté

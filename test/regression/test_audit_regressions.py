@@ -2310,8 +2310,6 @@ def test_f38_crecer_o_encoger_fuera_de_los_limites_se_rechaza():
 # F-39 · El cruce de una estructura dinamica de grupos comparte los grupos con los padres
 # --------------------------------------------------------------------------------
 
-@pytest.mark.xfail(reason="F-39: cut_and_splice y prefix_and_tails copian las colas con "
-                          "copy(), y un grupo copiado asi comparte su diccionario", strict=True)
 def test_f39_el_cruce_no_comparte_grupos_entre_padres_e_hijos():
     """F-39: en el camino dinamico del cruce, las colas que no se recombinan se copian
     con `copy()`, que es superficial. Para un entero o un real da igual, su valor es
@@ -2342,8 +2340,6 @@ def test_f39_el_cruce_no_comparte_grupos_entre_padres_e_hijos():
             f"semilla {semilla}: mutar a los hijos ha cambiado a los padres")
 
 
-@pytest.mark.xfail(reason="F-39: el mejor del GA conserva el fitness de antes de que sus "
-                          "hijos lo alteraran", strict=True)
 def test_f39_el_ga_devuelve_un_fitness_que_es_el_de_sus_variables():
     """F-39, la consecuencia: el mejor que registra el GA sigue en la poblacion, sus
     hijos comparten con el sus grupos, y al mutar los hijos cambian sus variables sin
