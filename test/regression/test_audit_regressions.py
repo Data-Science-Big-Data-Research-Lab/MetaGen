@@ -2212,8 +2212,6 @@ def test_f31_el_cruce_de_longitud_variable_crea_longitudes_nuevas_y_validas():
 # F-36 · get_definition del conector falla con una instancia de estructura
 # --------------------------------------------------------------------------------
 
-@pytest.mark.xfail(reason="F-36: get_definition busca una instancia por su clase pelada, "
-                          "y las estructuras estan registradas con discriminador", strict=True)
 def test_f36_get_definition_acepta_una_instancia_de_estructura():
     """F-36: es el hermano de F-34, que solo arreglo `get_builtin`. Con una instancia
     de estructura, `get_definition` construye la clave con la clase pelada, que no
