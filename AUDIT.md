@@ -1,11 +1,12 @@
 # Auditoría de MetaGen
 
 Revisión completa de `src/metagen` sobre el commit `74f104e` (2025-03-21).
-63 hallazgos con identificadores estables: los 46 de la revisión inicial más
+64 hallazgos con identificadores estables: los 46 de la revisión inicial más
 `P-11` (al montar el CI), `F-25` (al medir el comportamiento real de las
 metaheurísticas para `P-05`), `F-26` (al verificar `F-04`), `F-33` (al medir `A-01`), `F-34` (al
 tipar el conector para `P-11`), `F-35` (al diseñar `F-31`), `F-36` a `F-39` (al escribir los
-tests de integración del framework) y `F-40` (al escribir los tests con Ray). Los marcados **(R)** se reprodujeron
+tests de integración del framework), `F-40` (al escribir los tests con Ray) y `F-41` (al cerrar
+`F-38`). Los marcados **(R)** se reprodujeron
 ejecutando el paquete instalado en Python 3.11 sin Ray ni TensorFlow.
 
 **CVOA va aparte.** Sus cuestiones abiertas, sus discrepancias con el artículo original
@@ -36,7 +37,7 @@ Marcar aquí el hallazgo como `[x]` al cerrarlo.
 | Bloque | Cantidad | Qué son |
 |---|---|---|
 | `F-01`…`F-13` | 13 | Críticos: corrompen resultados o bloquean la ejecución |
-| `F-14`…`F-40` | 27 | Importantes: fallan en casos concretos o desperdician cómputo |
+| `F-14`…`F-41` | 28 | Importantes: fallan en casos concretos o desperdician cómputo |
 | `A-01`…`A-12` | 12 | Algoritmia y diseño: decisiones discutibles, no bugs |
 | `P-01`…`P-11` | 11 | Empaquetado, tests y documentación |
 
@@ -204,6 +205,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ✅ | `F-38` | Una estructura acepta cualquier longitud: nadie comprueba el recuento |
 | ✅ | `F-39` | El cruce de una estructura dinámica de grupos comparte los grupos con los padres |
 | ⬜ | `F-40` | En distribuido, el estado propio del algoritmo se actualiza en una copia y se pierde |
+| ✅ | `F-41` | `check_length` de la estructura dinámica ignora el paso de longitud |
 | ✅ | `A-01` | Sin selección de padres: todos los cruces usan la misma pareja |
 | ✅ | `A-02` | La búsqueda tabú es en realidad hill climbing |
 | ✅ | `A-03` | El vecindario tabú se genera en cadena, no alrededor de la solución |
@@ -2176,6 +2178,33 @@ devuelven valga lo que dice su fitness.
 
 Tests: `test_f39_el_cruce_no_comparte_grupos_entre_padres_e_hijos` y
 `test_f39_el_ga_devuelve_un_fitness_que_es_el_de_sus_variables`.
+
+### [x] F-41 (R) · `check_length` de la estructura dinámica ignora el paso de longitud
+`src/metagen/framework/domain/core.py:653` · descubierto al cerrar `F-38` · test: `test_f41_check_length_respeta_el_paso_de_longitud`
+
+Una estructura dinámica se declara con mínimo, máximo y **paso** de longitud, igual que
+un entero con paso: `define_dynamic_structure("v", 2, 8, 2)` declara las longitudes
+2, 4, 6 y 8. Medido con esa definición:
+
+| quién | longitudes |
+|---|---|
+| `initialize` y `mutate`, 200 soluciones × 5 mutaciones | solo 2, 4, 6, 8 |
+| el cruce de `F-31` | solo cortes en la rejilla, por `_valid_length` |
+| **`check_length`** | acepta **3** |
+
+Quien genera respetaba la rejilla y quien valida no. Con `F-38` eso pasó a importar:
+`set` hace cumplir `check_length`, así que `set("v", [1, 2, 3])` se aceptaba y dejaba
+una longitud que el propio dominio nunca produce. Y el cruce había tenido que
+**reescribir la regla por su cuenta** en `_valid_length`, porque la del dominio no
+servía: la misma regla en dos sitios, que es como acaban discrepando.
+
+**Arreglo** Que `check_length` de la dinámica exija además `(longitud − mínimo) % paso
+== 0`, y que `_valid_length` delegue en ella.
+
+*Cerrado el mismo día, tal cual, decisión de David.* `_valid_length` pasa a ser una
+línea que llama a `check_length` con un `range` de la longitud pedida. Ninguna cifra
+se mueve: el banco no tiene ninguna estructura con paso de longitud, y la regla del
+cruce ya era esta. La estática no cambia: su longitud es una.
 
 ### [ ] F-40 (R) · En distribuido, el estado propio del algoritmo se actualiza en una copia y se pierde
 `src/metagen/metaheuristics/base.py:102-140` (`_launch_distributed_method`), `tpe/tpe.py:118` y `:137`, `hc/hill_climbing.py:115` · descubierto al escribir `test/metaheuristics/test_extras.py` · tests: `test_f40_*`, que necesitan Ray y se saltan donde no esté

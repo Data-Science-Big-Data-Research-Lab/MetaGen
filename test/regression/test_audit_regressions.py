@@ -2413,3 +2413,27 @@ def test_f40_hill_climbing_conserva_su_lista_tabu_en_distribuido():
 
     assert len(secuencial.tabu_list) > 0, "en secuencial la lista tabu tiene que llenarse"
     assert len(distribuido.tabu_list) > 0, "en distribuido la lista tabu se queda vacia"
+
+
+# --------------------------------------------------------------------------------
+# F-41 · check_length de la estructura dinamica ignora el paso de longitud
+# --------------------------------------------------------------------------------
+
+def test_f41_check_length_respeta_el_paso_de_longitud():
+    """F-41: una dinamica de 2 a 8 con paso 2 declara las longitudes 2, 4, 6 y 8, y
+    eso es lo que producen initialize, mutate y el cruce. Pero check_length, la regla
+    que set hace cumplir desde F-38, aceptaba cualquier longitud entre el minimo y el
+    maximo: quien genera respetaba la rejilla y quien valida no."""
+    dominio = Domain()
+    dominio.define_dynamic_structure("v", 2, 8, 2)
+    dominio.set_structure_to_integer("v", 0, 9)
+    definicion = dominio.get_core().get("v")
+
+    assert [n for n in range(11) if definicion.check_length([0] * n)] == [2, 4, 6, 8]
+
+    set_seed(0)
+    solucion = Solution(dominio)
+    with pytest.raises(ValueError):
+        solucion.set("v", [1, 2, 3])
+    solucion.set("v", [1, 2, 3, 4])
+    assert len(solucion.get("v")) == 4

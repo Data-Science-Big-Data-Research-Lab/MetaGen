@@ -228,9 +228,11 @@ class GAStructure(types.Structure):
 
 
 def _valid_length(definition: DynamicStructureDefinition, length: int) -> bool:
-    """Whether ``length`` is one the definition allows, step included."""
-    _, min_length, max_length, step, _ = definition.get_attributes()
-    return min_length <= length <= max_length and (length - min_length) % (step or 1) == 0
+    """Whether ``length`` is one the definition allows, step included.
+
+    The definition's own rule: this used to restate it here because check_length
+    ignored the step (F-41), and two copies of one rule is how they drift apart."""
+    return definition.check_length(range(length))
 
 
 def prefix_and_tails(first: GAStructure, second: GAStructure,
