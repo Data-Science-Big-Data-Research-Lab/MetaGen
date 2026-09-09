@@ -2092,3 +2092,29 @@ def test_f34_get_builtin_acepta_una_estructura():
     assert conector.get_builtin(type(solucion.get("s"))) is list, (
         "get_builtin no reconoce la clase Structure sin discriminador"
     )
+
+
+# --------------------------------------------------------------------------------
+# F-35 · TPE registra la estructura dinamica y revienta al usarla
+# --------------------------------------------------------------------------------
+
+@pytest.mark.xfail(reason="F-35: TPEStructure.resample pide val.get(i) a soluciones "
+                          "de referencia que pueden ser mas cortas que ella",
+                   strict=True)
+def test_f35_tpe_acepta_una_estructura_dinamica():
+    """F-35: TPEConnector es el unico conector, junto al base, que registra la variante
+    dinamica, y el unico que revienta al usarla: `TPEStructure.resample` recorre sus
+    propias posiciones y pide `val.get(i)` a las mejores y peores soluciones, que con
+    una estructura dinamica pueden ser mas cortas. RandomSearch, HillClimbing y SA
+    manejan el mismo dominio sin problema."""
+    from metagen.metaheuristics import TPE
+
+    dominio = Domain()
+    dominio.define_dynamic_structure("v", 1, 6)
+    dominio.set_structure_to_real("v", -3.0, 3.0)
+
+    def fitness(solucion):
+        return sum(x.get() ** 2 for x in solucion["v"]) + 0.1 * len(solucion["v"])
+
+    mejor = TPE(dominio, fitness, max_iterations=5, warmup_iterations=3, seed=0).run()
+    assert 1 <= len(mejor["v"]) <= 6
