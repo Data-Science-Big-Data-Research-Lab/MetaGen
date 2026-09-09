@@ -2098,9 +2098,6 @@ def test_f34_get_builtin_acepta_una_estructura():
 # F-35 · TPE registra la estructura dinamica y revienta al usarla
 # --------------------------------------------------------------------------------
 
-@pytest.mark.xfail(reason="F-35: TPEStructure.resample pide val.get(i) a soluciones "
-                          "de referencia que pueden ser mas cortas que ella",
-                   strict=True)
 def test_f35_tpe_acepta_una_estructura_dinamica():
     """F-35: TPEConnector es el unico conector, junto al base, que registra la variante
     dinamica, y el unico que revienta al usarla: `TPEStructure.resample` recorre sus
