@@ -170,14 +170,15 @@ def cvoa_local_yield_infected_from_carrier(global_state, fitness_function: Calla
             new_infected_individual = deepcopy(carrier)
             new_infected_individual.mutate(1)
             new_infected_individual.evaluate(fitness_function)
+            # Isolated with probability p_isolation; infected otherwise (F-27, as in cvoa_local).
             if get_rng().random() < strain_properties.p_isolation:
-                update_new_infected_population(global_state, new_infected_population, new_infected_individual,
-                                               strain_properties.p_re_infection)
-            else:
                 if update_isolated:
                     ray.remote(
                         global_state.isolate_individual_conditional_state.remote(new_infected_individual,
                                                                                  IndividualState(True, True, True)))
+            else:
+                update_new_infected_population(global_state, new_infected_population, new_infected_individual,
+                                               strain_properties.p_re_infection)
 
     return new_infected_population
 

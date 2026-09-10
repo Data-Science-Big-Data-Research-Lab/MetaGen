@@ -191,7 +191,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ✅ | `F-24` | El memético exige Ray aunque no se distribuya |
 | ✅ | `F-25` | SA se queda con el último vecino, no con el mejor |
 | ✅ | `F-26` | La semilla no reproducía entre procesos: `mutate` recorría un conjunto |
-| ⬜ | `F-27` | `p_isolation` significa lo contrario de lo que dice su nombre |
+| ✅ | `F-27` | `p_isolation` significa lo contrario de lo que dice su nombre |
 | ⬜ | `F-28` | Tres parámetros de CVOA no son los que sugiere el artículo |
 | ✅ | `F-29` | CVOA no reproduce entre procesos: itera conjuntos de soluciones |
 | ✅ | `F-30` | La temperatura de SA no llega a enfriarse: es un paseo aleatorio |
@@ -1192,7 +1192,7 @@ misma ejecución el fallo es invisible— y fija dos `PYTHONHASHSEED` concretos 
 confiar en los aleatorios, para que sea determinista y no acierte por suerte. Con esto
 la garantía de `A-06` se sostiene también entre ejecuciones.
 
-### [ ] F-27 (R) · `p_isolation` significa lo contrario de lo que dice su nombre
+### [x] F-27 (R) · `p_isolation` significa lo contrario de lo que dice su nombre
 `src/metagen/metaheuristics/cvoa/cvoa_local.py:290` y su gemelo · descubierto al leer el artículo de CVOA
 
 ```python
@@ -1245,6 +1245,65 @@ Refuerza el criterio que **el mismo patrón aparece dos veces más** en el Algor
 
 Detalle completo y orden de ataque en
 `metagen-auditoria/CVOA-cuestiones.md`.
+
+*Cerrado el 10 de septiembre de 2026, segundo paso de la sesión de CVOA, decisión de
+David con la medición delante.* Se intercambian las dos ramas en los tres sitios —los dos
+gemelos y `distributed_tools`—, con el mismo sorteo único, así que el número de tiradas
+no cambia. **Con `p_isolation = 0.5` las dos semánticas son estadísticamente la misma**,
+porque `1 − 0.5 = 0.5`; lo que cambia es el significado de los demás valores.
+
+**La medición que decidió, ya con `F-29` cerrado y por tanto reproducible.** Invertir
+equivale exactamente a usar `1 − p`, así que se midió sin tocar el código. Infectados por
+iteración, una cepa, `seed=0`:
+
+Dominio binario de 10 bits, el del artículo, con sus parámetros (duración 30,
+distanciamiento 7):
+
+| semántica | `p_isolation` | curva |
+|---|---|---|
+| actual | 0.5 | 8, 11, 19, 27, 39, 43, 42, 25, 17, 4 … se apaga |
+| actual | 0.7 | 8, 11, 19, 27, 39, 43, 42, 29, 22, 23, 19, 12, 15, 15 … más despacio |
+| **invertida** | 0.7 | 8, 11, 19, 27, 39, 43, 42, **14, 8, 4** … |
+| **invertida** | 0.8 | 8, 11, 19, 27, 39, 43, 42, **14, 4, 2** … |
+
+La curva de la Figura 2 —pico hacia la séptima iteración y decaimiento— aparece con las
+dos semánticas, porque en 1024 individuos posibles los recuperados y los muertos frenan
+solos la pandemia. Pero **la dirección del parámetro solo es la del artículo con la
+invertida**: más aislamiento, antes se apaga. Con la actual, subir `p_isolation` la
+prolonga.
+
+Dominio continuo 2D, distanciamiento a 2 para que la rama entre pronto, tope de 20 000:
+
+| semántica | `p_isolation` | curva | tiempo |
+|---|---|---|---|
+| actual | 0.5 | 14, 57, 111, … 14 991, 24 914, tope | 14 s |
+| actual | 0.7 | 14, 57, 136, 277, 675, … 44 723, tope | 13 s |
+| **invertida** | 0.7 | 14, 57, 67, 48, 33, 40, 50 … **meseta en ~55** | **0.4 s** |
+| **invertida** | 0.8 | 14, 57, 49, 30, 21, 21, 12 … **4** | **0.1 s** |
+
+Con la semántica actual, el 0.7 que recomienda el artículo hace **explotar antes** la
+pandemia; con la invertida la estabiliza, y 0.8 la apaga. **CVOA vuelve a terminar solo y
+a tardar décimas de segundo**, que es la ventaja n.º 2 del artículo, recuperada.
+
+**Una trampa de método que costó una tanda de mediciones inútiles**, y que el documento
+de CVOA ya avisaba: la primera medición, con el distanciamiento del artículo (7) sobre el
+dominio continuo, dio **seis curvas idénticas** para las dos semánticas y tres valores de
+`p_isolation`. No porque no importara, sino porque a la sexta iteración ya había 23 000
+infectados y la rama del aislamiento **no había llegado a ejecutarse**. En un dominio
+continuo cada infectado es un individuo nuevo y nada frena el crecimiento antes del
+distanciamiento; el artículo trabaja con 10 a 50 bits. Comprobar que la rama se ejecuta,
+antes de dar por bueno lo que se mide sobre ella.
+
+Las ejecuciones que explotan dan mejor fitness en estas tablas por una razón que no es
+mérito suyo: evalúan veinte mil individuos frente a mil. Con presupuesto igualado no está
+medido, y lo que el banco pide es que se compare así.
+
+**Queda para David: avisar a Paco de la errata del pseudocódigo**, que es su diseño.
+
+Tests: `test_f27_aislar_con_certeza_deja_solo_al_mejor` —con `p_isolation = 1` y
+distanciamiento desde la primera iteración solo queda el mejor de la cepa; con el código
+anterior la misma configuración dejaba **1971** infectados— y
+`test_f27_sin_aislamiento_la_pandemia_crece`.
 
 ### [ ] F-28 · Tres parámetros por defecto de CVOA no son los que sugiere el artículo
 `src/metagen/metaheuristics/cvoa/common_tools.py:9-21` · descubierto al leer el artículo de CVOA

@@ -289,18 +289,22 @@ class CVOA(Metaheuristic):
 
             # After social_distancing iterations (when the social_distancing policy is applied),
             # the current individual infects another with a travel distance of one (using infect) then,
-            # the newly infected individual can be isolated or not.
+            # the newly infected individual is isolated with probability p_isolation. The
+            # comparison used to run the other way, infecting when the draw fell below
+            # p_isolation, so the parameter meant the probability of NOT isolating: the
+            # published pseudocode reads that way, but the paper's text and its Figure 5 do
+            # not, and more isolation made the pandemic grow (F-27).
             else:
                 new_infected_individual = infect(carrier_individual, self.fitness_function, 1)
                 if get_rng().random() < self.strain_properties.p_isolation:
-                    self.update_new_infected_population(infected_population, new_infected_individual)
-                else:
                     # If the new individual is isolated, and update_isolated is true, this is sent to the
                     # Isolated population.
                     if self.update_isolated:
                         self.global_state.isolate_individual_conditional_state(new_infected_individual,
                                                                                IndividualState(True, True,
                                                                                                True))
+                else:
+                    self.update_new_infected_population(infected_population, new_infected_individual)
         return infected_population
 
     def update_new_infected_population(self, new_infected_population: SolutionSet,
