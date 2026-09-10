@@ -2463,3 +2463,36 @@ print(repr(mejor.get_fitness()))
         resultados.append(salida.stdout.strip().splitlines()[-1])
     assert resultados[0] == resultados[1], (
         f"la misma semilla da pandemias distintas segun PYTHONHASHSEED: {resultados}")
+
+
+# --------------------------------------------------------------------------------
+# F-27 · p_isolation significa lo contrario de lo que dice su nombre
+# --------------------------------------------------------------------------------
+
+def _cepa_con(p_isolation: float):
+    from metagen.metaheuristics.cvoa.common_tools import StrainProperties
+    from metagen.metaheuristics.cvoa.cvoa_local import CVOA
+    from metagen.metaheuristics.cvoa.local_tools import LocalPandemicState
+
+    set_seed(0)
+    dominio, fitness = _dominio_y_fitness_de_prueba()
+    propiedades = StrainProperties("S1", pandemic_duration=4, social_distancing=1,
+                                   p_isolation=p_isolation)
+    cepa = CVOA(LocalPandemicState(Solution(dominio)), dominio, fitness, propiedades)
+    cepa.run()
+    return cepa
+
+
+def test_f27_aislar_con_certeza_deja_solo_al_mejor():
+    """F-27: `random() < p_isolation` contagiaba y la rama contraria aislaba, asi que el
+    parametro era la probabilidad de NO aislarse y mas aislamiento daba mas contagios.
+    Con p_isolation = 1 y distanciamiento desde la primera iteracion, nadie nuevo puede
+    entrar en la poblacion: solo queda el mejor de la cepa, que se conserva aparte. Con
+    el codigo anterior esa misma configuracion hacia explotar la pandemia."""
+    assert len(_cepa_con(1.0).infected) == 1
+
+
+def test_f27_sin_aislamiento_la_pandemia_crece():
+    """La otra punta: con p_isolation = 0 todo contagio entra, igual que antes del
+    distanciamiento."""
+    assert len(_cepa_con(0.0).infected) > 1
