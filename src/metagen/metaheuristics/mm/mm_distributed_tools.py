@@ -28,6 +28,7 @@ from metagen.logging.metagen_logger import get_remote_metagen_logger
 from metagen.metaheuristics.distributed_tools import assign_load_equally
 from metagen.metaheuristics.mm.mm_tools import population_local_search
 from metagen.metaheuristics.tools import local_search
+from metagen.framework.rng import set_seed, spawn_seed
 
 
 def distributed_population_local_search(population: List[Solution], fitness_function: Callable[[Solution], float],
@@ -55,8 +56,8 @@ def distributed_population_local_search(population: List[Solution], fitness_func
     futures = []
     for count in distribution:
         futures.append(
-            remote_population_local_search.remote(population[:count], fitness_function, neighbor_population_size,
-                                                  alteration_limit, distribution_level))
+            remote_population_local_search.remote(spawn_seed(), population[:count], fitness_function,
+                                                  neighbor_population_size, alteration_limit, distribution_level))
         # Advance the cursor, as base.py does. Without it every worker got the same
         # opening slice: with 9 individuals over 3 workers, only the first 3 were
         # ever searched and the population came back as three copies of them (F-11).
@@ -68,11 +69,12 @@ def distributed_population_local_search(population: List[Solution], fitness_func
     return flattened_results
 
 @ray.remote
-def remote_population_local_search(population: List[Solution], fitness_function: Callable[[Solution], float],
+def remote_population_local_search(seed: int, population: List[Solution], fitness_function: Callable[[Solution], float],
                                neighbor_population_size: int, alteration_limit: float, distribution_level:int) -> List[Solution]:
     """
     Remote worker function for distributed population local search.
 
+    :param seed: Seed for this worker's generators, drawn in the driver (A-06)
     :param population: List of solutions to improve
     :param fitness_function: Function to evaluate solution fitness
     :param neighbor_population_size: Number of neighbors to generate in local search
@@ -86,15 +88,17 @@ def remote_population_local_search(population: List[Solution], fitness_function:
     :return: List of improved solutions
     :rtype: List[:py:class:`~metagen.framework.Solution`]
     """
+    set_seed(seed)
     return population_local_search(population, fitness_function, neighbor_population_size, alteration_limit, distribution_level)
 
 
 @ray.remote
-def remote_local_search(solution: Solution, fitness_function: Callable[[Solution], float],
+def remote_local_search(seed: int, solution: Solution, fitness_function: Callable[[Solution], float],
                      neighbor_population_size: int, alteration_limit: float) -> Solution:
     """
     Remote worker function for distributed local search on a single solution.
 
+    :param seed: Seed for this worker's generators, drawn in the driver (A-06)
     :param solution: Solution to improve
     :param fitness_function: Function to evaluate solution fitness
     :param neighbor_population_size: Number of neighbors to generate
@@ -106,6 +110,7 @@ def remote_local_search(solution: Solution, fitness_function: Callable[[Solution
     :return: Improved solution
     :rtype: :py:class:`~metagen.framework.Solution`
     """
+    set_seed(seed)
     return local_search(solution, fitness_function, neighbor_population_size, alteration_limit)
 
 def distributed_local_search(solution: Solution, fitness_function: Callable[[Solution], float],
@@ -133,7 +138,7 @@ def distributed_local_search(solution: Solution, fitness_function: Callable[[Sol
     futures = []
     for count in distribution:
         futures.append(
-            remote_local_search.remote(solution, fitness_function, count, alteration_limit))
+            remote_local_search.remote(spawn_seed(), solution, fitness_function, count, alteration_limit))
     neighbourhood = ray.get(futures)
     best_neighbour = min(neighbourhood, key=lambda sol: sol.get_fitness())
     return best_neighbour

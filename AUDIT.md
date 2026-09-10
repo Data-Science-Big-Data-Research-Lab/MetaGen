@@ -82,8 +82,9 @@ Lo que haría falta:
 - Decidir qué es «selección global» para cada algoritmo: para GA y SSGA es la selección de
   supervivientes; para TPE, el historial común; para `HillClimbing` y el memético, que ya
   arrancan del mejor del driver, casi nada.
-- Que los workers reciban **semillas derivadas** (`A-06`), para que una ejecución distribuida
-  sea reproducible y se pueda comparar con la secuencial.
+- ~~Que los workers reciban **semillas derivadas** (`A-06`)~~: hecho el 10 de septiembre de
+  2026, `spawn_seed()`; una ejecución distribuida ya reproduce con la misma semilla y el
+  mismo número de CPU.
 - **Medir en el banco antes y después**, como `F-32` y `F-33`: cambia el resultado de los
   siete algoritmos en distribuido.
 
@@ -2438,9 +2439,11 @@ tabú de `HillClimbing` acaba llena. `test_extras.py` deja de marcar a TPE como 
 esperado.
 
 **Lo que sigue sin poderse afirmar es que distribuir no cambia el resultado**, y no es
-de este hallazgo: cada worker de Ray arranca con su propio estado de generador
-(`A-06`), así que ningún test puede comparar la búsqueda secuencial con la
-distribuida valor a valor hasta que se repartan semillas derivadas a los workers.
+de este hallazgo: cada worker de Ray arrancaba con su propio estado de generador
+(`A-06`), así que ningún test podía comparar dos ejecuciones distribuidas valor a
+valor. *Desde el 10 de septiembre de 2026 los workers se siembran desde el driver* (nota
+en `A-06`); y la comparación con la secuencial no procede, porque distribuir es un modelo
+de islas y por tanto otro algoritmo (`F-43`).
 
 De paso, la fitness del dominio completo de los tests se muda de
 `test_integration.py` a `conftest.py`, junto al dominio: el test de `F-39` la
@@ -2799,7 +2802,9 @@ Aquí el código hace lo que dice hacer; lo discutible es qué dice hacer.
   - **La garantía solo valía dentro del mismo proceso hasta cerrar `F-26`.** Los tests de este hallazgo comprobaban dos ejecuciones seguidas en la misma sesión de Python, y ahí el fallo era invisible: `Solution.mutate` recorría un `set` de nombres de variable, cuyo orden depende de hashes que Python aleatoriza en cada arranque. Reproducibilidad entre ejecuciones distintas: ver `F-26`.
   - **Los siete helpers de la suite de regresión sembraban con `random.seed()`** y dejaron de ser deterministas al hacer este cambio: `test_f05_append_conserva_el_valor` llegó a pasar por azar (el entero aleatorio salió 7). Ahora siembran con `set_seed()`.
   - **NumPy cambia de algoritmo**: `default_rng()` (PCG64) en vez del Mersenne Twister de `np.random`. La secuencia de TPE ya no es la de la `0.2.0` publicada.
-  - **Sigue sin resolverse la concurrencia**: las cepas de CVOA local corren en hilos que comparten los generadores, y los workers de Ray arrancan con su propio estado. Ambas firmas lo advierten en su docstring. Cerrarlo del todo exige un generador por instancia, que es la propuesta original de este hallazgo. *Consecuencia para los tests, vista al cerrar `F-40` el 9 de septiembre de 2026:* `test_extras.py` ejecuta los siete algoritmos sobre Ray y comprueba que cada uno devuelve el mejor que vio, pero **no puede afirmar que distribuir no cambia el resultado**, porque sin semillas derivadas para los workers la búsqueda distribuida no es reproducible. Es lo que falta para ese test.
+  - **Sigue sin resolverse la concurrencia**: las cepas de CVOA local corren en hilos que comparten los generadores, y ~~los workers de Ray arrancan con su propio estado~~. Cerrarlo del todo exige un generador por instancia, que es la propuesta original de este hallazgo. *Consecuencia para los tests, vista al cerrar `F-40` el 9 de septiembre de 2026:* `test_extras.py` ejecuta los siete algoritmos sobre Ray y comprueba que cada uno devuelve el mejor que vio, pero **no puede afirmar que distribuir no cambia el resultado**: distribuir es otro algoritmo (modelo de islas, ver `F-43` y el trabajo aplazado), así que esa comparación no tiene sentido.
+
+    **Los workers de Ray sí reproducen desde el 10 de septiembre de 2026.** Cada tarea de Ray —`initialize` e `iterate` de la clase base, la exploración aleatoria del warmup, las dos búsquedas locales del memético, la cepa del CVOA distribuido y sus dos niveles de tareas de contagio— recibe una semilla sacada del generador del driver con `spawn_seed()` y siembra los suyos antes de trabajar. Así la semilla del driver decide todas las corrientes, y dos ejecuciones distribuidas con la misma semilla y el mismo número de CPU dan lo mismo valor a valor: fitness e historial en `RandomSearch`, GA, memético con `distribution_level=2` y TPE, y el fitness de una cepa de CVOA. Solo las rutas distribuidas sacan semillas, así que **el secuencial no se mueve**. Lo que queda de esta nota es lo de los hilos de CVOA local, y en el CVOA distribuido el orden en que varias cepas —o varias tareas de contagio concurrentes— llegan al estado compartido, que es tiempo y no sorteo (documento de CVOA, 3.6). Tests: `test_a06_la_misma_semilla_reproduce_en_distribuido`, parametrizado por los cuatro algoritmos, y `test_a06_la_misma_semilla_reproduce_una_cepa_de_cvoa_distribuida`; los cinco fallan con el código anterior.
 
   Tests: `test_a06_la_misma_semilla_reproduce_la_ejecucion`, `test_a06_semillas_distintas_dan_ejecuciones_distintas`, `test_a06_metagen_no_toca_el_generador_global_del_usuario`.
 - **[x] A-07 (R)** `ga`, `ssga`, `mm` — no validan que el dominio use `GAConnector`: con un `Domain()` normal mueren en la primera iteración con `AttributeError: 'Solution' object has no attribute 'crossover'`.

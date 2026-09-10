@@ -55,7 +55,10 @@ Tres ideas que conviene tener presentes:
   biblioteca estándar). Un `random.x(...)` nuevo en `src/` es un bug: usa
   `get_rng()` o `get_numpy_rng()`. Para sembrar, `Metaheuristic(..., seed=N)` o
   `set_seed(N)` directamente; en los tests, **nunca `random.seed()`**, que ya no
-  controla nada de la librería.
+  controla nada de la librería. **Cada tarea de Ray recibe su semilla**: el despachador
+  saca una con `spawn_seed()` del generador del driver y el worker la aplica con
+  `set_seed()` antes de trabajar. Una función `@ray.remote` nueva sin ese parámetro
+  devuelve la ejecución distribuida no reproducible.
 
 ## Comandos
 
