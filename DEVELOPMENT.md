@@ -239,7 +239,9 @@ incorrecto, dilo antes de tocarlo.
   `fix(domain): F-16 format the definition error messages`
 - Los ficheros bajo `src/metagen/metaheuristics/cvoa/` están duplicados entre la
   versión local y la distribuida (A-09): si arreglas algo ahí, comprueba si el
-  mismo bug está en el gemelo.
+  mismo bug está en el gemelo. Sus poblaciones son `SolutionSet`, un conjunto con
+  orden de inserción (`common_tools.py`): un `set()` nuevo de soluciones en CVOA
+  devuelve `F-29`, la pandemia que cambia con `PYTHONHASHSEED`.
 - Desde F-24, `mm/` sigue el mismo patrón que el resto del paquete: `mm_tools.py`
   no toca Ray y `mm_distributed_tools.py` sí. El despachador importa el segundo
   **dentro de la función**, no arriba. Un `import ray` nuevo en `mm_tools.py`

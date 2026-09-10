@@ -1,8 +1,7 @@
 import threading
-from typing import Set
 
 from metagen.framework import Solution
-from metagen.metaheuristics.cvoa.common_tools import IndividualState
+from metagen.metaheuristics.cvoa.common_tools import IndividualState, SolutionSet
 
 
 # Local pandemic state (multi-threading)
@@ -15,9 +14,9 @@ class LocalPandemicState:
         # of getting the nesting wrong is a silent hang, which is reason enough to
         # let a thread reacquire a lock it already owns.
         self.lock = threading.RLock()
-        self.recovered:Set[Solution] = set()
-        self.deaths:Set[Solution] = set()
-        self.isolated:Set[Solution] = set()
+        self.recovered: SolutionSet = SolutionSet()
+        self.deaths: SolutionSet = SolutionSet()
+        self.isolated: SolutionSet = SolutionSet()
         self.best_individual_found:bool = False
         self.best_individual:Solution = initial_individual
 
@@ -42,7 +41,7 @@ class LocalPandemicState:
             self.recovered.remove(individual)
 
     # Deaths
-    def update_deaths(self, individuals:Set[Solution])-> None:
+    def update_deaths(self, individuals:SolutionSet)-> None:
         with self.lock:
             self.deaths.update(individuals)
 

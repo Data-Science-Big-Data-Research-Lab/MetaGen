@@ -16,7 +16,7 @@
 """
 import math
 import threading
-from typing import Set, List, Tuple, Callable
+from typing import List, Tuple, Callable
 
 from metagen.framework import Domain
 from metagen.framework.solution import Solution
@@ -25,7 +25,7 @@ from metagen.logging.metagen_logger import metagen_logger
 
 from metagen.metaheuristics.base import Metaheuristic
 from metagen.metaheuristics.cvoa.common_tools import StrainProperties, IndividualState, \
-    compute_n_infected_travel_distance, infect, insert_into_set_strain
+    compute_n_infected_travel_distance, infect, insert_into_set_strain, SolutionSet
 from metagen.metaheuristics.cvoa.local_tools import LocalPandemicState
 from metagen.framework.rng import get_rng
 
@@ -139,10 +139,10 @@ class CVOA(Metaheuristic):
         self.worst_superspreader: Solution = self.solution_type(self.domain, best=True, connector=self.domain.get_connector())
 
         # 5. Main strain sets: infected, superspreaders, infected superspreaders and deaths.
-        self.infected: Set[Solution] = set()
-        self.superspreaders: Set[Solution] = set()
-        self.infected_superspreaders: Set[Solution] = set()
-        self.dead: Set[Solution] = set()
+        self.infected: SolutionSet = SolutionSet()
+        self.superspreaders: SolutionSet = SolutionSet()
+        self.infected_superspreaders: SolutionSet = SolutionSet()
+        self.dead: SolutionSet = SolutionSet()
 
     def initialize(self, num_solutions=10) -> Tuple[List[Solution], Solution]:
 
@@ -166,7 +166,7 @@ class CVOA(Metaheuristic):
         # 1. Spreading the disease.
 
         # 1.1. Initialize the new infected population set
-        new_infected_population: Set[Solution] = set()
+        new_infected_population: SolutionSet = SolutionSet()
 
         # 1.2. Before the new propagation, update the strain (superspreader, death) and global (death, recovered) sets.
         self.update_pandemic_global_state()
@@ -274,9 +274,9 @@ class CVOA(Metaheuristic):
         # 4. Remove the global dead individuals from the global recovered set.
         self.global_state.update_recovered_with_deaths()
 
-    def infect_individuals(self, carrier_individual: Solution, travel_distance: int, n_infected: int) -> Set[Solution]:
+    def infect_individuals(self, carrier_individual: Solution, travel_distance: int, n_infected: int) -> SolutionSet:
 
-        infected_population: Set[Solution] = set()
+        infected_population: SolutionSet = SolutionSet()
 
         for _ in range(0, n_infected):
 
@@ -303,7 +303,7 @@ class CVOA(Metaheuristic):
                                                                                                True))
         return infected_population
 
-    def update_new_infected_population(self, new_infected_population: Set[Solution],
+    def update_new_infected_population(self, new_infected_population: SolutionSet,
                                        new_infected_individual: Solution) -> None:
         """ It updates the next infected population with a new infected individual.
 

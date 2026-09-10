@@ -193,7 +193,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ✅ | `F-26` | La semilla no reproducía entre procesos: `mutate` recorría un conjunto |
 | ⬜ | `F-27` | `p_isolation` significa lo contrario de lo que dice su nombre |
 | ⬜ | `F-28` | Tres parámetros de CVOA no son los que sugiere el artículo |
-| ⬜ | `F-29` | CVOA no reproduce entre procesos: itera conjuntos de soluciones |
+| ✅ | `F-29` | CVOA no reproduce entre procesos: itera conjuntos de soluciones |
 | ✅ | `F-30` | La temperatura de SA no llega a enfriarse: es un paseo aleatorio |
 | ✅ | `F-31` | Los genéticos no admiten estructuras dinámicas: el cruce no existe |
 | ✅ | `F-32` | El `alteration_limit` por defecto es absoluto, no relativo al dominio |
@@ -1271,7 +1271,7 @@ lo contrario, subirlo a 0.7 empeora las cosas en vez de mejorarlas.
 Se ataca en la sesión dedicada a CVOA, después de `F-27`: ver
 `metagen-auditoria/CVOA-cuestiones.md`.
 
-### [ ] F-29 (R) · CVOA no reproduce entre procesos: itera conjuntos de soluciones
+### [x] F-29 (R) · CVOA no reproduce entre procesos: itera conjuntos de soluciones
 `src/metagen/metaheuristics/cvoa/cvoa_local.py:178` y su gemelo · descubierto al cerrar `F-15`
 
 `for individual in self.infected:` recorre un `Set[Solution]`. El orden de iteración de
@@ -1304,6 +1304,37 @@ dos gemelos.
 `metagen-auditoria/CVOA-cuestiones.md`. Nótese que **invalida cualquier medición de CVOA
 tomada hasta ahora**, incluidas las de `F-23` y `F-10` de este documento, que se hicieron
 en procesos distintos.
+
+*Cerrado el 10 de septiembre de 2026, primer paso de la sesión de CVOA.* Reproducido
+antes de tocar nada, una cepa, `seed=0`, `pandemic_duration=6`, `social_distancing=2`:
+
+```
+PYTHONHASHSEED=0  fitness=0.0014786023  infectados por iteracion=[14, 45, 110, 159, 255, 445, 731]
+PYTHONHASHSEED=0  fitness=0.0014786023  (repetido: identico)
+PYTHONHASHSEED=1  fitness=0.0192076125  infectados por iteracion=[14, 56, 104, 156, 268, 471, 787]
+PYTHONHASHSEED=2  fitness=0.0096488992  infectados por iteracion=[14, 50, 112, 159, 274, 475, 808]
+```
+
+**La forma del arreglo es un conjunto con orden de inserción, no un `sorted`.** Ordenar
+exige una clave total sobre soluciones, y el fitness empata —en codificación discreta,
+constantemente— mientras que las variables son de tipos mixtos. Un conjunto respaldado
+por un `dict`, `SolutionSet` en `common_tools.py`, conserva la deduplicación que el
+artículo recomienda y recorre en el orden en que se añadió cada individuo, que solo
+depende de los sorteos. Sustituye a `Set[Solution]` en los dos gemelos, en los dos
+estados compartidos y en las herramientas distribuidas: todos los conjuntos de
+soluciones de CVOA, no solo los que se recorren hoy.
+
+Después, los tres `PYTHONHASHSEED` dan lo mismo, `fitness=0.0051186325` y
+`[14, 57, 111, 156, 253, 446, 748]`. **Es otro valor que cualquiera de los de antes**,
+como tenía que ser: el orden de recorrido cambia y con él la pandemia. Desde aquí las
+mediciones de CVOA sí son comparables entre sí, y las anteriores no lo son con estas.
+
+El gemelo distribuido corre sobre Ray con el conjunto nuevo. **Lo que sigue sin fijarse
+es el entrelazado de varias cepas**, que es hilos y no conjuntos: residuo de `A-06`,
+punto 3.6 del documento de CVOA. La garantía es para una cepa.
+
+Test: `test_f29_cvoa_reproduce_entre_procesos`, en dos subprocesos con `PYTHONHASHSEED`
+0 y 1; comprobado que falla con el código anterior, con `0.1634` frente a `0.3129`.
 
 ### [x] F-30 (R) · La temperatura de SA no llega a enfriarse: es un paseo aleatorio
 `src/metagen/metaheuristics/sa/sa.py:92-93` · descubierto al cerrar `F-20`

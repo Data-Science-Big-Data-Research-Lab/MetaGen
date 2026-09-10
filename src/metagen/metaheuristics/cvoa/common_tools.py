@@ -1,11 +1,54 @@
 import copy
-from typing import NamedTuple, Optional, Set, Tuple, Callable
+from collections.abc import MutableSet
+from typing import Callable, Dict, Iterable, Iterator, NamedTuple, Optional, Tuple
 
 from metagen.framework import Domain, Solution
 from metagen.framework.rng import get_rng
 
 
 # Strain Properties
+class SolutionSet(MutableSet[Solution]):
+    """
+    A set of solutions that iterates in insertion order.
+
+    CVOA keeps its populations in sets, to drop repeated individuals as the paper
+    recommends, and iterates them to spread the disease. A plain set iterates in
+    hash order, and the hash of a Solution depends on the hashes of its variable
+    names, which Python randomizes on every interpreter start (PEP 456): the same
+    seed gave a different pandemic in every process (F-29). Backed by a dict, this
+    keeps the deduplication and makes the order follow the draws alone.
+    """
+
+    def __init__(self, iterable: Iterable[Solution] = ()) -> None:
+        self._items: Dict[Solution, None] = dict.fromkeys(iterable)
+
+    def __contains__(self, item: object) -> bool:
+        return item in self._items
+
+    def __iter__(self) -> Iterator[Solution]:
+        return iter(self._items)
+
+    def __len__(self) -> int:
+        return len(self._items)
+
+    def add(self, item: Solution) -> None:
+        self._items.setdefault(item, None)
+
+    def discard(self, item: Solution) -> None:
+        self._items.pop(item, None)
+
+    def update(self, items: Iterable[Solution]) -> None:
+        for item in items:
+            self.add(item)
+
+    def difference_update(self, items: Iterable[Solution]) -> None:
+        for item in items:
+            self.discard(item)
+
+    def __repr__(self) -> str:
+        return "{" + ", ".join(str(item) for item in self._items) + "}" if self._items else "set()"
+
+
 class StrainProperties(NamedTuple):
     strain_id: str = "Strain#1"
     pandemic_duration: int = 10
@@ -30,7 +73,7 @@ IndividualState = NamedTuple("IndividualState", [("recovered", bool), ("dead", b
 
 
 def compute_n_infected_travel_distance(domain: Domain, strain_properties: StrainProperties, carrier: Solution,
-                                       superspreaders: Set[Solution]) -> Tuple[int, int]:
+                                       superspreaders: SolutionSet) -> Tuple[int, int]:
     # ** 1. Determine the number of infections. **
     if carrier in superspreaders:
         # If the current individual is superspreader the number of infected ones will be in
@@ -66,7 +109,7 @@ def infect(individual: Solution, fitness_function: Callable[[Solution],float],tr
     return infected
 
 
-def insert_into_set_strain(strain_worst_superspreader:Solution, strain_best_dead:Solution,bag: Set[Solution], to_insert: Solution, remaining: int, ty: str) -> Tuple[Solution, Solution, bool]:
+def insert_into_set_strain(strain_worst_superspreader:Solution, strain_best_dead:Solution,bag: SolutionSet, to_insert: Solution, remaining: int, ty: str) -> Tuple[Solution, Solution, bool]:
     """ Insert an individual in the strain sets (death or superspreader).
 
     :param bag: The set where the individual has to be inserted.

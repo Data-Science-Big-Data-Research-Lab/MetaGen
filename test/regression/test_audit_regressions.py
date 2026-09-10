@@ -2432,3 +2432,34 @@ def test_f41_check_length_respeta_el_paso_de_longitud():
         solucion.set("v", [1, 2, 3])
     solucion.set("v", [1, 2, 3, 4])
     assert len(solucion.get("v")) == 4
+
+
+# --------------------------------------------------------------------------------
+# F-29 · CVOA no reproduce entre procesos: itera conjuntos de soluciones
+# --------------------------------------------------------------------------------
+
+def test_f29_cvoa_reproduce_entre_procesos():
+    """F-29: CVOA recorria `Set[Solution]` para propagar, y el orden de un conjunto
+    sigue a los hashes de sus elementos, que Python aleatoriza en cada arranque
+    (PEP 456). Misma semilla, distinto PYTHONHASHSEED, distinta pandemia. Como en F-26,
+    se cruza la frontera del proceso a proposito y se fijan dos hash seeds concretos.
+    Una cepa: con varias el entrelazado de hilos sigue sin fijarse (A-06)."""
+    programa = """
+from metagen.framework import Domain
+from metagen.metaheuristics import cvoa_launcher
+from metagen.metaheuristics.cvoa.common_tools import StrainProperties
+dominio = Domain()
+dominio.define_real("x", -5.0, 5.0)
+dominio.define_real("y", -5.0, 5.0)
+mejor = cvoa_launcher([StrainProperties("S1", pandemic_duration=4, social_distancing=2)],
+                      dominio, lambda s: s["x"] ** 2 + s["y"] ** 2, seed=0)
+print(repr(mejor.get_fitness()))
+"""
+    resultados = []
+    for hash_seed in ("0", "1"):
+        entorno = {**os.environ, "PYTHONHASHSEED": hash_seed}
+        salida = subprocess.run([sys.executable, "-c", programa], env=entorno,
+                                capture_output=True, text=True, check=True)
+        resultados.append(salida.stdout.strip().splitlines()[-1])
+    assert resultados[0] == resultados[1], (
+        f"la misma semilla da pandemias distintas segun PYTHONHASHSEED: {resultados}")
