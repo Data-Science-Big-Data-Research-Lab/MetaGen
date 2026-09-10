@@ -297,10 +297,11 @@ class DistributedCVOA(Metaheuristic):
                     # If the new individual is isolated, and update_isolated is true, this is sent to the
                     # Isolated population.
                     if self.update_isolated:
-                        ray.remote(
-                            self.global_state.isolate_individual_conditional_state.remote(new_infected_individual,
-                                                                                          IndividualState(True, True,
-                                                                                                          True)))
+                        # Waited on like every other call to the actor. This used to be
+                        # wrapped in ray.remote(...), which is a decorator and raised
+                        # AssertionError on the ObjectRef it was handed (F-42).
+                        ray.get(self.global_state.isolate_individual_conditional_state.remote(
+                            new_infected_individual, IndividualState(True, True, True)))
                 else:
                     self.update_new_infected_population(infected_population, new_infected_individual)
         return infected_population

@@ -2517,3 +2517,25 @@ def test_f28_los_valores_por_defecto_son_los_del_articulo():
                     p_travel=0.1, p_re_infection=0.02, p_superspreader=0.1, p_die=0.05)
     defecto = StrainProperties()._asdict()
     assert {k: defecto[k] for k in articulo} == articulo
+
+
+# --------------------------------------------------------------------------------
+# F-42 · El CVOA distribuido revienta con update_isolated=True: ray.remote envuelve una llamada
+# --------------------------------------------------------------------------------
+
+def test_f42_el_cvoa_distribuido_admite_update_isolated():
+    """F-42: la rama del aislamiento del gemelo distribuido, en dos sitios, hacia
+    `ray.remote(estado.isolate_individual_conditional_state.remote(...))`. ray.remote es
+    un decorador, y recibir el ObjectRef de una llamada lo hace reventar con
+    AssertionError en cuanto llega el distanciamiento. `update_isolated=True` es el
+    ejemplo publicado en la documentacion del CVOA distribuido. Necesita Ray de
+    verdad: se salta donde no este."""
+    pytest.importorskip("ray")
+    from metagen.metaheuristics.cvoa.common_tools import StrainProperties
+    from metagen.metaheuristics.cvoa.distributed_launcher import distributed_cvoa_launcher
+
+    dominio, fitness = _dominio_y_fitness_de_prueba()
+    mejor = distributed_cvoa_launcher(
+        [StrainProperties("S1", pandemic_duration=3, social_distancing=1)],
+        dominio, fitness, update_isolated=True, seed=0)
+    assert mejor.get_fitness() == fitness(mejor)
