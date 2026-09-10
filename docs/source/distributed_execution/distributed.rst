@@ -54,8 +54,8 @@ before switching it on:
   ``HillClimbing`` and ``SA`` do not change.
 - **The result depends on the machine.** A distributed run on 2 CPUs and one on 8 CPUs are
   different searches, and neither is comparable value by value with the sequential run.
-  The workers' random generators are not seeded either, so a distributed run is not
-  reproducible even with ``seed``.
+  Two distributed runs with the same ``seed`` **on the same number of CPUs** do
+  reproduce each other: every worker task is seeded from the driver's generator.
 - ``SA`` works on a population of one, so it gains nothing from distribution.
 
 If what you need is the **same search, only faster**, distribute the fitness function

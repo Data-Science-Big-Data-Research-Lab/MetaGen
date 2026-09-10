@@ -20,7 +20,7 @@ from abc import ABC, abstractmethod
 from .import_helper import is_package_installed
 from typing import List, Tuple, Optional, Callable
 from metagen.framework import Domain, Solution
-from metagen.framework.rng import set_seed
+from metagen.framework.rng import set_seed, spawn_seed
 from copy import deepcopy
 
 from metagen.logging.metagen_logger import metagen_logger
@@ -54,8 +54,10 @@ class Metaheuristic(ABC):
         the islands never exchange individuals, and the only thing they share is the
         best solution the driver keeps. The algorithm each worker runs is therefore
         the algorithm on a smaller population, and the number of evaluations, the
-        elitism and the result all depend on how many CPUs the cluster has. Distributed and sequential runs are not comparable
-        value by value, and the workers' random generators are not seeded (A-06).
+        elitism and the result all depend on how many CPUs the cluster has.
+        Distributed and sequential runs are not comparable value by value; two
+        distributed runs with the same ``seed`` on the same number of CPUs are, since
+        every worker task is seeded from the driver's generator (A-06).
     :type distributed: bool, optional
     :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
     :type log_dir: str or None, optional
@@ -150,10 +152,10 @@ class Metaheuristic(ABC):
         for count in distribution:
 
             if self.current_iteration != -1:
-                futures.append(call_distributed.remote(method, population[:count]))
+                futures.append(call_distributed.remote(spawn_seed(), method, population[:count]))
                 population = population[count:]
             else:
-                futures.append(call_distributed.remote(method, count))
+                futures.append(call_distributed.remote(spawn_seed(), method, count))
 
         remote_results = ray.get(futures)
         population = [individual for subpopulation in remote_results for individual in subpopulation[0]]

@@ -2674,3 +2674,77 @@ def test_f44_el_lanzador_distribuido_de_cvoa_no_apaga_un_ray_que_no_arranco():
     finally:
         if arrancado_aqui and ray.is_initialized():
             ray.shutdown()
+
+
+# --------------------------------------------------------------------------------
+# A-06, residuo · Los workers de Ray arrancaban con su propio estado: nada distribuido reproducia
+# --------------------------------------------------------------------------------
+
+def _ejecucion_distribuida(nombre: str, semilla: int):
+    """Lanza un algoritmo en distribuido y devuelve lo que tiene que repetirse: el
+    fitness del mejor y el historial entero, valor a valor."""
+    from metagen.metaheuristics import RandomSearch, GA, Memetic, TPE, GAConnector
+
+    dominio, esfera = _esfera_2d()
+    dominio_ga = Domain(connector=GAConnector())
+    dominio_ga.define_real("x", -5.0, 5.0)
+    dominio_ga.define_real("y", -5.0, 5.0)
+    fabricas = {
+        "RandomSearch": lambda: RandomSearch(dominio, esfera, population_size=6, max_iterations=3,
+                                             distributed=True, seed=semilla),
+        "GA": lambda: GA(dominio_ga, esfera, population_size=6, max_iterations=3,
+                         distributed=True, seed=semilla),
+        # distribution_level=2 cubre las dos busquedas locales distribuidas del memetico
+        "Memetic": lambda: Memetic(dominio_ga, esfera, population_size=6, max_iterations=2,
+                                   neighbor_population_size=4, distributed=True,
+                                   distribution_level=2, seed=semilla),
+        # TPE tira del generador de NumPy; su warmup cubre la exploracion aleatoria distribuida
+        "TPE": lambda: TPE(dominio, esfera, warmup_iterations=2, max_iterations=3,
+                           distributed=True, seed=semilla),
+    }
+    algoritmo = fabricas[nombre]()
+    mejor = algoritmo.run()
+    return mejor.get_fitness(), list(algoritmo.best_solution_fitnesses)
+
+
+@pytest.mark.parametrize("nombre", ["RandomSearch", "GA", "Memetic", "TPE"])
+def test_a06_la_misma_semilla_reproduce_en_distribuido(nombre):
+    """A-06 dejo dicho que los workers de Ray arrancaban cada uno con su propio
+    estado de generador, asi que `seed` no reproducia ninguna ejecucion distribuida:
+    dos lanzamientos identicos daban resultados distintos. Ahora cada tarea de Ray
+    recibe una semilla derivada del generador del driver y siembra los suyos antes de
+    trabajar. Necesita Ray de verdad: se salta donde no este."""
+    ray = pytest.importorskip("ray")
+    arrancado_aqui = not ray.is_initialized()
+    if arrancado_aqui:
+        ray.init(num_cpus=2, include_dashboard=False, ignore_reinit_error=True)
+    try:
+        primera = _ejecucion_distribuida(nombre, 3)
+        segunda = _ejecucion_distribuida(nombre, 3)
+        assert primera == segunda, (
+            f"{nombre} distribuido con la misma semilla dio {primera} y luego {segunda}")
+    finally:
+        if arrancado_aqui and ray.is_initialized():
+            ray.shutdown()
+
+
+def test_a06_la_misma_semilla_reproduce_una_cepa_de_cvoa_distribuida():
+    """A-06, residuo, en el CVOA distribuido: la cepa corre en su propio proceso y
+    sortea alli, asi que la semilla del lanzador no le llegaba. Con una sola cepa no
+    hay entrelazado con otras y la pandemia tiene que repetirse. Necesita Ray."""
+    ray = pytest.importorskip("ray")
+    from metagen.metaheuristics.cvoa.common_tools import StrainProperties
+    from metagen.metaheuristics.cvoa.distributed_launcher import distributed_cvoa_launcher
+
+    dominio, fitness = _dominio_y_fitness_de_prueba()
+    arrancado_aqui = not ray.is_initialized()
+    if arrancado_aqui:
+        ray.init(num_cpus=2, include_dashboard=False, ignore_reinit_error=True)
+    try:
+        resultados = [distributed_cvoa_launcher([StrainProperties("S1", pandemic_duration=3)],
+                                                dominio, fitness, seed=5).get_fitness()
+                      for _ in range(2)]
+        assert resultados[0] == resultados[1], f"la misma semilla dio {resultados}"
+    finally:
+        if arrancado_aqui and ray.is_initialized():
+            ray.shutdown()

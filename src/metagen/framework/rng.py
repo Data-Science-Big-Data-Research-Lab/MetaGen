@@ -59,6 +59,22 @@ def get_numpy_rng() -> np.random.Generator:
     return _numpy_rng
 
 
+def spawn_seed() -> int:
+    """
+    Draw a seed for a worker from MetaGen's own generator.
+
+    Ray workers are separate processes with their own generator state, so seeding
+    the driver did not make a distributed run reproducible (A-06). Every task now
+    receives a seed drawn here and applies it with :func:`set_seed` before working:
+    the driver's seed then determines every worker's stream. Drawing consumes one
+    value of the driver's generator, so only distributed paths call this.
+
+    :return: A seed for one worker.
+    :rtype: int
+    """
+    return _python_rng.getrandbits(63)
+
+
 def set_seed(seed: Optional[int]) -> None:
     """
     Seed both MetaGen generators from a single value.

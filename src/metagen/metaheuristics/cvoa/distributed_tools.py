@@ -5,7 +5,7 @@ from metagen.framework import Solution, Domain
 from metagen.metaheuristics.cvoa.common_tools import IndividualState, StrainProperties, \
     compute_n_infected_travel_distance, SolutionSet
 from metagen.metaheuristics.distributed_tools import assign_load_equally
-from metagen.framework.rng import get_rng
+from metagen.framework.rng import get_rng, set_seed, spawn_seed
 
 # A handle to the RemotePandemicState actor. Ray builds it with
 # RemotePandemicState.remote(...) and every method is called through .remote(); mypy
@@ -81,9 +81,12 @@ def distributed_cvoa_new_infected_population(global_state, domain: Domain,
                                              carrier_population: SolutionSet, superspreaders: SolutionSet,
                                              time: int, update_isolated: bool) -> SolutionSet:
 
-    futures = [cvoa_remote_yield_infected_population_from_a_carrier.remote(global_state, domain, fitness_function,
-                                                                           strain_properties, carrier, superspreaders,
-                                                                           time, update_isolated)
+    # Every task is seeded from the strain's generator, so the strain's seed reaches
+    # the contagion tasks too (A-06).
+    futures = [cvoa_remote_yield_infected_population_from_a_carrier.remote(spawn_seed(), global_state, domain,
+                                                                           fitness_function, strain_properties,
+                                                                           carrier, superspreaders, time,
+                                                                           update_isolated)
                for carrier in carrier_population]
 
     new_infected_population = SolutionSet()
@@ -106,11 +109,12 @@ def cvoa_local_yield_infected_population_from_a_carrier(global_state, domain: Do
 
 
 @ray.remote
-def cvoa_remote_yield_infected_population_from_a_carrier(global_state, domain: Domain,
+def cvoa_remote_yield_infected_population_from_a_carrier(seed: int, global_state, domain: Domain,
                                                          fitness_function: Callable[[Solution], float],
                                                          strain_properties: StrainProperties,
                                                          carrier: Solution, superspreaders: SolutionSet,
                                                          time: int, update_isolated: bool) -> SolutionSet:
+    set_seed(seed)
     return cvoa_local_yield_infected_population_from_a_carrier(global_state, domain, fitness_function,
                                                                strain_properties, carrier, superspreaders, time,
                                                                update_isolated)
@@ -124,8 +128,9 @@ def distributed_infect_individuals(global_state, fitness_function: Callable[[Sol
     futures = []
     for count in distribution:
         futures.append(
-            cvoa_remote_yield_infected_from_carrier.remote(global_state, fitness_function, strain_properties, carrier,
-                                                           count, travel_distance, time, update_isolated))
+            cvoa_remote_yield_infected_from_carrier.remote(spawn_seed(), global_state, fitness_function,
+                                                           strain_properties, carrier, count, travel_distance, time,
+                                                           update_isolated))
     new_infected_population = SolutionSet()
     for result in ray.get(futures):
         new_infected_population.update(result)
@@ -165,10 +170,11 @@ def cvoa_local_yield_infected_from_carrier(global_state, fitness_function: Calla
 
 
 @ray.remote
-def cvoa_remote_yield_infected_from_carrier(global_state, fitness_function: Callable[[Solution], float],
+def cvoa_remote_yield_infected_from_carrier(seed: int, global_state, fitness_function: Callable[[Solution], float],
                                             strain_properties: StrainProperties,
                                             carrier: Solution, n_infected: int, travel_distance: int, time: int,
                                             update_isolated: bool) -> SolutionSet:
+    set_seed(seed)
     return cvoa_local_yield_infected_from_carrier(global_state, fitness_function, strain_properties, carrier,
                                                   n_infected, travel_distance, time, update_isolated)
 
