@@ -46,7 +46,14 @@ class Metaheuristic(ABC):
     :type fitness_function: Callable[[Solution], float]
     :param population_size: The size of the population (default is 1).
     :type population_size: int, optional
-    :param distributed: Whether to use distributed computation (default is False).
+    :param distributed: Whether to run on Ray (default is False). This is an island
+        model, not a parallel evaluation of the same search: the population is split
+        into one slice per CPU of the cluster, each slice runs ``iterate`` on its own
+        in a worker, and the slices are merged and split again every iteration. The
+        algorithm each worker runs is therefore the algorithm on a smaller population,
+        and the number of evaluations, the elitism and the result all depend on how
+        many CPUs the cluster has. Distributed and sequential runs are not comparable
+        value by value, and the workers' random generators are not seeded (A-06).
     :type distributed: bool, optional
     :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
     :type log_dir: str or None, optional
@@ -101,7 +108,15 @@ class Metaheuristic(ABC):
 
     def _launch_distributed_method(self, method: Callable) -> Tuple[List[Solution], Solution]:
         """
-        Launch a distributed method using Ray.
+        Run ``initialize`` or ``iterate`` on Ray, one task per CPU of the cluster.
+
+        The population is split with assign_load_equally and each slice is handed
+        to a pickled copy of the algorithm in a worker, which runs the whole method
+        on that slice alone; the slices that come back are concatenated and the best
+        of the per-slice bests is kept. So with two CPUs a population of six is two
+        independent runs of three that get remixed every iteration: an island model
+        whose islands change with the CPU count. While initializing there is no
+        population yet, so each worker builds its share from scratch.
 
         :param method: The method to distribute.
         :type method: Callable
