@@ -1,12 +1,12 @@
 # Auditoría de MetaGen
 
 Revisión completa de `src/metagen` sobre el commit `74f104e` (2025-03-21).
-64 hallazgos con identificadores estables: los 46 de la revisión inicial más
+65 hallazgos con identificadores estables: los 46 de la revisión inicial más
 `P-11` (al montar el CI), `F-25` (al medir el comportamiento real de las
 metaheurísticas para `P-05`), `F-26` (al verificar `F-04`), `F-33` (al medir `A-01`), `F-34` (al
 tipar el conector para `P-11`), `F-35` (al diseñar `F-31`), `F-36` a `F-39` (al escribir los
-tests de integración del framework), `F-40` (al escribir los tests con Ray) y `F-41` (al cerrar
-`F-38`). Los marcados **(R)** se reprodujeron
+tests de integración del framework), `F-40` (al escribir los tests con Ray), `F-41` (al cerrar
+`F-38`) y `F-42` (al estudiar CVOA a fondo para `A-09`). Los marcados **(R)** se reprodujeron
 ejecutando el paquete instalado en Python 3.11 sin Ray ni TensorFlow.
 
 **CVOA va aparte.** Sus cuestiones abiertas, sus discrepancias con el artículo original
@@ -37,7 +37,7 @@ Marcar aquí el hallazgo como `[x]` al cerrarlo.
 | Bloque | Cantidad | Qué son |
 |---|---|---|
 | `F-01`…`F-13` | 13 | Críticos: corrompen resultados o bloquean la ejecución |
-| `F-14`…`F-41` | 28 | Importantes: fallan en casos concretos o desperdician cómputo |
+| `F-14`…`F-42` | 29 | Importantes: fallan en casos concretos o desperdician cómputo |
 | `A-01`…`A-12` | 12 | Algoritmia y diseño: decisiones discutibles, no bugs |
 | `P-01`…`P-11` | 11 | Empaquetado, tests y documentación |
 
@@ -206,6 +206,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ✅ | `F-39` | El cruce de una estructura dinámica de grupos comparte los grupos con los padres |
 | ✅ | `F-40` | En distribuido, el estado propio del algoritmo se actualiza en una copia y se pierde |
 | ✅ | `F-41` | `check_length` de la estructura dinámica ignora el paso de longitud |
+| ✅ | `F-42` | El CVOA distribuido revienta con `update_isolated=True`: `ray.remote` envuelve una llamada |
 | ✅ | `A-01` | Sin selección de padres: todos los cruces usan la misma pareja |
 | ✅ | `A-02` | La búsqueda tabú es en realidad hill climbing |
 | ✅ | `A-03` | El vecindario tabú se genera en cadena, no alrededor de la solución |
@@ -2418,6 +2419,49 @@ resolvía a un paquete instalado que se llama igual.
 Tests: `test_f40_tpe_funciona_en_distribuido` y
 `test_f40_hill_climbing_conserva_su_lista_tabu_en_distribuido`, sin marcador; los dos
 necesitan Ray.
+
+### [x] F-42 (R) · El CVOA distribuido revienta con `update_isolated=True`: `ray.remote` envuelve una llamada
+`src/metagen/metaheuristics/cvoa/cvoa_distributed.py:300` y `distributed_tools.py:182` · descubierto al estudiar CVOA a fondo para `A-09` (`metagen-auditoria/CVOA-estudio.md`, §4.3) · test: `test_f42_el_cvoa_distribuido_admite_update_isolated`
+
+La rama del aislamiento del gemelo distribuido, en los dos sitios donde está escrita,
+hacía:
+
+```python
+ray.remote(
+    self.global_state.isolate_individual_conditional_state.remote(individual, IndividualState(True, True, True)))
+```
+
+`ray.remote` es un **decorador**. Recibe aquí el `ObjectRef` que devuelve la llamada al
+actor, y revienta:
+
+```
+AssertionError: The @ray.remote decorator must be applied either with no arguments and
+no parentheses, for example '@ray.remote', or it must be applied using some of the
+arguments in the list [...]
+```
+
+Reproducido con una cepa, `pandemic_duration=3`, `social_distancing=1` y
+`update_isolated=True`: muere en la primera iteración con distanciamiento. **Y
+`update_isolated=True` es exactamente el ejemplo de `docs/source/distributed_execution/
+special.rst`**, la página que readthedocs publica para el CVOA distribuido: ese ejemplo
+no ha funcionado nunca. La versión de hilos no lo tiene, llama al estado directamente.
+
+**Nadie lo había visto porque ningún test ejecutaba el gemelo distribuido**, y
+`update_isolated` es `False` por defecto en los dos lanzadores.
+
+**Arreglo** Quitar el `ray.remote(` envolvente en los dos sitios; la llamada `.remote()`
+ya despacha. Esperarla con `ray.get`, como hacen todas las demás llamadas al actor en
+esos ficheros.
+
+*Cerrado el 10 de septiembre de 2026, tal cual.* `ray.get(...)` en los dos sitios, para
+que la escritura en el actor sea síncrona como las otras once y no quede en el aire.
+**Lo que el arreglo no toca**: que el conjunto de aislados al que se escribe **no
+registra nunca a nadie**, porque exige un estado imposible (estudio, §5.2). Es otro
+hallazgo, pendiente de decidir con Paco, porque cambia la semántica del aislamiento.
+
+`test_extras.py` gana el **primer test que ejecuta el CVOA distribuido**, con
+`update_isolated` en las dos posiciones. Con Ray instalado tarda unos siete segundos por
+posición; sin Ray se salta.
 
 ---
 

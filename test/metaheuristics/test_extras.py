@@ -106,3 +106,22 @@ def test_the_tensorflow_problem_of_the_examples_can_be_searched():
     assert 2 <= len(best.get("arch")) <= 10
     assert math.isfinite(best.get_fitness())
     assert best.get_fitness() == best.get_fitness()   # not NaN
+
+
+@pytest.mark.parametrize("update_isolated", [False, True])
+def test_distributed_cvoa_runs_on_ray(ray_runtime, update_isolated):
+    """The distributed twin of CVOA, which no other test ran: one strain, the strain
+    as a Ray task and its contagions as sub-tasks, talking to the pandemic-state
+    actor. With update_isolated on, the branch that used to wrap a remote call in
+    ray.remote(...) and raise (F-42)."""
+    from metagen.metaheuristics.cvoa.common_tools import StrainProperties
+    from metagen.metaheuristics.cvoa.distributed_launcher import distributed_cvoa_launcher
+
+    domain = _sphere_domain()
+    fitness = _fitness_for_the_workers()
+    best = distributed_cvoa_launcher(
+        [StrainProperties("S1", pandemic_duration=3, social_distancing=1)],
+        domain, fitness, update_isolated=update_isolated, seed=0)
+    assert ray_runtime.is_initialized()
+    assert best.get_fitness() == _sphere(best)
+    assert not math.isinf(best.get_fitness())
