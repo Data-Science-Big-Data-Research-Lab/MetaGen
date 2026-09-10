@@ -122,10 +122,10 @@ class Metaheuristic(ABC):
 
         if self.current_iteration != -1:
             metagen_logger.info(
-                f"[ITERATION {self.current_iteration}] Distributing with {ray.available_resources().get('CPU', 0)} CPUs -- {distribution}")
+                f"[ITERATION {self.current_iteration}] Distributing with {ray.cluster_resources().get('CPU', 0)} CPUs -- {distribution}")
         else:
             metagen_logger.info(
-                f"Distributing the initialization with {ray.available_resources().get('CPU', 0)} CPUs -- {distribution}")
+                f"Distributing the initialization with {ray.cluster_resources().get('CPU', 0)} CPUs -- {distribution}")
 
         for count in distribution:
 

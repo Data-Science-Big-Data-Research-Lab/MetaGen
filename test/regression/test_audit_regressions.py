@@ -2539,3 +2539,41 @@ def test_f42_el_cvoa_distribuido_admite_update_isolated():
         [StrainProperties("S1", pandemic_duration=3, social_distancing=1)],
         dominio, fitness, update_isolated=True, seed=0)
     assert mejor.get_fitness() == fitness(mejor)
+
+# --------------------------------------------------------------------------------
+# F-43 · El reparto distribuido lee las CPU disponibles, que van con retraso: todo a un worker
+# --------------------------------------------------------------------------------
+
+def test_f43_el_reparto_usa_las_cpu_del_cluster_no_las_libres_en_ese_instante():
+    """F-43: `assign_load_equally` decidia en cuantos trozos partir el trabajo leyendo
+    `ray.available_resources()`, que es una instantanea: las CPU libres en ese momento,
+    con retraso, y sin la clave cuando estan todas ocupadas. Desde la segunda iteracion
+    de cualquier algoritmo distribuido devolvia un solo trozo, y todo el trabajo iba a
+    un worker. Aqui se ocupa una CPU con una tarea larga: el reparto tiene que seguir
+    siendo en tantos trozos como CPU tiene el cluster, que no han cambiado. La
+    expectativa se calcula con las CPU del cluster que haya, no con un numero fijo:
+    otro test puede haber dejado Ray arrancado con las de la maquina. Necesita Ray de
+    verdad: se salta donde no este."""
+    import time
+    ray = pytest.importorskip("ray")
+    from metagen.metaheuristics.distributed_tools import assign_load_equally
+
+    arrancado_aqui = not ray.is_initialized()
+    if arrancado_aqui:
+        ray.init(num_cpus=2, include_dashboard=False, ignore_reinit_error=True)
+    try:
+        cpus = int(ray.cluster_resources()["CPU"])
+        assert cpus >= 2, "con una sola CPU no hay reparto que comprobar"
+
+        @ray.remote
+        def ocupa_una_cpu():
+            time.sleep(3)
+
+        en_marcha = ocupa_una_cpu.remote()
+        time.sleep(0.5)
+        assert assign_load_equally(6 * cpus) == [6] * cpus, (
+            "con una CPU ocupada el reparto deja de ser en un trozo por CPU del cluster")
+        ray.get(en_marcha)
+    finally:
+        if arrancado_aqui and ray.is_initialized():
+            ray.shutdown()

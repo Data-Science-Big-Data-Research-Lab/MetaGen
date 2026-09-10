@@ -1,12 +1,13 @@
 # Auditoría de MetaGen
 
 Revisión completa de `src/metagen` sobre el commit `74f104e` (2025-03-21).
-65 hallazgos con identificadores estables: los 46 de la revisión inicial más
+66 hallazgos con identificadores estables: los 46 de la revisión inicial más
 `P-11` (al montar el CI), `F-25` (al medir el comportamiento real de las
 metaheurísticas para `P-05`), `F-26` (al verificar `F-04`), `F-33` (al medir `A-01`), `F-34` (al
 tipar el conector para `P-11`), `F-35` (al diseñar `F-31`), `F-36` a `F-39` (al escribir los
 tests de integración del framework), `F-40` (al escribir los tests con Ray), `F-41` (al cerrar
-`F-38`) y `F-42` (al estudiar CVOA a fondo para `A-09`). Los marcados **(R)** se reprodujeron
+`F-38`) `F-42` (al estudiar CVOA a fondo para `A-09`) y `F-43` (al escribir el test de
+reparto distribuido). Los marcados **(R)** se reprodujeron
 ejecutando el paquete instalado en Python 3.11 sin Ray ni TensorFlow.
 
 **CVOA va aparte.** Sus cuestiones abiertas, sus discrepancias con el artículo original
@@ -37,7 +38,7 @@ Marcar aquí el hallazgo como `[x]` al cerrarlo.
 | Bloque | Cantidad | Qué son |
 |---|---|---|
 | `F-01`…`F-13` | 13 | Críticos: corrompen resultados o bloquean la ejecución |
-| `F-14`…`F-42` | 29 | Importantes: fallan en casos concretos o desperdician cómputo |
+| `F-14`…`F-43` | 30 | Importantes: fallan en casos concretos o desperdician cómputo |
 | `A-01`…`A-12` | 12 | Algoritmia y diseño: decisiones discutibles, no bugs |
 | `P-01`…`P-11` | 11 | Empaquetado, tests y documentación |
 
@@ -61,6 +62,7 @@ propósito, cada una con su motivo. No están en el índice porque no son hallaz
 | ~~**`mypy src` a cero**~~ | **Cerrado el 10 de septiembre de 2026**: cuatro tandas, de 167 a 0; el job `types` del CI bloquea | `P-11` |
 | **Implementar una búsqueda tabú de verdad** | Lo que había no lo era y se renombró a `HillClimbing` (`A-02`). La tabú canónica es un algoritmo nuevo, no un arreglo | ver abajo |
 | **Implementar un TPE canónico** | El de MetaGen funciona y no se toca; el canónico es otro algoritmo, con dos piezas que van juntas | ver abajo |
+| **Qué significa `distributed=True`** | La clase base ejecuta `iterate` sobre un trozo de población por CPU: es un modelo de islas remezcladas, y el presupuesto de evaluaciones cambia con el número de CPU (tabla en `F-43`). Hay que decidir si es lo que se quiere y documentarlo, o repartir solo las evaluaciones | `F-43` |
 
 ### Implementar `TabuSearch`
 
@@ -207,6 +209,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ✅ | `F-40` | En distribuido, el estado propio del algoritmo se actualiza en una copia y se pierde |
 | ✅ | `F-41` | `check_length` de la estructura dinámica ignora el paso de longitud |
 | ✅ | `F-42` | El CVOA distribuido revienta con `update_isolated=True`: `ray.remote` envuelve una llamada |
+| ✅ | `F-43` | El reparto distribuido lee las CPU libres en ese instante: desde la segunda iteración todo va a un worker |
 | ✅ | `A-01` | Sin selección de padres: todos los cruces usan la misma pareja |
 | ✅ | `A-02` | La búsqueda tabú es en realidad hill climbing |
 | ✅ | `A-03` | El vecindario tabú se genera en cadena, no alrededor de la solución |
@@ -2462,6 +2465,60 @@ hallazgo, pendiente de decidir con Paco, porque cambia la semántica del aislami
 `test_extras.py` gana el **primer test que ejecuta el CVOA distribuido**, con
 `update_isolated` en las dos posiciones. Con Ray instalado tarda unos siete segundos por
 posición; sin Ray se salta.
+
+### [x] F-43 (R) · El reparto distribuido lee las CPU libres en ese instante: desde la segunda iteración todo va a un worker
+`src/metagen/metaheuristics/distributed_tools.py:22` (`assign_load_equally`) · descubierto al escribir el test de reparto distribuido acordado tras `F-40` · test: `test_f43_el_reparto_usa_las_cpu_del_cluster_no_las_libres_en_ese_instante`
+
+`assign_load_equally` decide en cuántos trozos partir el trabajo leyendo
+`ray.available_resources().get("CPU", 1)`: **las CPU libres en ese instante**, no las del
+clúster. Es una instantánea con retraso, y cuando todas las CPU están ocupadas la clave ni
+aparece. Instrumentado sobre un clúster de dos CPU, con `HillClimbing` distribuido:
+
+```
+pide reparto de 6 | CPU disponibles=2.0 totales=2.0 -> [3, 3]     inicializacion
+pide reparto de 6 | CPU disponibles=None totales=2.0 -> [6]       1a iteracion
+pide reparto de 6 | CPU disponibles=1.0 totales=2.0 -> [6]        2a iteracion
+pide reparto de 6 | CPU disponibles=1.0 totales=2.0 -> [6]        3a iteracion
+```
+
+Solo la inicialización se reparte. **Desde la primera iteración, todo el trabajo va a un
+único worker**, en los siete algoritmos: con un fitness de 20 ms, ninguno de ellos usaba
+más de un proceso de trabajo salvo `RandomSearch`, y ese solo por la inicialización. El
+modo distribuido pagaba el coste de Ray sin repartir nada.
+
+La causa es que la propia tarea que acaba de terminar, o el `ray.get` del driver que
+espera, sigue contando como CPU ocupada cuando se pregunta; con una CPU ocupada por una
+tarea larga el reparto sale `[6]` de forma determinista.
+
+**Arreglo** Dimensionar por las CPU **del clúster**, `ray.cluster_resources()`, que no
+cambian durante una ejecución. Los tres mensajes de log que decían «Distributing with N
+CPUs» leían lo mismo y pasan a lo mismo.
+
+*Cerrado el 10 de septiembre de 2026, tal cual.* Tras el arreglo, con dos CPU y un fitness
+de 20 ms, los seis algoritmos con población usan los dos workers en cada ejecución; SA
+sigue en uno porque su población es de tamaño 1. `test_extras.py` gana un test que lo
+comprueba anotando en un fichero el proceso que evalúa cada individuo.
+
+**Lo que salió al medir, y no es de este hallazgo sino del diseño del modo distribuido:**
+la clase base parte la población en un trozo por CPU y ejecuta `iterate` **sobre cada
+trozo por separado**, así que con dos CPU un GA de 6 individuos son dos GA de 3 que se
+juntan y se vuelven a partir en cada iteración, y **el presupuesto cambia con el número de
+CPU**. Con la misma configuración, evaluaciones por ejecución:
+
+| | secuencial | distribuido, 2 CPU |
+|---|---|---|
+| RandomSearch | 21 | 18 |
+| GA | 24 | 18 |
+| SSGA | 12 | 18 |
+| Memetic | 60 | 42 |
+| TPE | 132 | 204 |
+| HillClimbing | 30 | 30 |
+| SA | 14 | 14 |
+
+`RandomSearch` distribuido guarda además una copia del mejor **por trozo**, dos élites en
+vez de una. No es un fallo de reparto: es que «distribuido» en MetaGen significa un
+modelo de islas que se remezclan cada iteración, y eso no está escrito en ninguna parte.
+Queda como decisión de diseño a documentar, en la tabla de trabajo aplazado.
 
 ---
 
