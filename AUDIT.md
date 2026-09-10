@@ -62,7 +62,34 @@ propósito, cada una con su motivo. No están en el índice porque no son hallaz
 | ~~**`mypy src` a cero**~~ | **Cerrado el 10 de septiembre de 2026**: cuatro tandas, de 167 a 0; el job `types` del CI bloquea | `P-11` |
 | **Implementar una búsqueda tabú de verdad** | Lo que había no lo era y se renombró a `HillClimbing` (`A-02`). La tabú canónica es un algoritmo nuevo, no un arreglo | ver abajo |
 | **Implementar un TPE canónico** | El de MetaGen funciona y no se toca; el canónico es otro algoritmo, con dos piezas que van juntas | ver abajo |
-| **Qué significa `distributed=True`** | La clase base ejecuta `iterate` sobre un trozo de población por CPU: es un modelo de islas **sin migración** (medido el 10 de septiembre de 2026: en cinco iteraciones ningún individuo cambia de isla en GA, SSGA, memético, `HillClimbing` ni TPE; solo comparten el mejor del driver), y el presupuesto de evaluaciones cambia con el número de CPU (tabla en `F-43`). **Documentado el 10 de septiembre de 2026** en la docstring de `Metaheuristic` y en `docs/source/distributed_execution/distributed.rst`, que decía que el flujo era el mismo que en secuencial. Lo que sigue pendiente es decidir si es lo que se quiere o si distribuir debe repartir solo las evaluaciones, que es lo que un usuario espera | `F-43` |
+| ~~**Qué significa `distributed=True`**~~ | **Decidido el 10 de septiembre de 2026, David: se deja como está y se documenta.** Es un modelo de islas sin migración que comparten el mejor del driver: cada CPU ejecuta `iterate` sobre su trozo, el mismo trozo vuelve al mismo worker en cada iteración (medido: ningún individuo cambia de isla en GA, SSGA, memético, `HillClimbing` ni TPE) y el presupuesto cambia con el número de CPU (tabla en `F-43`). Documentado en la docstring de `Metaheuristic` y en `distributed.rst`. **Mejora futura**, abajo: la selección global | ver abajo |
+
+### Distribuir con selección global
+
+**Idea de David, 10 de septiembre de 2026, anotada como mejora futura.** Lo que un usuario
+entiende por distribuir un GA no es el modelo de islas que hay: es que **la población se
+reparta entre los nodos, cada nodo procese su trozo, y la siguiente población se elija
+teniendo en cuenta los individuos de todos los nodos**. La motivación es una población tan
+grande que no cabe en una máquina, y ahí la velocidad de evaluación la dan los procesos de
+cada nodo; hoy, además, la población entera vive en el driver, que la copia en cada
+iteración, así que ese caso tampoco está cubierto.
+
+Lo que haría falta:
+
+- Un paso de **selección global de supervivientes en el driver** sobre lo que devuelven todos
+  los trozos, antes de volver a repartir; y **barajar** al repartir, para que los trozos no
+  sean siempre los mismos.
+- Decidir qué es «selección global» para cada algoritmo: para GA y SSGA es la selección de
+  supervivientes; para TPE, el historial común; para `HillClimbing` y el memético, que ya
+  arrancan del mejor del driver, casi nada.
+- Que los workers reciban **semillas derivadas** (`A-06`), para que una ejecución distribuida
+  sea reproducible y se pueda comparar con la secuencial.
+- **Medir en el banco antes y después**, como `F-32` y `F-33`: cambia el resultado de los
+  siete algoritmos en distribuido.
+
+Con esto el resultado dejaría de depender del número de CPU de la máquina, que es el defecto
+de fondo del modelo actual. No es urgente: el modo de islas es un modelo legítimo y ya está
+documentado como lo que es.
 
 ### Implementar `TabuSearch`
 
