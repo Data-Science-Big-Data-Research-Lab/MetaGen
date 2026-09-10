@@ -50,15 +50,23 @@ class SolutionSet(MutableSet[Solution]):
 
 
 class StrainProperties(NamedTuple):
+    """
+    The parameters of one strain. The defaults are the ones the paper fixes in its
+    "Suggested parameters setup" section, from the epidemiology of COVID-19: they
+    used to differ in three of them (pandemic_duration 10, p_isolation 0.5,
+    p_re_infection 0.001), which left three iterations under social distancing
+    instead of twenty-two, so the pandemic never reached the phase in which it
+    dies out (F-28).
+    """
     strain_id: str = "Strain#1"
-    pandemic_duration: int = 10
+    pandemic_duration: int = 30
     spreading_rate: int = 5
     min_superspreading_rate: int = 6
     max_superspreading_rate: int = 15
     social_distancing: int = 7
-    p_isolation: float = 0.5
+    p_isolation: float = 0.7
     p_travel: float = 0.1
-    p_re_infection: float = 0.001
+    p_re_infection: float = 0.02
     p_superspreader: float = 0.1
     p_die: float = 0.05
     # Iterations the strain may spend without improving before it gives up. None,

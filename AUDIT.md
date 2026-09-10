@@ -192,7 +192,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ✅ | `F-25` | SA se queda con el último vecino, no con el mejor |
 | ✅ | `F-26` | La semilla no reproducía entre procesos: `mutate` recorría un conjunto |
 | ✅ | `F-27` | `p_isolation` significa lo contrario de lo que dice su nombre |
-| ⬜ | `F-28` | Tres parámetros de CVOA no son los que sugiere el artículo |
+| ✅ | `F-28` | Tres parámetros de CVOA no son los que sugiere el artículo |
 | ✅ | `F-29` | CVOA no reproduce entre procesos: itera conjuntos de soluciones |
 | ✅ | `F-30` | La temperatura de SA no llega a enfriarse: es un paseo aleatorio |
 | ✅ | `F-31` | Los genéticos no admiten estructuras dinámicas: el cruce no existe |
@@ -1305,7 +1305,7 @@ distanciamiento desde la primera iteración solo queda el mejor de la cepa; con 
 anterior la misma configuración dejaba **1971** infectados— y
 `test_f27_sin_aislamiento_la_pandemia_crece`.
 
-### [ ] F-28 · Tres parámetros por defecto de CVOA no son los que sugiere el artículo
+### [x] F-28 · Tres parámetros por defecto de CVOA no son los que sugiere el artículo
 `src/metagen/metaheuristics/cvoa/common_tools.py:9-21` · descubierto al leer el artículo de CVOA
 
 El artículo dedica una sección entera, *Suggested parameters setup*, a fijar los
@@ -1329,6 +1329,52 @@ lo contrario, subirlo a 0.7 empeora las cosas en vez de mejorarlas.
 
 Se ataca en la sesión dedicada a CVOA, después de `F-27`: ver
 `metagen-auditoria/CVOA-cuestiones.md`.
+
+*Cerrado el 10 de septiembre de 2026 con los tres valores del artículo, decisión de
+David.* `pandemic_duration` 30, `p_isolation` 0.7 y `p_re_infection` 0.02; los otros
+siete ya coincidían. **Las docstrings de los dos gemelos discrepaban del código en cuatro
+valores** —decían `p_isolation` 0.7, `p_re_infection` 0.0014, `social_distancing` 10 y
+`spreading_rate` 6 donde el código traía 0.5, 0.001, 7 y 5—, lo que apunta a que los
+defaults del código eran restos de otra variante, o de acortar las pruebas cuando la cepa
+moría enseguida por `F-23`. Ahora las docstrings dicen lo que hace el código.
+
+Medido antes y después, una cepa, `seed=0`, ya con `F-27` y `F-29` cerrados:
+
+**Dominio binario de 10 bits, el del artículo.** Infectados por iteración y mejor fitness
+(OneMax, óptimo 0):
+
+| defaults | curva | fitness | tiempo |
+|---|---|---|---|
+| MetaGen (0.5, 10, 0.001) | 8, 11, 19, 27, 39, 43, 42, 21, 14, 10, 2 — se corta a las 10 | **1** | 0.2 s |
+| **artículo (0.7, 30, 0.02)** | 8, 11, 19, 27, 41, 54, **73**, 19, 9, 8, 2 … 3, 4 | **0** | 0.3 s |
+
+Con los del artículo la pandemia sube, pica hacia la séptima iteración, cae y se queda
+latente con la reinfección, que es la curva de la Figura 2, y **alcanza el óptimo**; con
+los de MetaGen se corta antes de llegar.
+
+**Dominio continuo 2D, y aquí hay que decir lo que no arregla.**
+
+| defaults | curva | fitness | tiempo |
+|---|---|---|---|
+| MetaGen | 14, 57, 193, 669, 2123, 7077, 23 623, 39 002, 64 361, 105 682, **174 516** | 2.65e-05 | 94 s |
+| artículo | 14, 57, 193, 669, 2123, 7077, 23 623, 23 434, 23 235 … **17 146** a las 30 | 2.65e-05 | 183 s |
+
+Las siete iteraciones sin distanciamiento son las mismas en los dos casos y ya dejan
+23 000 infectados; con `p_isolation` 0.7 la población **decrece, pero un 2 % por
+iteración**, y treinta iteraciones cuestan tres minutos. Es el algoritmo sobre un dominio
+donde cada infectado es un individuo nuevo: en 10 bits, los recuperados y los muertos
+saturan el espacio y frenan solos la pandemia; en un continuo no hay nada que la frene
+hasta el distanciamiento. **El artículo es binario, y sus parámetros están pensados para
+eso.** Queda como observación de diseño en el documento de CVOA, punto 3.7, no como
+hallazgo: no hay un defecto que corregir, sino un algoritmo cuyo coste en dominios
+continuos depende de `social_distancing` y del `spreading_rate` mucho más que de
+`p_isolation`.
+
+Ningún test ejecuta una pandemia con la duración por defecto; los que construyen cepas
+fijan `pandemic_duration` a 4, y la suite no se mueve.
+
+Test: `test_f28_los_valores_por_defecto_son_los_del_articulo`, que compara los diez
+contra la tabla del artículo.
 
 ### [x] F-29 (R) · CVOA no reproduce entre procesos: itera conjuntos de soluciones
 `src/metagen/metaheuristics/cvoa/cvoa_local.py:178` y su gemelo · descubierto al cerrar `F-15`

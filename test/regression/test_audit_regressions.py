@@ -2496,3 +2496,22 @@ def test_f27_sin_aislamiento_la_pandemia_crece():
     """La otra punta: con p_isolation = 0 todo contagio entra, igual que antes del
     distanciamiento."""
     assert len(_cepa_con(0.0).infected) > 1
+
+
+# --------------------------------------------------------------------------------
+# F-28 · Tres parametros por defecto de CVOA no son los que sugiere el articulo
+# --------------------------------------------------------------------------------
+
+def test_f28_los_valores_por_defecto_son_los_del_articulo():
+    """F-28: la ventaja n.1 que vende el articulo es que los parametros vienen fijados
+    por la epidemiologia, en su seccion "Suggested parameters setup". Siete de los diez
+    coincidian; pandemic_duration (10), p_isolation (0.5) y p_re_infection (0.001) no,
+    y con 10 iteraciones y distanciamiento desde la 7 la pandemia nunca llegaba a la
+    fase en que se apaga."""
+    from metagen.metaheuristics.cvoa.common_tools import StrainProperties
+
+    articulo = dict(pandemic_duration=30, spreading_rate=5, min_superspreading_rate=6,
+                    max_superspreading_rate=15, social_distancing=7, p_isolation=0.7,
+                    p_travel=0.1, p_re_infection=0.02, p_superspreader=0.1, p_die=0.05)
+    defecto = StrainProperties()._asdict()
+    assert {k: defecto[k] for k in articulo} == articulo

@@ -55,14 +55,14 @@ class DistributedCVOA(Metaheuristic):
     method.
 
     :param strain_id: The strain name
-    :param pandemic_duration: The pandemic duration, defaults to 10
-    :param spreading_rate: The spreading rate, defaults to 6
+    :param pandemic_duration: The pandemic duration, defaults to 30
+    :param spreading_rate: The spreading rate, defaults to 5
     :param min_super_spreading_rate: The minimum super spreading rate, defaults to 6
     :param max_super_spreading_rate: The maximum super spreading rate, defaults to 15
-    :param social_distancing: The distancing stablished between the individuals, defaults to 10
+    :param social_distancing: The iteration from which social distancing applies, defaults to 7
     :param p_isolation: The probability of an individual being isolated, defaults to 0.7
     :param p_travel: The probability that an individual will travel, defaults to 0.1
-    :param p_re_infection: The probability of an individual being re-infected, defaults to 0.0014
+    :param p_re_infection: The probability of an individual being re-infected, defaults to 0.02
     :param p_superspreader: The probability of an individual being a super-spreader, defaults to 0.1
     :param p_die: The probability that an individual will die, defaults to 0.05
     :param verbose: The verbosity option, defaults to True
