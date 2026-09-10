@@ -3,8 +3,11 @@ of the examples. Each test skips cleanly where its extra is missing, so this mod
 collects everywhere and runs wherever it can. The CI installs neither on purpose
 (P-06); on a development machine with Ray, the Ray half runs."""
 import math
+import os
 import pathlib
 import sys
+import tempfile
+import time
 
 import pytest
 
@@ -125,3 +128,43 @@ def test_distributed_cvoa_runs_on_ray(ray_runtime, update_isolated):
     assert ray_runtime.is_initialized()
     assert best.get_fitness() == _sphere(best)
     assert not math.isinf(best.get_fitness())
+
+
+@pytest.mark.parametrize("name", ["RandomSearch", "HillClimbing", "TPE", "GA", "SSGA", "Memetic"])
+def test_the_work_is_spread_across_workers(ray_runtime, name):
+    """Every individual is evaluated in some worker process; with two CPUs and a
+    fitness slow enough for the split to matter, more than one worker has to show up.
+    The split used to be sized by the CPUs free at that instant, so from the first
+    iteration on the whole population went to a single worker (F-43). SA is not here:
+    its population is one individual, and one worker is all it can use."""
+    record = pathlib.Path(tempfile.mkdtemp()) / "pids.txt"
+
+    def fitness(solution) -> float:
+        # Slow enough that the driver cannot reuse the same worker for every task.
+        time.sleep(0.02)
+        with open(record, "a") as handle:
+            handle.write(f"{os.getpid()}\n")
+        return solution["x"] ** 2 + solution["y"] ** 2
+
+    domain, ga_domain = _sphere_domain(), _sphere_domain(GAConnector())
+    algorithm = {
+        "RandomSearch": lambda: RandomSearch(domain, fitness, population_size=6, max_iterations=3,
+                                             distributed=True, seed=0),
+        "HillClimbing": lambda: HillClimbing(domain, fitness, population_size=6, warmup_iterations=1,
+                                             max_iterations=3, distributed=True, seed=0),
+        "TPE": lambda: TPE(domain, fitness, warmup_iterations=2, max_iterations=3,
+                           distributed=True, seed=0),
+        "GA": lambda: GA(ga_domain, fitness, population_size=6, max_iterations=3,
+                         distributed=True, seed=0),
+        "SSGA": lambda: SSGA(ga_domain, fitness, population_size=6, max_iterations=3,
+                             distributed=True, seed=0),
+        "Memetic": lambda: Memetic(ga_domain, fitness, population_size=6, max_iterations=3,
+                                   neighbor_population_size=2, distributed=True, seed=0),
+    }[name]()
+    algorithm.run()
+
+    pids = record.read_text().split()
+    workers = {pid for pid in pids if pid != str(os.getpid())}
+    assert pids, "no evaluation was recorded"
+    assert str(os.getpid()) not in pids, "the driver evaluated individuals itself"
+    assert len(workers) >= 2, f"{name} used a single worker for {len(pids)} evaluations"

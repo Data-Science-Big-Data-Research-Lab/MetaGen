@@ -41,6 +41,29 @@ jobs:
         # run here.
         run: pytest test -q -rxX
 
+  extras:
+    name: tests with ray
+    runs-on: ubuntu-latest
+    # The one job that installs an optional extra. It runs what the matrix above
+    # skips: test_extras.py, and the regression tests that need a real Ray (F-11,
+    # F-21, F-40, F-42, F-43). Until this job existed they only ran on the machine
+    # of whoever launched them by hand.
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install the package with the test and distributed extras
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[test,distributed]
+
+      - name: Run the tests that need Ray
+        run: pytest test/metaheuristics/test_extras.py test/regression -q -rxXs
+
   types:
     name: mypy
     runs-on: ubuntu-latest
