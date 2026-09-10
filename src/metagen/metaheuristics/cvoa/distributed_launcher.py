@@ -1,6 +1,6 @@
 from datetime import timedelta
 from time import time
-from typing import Callable, List, Optional
+from typing import Any, Callable, List, Optional, cast
 
 from metagen.metaheuristics.import_helper import is_package_installed
 
@@ -11,11 +11,11 @@ else:
 
 from metagen.framework import Domain, Solution
 from metagen.framework.rng import set_seed
-from metagen.framework.solution.bounds import SolutionClass
 from metagen.logging.metagen_logger import metagen_logger
 from metagen.metaheuristics.cvoa.common_tools import StrainProperties
 from metagen.metaheuristics.cvoa.cvoa_distributed import DistributedCVOA
-from metagen.metaheuristics.cvoa.distributed_tools import RemotePandemicState
+from metagen.metaheuristics.cvoa.distributed_tools import PandemicStateHandle, RemotePandemicState
+from metagen.metaheuristics.tools import solution_class
 
 
 @ray.remote
@@ -57,8 +57,11 @@ def distributed_cvoa_launcher(strains: List[StrainProperties], domain: Domain, f
         ray.init()
 
     # Initialize the global state
-    solution_type: type[SolutionClass] = domain.get_connector().get_type(domain.get_core())
-    global_state = RemotePandemicState.remote(solution_type(domain, connector=domain.get_connector()))
+    solution_type = solution_class(domain)
+    # The actor class is created through .remote(), which mypy cannot see on the
+    # decorated class; the handle it returns is what every strain talks to (P-11).
+    global_state: PandemicStateHandle = cast(Any, RemotePandemicState).remote(
+        solution_type(domain, connector=domain.get_connector()))
 
     t1 = time()
     futures = [run_strain.remote(global_state, domain, fitness_function, strain_properties, update_isolated, log_dir)

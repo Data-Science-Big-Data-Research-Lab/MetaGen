@@ -42,13 +42,10 @@ jobs:
         run: pytest test -q -rxX
 
   types:
-    name: mypy (informational)
+    name: mypy
     runs-on: ubuntu-latest
-    # src does not type-check cleanly yet: 14 errors, most of them belonging to
-    # findings that are still open (F-01, F-05, F-14/A-10, A-11). This job reports
-    # them without gating the build. Once P-11 closes, drop this line to make the
-    # check blocking.
-    continue-on-error: true
+    # Blocking since P-11 closed: mypy src is clean, on the 1.1.1 of the development
+    # machine and on the latest release. A new error here is a regression.
 
     steps:
       - uses: actions/checkout@v4

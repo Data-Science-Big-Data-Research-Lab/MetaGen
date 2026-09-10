@@ -20,10 +20,10 @@ from typing import List, Tuple, Callable
 
 from metagen.framework import Domain
 from metagen.framework.solution import Solution
-from metagen.framework.solution.bounds import SolutionClass
 from metagen.logging.metagen_logger import metagen_logger
 
 from metagen.metaheuristics.base import Metaheuristic
+from metagen.metaheuristics.tools import solution_class
 from metagen.metaheuristics.cvoa.common_tools import StrainProperties, IndividualState, \
     compute_n_infected_travel_distance, infect, insert_into_set_strain, SolutionSet
 from metagen.metaheuristics.cvoa.local_tools import LocalPandemicState
@@ -110,7 +110,7 @@ class CVOA(Metaheuristic):
 
         # 3. Auxiliary strain control variables.
         self.update_isolated: bool = update_isolated
-        self.solution_type: type[SolutionClass] = self.domain.get_connector().get_type(self.domain.get_core())
+        self.solution_type: type[Solution] = solution_class(self.domain)
 
         # 4. Strain control flow variables.
 
@@ -145,6 +145,22 @@ class CVOA(Metaheuristic):
         self.superspreaders: SolutionSet = SolutionSet()
         self.dead: SolutionSet = SolutionSet()
 
+    def _best_of_strain(self) -> Solution:
+        """
+        The best solution the strain has found, once initialized.
+
+        ``best_strain_solution`` is None until ``initialize()`` names the patient zero,
+        which is before anything reads it; this narrows it there, the way the base
+        class does with ``_best_so_far()`` (P-11).
+
+        :return: The best solution of the strain.
+        :rtype: Solution
+        :raises RuntimeError: If read before the strain has a patient zero.
+        """
+        if self.best_strain_solution is None:
+            raise RuntimeError("best_strain_solution is not available yet: initialize() has not run")
+        return self.best_strain_solution
+
     def initialize(self, num_solutions=10) -> Tuple[List[Solution], Solution]:
 
         # 1. Yield the patient zero (pz).
@@ -159,7 +175,7 @@ class CVOA(Metaheuristic):
         # 3. The best strain-specific individual will initially be the patient zero.
         self.best_strain_solution = pz
 
-        return list(self.infected), self.best_strain_solution
+        return list(self.infected), self._best_of_strain()
 
     def iterate(self, solutions: List[Solution]) -> Tuple[List[Solution], Solution]:
 
@@ -181,7 +197,7 @@ class CVOA(Metaheuristic):
             new_infected_population.update(self.infect_individuals(individual, travel_distance, n_infected))
 
         # 1.4. Then, add the best individual of the strain to the next population.
-        new_infected_population.add(self.best_strain_solution)
+        new_infected_population.add(self._best_of_strain())
 
         # 1.5. Update the infected strain population for the next iteration
         self.infected.clear()
@@ -209,7 +225,7 @@ class CVOA(Metaheuristic):
 
         self.time += 1
 
-        return list(self.infected), self.best_strain_solution
+        return list(self.infected), self._best_of_strain()
 
     def update_pandemic_global_state(self) -> None:
         """ It updates the specific strain death and superspreader's sets and the global death and recovered sets.
@@ -265,7 +281,7 @@ class CVOA(Metaheuristic):
 
                 # 3.1.4. If the current individual is better than the current strain one, a new strain the best individual is
                 # found, and its variable is updated.
-                if individual.get_fitness() < self.best_strain_solution.get_fitness():
+                if individual.get_fitness() < self._best_of_strain().get_fitness():
                     self.best_strain_solution = individual
 
             # 3.4. Update the global death set with the strain death set.
@@ -360,7 +376,7 @@ class CVOA(Metaheuristic):
 
     def r0_report(self, new_infections: int) -> str:
         recovered = self.global_state.get_recovered_len()
-        r0 = new_infections
+        r0: float = new_infections
         if recovered != 0:
             r0 = new_infections / recovered
         report = "New infected = " + str(new_infections) + ", Recovered = " + str(recovered) + ", R0 = " + str(r0)

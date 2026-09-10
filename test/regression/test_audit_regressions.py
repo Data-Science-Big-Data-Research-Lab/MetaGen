@@ -1701,14 +1701,16 @@ def test_p06_el_workflow_de_ci_ejecuta_la_suite_que_debe_estar_verde():
     - **no** instala los extras opcionales, porque un entorno sin Ray es el
       unico donde F-24 es observable.
 
-    No se comprueba el `continue-on-error` del job de mypy a proposito: esa
-    linea desaparece al cerrar P-11.
+    Y desde que P-11 cerro, el job de mypy **bloquea**: el `continue-on-error` que lo
+    hacia informativo mientras quedaban errores no puede volver.
     """
     repo_root = pathlib.Path(__file__).resolve().parents[2]
     workflow = repo_root / ".github" / "workflows" / "ci.yml"
     assert workflow.is_file(), f"no existe el workflow de CI en {workflow}"
 
     texto = workflow.read_text(encoding="utf-8")
+    assert "continue-on-error" not in texto, (
+        "el job de mypy vuelve a ser informativo: P-11 lo dejo bloqueante")
 
     assert "pytest test" in texto, (
         "el workflow no ejecuta la suite que debe estar verde"

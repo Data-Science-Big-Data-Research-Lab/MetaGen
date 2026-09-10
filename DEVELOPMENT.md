@@ -85,20 +85,19 @@ Desde P-06, `.github/workflows/ci.yml` corre en cada push y PR sobre `master` y
 
 - **`tests`** — matriz 3.10 / 3.11 / 3.12, **bloqueante**. Instala
   `pip install -e .[test]` y ejecuta la suite que debe estar verde.
-- **`types`** — `mypy src`, **informativo** (`continue-on-error: true`) mientras
-  P-11 siga abierto. El contador va por **40 en local**, desde los 167 con que empezó a
-  medirse bien, y **los 40 están en los cuatro ficheros de CVOA**, que tienen sesión
-  propia: todo lo demás está a cero. Cuando llegue a cero, quitar el
-  `continue-on-error` y la comprobación pasa a bloquear.
+- **`types`** — `mypy src`, **bloqueante desde el 10 de septiembre de 2026**, cuando
+  `P-11` cerró: de los 167 errores con que empezó a medirse bien a **cero**, en cuatro
+  tandas. Un error nuevo de mypy es una regresión y pone el CI en rojo.
 
   Dos ayudantes que existen para que el tipado sea honesto, y que conviene usar en
   código nuevo: `Metaheuristic._best_so_far()` en vez de leer `self.best_solution`
   desde `iterate()` (es `Optional` solo antes de inicializar), y
   `tools.solution_class(domain)` en vez de `get_connector().get_type(get_core())`.
 
-  **El CI da unos pocos menos que el local**, porque
-  ejecuta una versión de mypy más nueva que la 1.1.1 de esta máquina; no es una
-  discrepancia del código y no hay que perseguirla.
+  El CI ejecuta un mypy más nuevo que la 1.1.1 de esta máquina; al cerrar P-11 se
+  comprobó que las dos versiones dan cero. El único `Any` deliberado del paquete es
+  `PandemicStateHandle`, el manejador del actor de Ray de CVOA, que no tiene tipo
+  estático.
 
   Dos trampas al tipar, las dos vividas: `A | 'B'` en la firma de un método **revienta
   al importar** (la firma se evalúa al definirla), así que una referencia adelantada va

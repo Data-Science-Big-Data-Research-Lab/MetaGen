@@ -58,7 +58,7 @@ propósito, cada una con su motivo. No están en el índice porque no son hallaz
 | Qué | Por qué está aparte | Dónde |
 |---|---|---|
 | **Revisión de CVOA** | El diseño es de Paco Martínez-Álvarez y el código es multihilo con Ray encima. `F-27`, `F-28`, `F-29`, `A-09` y seis discrepancias más con el artículo | `metagen-auditoria/CVOA-cuestiones.md` |
-| **`mypy src` a cero** | 40 errores tras tres tandas, todos en los cuatro ficheros de CVOA | `P-11` |
+| ~~**`mypy src` a cero**~~ | **Cerrado el 10 de septiembre de 2026**: cuatro tandas, de 167 a 0; el job `types` del CI bloquea | `P-11` |
 | **Implementar una búsqueda tabú de verdad** | Lo que había no lo era y se renombró a `HillClimbing` (`A-02`). La tabú canónica es un algoritmo nuevo, no un arreglo | ver abajo |
 | **Implementar un TPE canónico** | El de MetaGen funciona y no se toca; el canónico es otro algoritmo, con dos piezas que van juntas | ver abajo |
 
@@ -228,7 +228,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ✅ | `P-08` | Los extras de `setup.cfg` usan `;`, que PEP 508 lee como otra cosa |
 | ✅ | `P-09` | Falta `py.typed`: mypy trata `metagen` como `Any` desde fuera |
 | ✅ | `P-10` | Los ejemplos de las docstrings usan una API que no existe |
-| ⬜ | `P-11` | `mypy src` no pasa limpio: 40 errores, todos en CVOA |
+| ✅ | `P-11` | `mypy src` no pasa limpio: de 167 errores a cero en cuatro tandas |
 
 ---
 
@@ -3110,7 +3110,7 @@ Aquí el código hace lo que dice hacer; lo discutible es qué dice hacer.
 
   Test: `test_p10_los_ejemplos_de_las_docstrings_usan_la_api_de_verdad`,
   parametrizado por módulo.
-- **[ ] P-11** `mypy src` **no pasa limpio**. El contador que llevaba este hallazgo —14 al abrirlo, 8 tras cerrar `F-01`, `F-05` y `A-11`— **estaba medido con mypy ciego a los tipos del propio paquete**, y hay que rehacerlo. Ver abajo.
+- **[x] P-11** `mypy src` **no pasa limpio**. El contador que llevaba este hallazgo —14 al abrirlo, 8 tras cerrar `F-01`, `F-05` y `A-11`— **estaba medido con mypy ciego a los tipos del propio paquete**, y hay que rehacerlo. Ver abajo.
 
   ## El contador estaba mal medido
 
@@ -3346,3 +3346,32 @@ Aquí el código hace lo que dice hacer; lo discutible es qué dice hacer.
 
   De paso, `TPE.initialize` con cero soluciones devolvía `None` en silencio y fallaba
   en la primera comparación; ahora es un `ValueError` que dice qué falta.
+
+  ### Cuarta tanda: CVOA a cero, y el job del CI pasa a bloquear
+
+  **40 → 0**, 10 de septiembre de 2026, dentro de la sesión de CVOA y antes de la
+  reestructuración de `A-09`, para que esta la haga con los tipos puestos. Las mismas
+  tres familias que ya se habían resuelto en el resto del paquete, y ninguna nueva:
+
+  - **El `TypeVar` sin ligar `SolutionClass`**, en los dos gemelos y en los dos
+    lanzadores: pasa a `tools.solution_class(domain)`, que es el único sitio que afirma
+    que el núcleo se corresponde con una clase de `Solution`. Con él caen también los
+    `Cannot instantiate`, los `Unexpected keyword argument "best"` y los `Domain` donde
+    se esperaba `Base`: catorce errores de una causa.
+  - **`best_strain_solution` es `Optional`** hasta que `initialize()` nombra al paciente
+    cero, y nunca desde donde se lee. Un accesor `_best_of_strain()` en cada gemelo, el
+    mismo idioma que `_best_so_far()` en la base.
+  - **Los actores de Ray.** `RemotePandemicState` se construye con `.remote()` y sus
+    métodos se llaman a través de `.remote()`, y mypy ve la clase decorada, no el
+    manejador: once errores `attr-defined`. Va un alias con nombre,
+    `PandemicStateHandle = Any`, en `distributed_tools.py`, que dice lo que es, y los
+    valores que vuelven por `ray.get()` se anotan en el punto de uso (`recovered: int`,
+    `global_best: Solution`). El lanzador crea el actor a través de `cast(Any, ...)`.
+    Es el único `Any` deliberado que queda en el paquete, y está justificado en su
+    comentario: no hay tipo estático para un manejador de actor.
+  - `r0` empezaba entero y acababa real: anotado `float`.
+
+  **Comprobado con dos versiones de mypy**: la 1.1.1 de la máquina de desarrollo y la
+  2.3.1 más reciente en un entorno aparte, que es la que instala el CI. Las dos limpias.
+  El job `types` de `.github/workflows/ci.yml` pierde el `continue-on-error` y pasa a
+  **bloquear**, y el test de `P-06` exige que no vuelva.
