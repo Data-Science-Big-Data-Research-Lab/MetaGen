@@ -138,10 +138,11 @@ class CVOA(Metaheuristic):
         # and the replacement mechanism this comment describes never ran (F-10).
         self.worst_superspreader: Solution = self.solution_type(self.domain, best=True, connector=self.domain.get_connector())
 
-        # 5. Main strain sets: infected, superspreaders, infected superspreaders and deaths.
+        # 5. Main strain sets: infected, superspreaders and deaths. There used to be a
+        # fourth, infected_superspreaders, that only ever received the patient zero and
+        # was never read: the superspreaders' role is played by the superspreaders set.
         self.infected: SolutionSet = SolutionSet()
         self.superspreaders: SolutionSet = SolutionSet()
-        self.infected_superspreaders: SolutionSet = SolutionSet()
         self.dead: SolutionSet = SolutionSet()
 
     def initialize(self, num_solutions=10) -> Tuple[List[Solution], Solution]:
@@ -154,7 +155,6 @@ class CVOA(Metaheuristic):
 
         # 2. Add the patient zero to the strain-specific infected set.
         self.infected.add(pz)
-        self.infected_superspreaders.add(pz)
 
         # 3. The best strain-specific individual will initially be the patient zero.
         self.best_strain_solution = pz
