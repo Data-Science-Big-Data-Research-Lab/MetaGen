@@ -4,7 +4,7 @@
 Distributed Execution
 =======================
 
-|metagen| provides support for distributed execution using **Ray**, enabling the parallel evaluation of solutions in metaheuristic algorithms. This functionality allows users to scale optimization processes efficiently across multiple CPU cores or even multiple machines in a cluster.
+|metagen| can run its metaheuristics on **Ray**, splitting the population into one slice per CPU and running each slice in its own worker, on a single machine or on a cluster. It is an island model, and it changes the search: read *How Distributed Execution Works* before enabling it.
 
 Enabling Distributed Execution
 ------------------------------
@@ -30,37 +30,59 @@ Example usage:
 
 How Distributed Execution Works
 -------------------------------
-When distribution is enabled, |metagen| leverages **Ray** to parallelize key operations such as:
+Distribution in |metagen| is an **island model**, not a parallel evaluation of the same
+search. At every iteration the population is split into **one slice per CPU of the Ray
+cluster**, each slice is handed to a worker that runs the whole ``iterate`` step **on that
+slice alone**, and the slices that come back are concatenated and split again for the next
+iteration. The initialization works the same way: each worker builds its share of the
+initial population from scratch.
 
-- **Solution Initialization:**
-  The initial population of solutions is distributed across available computing resources.
-- **Evaluation of Solutions:**
-  The fitness function is executed in parallel for multiple individuals, reducing computation time.
-- **Metaheuristic Iterations:**
-  Selection, crossover, mutation, and other algorithmic operations are processed concurrently across different CPU cores.
+This has consequences that the sequential mode does not have, and they are worth knowing
+before switching it on:
 
-The execution flow remains the same as in the sequential case, but internally, computation-heavy tasks are dispatched to worker processes managed by Ray.
+- **The algorithm each worker runs is the algorithm on a smaller population.** With two
+  CPUs, a genetic algorithm of 6 individuals is two genetic algorithms of 3 that are
+  remixed every iteration; TPE builds its model over the slice it receives, not over the
+  whole history; ``RandomSearch`` keeps one elite copy **per slice**.
+- **The number of evaluations changes with the number of CPUs.** Measured with the same
+  configuration on two CPUs, per run: ``GA`` 24 evaluations sequential and 18
+  distributed, ``SSGA`` 12 and 18, ``Memetic`` 60 and 42, ``TPE`` 132 and 204.
+  ``HillClimbing`` and ``SA`` do not change.
+- **The result depends on the machine.** A distributed run on 2 CPUs and one on 8 CPUs are
+  different searches, and neither is comparable value by value with the sequential run.
+  The workers' random generators are not seeded either, so a distributed run is not
+  reproducible even with ``seed``.
+- ``SA`` works on a population of one, so it gains nothing from distribution.
 
-Resource Allocation and Load Balancing
---------------------------------------
-|metagen| automatically distributes the computational load using **Ray's dynamic task scheduling**. The number of available CPUs is detected at runtime, and tasks are divided among them to maximize efficiency.
+If what you need is the **same search, only faster**, distribute the fitness function
+yourself and keep ``distributed=False``: that keeps the algorithm, the budget and the
+reproducibility of the sequential mode.
 
-- The distribution strategy ensures that workload is **balanced** across all available cores.
-- Logging information is provided at each iteration to indicate the number of active CPUs and the assigned workload.
-- If no distributed resources are available, execution falls back to sequential processing.
-
-Example log output during distributed execution:
+Resource Allocation
+-------------------
+The workload is split into as many slices as **CPUs the cluster has**, read once per
+iteration from ``ray.cluster_resources()``. It is not the number of CPUs free at that
+instant, which lags behind the tasks that just finished and used to send the whole
+population to a single worker from the second iteration on. Logging at each iteration
+shows the CPU count and the split:
 
 .. code-block:: text
 
     [ITERATION 10] Distributing with 8 CPUs -- [12, 12, 13, 13, 12, 12, 13, 13]
     [ITERATION 10] Best solution fitness: 0.0314
 
+There is no fallback to sequential execution: with ``distributed=True`` and Ray not
+installed, ``run()`` raises ``ImportError``.
+
 Limitations and Considerations
 ------------------------------
-- Distributed execution is beneficial **only for computationally expensive problems** where evaluating solutions is the primary bottleneck.
-- The overhead of launching distributed tasks may **not be efficient for very small populations** or extremely fast fitness evaluations.
-- Running Ray in a **multi-node cluster** requires additional setup beyond the default single-machine execution.
+- Distributed execution pays off **only for computationally expensive fitness functions**:
+  Ray serializes a copy of the algorithm and the slice for every task, and with a fitness of
+  a few milliseconds that overhead dominates.
+- Since distributing changes the search, **compare distributed runs only with distributed
+  runs on the same number of CPUs**.
+- Running Ray in a **multi-node cluster** requires additional setup beyond the default
+  single-machine execution.
 
 Shutting Down Ray
 -----------------

@@ -111,8 +111,9 @@ corren los tests que necesitan Ray de verdad (`F-11`, `F-21`, `F-40`, `F-42`, `F
 que en el job `tests` se saltan. Lo único que no corre en ningún sitio es el problema de
 TensorFlow de `test_extras.py`. **Ojo con el modo distribuido**: la clase base ejecuta
 `iterate` sobre un trozo de población por CPU, así que el presupuesto de evaluaciones
-cambia con el número de CPU (tabla en `F-43`); es una decisión de diseño pendiente de
-documentar, no un fallo.
+cambia con el número de CPU (tabla en `F-43`). Está documentado en la docstring de
+`Metaheuristic` y en `docs/source/distributed_execution/distributed.rst`; lo que queda es
+decidir si es el modo que se quiere o si distribuir debe repartir solo las evaluaciones.
 
 ## Cómo se prueban las metaheurísticas
 

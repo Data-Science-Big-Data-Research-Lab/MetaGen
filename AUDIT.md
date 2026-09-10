@@ -62,7 +62,7 @@ propósito, cada una con su motivo. No están en el índice porque no son hallaz
 | ~~**`mypy src` a cero**~~ | **Cerrado el 10 de septiembre de 2026**: cuatro tandas, de 167 a 0; el job `types` del CI bloquea | `P-11` |
 | **Implementar una búsqueda tabú de verdad** | Lo que había no lo era y se renombró a `HillClimbing` (`A-02`). La tabú canónica es un algoritmo nuevo, no un arreglo | ver abajo |
 | **Implementar un TPE canónico** | El de MetaGen funciona y no se toca; el canónico es otro algoritmo, con dos piezas que van juntas | ver abajo |
-| **Qué significa `distributed=True`** | La clase base ejecuta `iterate` sobre un trozo de población por CPU: es un modelo de islas remezcladas, y el presupuesto de evaluaciones cambia con el número de CPU (tabla en `F-43`). Hay que decidir si es lo que se quiere y documentarlo, o repartir solo las evaluaciones | `F-43` |
+| **Qué significa `distributed=True`** | La clase base ejecuta `iterate` sobre un trozo de población por CPU: es un modelo de islas remezcladas, y el presupuesto de evaluaciones cambia con el número de CPU (tabla en `F-43`). **Documentado el 10 de septiembre de 2026** en la docstring de `Metaheuristic` y en `docs/source/distributed_execution/distributed.rst`, que decía que el flujo era el mismo que en secuencial. Lo que sigue pendiente es decidir si es lo que se quiere o si distribuir debe repartir solo las evaluaciones, que es lo que un usuario espera | `F-43` |
 
 ### Implementar `TabuSearch`
 
