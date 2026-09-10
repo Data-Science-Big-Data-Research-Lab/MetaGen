@@ -33,16 +33,20 @@ How Distributed Execution Works
 Distribution in |metagen| is an **island model**, not a parallel evaluation of the same
 search. At every iteration the population is split into **one slice per CPU of the Ray
 cluster**, each slice is handed to a worker that runs the whole ``iterate`` step **on that
-slice alone**, and the slices that come back are concatenated and split again for the next
-iteration. The initialization works the same way: each worker builds its share of the
+slice alone**, and the slices that come back are concatenated for the next iteration. Since
+every algorithm but TPE returns as many individuals as it received and the slices are cut in
+order, **the same individuals go back to the same worker every iteration: the islands never
+exchange individuals**. The only thing they share is the best solution the driver keeps,
+which the algorithms that start from the best (``HillClimbing``, ``RandomSearch``'s elite)
+read from there. The initialization works the same way: each worker builds its share of the
 initial population from scratch.
 
 This has consequences that the sequential mode does not have, and they are worth knowing
 before switching it on:
 
 - **The algorithm each worker runs is the algorithm on a smaller population.** With two
-  CPUs, a genetic algorithm of 6 individuals is two genetic algorithms of 3 that are
-  remixed every iteration; TPE builds its model over the slice it receives, not over the
+  CPUs, a genetic algorithm of 6 individuals is two independent genetic algorithms of 3
+  for the whole run; TPE builds its model over the slice it receives, not over the
   whole history; ``RandomSearch`` keeps one elite copy **per slice**.
 - **The number of evaluations changes with the number of CPUs.** Measured with the same
   configuration on two CPUs, per run: ``GA`` 24 evaluations sequential and 18

@@ -62,7 +62,7 @@ propósito, cada una con su motivo. No están en el índice porque no son hallaz
 | ~~**`mypy src` a cero**~~ | **Cerrado el 10 de septiembre de 2026**: cuatro tandas, de 167 a 0; el job `types` del CI bloquea | `P-11` |
 | **Implementar una búsqueda tabú de verdad** | Lo que había no lo era y se renombró a `HillClimbing` (`A-02`). La tabú canónica es un algoritmo nuevo, no un arreglo | ver abajo |
 | **Implementar un TPE canónico** | El de MetaGen funciona y no se toca; el canónico es otro algoritmo, con dos piezas que van juntas | ver abajo |
-| **Qué significa `distributed=True`** | La clase base ejecuta `iterate` sobre un trozo de población por CPU: es un modelo de islas remezcladas, y el presupuesto de evaluaciones cambia con el número de CPU (tabla en `F-43`). **Documentado el 10 de septiembre de 2026** en la docstring de `Metaheuristic` y en `docs/source/distributed_execution/distributed.rst`, que decía que el flujo era el mismo que en secuencial. Lo que sigue pendiente es decidir si es lo que se quiere o si distribuir debe repartir solo las evaluaciones, que es lo que un usuario espera | `F-43` |
+| **Qué significa `distributed=True`** | La clase base ejecuta `iterate` sobre un trozo de población por CPU: es un modelo de islas **sin migración** (medido el 10 de septiembre de 2026: en cinco iteraciones ningún individuo cambia de isla en GA, SSGA, memético, `HillClimbing` ni TPE; solo comparten el mejor del driver), y el presupuesto de evaluaciones cambia con el número de CPU (tabla en `F-43`). **Documentado el 10 de septiembre de 2026** en la docstring de `Metaheuristic` y en `docs/source/distributed_execution/distributed.rst`, que decía que el flujo era el mismo que en secuencial. Lo que sigue pendiente es decidir si es lo que se quiere o si distribuir debe repartir solo las evaluaciones, que es lo que un usuario espera | `F-43` |
 
 ### Implementar `TabuSearch`
 
@@ -2503,7 +2503,7 @@ comprueba anotando en un fichero el proceso que evalúa cada individuo.
 **Lo que salió al medir, y no es de este hallazgo sino del diseño del modo distribuido:**
 la clase base parte la población en un trozo por CPU y ejecuta `iterate` **sobre cada
 trozo por separado**, así que con dos CPU un GA de 6 individuos son dos GA de 3 que se
-juntan y se vuelven a partir en cada iteración, y **el presupuesto cambia con el número de
+juntan y se vuelven a partir en cada iteración **en los mismos trozos** —medido después: ningún individuo cambia de isla—, y **el presupuesto cambia con el número de
 CPU**. Con la misma configuración, evaluaciones por ejecución:
 
 | | secuencial | distribuido, 2 CPU |
@@ -2518,7 +2518,7 @@ CPU**. Con la misma configuración, evaluaciones por ejecución:
 
 `RandomSearch` distribuido guarda además una copia del mejor **por trozo**, dos élites en
 vez de una. No es un fallo de reparto: es que «distribuido» en MetaGen significa un
-modelo de islas que se remezclan cada iteración, y eso no está escrito en ninguna parte.
+modelo de islas sin migración, que solo comparten el mejor del driver, y eso no está escrito en ninguna parte.
 Queda como decisión de diseño a documentar, en la tabla de trabajo aplazado.
 
 ### [x] F-44 (R) · El Ray que arranca MetaGen se queda vivo si el bucle lanza, y el lanzador de CVOA no lo apaga nunca
