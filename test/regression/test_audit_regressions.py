@@ -2599,3 +2599,78 @@ def test_f43_el_reparto_usa_las_cpu_del_cluster_no_las_libres_en_ese_instante():
     finally:
         if arrancado_aqui and ray.is_initialized():
             ray.shutdown()
+
+
+# --------------------------------------------------------------------------------
+# F-44 · El Ray que arranca MetaGen se queda vivo si el bucle lanza, y el lanzador de CVOA no lo apaga nunca
+# --------------------------------------------------------------------------------
+
+def _con_ray_apagado(ray):
+    """Los tests de esta suite dejan Ray como lo encontraron; si alguno lo dejo
+    arrancado, aqui se apaga para que «lo arranco MetaGen» tenga sentido."""
+    if ray.is_initialized():
+        ray.shutdown()
+
+
+def test_f44_run_apaga_el_ray_que_arranco_aunque_el_bucle_lance():
+    """F-44: el `ray.shutdown()` de run() estaba en la ruta normal, no en un
+    `finally`, asi que si el fitness o el bucle lanzaban, el runtime que run() habia
+    arrancado seguia vivo, con sus workers, hasta que muriera el interprete. Es la
+    mitad simetrica de F-21. Necesita Ray de verdad: se salta donde no este."""
+    ray = pytest.importorskip("ray")
+    from metagen.metaheuristics import RandomSearch
+
+    dominio, _ = _dominio_y_fitness_de_prueba()
+
+    def revienta(solucion):
+        raise RuntimeError("fitness que revienta")
+
+    _con_ray_apagado(ray)
+    try:
+        with pytest.raises(Exception):
+            RandomSearch(dominio, revienta, population_size=2, max_iterations=1,
+                         distributed=True, seed=7).run()
+        assert not ray.is_initialized(), (
+            "run() arranco Ray, el bucle lanzo y el runtime se ha quedado vivo")
+    finally:
+        _con_ray_apagado(ray)
+
+
+def test_f44_el_lanzador_distribuido_de_cvoa_apaga_el_ray_que_arranco():
+    """F-44: `distributed_cvoa_launcher` hacia `ray.init()` si Ray no estaba
+    arrancado y no lo apagaba nunca: el runtime, su actor y sus workers seguian vivos
+    para el resto del proceso, y lo siguiente que distribuyera en ese proceso se
+    encontraba un Ray que no habia pedido. Necesita Ray de verdad."""
+    ray = pytest.importorskip("ray")
+    from metagen.metaheuristics.cvoa.common_tools import StrainProperties
+    from metagen.metaheuristics.cvoa.distributed_launcher import distributed_cvoa_launcher
+
+    dominio, fitness = _dominio_y_fitness_de_prueba()
+    _con_ray_apagado(ray)
+    try:
+        distributed_cvoa_launcher([StrainProperties("S1", pandemic_duration=2)],
+                                  dominio, fitness, seed=0)
+        assert not ray.is_initialized(), (
+            "el lanzador arranco Ray y lo ha dejado arrancado al terminar")
+    finally:
+        _con_ray_apagado(ray)
+
+
+def test_f44_el_lanzador_distribuido_de_cvoa_no_apaga_un_ray_que_no_arranco():
+    """F-44, la otra cara: el lanzador solo debe apagar el Ray que arranco el, igual
+    que run() desde F-21. Con un runtime que ya estaba, lo deja como estaba."""
+    ray = pytest.importorskip("ray")
+    from metagen.metaheuristics.cvoa.common_tools import StrainProperties
+    from metagen.metaheuristics.cvoa.distributed_launcher import distributed_cvoa_launcher
+
+    dominio, fitness = _dominio_y_fitness_de_prueba()
+    arrancado_aqui = not ray.is_initialized()
+    if arrancado_aqui:
+        ray.init(num_cpus=2, include_dashboard=False, ignore_reinit_error=True)
+    try:
+        distributed_cvoa_launcher([StrainProperties("S1", pandemic_duration=2)],
+                                  dominio, fitness, seed=0)
+        assert ray.is_initialized(), "el lanzador ha apagado un Ray que no arranco el"
+    finally:
+        if arrancado_aqui and ray.is_initialized():
+            ray.shutdown()

@@ -48,14 +48,33 @@ def distributed_cvoa_launcher(strains: List[StrainProperties], domain: Domain, f
     :type seed: Optional[int], optional
     :return: The best solution found across every strain.
     :rtype: Solution
+
+    Ray is started here only if it was not running, and in that case it is shut down
+    before returning, also when a strain fails; a runtime the caller started is left as
+    it was.
     """
     if seed is not None:
         set_seed(seed)
 
-    # Initialize Ray
-    if not ray.is_initialized():
+    # Started here only when nobody had started it, and stopped here only in that
+    # case, also when a strain fails: the launcher used to leave a runtime it had
+    # started running for the rest of the process (F-44), the mirror of F-21.
+    started_ray = not ray.is_initialized()
+    if started_ray:
         ray.init()
+    try:
+        return _run_pandemic(strains, domain, fitness_function, update_isolated, log_dir)
+    finally:
+        if started_ray and ray.is_initialized():
+            ray.shutdown()
 
+
+def _run_pandemic(strains: List[StrainProperties], domain: Domain,
+                  fitness_function: Callable[[Solution], float], update_isolated: bool,
+                  log_dir: Optional[str]) -> Solution:
+    """
+    Run the strains on an already started Ray runtime and report; see distributed_cvoa_launcher.
+    """
     # Initialize the global state
     solution_type = solution_class(domain)
     # The actor class is created through .remote(), which mypy cannot see on the

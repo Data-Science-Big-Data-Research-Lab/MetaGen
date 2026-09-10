@@ -371,26 +371,30 @@ class Metaheuristic(ABC):
             ray.init()
             started_ray = True
 
-        self.pre_execution()
+        try:
+            self.pre_execution()
 
-        self._warmup()
+            self._warmup()
 
-        self._initialize()
+            self._initialize()
 
-        self.current_iteration = 0
+            self.current_iteration = 0
 
-        while not self.stopping_criterion():
-            self.pre_iteration()
+            while not self.stopping_criterion():
+                self.pre_iteration()
 
-            self._iterate()
+                self._iterate()
 
-            self.post_iteration()
+                self.post_iteration()
                     
-            self.current_iteration += 1
+                self.current_iteration += 1
 
-        self.post_execution()
-
-        if started_ray and ray.is_initialized():
-            ray.shutdown()
+            self.post_execution()
+        finally:
+            # Also on the way out of an exception: a runtime this run() started must
+            # not outlive it, or the workers and their memory stay alive until the
+            # interpreter exits (F-44).
+            if started_ray and ray.is_initialized():
+                ray.shutdown()
 
         return deepcopy(self._best_so_far())

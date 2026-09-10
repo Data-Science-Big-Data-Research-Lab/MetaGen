@@ -1,13 +1,13 @@
 # Auditoría de MetaGen
 
 Revisión completa de `src/metagen` sobre el commit `74f104e` (2025-03-21).
-66 hallazgos con identificadores estables: los 46 de la revisión inicial más
+67 hallazgos con identificadores estables: los 46 de la revisión inicial más
 `P-11` (al montar el CI), `F-25` (al medir el comportamiento real de las
 metaheurísticas para `P-05`), `F-26` (al verificar `F-04`), `F-33` (al medir `A-01`), `F-34` (al
 tipar el conector para `P-11`), `F-35` (al diseñar `F-31`), `F-36` a `F-39` (al escribir los
 tests de integración del framework), `F-40` (al escribir los tests con Ray), `F-41` (al cerrar
-`F-38`) `F-42` (al estudiar CVOA a fondo para `A-09`) y `F-43` (al escribir el test de
-reparto distribuido). Los marcados **(R)** se reprodujeron
+`F-38`) `F-42` (al estudiar CVOA a fondo para `A-09`) `F-43` (al escribir el test de
+reparto distribuido) y `F-44` (al documentar el modo distribuido). Los marcados **(R)** se reprodujeron
 ejecutando el paquete instalado en Python 3.11 sin Ray ni TensorFlow.
 
 **CVOA va aparte.** Sus cuestiones abiertas, sus discrepancias con el artículo original
@@ -38,7 +38,7 @@ Marcar aquí el hallazgo como `[x]` al cerrarlo.
 | Bloque | Cantidad | Qué son |
 |---|---|---|
 | `F-01`…`F-13` | 13 | Críticos: corrompen resultados o bloquean la ejecución |
-| `F-14`…`F-43` | 30 | Importantes: fallan en casos concretos o desperdician cómputo |
+| `F-14`…`F-44` | 31 | Importantes: fallan en casos concretos o desperdician cómputo |
 | `A-01`…`A-12` | 12 | Algoritmia y diseño: decisiones discutibles, no bugs |
 | `P-01`…`P-11` | 11 | Empaquetado, tests y documentación |
 
@@ -210,6 +210,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ✅ | `F-41` | `check_length` de la estructura dinámica ignora el paso de longitud |
 | ✅ | `F-42` | El CVOA distribuido revienta con `update_isolated=True`: `ray.remote` envuelve una llamada |
 | ✅ | `F-43` | El reparto distribuido lee las CPU libres en ese instante: desde la segunda iteración todo va a un worker |
+| ✅ | `F-44` | El Ray que arranca MetaGen se queda vivo si el bucle lanza, y el lanzador de CVOA no lo apaga nunca |
 | ✅ | `A-01` | Sin selección de padres: todos los cruces usan la misma pareja |
 | ✅ | `A-02` | La búsqueda tabú es en realidad hill climbing |
 | ✅ | `A-03` | El vecindario tabú se genera en cadena, no alrededor de la solución |
@@ -948,7 +949,7 @@ Se revisaron los gemelos: el único otro `ray.init()` del paquete está en
 `cvoa/distributed_launcher.py:57` y **no tiene `shutdown`**, así que ahí no está el
 bug. Es el desequilibrio contrario, y no lo toca este hallazgo.
 
-**Queda un cabo suelto del mismo asunto, sin arreglar:** el `shutdown` está en la ruta
+**Queda un cabo suelto del mismo asunto, sin arreglar** (*cerrado después como `F-44`*): el `shutdown` está en la ruta
 normal de `run()`, no en un `finally`. Si el bucle lanza, el runtime que arrancó
 `run()` se queda vivo. Es la mitad simétrica de este hallazgo y pide una decisión
 aparte sobre el manejo de errores de `run()`.
@@ -2519,6 +2520,48 @@ CPU**. Con la misma configuración, evaluaciones por ejecución:
 vez de una. No es un fallo de reparto: es que «distribuido» en MetaGen significa un
 modelo de islas que se remezclan cada iteración, y eso no está escrito en ninguna parte.
 Queda como decisión de diseño a documentar, en la tabla de trabajo aplazado.
+
+### [x] F-44 (R) · El Ray que arranca MetaGen se queda vivo si el bucle lanza, y el lanzador de CVOA no lo apaga nunca
+`src/metagen/metaheuristics/base.py:393` (`run`) y `cvoa/distributed_launcher.py:57` · descubierto al documentar el modo distribuido, y anotado ya como cabo suelto en `F-21` · tests: `test_f44_*`
+
+Dos mitades del mismo asunto que `F-21` dejó dichas y sin arreglar:
+
+- **`run()` apagaba Ray solo en la ruta normal.** El `ray.shutdown()` iba después del
+  bucle, fuera de cualquier `finally`, así que si el fitness o una iteración lanzaban, el
+  runtime que `run()` había arrancado seguía vivo, con sus workers y su memoria, hasta que
+  muriera el intérprete.
+- **`distributed_cvoa_launcher` hacía `ray.init()` y nunca `shutdown()`.** Ni recordaba si
+  lo había arrancado él. Lo siguiente que distribuyera en ese proceso se encontraba un Ray
+  que no había pedido, con todas las CPU de la máquina: fue lo que hizo fallar el test de
+  `F-43` cuando corría detrás del de `F-42`.
+
+Reproducido antes de tocar nada, en un proceso limpio:
+
+```
+run() lanzo: RayTaskError(RuntimeError)
+(a) Ray sigue arrancado tras un run() que lanzo:      True
+(b) Ray sigue arrancado tras el lanzador de CVOA:     True
+```
+
+**Arreglo** El mismo idioma en los dos sitios: recordar quién arrancó Ray y apagarlo en
+un `finally` solo si fue uno mismo. En el lanzador, el cuerpo pasa a una función aparte,
+`_run_pandemic`, para que el `try/finally` envuelva solo el runtime.
+
+*Cerrado el 10 de septiembre de 2026, tal cual.* Un `run()` que lanza sigue lanzando lo
+mismo —la excepción no se traga—, pero deja Ray apagado si lo arrancó él. **El lanzador
+de CVOA gana además la garantía de `F-21`**, que no tenía: un Ray arrancado por el usuario
+se queda como estaba. La suite se comporta igual, salvo que ningún test deja ya un Ray
+suelto detrás.
+
+**Consecuencia para los tests que quedan en `test_extras.py`:** el test del CVOA
+distribuido (`F-42`) arrancaba Ray a través del lanzador y lo dejaba para todo lo que
+viniera después; ahora cada llamada al lanzador arranca y apaga su runtime, unos segundos
+más por test. Es lo correcto: lo que se prueba es lo que ve un usuario.
+
+Tests: `test_f44_run_apaga_el_ray_que_arranco_aunque_el_bucle_lance`,
+`test_f44_el_lanzador_distribuido_de_cvoa_apaga_el_ray_que_arranco` y
+`test_f44_el_lanzador_distribuido_de_cvoa_no_apaga_un_ray_que_no_arranco`; los dos
+primeros fallan con el código anterior, el tercero protege lo que no debe cambiar.
 
 ---
 
