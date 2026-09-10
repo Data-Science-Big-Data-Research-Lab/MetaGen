@@ -16,7 +16,7 @@
 """
 
 import math
-from typing import Callable, Set, List, Tuple
+from typing import Callable, List, Tuple
 from metagen.metaheuristics.import_helper import is_package_installed
 
 if is_package_installed("ray"):
@@ -30,7 +30,7 @@ from metagen.framework.solution.bounds import SolutionClass
 from metagen.logging.metagen_logger import get_remote_metagen_logger, DETAILED_INFO
 
 from metagen.metaheuristics.base import Metaheuristic
-from metagen.metaheuristics.cvoa.common_tools import StrainProperties, IndividualState, insert_into_set_strain, infect
+from metagen.metaheuristics.cvoa.common_tools import StrainProperties, IndividualState, insert_into_set_strain, infect, SolutionSet
 from metagen.metaheuristics.cvoa.distributed_tools import distributed_cvoa_new_infected_population, RemotePandemicState
 from metagen.framework.rng import get_rng
 
@@ -129,10 +129,10 @@ class DistributedCVOA(Metaheuristic):
         self.worst_superspreader: Solution = self.solution_type(self.domain, best=True, connector=self.domain.get_connector())
 
         # 5. Main strain sets: infected, superspreaders, infected superspreaders and deaths.
-        self.infected: Set[Solution] = set()
-        self.superspreaders: Set[Solution] = set()
-        self.infected_superspreaders: Set[Solution] = set()
-        self.dead: Set[Solution] = set()
+        self.infected: SolutionSet = SolutionSet()
+        self.superspreaders: SolutionSet = SolutionSet()
+        self.infected_superspreaders: SolutionSet = SolutionSet()
+        self.dead: SolutionSet = SolutionSet()
 
     def initialize(self, num_solutions=10) -> Tuple[List[Solution], Solution]:
 
@@ -256,9 +256,9 @@ class DistributedCVOA(Metaheuristic):
         # 4. Remove the global dead individuals from the global recovered set.
         ray.get(self.global_state.update_recovered_with_deaths.remote())
 
-    def infect_individuals(self, carrier_individual: Solution, travel_distance: int, n_infected: int) -> Set[Solution]:
+    def infect_individuals(self, carrier_individual: Solution, travel_distance: int, n_infected: int) -> SolutionSet:
 
-        infected_population: Set[Solution] = set()
+        infected_population: SolutionSet = SolutionSet()
 
         for _ in range(0, n_infected):
 
@@ -286,7 +286,7 @@ class DistributedCVOA(Metaheuristic):
                                                                                                           True)))
         return infected_population
 
-    def update_new_infected_population(self, new_infected_population: Set[Solution],
+    def update_new_infected_population(self, new_infected_population: SolutionSet,
                                        new_infected_individual: Solution) -> None:
         """ It updates the next infected population with a new infected individual.
 
