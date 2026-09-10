@@ -1,11 +1,17 @@
 from copy import deepcopy
-from typing import Callable
+from typing import Any, Callable, TypeAlias
 import ray
 from metagen.framework import Solution, Domain
 from metagen.metaheuristics.cvoa.common_tools import IndividualState, StrainProperties, \
     compute_n_infected_travel_distance, SolutionSet
 from metagen.metaheuristics.distributed_tools import assign_load_equally
 from metagen.framework.rng import get_rng
+
+# A handle to the RemotePandemicState actor. Ray builds it with
+# RemotePandemicState.remote(...) and every method is called through .remote(); mypy
+# sees the decorated class, not the handle, so the handle is typed as Any here and
+# the calls that go through it are annotated at the point of use (P-11).
+PandemicStateHandle: TypeAlias = Any
 
 # Remote pandemic state (ray support)
 @ray.remote

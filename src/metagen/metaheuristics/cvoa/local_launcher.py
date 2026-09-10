@@ -5,12 +5,12 @@ from typing import Callable, List, Optional
 
 from metagen.framework import Domain, Solution
 from metagen.framework.rng import set_seed
-from metagen.framework.solution.bounds import SolutionClass
 from metagen.logging.metagen_logger import metagen_logger
 
 from metagen.metaheuristics.cvoa.common_tools import StrainProperties
 from metagen.metaheuristics.cvoa.cvoa_local import CVOA
 from metagen.metaheuristics.cvoa.local_tools import LocalPandemicState
+from metagen.metaheuristics.tools import solution_class
 
 
 def run_strain(global_state:LocalPandemicState, domain:Domain, fitness_function: Callable[[Solution],float],
@@ -48,7 +48,7 @@ def cvoa_launcher(strains: List[StrainProperties], domain: Domain, fitness_funct
         set_seed(seed)
 
     # Initialize the global state
-    solution_type: type[SolutionClass] = domain.get_connector().get_type(domain.get_core())
+    solution_type = solution_class(domain)
     global_state = LocalPandemicState(solution_type(domain, connector=domain.get_connector()))
 
     t1 = time()
