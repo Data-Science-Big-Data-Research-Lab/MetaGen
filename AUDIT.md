@@ -1218,11 +1218,15 @@ pandemia deja de crecer está entre `p_isolation` 0.20 y 0.30, y el artículo si
 **el parámetro de MetaGen es el complementario del del artículo**, con los números
 cuadrando.
 
-**El código es fiel al pseudocódigo publicado**, Algoritmo 3, línea 9:
+~~**El código es fiel al pseudocódigo publicado**, Algoritmo 3, línea 9:
 `if R4 < P_ISOLATION then newInfected ← i`. Pero ese pseudocódigo **contradice a su
-propio artículo**: el texto dice que un individuo aislado pasa a recuperados, y la
-Figura 5 muestra `R0` decreciendo cuando `P_ISOLATION` crece. Texto y figura coinciden
-entre sí; el pseudocódigo es el que discrepa.
+propio artículo**~~ **Corrección del 10 de septiembre de 2026, releído el artículo:**
+el Algoritmo 3, línea 9, dice `if R4 > P_ISOLATION then newInfected ← i else recovered
+← i`. El sorteo tiene que **superar** `P_ISOLATION` para contagiar, así que el
+pseudocódigo coincide con el texto y con la Figura 5, y **la inversión era solo de
+MetaGen**. No hay errata que comunicar sobre `P_ISOLATION`. Sí queda la del
+Algoritmo 2, donde las tasas de viajero y de supercontagiador van cruzadas (documento
+de CVOA, 3.1), y esa MetaGen no la hereda.
 
 **Consecuencia práctica.** El artículo vende como ventaja n.º 2 que «CVOA puede detener
 la exploración tras varias iteraciones, sin necesidad de configurarlo», porque la
@@ -1233,15 +1237,16 @@ de que CVOA tarde minutos desde que `F-23` dejó que las cepas se ejecuten enter
 **Arreglo** Invertir la comparación en los dos gemelos, de forma que `p_isolation` sea
 la probabilidad de aislarse.
 
-**Criterio de David, 7 de septiembre de 2026: la errata está en el pseudocódigo y el
-texto es lo correcto.** El arreglo va, por tanto, en la dirección del texto. **No se
+**Criterio de David, 7 de septiembre de 2026: `p_isolation` debe ser la probabilidad
+de aislarse**, que es lo que dicen el texto, la figura y —visto después— también el
+pseudocódigo. El arreglo va, por tanto, en esa dirección. **No se
 aplica todavía**: CVOA se ataca en una sesión dedicada, porque el diseño del algoritmo
 es de Paco Martínez-Álvarez, primer autor, y una errata en su pseudocódigo no se
 corrige desde el código sin hablarlo.
 
-Refuerza el criterio que **el mismo patrón aparece dos veces más** en el Algoritmo 2:
-`if R2 < P_SUPERSPREADER` usa la tasa *ordinaria* y `if R1 < P_TRAVEL` la distancia
-*ordinaria*, ambas al revés de lo que dice el texto. MetaGen **no** hereda esas dos.
+En el Algoritmo 2 sí hay dos comparaciones al revés del texto: `if R2 <
+P_SUPERSPREADER` usa la tasa *ordinaria* y `if R1 < P_TRAVEL` la distancia *ordinaria*.
+MetaGen **no** hereda esas dos.
 
 Detalle completo y orden de ataque en
 `metagen-auditoria/CVOA-cuestiones.md`.
@@ -1298,7 +1303,8 @@ Las ejecuciones que explotan dan mejor fitness en estas tablas por una razón qu
 mérito suyo: evalúan veinte mil individuos frente a mil. Con presupuesto igualado no está
 medido, y lo que el banco pide es que se compare así.
 
-**Queda para David: avisar a Paco de la errata del pseudocódigo**, que es su diseño.
+**Sobre avisar a Paco:** de `P_ISOLATION` no hay nada que avisar, el pseudocódigo está
+bien y la inversión era de MetaGen; lo del Algoritmo 2 es cosa de David, si lo cree.
 
 Tests: `test_f27_aislar_con_certeza_deja_solo_al_mejor` —con `p_isolation = 1` y
 distanciamiento desde la primera iteración solo queda el mejor de la cepa; con el código
