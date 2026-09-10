@@ -50,7 +50,7 @@ def distributed_population_local_search(population: List[Solution], fitness_func
     """
     distribution = assign_load_equally(len(population))
 
-    get_remote_metagen_logger().debug(f"[LEVEL 1] Distributed local search of a population of {len(population)} individuals with {ray.available_resources().get('CPU', 0)} CPUs -- {distribution}")
+    get_remote_metagen_logger().debug(f"[LEVEL 1] Distributed local search of a population of {len(population)} individuals with {ray.cluster_resources().get('CPU', 0)} CPUs -- {distribution}")
 
     futures = []
     for count in distribution:
@@ -128,7 +128,7 @@ def distributed_local_search(solution: Solution, fitness_function: Callable[[Sol
 
     get_remote_metagen_logger().debug(
         f"[LEVEL 2] Distributed local search of an individual with {neighbor_population_size} neighbours,"
-        f" with {ray.available_resources().get('CPU', 0)} CPUs -- {distribution}")
+        f" with {ray.cluster_resources().get('CPU', 0)} CPUs -- {distribution}")
 
     futures = []
     for count in distribution:

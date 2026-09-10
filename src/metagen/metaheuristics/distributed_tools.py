@@ -19,7 +19,20 @@ def call_distributed(function: Callable, *args, **kargs) -> None:
 
 
 def assign_load_equally(neighbor_population_size: int) -> List[int]:
-    num_cpus = int(ray.available_resources().get("CPU", 1))
+    """
+    Split a workload of the given size into one chunk per CPU of the cluster.
+
+    Sized by the cluster's CPUs, which do not change during a run, and not by the
+    ones free at this instant: available_resources() lags behind the tasks that just
+    finished and omits the key while every CPU is busy, so from the second iteration
+    on this handed the whole workload to a single worker (F-43).
+
+    :param neighbor_population_size: How many units of work there are to split.
+    :type neighbor_population_size: int
+    :return: The size of each chunk, one per CPU, differing by at most one.
+    :rtype: List[int]
+    """
+    num_cpus = int(ray.cluster_resources().get("CPU", 1))
     num_cpus = min(num_cpus, neighbor_population_size)
     if num_cpus == 0:
         num_cpus = 1
