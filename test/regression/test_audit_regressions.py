@@ -1698,8 +1698,10 @@ def test_p06_el_workflow_de_ci_ejecuta_la_suite_que_debe_estar_verde():
     - instala el extra `test`, que es donde se declara lo que la suite necesita
       y el paquete no (hoy `scikit-learn`, para el banco; fue `pytest-csv-params`
       mientras hubo tests dirigidos por CSV);
-    - **no** instala los extras opcionales, porque un entorno sin Ray es el
-      unico donde F-24 es observable.
+    - **no** instala los extras opcionales en el job `tests`, para que la suite
+      siga recolectando y pasando sin ellos (P-04);
+    - y tiene un job `extras` que si instala Ray y ejecuta `test_extras.py` y la
+      suite de regresion, para que lo que necesita Ray corra en algun sitio.
 
     Y desde que P-11 cerro, el job de mypy **bloquea**: el `continue-on-error` que lo
     hacia informativo mientras quedaban errores no puede volver.
@@ -1731,16 +1733,35 @@ def test_p06_el_workflow_de_ci_ejecuta_la_suite_que_debe_estar_verde():
         "no se podria ejecutar"
     )
 
+    def bloque_del_job(nombre: str) -> str:
+        lineas = texto.splitlines()
+        inicio = next(i for i, l in enumerate(lineas) if l.rstrip() == f"  {nombre}:")
+        fin = next((i for i in range(inicio + 1, len(lineas))
+                    if lineas[i].startswith("  ") and not lineas[i].startswith("   ")
+                    and lineas[i].strip().endswith(":")), len(lineas))
+        return "\n".join(lineas[inicio:fin])
+
+    en_tests = [
+        linea.strip()
+        for linea in bloque_del_job("tests").splitlines()
+        if "pip install" in linea
+    ]
     extras = [
         linea
-        for linea in instalaciones
+        for linea in en_tests
         for extra in ("ray", "tensorflow", "[all]", "[distributed]")
         if extra in linea
     ]
     assert not extras, (
-        "el CI instala extras opcionales y eso oculta F-24, que solo se observa "
-        f"sin Ray: {extras}"
+        "el job `tests` instala extras opcionales, y la suite tiene que recolectar y "
+        f"pasar sin ellos (P-04): {extras}"
     )
+
+    en_extras = bloque_del_job("extras")
+    assert "[distributed]" in en_extras or "ray" in en_extras, (
+        "el job `extras` no instala Ray: lo que necesita Ray no corre en ningun sitio")
+    assert "test_extras.py" in en_extras and "test/regression" in en_extras, (
+        "el job `extras` no ejecuta test_extras.py y la suite de regresion")
 
     for version in ("3.10", "3.11", "3.12"):
         assert f'"{version}"' in texto, (
@@ -2539,6 +2560,7 @@ def test_f42_el_cvoa_distribuido_admite_update_isolated():
         [StrainProperties("S1", pandemic_duration=3, social_distancing=1)],
         dominio, fitness, update_isolated=True, seed=0)
     assert mejor.get_fitness() == fitness(mejor)
+
 
 # --------------------------------------------------------------------------------
 # F-43 · El reparto distribuido lee las CPU disponibles, que van con retraso: todo a un worker

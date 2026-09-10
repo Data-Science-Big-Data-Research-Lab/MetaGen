@@ -104,12 +104,15 @@ Desde P-06, `.github/workflows/ci.yml` corre en cada push y PR sobre `master` y
   en `Union[...]`; y `cast` evalúa su primer argumento, así que un tipo importado solo
   bajo `TYPE_CHECKING` hay que citarlo entre comillas.
 
-El CI **no instala los extras a propósito**. Hasta cerrar `F-24` era el único sitio
-donde ese hallazgo se observaba; hoy su test bloquea Ray en un subproceso y corre en
-todas partes. El único que sigue necesitando Ray instalado es el de `F-21`, que se
-salta en el CI, igual que los de `F-11` y `F-40` y que todo `test_extras.py`: son
-los `skipped` que se ven allí. En una máquina con Ray solo se salta el problema de
-TensorFlow de `test_extras.py`.
+El job `tests` **no instala los extras a propósito**: la suite tiene que recolectar y
+pasar sin ellos (`P-04`). Desde el 10 de septiembre de 2026 hay un tercer job,
+**`extras`**, que instala Ray y ejecuta `test_extras.py` y la suite de regresión: ahí
+corren los tests que necesitan Ray de verdad (`F-11`, `F-21`, `F-40`, `F-42`, `F-43`),
+que en el job `tests` se saltan. Lo único que no corre en ningún sitio es el problema de
+TensorFlow de `test_extras.py`. **Ojo con el modo distribuido**: la clase base ejecuta
+`iterate` sobre un trozo de población por CPU, así que el presupuesto de evaluaciones
+cambia con el número de CPU (tabla en `F-43`); es una decisión de diseño pendiente de
+documentar, no un fallo.
 
 ## Cómo se prueban las metaheurísticas
 
