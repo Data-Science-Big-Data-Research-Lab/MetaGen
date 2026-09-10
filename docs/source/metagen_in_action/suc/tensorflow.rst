@@ -82,7 +82,7 @@ Now, the fitness function is defined. It is used to evaluate every potential sol
         model.add(tf.keras.layers.Dense(1))
         # Model compilation
         learning_rate = solution["learning_rate"]
-        ema = solution["ema"].value
+        ema = solution["ema"]
         model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate, use_ema=ema),
                     loss="mean_squared_error", metrics=[tf.keras.metrics.MAPE])
         return model

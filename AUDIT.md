@@ -2199,11 +2199,13 @@ sonda de `F-38` da lo mismo valor a valor.
 El ayudante `_builtin` de `test_integration.py` desaparece, como estaba previsto, y
 `test_solution.py` compara ahora un grupo leído con el diccionario que se le dio.
 
-**De paso, sin arreglar:** `docs/source/metagen_in_action/suc/tensorflow.rst:85` hace
+**De paso:** `docs/source/metagen_in_action/suc/tensorflow.rst:85` hacía
 `solution["ema"].value` sobre una categórica de primer nivel, que ya devolvía un
-valor puro antes de este hallazgo: esa línea no ha funcionado nunca. Y ese mismo
-ejemplo declara la categórica con `[True, False]`, booleanos, que no son valores
-básicos de categoría. Son de la documentación, no de este hallazgo.
+valor puro antes de este hallazgo: esa línea no había funcionado nunca. *Corregida el 10
+de septiembre de 2026.* Ese mismo ejemplo declara la categórica con `[True, False]`,
+booleanos, y aquí quedó anotado que no eran valores básicos de categoría: **era falso**,
+comprobado el mismo día, el dominio los acepta, la solución los sortea y devuelve un
+`bool`. Se queda como está.
 
 Test: `test_f37_el_valor_de_un_grupo_o_estructura_es_builtin_hasta_el_fondo`, ya sin
 marcador.
