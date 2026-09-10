@@ -75,9 +75,6 @@ class RemotePandemicState:
         }
 
 
-
-
-
 def distributed_cvoa_new_infected_population(global_state, domain: Domain,
                                              fitness_function: Callable[[Solution], float],
                                              strain_properties: StrainProperties,
@@ -93,20 +90,6 @@ def distributed_cvoa_new_infected_population(global_state, domain: Domain,
     for result in ray.get(futures):
         new_infected_population.update(result)
 
-    return new_infected_population
-
-
-def cvoa_local_yield_new_infected_population(global_state, domain: Domain,
-                                             fitness_function: Callable[[Solution], float],
-                                             strain_properties: StrainProperties,
-                                             carrier_population: SolutionSet, superspreaders: SolutionSet,
-                                             time: int, update_isolated: bool) -> SolutionSet:
-    new_infected_population: SolutionSet = SolutionSet()
-    for carrier in carrier_population:
-        new_infected_population.update(
-            cvoa_local_yield_infected_population_from_a_carrier(global_state, domain, fitness_function,
-                                                                strain_properties,
-                                                                carrier, superspreaders, time, update_isolated))
     return new_infected_population
 
 
@@ -131,14 +114,6 @@ def cvoa_remote_yield_infected_population_from_a_carrier(global_state, domain: D
     return cvoa_local_yield_infected_population_from_a_carrier(global_state, domain, fitness_function,
                                                                strain_properties, carrier, superspreaders, time,
                                                                update_isolated)
-
-
-def local_infect_individuals(global_state, fitness_function: Callable[[Solution], float],
-                             strain_properties: StrainProperties,
-                             carrier: Solution, n_infected: int, travel_distance: int, time: int,
-                             update_isolated: bool) -> SolutionSet:
-    return cvoa_local_yield_infected_from_carrier(global_state, fitness_function, strain_properties, carrier,
-                                                  n_infected, travel_distance, time, update_isolated)
 
 
 def distributed_infect_individuals(global_state, fitness_function: Callable[[Solution], float],
