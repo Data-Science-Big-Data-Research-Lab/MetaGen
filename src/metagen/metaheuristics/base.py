@@ -48,11 +48,13 @@ class Metaheuristic(ABC):
     :type population_size: int, optional
     :param distributed: Whether to run on Ray (default is False). This is an island
         model, not a parallel evaluation of the same search: the population is split
-        into one slice per CPU of the cluster, each slice runs ``iterate`` on its own
-        in a worker, and the slices are merged and split again every iteration. The
-        algorithm each worker runs is therefore the algorithm on a smaller population,
-        and the number of evaluations, the elitism and the result all depend on how
-        many CPUs the cluster has. Distributed and sequential runs are not comparable
+        into one slice per CPU of the cluster and each slice runs ``iterate`` on its
+        own in a worker, every iteration. The slices come back with the size they
+        left with, so the next split hands the same individuals to the same worker:
+        the islands never exchange individuals, and the only thing they share is the
+        best solution the driver keeps. The algorithm each worker runs is therefore
+        the algorithm on a smaller population, and the number of evaluations, the
+        elitism and the result all depend on how many CPUs the cluster has. Distributed and sequential runs are not comparable
         value by value, and the workers' random generators are not seeded (A-06).
     :type distributed: bool, optional
     :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
@@ -113,10 +115,13 @@ class Metaheuristic(ABC):
         The population is split with assign_load_equally and each slice is handed
         to a pickled copy of the algorithm in a worker, which runs the whole method
         on that slice alone; the slices that come back are concatenated and the best
-        of the per-slice bests is kept. So with two CPUs a population of six is two
-        independent runs of three that get remixed every iteration: an island model
-        whose islands change with the CPU count. While initializing there is no
-        population yet, so each worker builds its share from scratch.
+        of the per-slice bests is kept. Slices are cut in order and every algorithm
+        but TPE returns as many individuals as it received, so the same individuals
+        go back to the same worker every iteration: with two CPUs a population of six
+        is two independent runs of three for the whole execution, sharing only the
+        driver's best solution, and how many islands there are depends on the CPU
+        count. While initializing there is no population yet, so each worker builds
+        its share from scratch.
 
         :param method: The method to distribute.
         :type method: Callable
