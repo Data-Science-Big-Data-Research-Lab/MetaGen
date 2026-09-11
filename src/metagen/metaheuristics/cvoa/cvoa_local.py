@@ -313,12 +313,11 @@ class CVOA(Metaheuristic):
             else:
                 new_infected_individual = infect(carrier_individual, self.fitness_function, 1)
                 if get_rng().random() < self.strain_properties.p_isolation:
-                    # If the new individual is isolated, and update_isolated is true, this is sent to the
-                    # Isolated population.
-                    if self.update_isolated:
-                        self.global_state.isolate_individual_conditional_state(new_infected_individual,
-                                                                               IndividualState(True, True,
-                                                                                               True))
+                    # The isolated individual is counted and the point stays open to
+                    # be infected again: MetaGen departs from the paper's Algorithm 3
+                    # here on purpose (F-45). The isolated set used to demand a state
+                    # nobody can have, so it never held anyone.
+                    self.global_state.isolate(new_infected_individual)
                 else:
                     self.update_new_infected_population(infected_population, new_infected_individual)
         return infected_population

@@ -7,7 +7,7 @@ Pablo de Olavide). Licencia: ver P-01 en `AUDIT.md` — hoy es contradictoria.
 ## Contexto de trabajo actual
 
 Estamos aplicando los arreglos de una auditoría de código. **Lee AUDIT.md antes
-de tocar nada**: contiene 67 hallazgos con identificadores estables (`F-01`…`F-44`
+de tocar nada**: contiene 68 hallazgos con identificadores estables (`F-01`…`F-45`
 críticos e importantes, `A-01`…`A-12` de diseño, `P-01`…`P-11` de proyecto), cada
 uno con fichero:línea, diagnóstico y arreglo propuesto.
 
@@ -110,7 +110,7 @@ Desde P-06, `.github/workflows/ci.yml` corre en cada push y PR sobre `master` y
 El job `tests` **no instala los extras a propósito**: la suite tiene que recolectar y
 pasar sin ellos (`P-04`). Desde el 10 de septiembre de 2026 hay un tercer job,
 **`extras`**, que instala Ray y ejecuta `test_extras.py` y la suite de regresión: ahí
-corren los tests que necesitan Ray de verdad (`F-11`, `F-21`, `F-40`, `F-42`, `F-43`, `F-44`),
+corren los tests que necesitan Ray de verdad (`F-11`, `F-21`, `F-40`, `F-42`, `F-43`, `F-44`, `F-45`),
 que en el job `tests` se saltan. Lo único que no corre en ningún sitio es el problema de
 TensorFlow de `test_extras.py`. **Ojo con el modo distribuido**: la clase base ejecuta
 `iterate` sobre un trozo de población por CPU, así que el presupuesto de evaluaciones
@@ -249,7 +249,9 @@ incorrecto, dilo antes de tocarlo.
   versión local y la distribuida (A-09): si arreglas algo ahí, comprueba si el
   mismo bug está en el gemelo. Sus poblaciones son `SolutionSet`, un conjunto con
   orden de inserción (`common_tools.py`): un `set()` nuevo de soluciones en CVOA
-  devuelve `F-29`, la pandemia que cambia con `PYTHONHASHSEED`.
+  devuelve `F-29`, la pandemia que cambia con `PYTHONHASHSEED`. **`CVOA` es la variante
+  de MetaGen y se queda así** (F-45): el aislado se cuenta y el punto sigue abierto, y los
+  conjuntos acotados matan al mejor. La del artículo será `CanonicalCVOA`, después de A-09.
 - Desde F-24, `mm/` sigue el mismo patrón que el resto del paquete: `mm_tools.py`
   no toca Ray y `mm_distributed_tools.py` sí. El despachador importa el segundo
   **dentro de la función**, no arriba. Un `import ray` nuevo en `mm_tools.py`

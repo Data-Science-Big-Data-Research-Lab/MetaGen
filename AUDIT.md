@@ -1,13 +1,14 @@
 # Auditoría de MetaGen
 
 Revisión completa de `src/metagen` sobre el commit `74f104e` (2025-03-21).
-67 hallazgos con identificadores estables: los 46 de la revisión inicial más
+68 hallazgos con identificadores estables: los 46 de la revisión inicial más
 `P-11` (al montar el CI), `F-25` (al medir el comportamiento real de las
 metaheurísticas para `P-05`), `F-26` (al verificar `F-04`), `F-33` (al medir `A-01`), `F-34` (al
 tipar el conector para `P-11`), `F-35` (al diseñar `F-31`), `F-36` a `F-39` (al escribir los
 tests de integración del framework), `F-40` (al escribir los tests con Ray), `F-41` (al cerrar
 `F-38`) `F-42` (al estudiar CVOA a fondo para `A-09`) `F-43` (al escribir el test de
-reparto distribuido) y `F-44` (al documentar el modo distribuido). Los marcados **(R)** se reprodujeron
+reparto distribuido), `F-44` (al documentar el modo distribuido) y `F-45` (al estudiar CVOA
+a fondo, decidido con el artículo delante). Los marcados **(R)** se reprodujeron
 ejecutando el paquete instalado en Python 3.11 sin Ray ni TensorFlow.
 
 **CVOA va aparte.** Sus cuestiones abiertas, sus discrepancias con el artículo original
@@ -38,7 +39,7 @@ Marcar aquí el hallazgo como `[x]` al cerrarlo.
 | Bloque | Cantidad | Qué son |
 |---|---|---|
 | `F-01`…`F-13` | 13 | Críticos: corrompen resultados o bloquean la ejecución |
-| `F-14`…`F-44` | 31 | Importantes: fallan en casos concretos o desperdician cómputo |
+| `F-14`…`F-45` | 32 | Importantes: fallan en casos concretos o desperdician cómputo |
 | `A-01`…`A-12` | 12 | Algoritmia y diseño: decisiones discutibles, no bugs |
 | `P-01`…`P-11` | 11 | Empaquetado, tests y documentación |
 
@@ -91,6 +92,36 @@ Lo que haría falta:
 Con esto el resultado dejaría de depender del número de CPU de la máquina, que es el defecto
 de fondo del modelo actual. No es urgente: el modo de islas es un modelo legítimo y ya está
 documentado como lo que es.
+
+### Implementar `CanonicalCVOA`
+
+**Decisión de David, 11 de septiembre de 2026, al cerrar `F-45`.** `CVOA` se queda como
+está, que es lo publicado, y **el CVOA que describe el artículo llega como clase nueva, al
+lado**, igual que la búsqueda tabú y el TPE canónico. Se diferencia de la de MetaGen en
+**dos puntos**, los dos medidos en el estudio (`metagen-auditoria/CVOA-estudio.md`, §5):
+
+- **El aislado pasa a recuperados** (Algoritmo 3, líneas 9-12), de donde solo sale con
+  `p_re_infection`. En MetaGen se cuenta y el punto sigue abierto. Medido en `F-45`: en
+  continuo da igual; en OneMax de 30 bits el artículo busca peor (5.50 frente a 3.70).
+- **Muerte y supercontagio por sorteo individual**, `R5 < P_DIE` y `R2 < P_SUPERSPREADER`,
+  en vez de los conjuntos acotados de MetaGen, que llenan el cupo por orden de llegada y
+  luego **matan al mejor candidato y hacen supercontagiador al peor** (§5.1: el mejor de la
+  cepa estaba en el conjunto de muertos en 42 de 60 iteraciones). `F-09` y `F-10` son
+  arreglos de ese mecanismo y no aplican a la canónica.
+
+Lo que **no** debe heredar del artículo: la errata del Algoritmo 2, con las tasas de
+viajero y de supercontagiador cruzadas (documento de CVOA, 3.1); se implementa el texto.
+
+**El orden importa: primero `A-09`.** CVOA ya está por duplicado, hilos y Ray, con tres
+copias del paso de contagio; una canónica escrita copiando serían cuatro clases y seis
+copias. Si la reestructuración deja una clase base con los tres ejes de fontanería y
+**estos dos pasos como métodos**, la canónica es una subclase de unas decenas de líneas que
+corre en hilos y en Ray sin escribir nada dos veces. Los lanzadores aceptarían la clase de
+cepa como parámetro, con `CVOA` por defecto.
+
+**Y medirla contra `CVOA` en binario y en continuo antes de darla por buena**, con la
+sonda de `F-27` y las diez semillas de `F-45`. Que sea la del artículo no la hace mejor:
+en lo medido hasta ahora es al revés.
 
 ### Implementar `TabuSearch`
 
@@ -239,6 +270,7 @@ hallazgo hay que actualizar su fila aquí, además de su casilla más abajo.**
 | ✅ | `F-42` | El CVOA distribuido revienta con `update_isolated=True`: `ray.remote` envuelve una llamada |
 | ✅ | `F-43` | El reparto distribuido lee las CPU libres en ese instante: desde la segunda iteración todo va a un worker |
 | ✅ | `F-44` | El Ray que arranca MetaGen se queda vivo si el bucle lanza, y el lanzador de CVOA no lo apaga nunca |
+| ✅ | `F-45` | El aislado de CVOA desaparece en vez de pasar a recuperados, y el conjunto de aislados está inerte |
 | ✅ | `A-01` | Sin selección de padres: todos los cruces usan la misma pareja |
 | ✅ | `A-02` | La búsqueda tabú es en realidad hill climbing |
 | ✅ | `A-03` | El vecindario tabú se genera en cadena, no alrededor de la solución |
@@ -2594,6 +2626,81 @@ Tests: `test_f44_run_apaga_el_ray_que_arranco_aunque_el_bucle_lance`,
 `test_f44_el_lanzador_distribuido_de_cvoa_apaga_el_ray_que_arranco` y
 `test_f44_el_lanzador_distribuido_de_cvoa_no_apaga_un_ray_que_no_arranco`; los dos
 primeros fallan con el código anterior, el tercero protege lo que no debe cambiar.
+
+### [x] F-45 (R) · El aislado desaparece en vez de pasar a recuperados, y el conjunto de aislados no registra nunca a nadie
+`src/metagen/metaheuristics/cvoa/cvoa_local.py:315` (`infect_individuals`), su gemelo `cvoa_distributed.py:296` y la tercera copia `distributed_tools.py:160` · descubierto al estudiar CVOA a fondo para `A-09` (`metagen-auditoria/CVOA-estudio.md`, §5.2) · tests: `test_f45_*`
+
+El artículo (Algoritmo 3, líneas 9-12, y el texto) dice qué le pasa a un individuo que se
+aísla: **pasa a recuperados**, y un recuperado solo vuelve a contagiarse con
+`p_re_infection`. En MetaGen aislarse era **no entrar en la nueva población, y nada más**:
+el individuo desaparecía y, si se generaba otra vez, se contagiaba como si nunca se hubiera
+visto. El aislamiento no frenaba la pandemia más que un contagio fallido.
+
+Además, con `update_isolated=True` la cepa intentaba registrarlo en el conjunto `isolated`,
+pero la condición que se le exigía era tener **ya** el estado `IndividualState(recovered=True,
+dead=True, isolated=True)`, que un recién contagiado no puede tener, ni ningún individuo:
+los muertos se quitan de recuperados. Medido en hilos, tres semillas, duración 6,
+distanciamiento 1, `p_isolation` 0.7:
+
+| semilla | llamadas a aislar | estados encontrados | aislados en el informe |
+|---|---|---|---|
+| 0 | 466 | solo `(False, False, False)` | **0** |
+| 1 | 257 | solo `(False, False, False)` | **0** |
+| 2 | 399 | solo `(False, False, False)` | **0** |
+
+El conjunto `isolated` no había registrado nunca a nadie, y `update_isolated` era un
+parámetro que, cuando era cierto, no hacía nada en hilos y reventaba en Ray hasta `F-42`.
+
+**Arreglo** Dos mitades, y solo una se aplica a `CVOA`: el conjunto `isolated` pasa a
+registrar de verdad a cada aislado, sin condición, y `update_isolated` **se queda en las
+firmas sin efecto** —registrar al aislado ya no es opcional, y quitar el parámetro rompería
+el ejemplo publicado en `special.rst`—. La otra mitad, mandar al aislado a recuperados como
+el artículo, **se probó, se midió, y se descartó para `CVOA`**: va a `CanonicalCVOA`.
+
+*Cerrado el 11 de septiembre de 2026, con decisión de David en dos tiempos.* La primera
+decisión fue «como en el artículo», y se implementó: el aislado pasaba a recuperados en las
+tres copias, con tres tests que fallaban antes. La medición la tumbó.
+
+**No consume ningún sorteo más, así que en un dominio continuo no cambia nada**: cada
+contagio es un individuo nuevo que nunca se vuelve a generar, y que esté o no en
+recuperados no se nota. Comprobado con la sonda de `F-27`: curva y fitness idénticos en la
+esfera 2D, con distanciamiento 2 y con 7.
+
+**En los dominios discretos, que son los del artículo, la semántica del artículo busca
+peor.** OneMax con los parámetros del artículo, diez semillas:
+
+| bits | | óptimo alcanzado | fitness medio | infectados acumulados |
+|---|---|---|---|---|
+| 10 | MetaGen | 9/10 | 0.10 | 343 |
+| 10 | artículo | 8/10 | 0.20 | 325 |
+| 20 | MetaGen | 2/10 | 1.50 | 1038 |
+| 20 | artículo | 1/10 | 2.10 | 1000 |
+| 30 | MetaGen | 0/10 | **3.70** | 1446 |
+| 30 | artículo | 0/10 | **5.50** | 1412 |
+
+El mecanismo: un aislado que pasa a recuperados **queda bloqueado** salvo con
+`p_re_infection`, y con `p_isolation` 0.7 se bloquea el 70 % del vecindario de cada
+portador, que es justo lo que OneMax necesita explorar para subir bit a bit; en un espacio
+pequeño los recuperados lo saturan y la pandemia se apaga antes de llegar. Es la ventaja n.º
+2 del artículo, «CVOA se detiene solo», llevada hasta el final.
+
+**Compensar con `p_re_infection`, que es la palanca que el artículo da, no funciona**, y se
+midió antes de descartarlo: en 30 bits, subirla de 0.02 a 0.5 deja el fitness medio en 5.40
+y multiplica el presupuesto por cuatro (1412 → 6011). La reinfección devuelve a la
+población a los recuperados **viejos**, que son portadores ya evaluados; lo que el
+aislamiento quitaba eran los vecinos **nuevos**.
+
+**Decisión final de David: `CVOA` se queda con la semántica de MetaGen** —el aislado se
+cuenta y el punto sigue abierto—, y la del artículo llega como clase nueva, `CanonicalCVOA`,
+después de `A-09` (ver el trabajo aplazado). Con lo que queda en `CVOA`, los resultados en
+binario son **idénticos a los de antes del hallazgo**, semilla a semilla.
+
+El test de `F-08`, que ejercitaba el método retirado, reproduce ahora el anidamiento por su
+cuenta: toma el cerrojo y, con él tomado, llama a `isolate`. Sigue protegiendo el `RLock`.
+
+Tests: `test_f45_el_aislado_se_cuenta_y_no_bloquea_el_punto`, parametrizado por
+`update_isolated`, y `test_f45_el_aislado_se_cuenta_en_distribuido`, que cubre el método del
+gemelo y la tarea de Ray de `distributed_tools`; este último necesita Ray.
 
 ---
 
