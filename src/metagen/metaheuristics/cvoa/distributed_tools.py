@@ -53,10 +53,12 @@ class RemotePandemicState:
             self.recovered.add(individual)
 
     # Isolated
-    def isolate_individual_conditional_state(self, individual: Solution, conditional_state: IndividualState) -> None:
-        current_state: IndividualState = self.get_individual_state(individual)
-        if current_state == conditional_state:
-            self.isolated.add(individual)
+    def isolate(self, individual: Solution) -> None:
+        """
+        Count an individual as isolated. It does not join the recovered: MetaGen
+        departs from the paper here on purpose, see LocalPandemicState.isolate (F-45).
+        """
+        self.isolated.add(individual)
 
     # Best Individual
     def update_best_individual(self, individual: Solution) -> None:
@@ -157,11 +159,10 @@ def cvoa_local_yield_infected_from_carrier(global_state, fitness_function: Calla
             new_infected_individual.mutate(1)
             new_infected_individual.evaluate(fitness_function)
             # Isolated with probability p_isolation; infected otherwise (F-27, as in cvoa_local).
+            # The isolated individual is counted and the point stays open (F-45). Waited
+            # on, not wrapped in ray.remote(...), which raised (F-42).
             if get_rng().random() < strain_properties.p_isolation:
-                if update_isolated:
-                    # Waited on, not wrapped in ray.remote(...), which raised (F-42).
-                    ray.get(global_state.isolate_individual_conditional_state.remote(
-                        new_infected_individual, IndividualState(True, True, True)))
+                ray.get(global_state.isolate.remote(new_infected_individual))
             else:
                 update_new_infected_population(global_state, new_infected_population, new_infected_individual,
                                                strain_properties.p_re_infection)

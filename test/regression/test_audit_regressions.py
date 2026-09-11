@@ -1244,33 +1244,31 @@ def test_a12_tensorboard_se_enciende_al_pedirlo(tmp_path, monkeypatch):
 
 
 def test_f08_aislar_un_individuo_no_bloquea_la_hebra():
-    """F-08: isolate_individual_conditional_state toma self.lock y dentro llama a
-    get_individual_state, que lo vuelve a tomar. Un threading.Lock no es
-    reentrante, asi que la hebra se bloqueaba contra si misma.
+    """F-08: isolate_individual_conditional_state tomaba self.lock y dentro llamaba a
+    get_individual_state, que lo volvia a tomar. Un threading.Lock no es
+    reentrante, asi que la hebra se bloqueaba contra si misma. Desde F-45 ese metodo
+    es `isolate`, y ya no anida nada por si mismo, asi que el test reproduce el
+    anidamiento: toma el cerrojo y, con el tomado, llama a un metodo que lo toma.
 
     Se ejecuta en una hebra demonio con espera limitada: si el fallo vuelve, el
     test falla en vez de colgar la suite entera.
     """
-    from metagen.metaheuristics.cvoa.common_tools import IndividualState
     from metagen.metaheuristics.cvoa.local_tools import LocalPandemicState
 
     dominio, _ = _dominio_y_fitness_de_prueba()
     estado = LocalPandemicState(Solution(dominio))
     individuo = Solution(dominio)
 
-    hilo = threading.Thread(
-        target=estado.isolate_individual_conditional_state,
-        args=(individuo, IndividualState(False, False, False)),
-        daemon=True,
-    )
+    def aislar_con_el_cerrojo_tomado():
+        with estado.lock:
+            estado.isolate(individuo)
+
+    hilo = threading.Thread(target=aislar_con_el_cerrojo_tomado, daemon=True)
     hilo.start()
     hilo.join(timeout=10)
 
-    assert not hilo.is_alive(), (
-        "isolate_individual_conditional_state se ha quedado bloqueada sobre su "
-        "propio cerrojo"
-    )
-    # Y ademas hace su trabajo: el individuo cumple el estado pedido, luego se aisla.
+    assert not hilo.is_alive(), "isolate se ha quedado bloqueada sobre su propio cerrojo"
+    # Y ademas hace su trabajo: el individuo queda contado como aislado.
     assert individuo in estado.isolated
 
 
@@ -2745,6 +2743,88 @@ def test_a06_la_misma_semilla_reproduce_una_cepa_de_cvoa_distribuida():
                                                 dominio, fitness, seed=5).get_fitness()
                       for _ in range(2)]
         assert resultados[0] == resultados[1], f"la misma semilla dio {resultados}"
+    finally:
+        if arrancado_aqui and ray.is_initialized():
+            ray.shutdown()
+
+
+# --------------------------------------------------------------------------------
+# F-45 · El conjunto de aislados esta inerte; el aislado no bloquea el punto, a proposito
+# --------------------------------------------------------------------------------
+
+def _portador_y_cepa_local(update_isolated: bool):
+    """Una cepa de hilos ya en fase de distanciamiento, con aislamiento seguro, y un
+    portador evaluado para contagiar desde el."""
+    from metagen.metaheuristics.cvoa.common_tools import StrainProperties
+    from metagen.metaheuristics.cvoa.cvoa_local import CVOA
+    from metagen.metaheuristics.cvoa.local_tools import LocalPandemicState
+
+    set_seed(0)
+    dominio, fitness = _dominio_y_fitness_de_prueba()
+    propiedades = StrainProperties("S1", pandemic_duration=3, social_distancing=1, p_isolation=1.0)
+    estado = LocalPandemicState(Solution(dominio))
+    cepa = CVOA(estado, dominio, fitness, propiedades, update_isolated=update_isolated)
+    cepa.time = 1
+    portador = Solution(dominio)
+    portador.evaluate(fitness)
+    return cepa, estado, portador
+
+
+@pytest.mark.parametrize("update_isolated", [False, True])
+def test_f45_el_aislado_se_cuenta_y_no_bloquea_el_punto(update_isolated):
+    """F-45: el conjunto de aislados exigia un estado que ningun individuo puede tener,
+    asi que no registro nunca a nadie, y update_isolated no hacia nada. Con
+    p_isolation = 1 y distanciamiento activo, los cinco contagios de un portador se
+    aislan: ninguno entra en la poblacion y los cinco se cuentan, pida lo que pida
+    update_isolated. Y NO pasan a recuperados: MetaGen se aparta ahi del articulo a
+    proposito, medido, para que el punto siga abierto; la semantica del articulo ira
+    en CanonicalCVOA."""
+    cepa, estado, portador = _portador_y_cepa_local(update_isolated)
+
+    nuevos = cepa.infect_individuals(portador, 1, 5)
+
+    assert len(nuevos) == 0, "con p_isolation = 1 nadie entra en la poblacion"
+    assert estado.get_pandemic_report()["isolated"] == 5, "el informe no cuenta a los aislados"
+    assert estado.get_recovered_len() == 0, "el aislado no debe bloquear el punto en CVOA"
+
+
+def test_f45_el_aislado_se_cuenta_en_distribuido():
+    """F-45 en las otras dos copias del contagio: el metodo del gemelo distribuido y la
+    funcion de `distributed_tools` que ejecutan las tareas de Ray. Necesita Ray de
+    verdad: se salta donde no este."""
+    ray = pytest.importorskip("ray")
+    from metagen.metaheuristics.cvoa.common_tools import StrainProperties
+    from metagen.metaheuristics.cvoa.cvoa_distributed import DistributedCVOA
+    from metagen.metaheuristics.cvoa.distributed_tools import (RemotePandemicState,
+                                                                cvoa_local_yield_infected_from_carrier)
+
+    arrancado_aqui = not ray.is_initialized()
+    if arrancado_aqui:
+        ray.init(num_cpus=2, include_dashboard=False, ignore_reinit_error=True)
+    try:
+        set_seed(0)
+        dominio, fitness = _dominio_y_fitness_de_prueba()
+        propiedades = StrainProperties("S1", pandemic_duration=3, social_distancing=1, p_isolation=1.0)
+        portador = Solution(dominio)
+        portador.evaluate(fitness)
+
+        estado = RemotePandemicState.remote(Solution(dominio))
+        cepa = DistributedCVOA(estado, dominio, fitness, propiedades)
+        cepa.time = 1
+        nuevos = cepa.infect_individuals(portador, 1, 5)
+        assert len(nuevos) == 0
+        assert ray.get(estado.get_pandemic_report.remote())["isolated"] == 5, (
+            "el metodo del gemelo distribuido no cuenta a los aislados")
+        assert ray.get(estado.get_recovered_len.remote()) == 0
+
+        estado = RemotePandemicState.remote(Solution(dominio))
+        nuevos = cvoa_local_yield_infected_from_carrier(estado, fitness, propiedades, portador,
+                                                        n_infected=5, travel_distance=1, time=1,
+                                                        update_isolated=False)
+        assert len(nuevos) == 0
+        assert ray.get(estado.get_pandemic_report.remote())["isolated"] == 5, (
+            "la tarea de contagio de Ray no cuenta a los aislados")
+        assert ray.get(estado.get_recovered_len.remote()) == 0
     finally:
         if arrancado_aqui and ray.is_initialized():
             ray.shutdown()
