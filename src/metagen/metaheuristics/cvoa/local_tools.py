@@ -1,4 +1,5 @@
 import threading
+from typing import Any, Dict
 
 from metagen.framework import Solution
 from metagen.metaheuristics.cvoa.common_tools import IndividualState, SolutionSet
@@ -79,7 +80,7 @@ class LocalPandemicState:
         with self.lock:
             return self.best_individual
 
-    def get_pandemic_report(self):
+    def get_pandemic_report(self) -> Dict[str, Any]:
         with self.lock:
             return {
                 "recovered": len(self.recovered),

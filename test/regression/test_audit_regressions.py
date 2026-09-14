@@ -1431,25 +1431,34 @@ def test_a09_los_dos_cvoa_exponen_los_mismos_metodos():
                 return {m.name for m in nodo.body if isinstance(m, ast.FunctionDef)}
         raise AssertionError(f"no se encontro la clase {clase} en {modulo}")
 
-    local = metodos("metagen.metaheuristics.cvoa.cvoa_local", "CVOA")
     distribuido = metodos("metagen.metaheuristics.cvoa.cvoa_distributed", "DistributedCVOA")
 
-    assert local == distribuido, (
-        f"solo en el local: {sorted(local - distribuido)}; "
-        f"solo en el distribuido: {sorted(distribuido - local)}"
-    )
+    # Desde A-09 DistributedCVOA es CVOA con distributed=True: solo puede tener un
+    # constructor. Cualquier otro metodo seria la duplicacion volviendo.
+    assert distribuido <= {"__init__"}, (
+        f"DistributedCVOA reimplementa {sorted(distribuido - {'__init__'})}: hay una sola cepa")
+    arbol = ast.parse(_fuente("metagen.metaheuristics.cvoa.cvoa_distributed"))
+    bases = [b.id for n in ast.walk(arbol) if isinstance(n, ast.ClassDef) and n.name == "DistributedCVOA"
+             for b in n.bases if isinstance(b, ast.Name)]
+    assert bases == ["CVOA"], f"DistributedCVOA hereda de {bases}, no de CVOA"
 
 
-def test_a09_los_dos_cvoa_informan_de_la_iteracion_una_sola_vez():
+def test_a09_hay_una_sola_implementacion_de_la_cepa():
     """Una divergencia real que dejo la duplicacion: el gemelo distribuido imprimia
     el informe de iteracion dos veces. No era solo ruido: cada uno hace un `ray.get`
-    entre procesos, y la f-string se evalua aunque el nivel de log lo descarte."""
-    local = _fuente("metagen.metaheuristics.cvoa.cvoa_local").count("Iteration #")
-    distribuido = _fuente("metagen.metaheuristics.cvoa.cvoa_distributed").count("Iteration #")
+    entre procesos, y la f-string se evalua aunque el nivel de log lo descarte. Desde
+    A-09 el informe y el paso de contagio se escriben una sola vez, en cvoa_local: ni
+    cvoa_distributed ni las herramientas de Ray los repiten."""
+    local = _fuente("metagen.metaheuristics.cvoa.cvoa_local")
+    distribuido = _fuente("metagen.metaheuristics.cvoa.cvoa_distributed")
+    herramientas_ray = _fuente("metagen.metaheuristics.cvoa.distributed_tools")
 
-    assert local == distribuido == 1, (
-        f"informes de iteracion: local {local}, distribuido {distribuido}"
-    )
+    assert local.count("Iteration #") == 1, "el informe de iteracion se escribe una vez"
+    assert "Iteration #" not in distribuido and "Iteration #" not in herramientas_ray
+    # El sorteo del aislamiento es la huella del paso de contagio: solo en un sitio.
+    sorteo = "get_rng().random() < strain_properties.p_isolation"
+    assert local.count(sorteo) == 1
+    assert sorteo not in distribuido and sorteo not in herramientas_ray
 
 
 # --------------------------------------------------------------------------
@@ -2793,10 +2802,10 @@ def test_f45_el_aislado_se_cuenta_en_distribuido():
     funcion de `distributed_tools` que ejecutan las tareas de Ray. Necesita Ray de
     verdad: se salta donde no este."""
     ray = pytest.importorskip("ray")
-    from metagen.metaheuristics.cvoa.common_tools import StrainProperties
+    from metagen.metaheuristics.cvoa.common_tools import SolutionSet, StrainProperties
     from metagen.metaheuristics.cvoa.cvoa_distributed import DistributedCVOA
-    from metagen.metaheuristics.cvoa.distributed_tools import (RemotePandemicState,
-                                                                cvoa_local_yield_infected_from_carrier)
+    from metagen.metaheuristics.cvoa.distributed_tools import (RemotePandemicState, RemotePandemicStateProxy,
+                                                                spread_on_ray)
 
     arrancado_aqui = not ray.is_initialized()
     if arrancado_aqui:
@@ -2817,14 +2826,15 @@ def test_f45_el_aislado_se_cuenta_en_distribuido():
             "el metodo del gemelo distribuido no cuenta a los aislados")
         assert ray.get(estado.get_recovered_len.remote()) == 0
 
-        estado = RemotePandemicState.remote(Solution(dominio))
-        nuevos = cvoa_local_yield_infected_from_carrier(estado, fitness, propiedades, portador,
-                                                        n_infected=5, travel_distance=1, time=1,
-                                                        update_isolated=False)
+        # The Ray task path: one task per carrier. As a superspreader the carrier
+        # infects at least six, so the isolated count cannot be zero by chance.
+        estado = RemotePandemicStateProxy(RemotePandemicState.remote(Solution(dominio)))
+        nuevos = spread_on_ray(DistributedCVOA, estado, dominio, fitness, propiedades,
+                               SolutionSet([portador]), SolutionSet([portador]), 1)
         assert len(nuevos) == 0
-        assert ray.get(estado.get_pandemic_report.remote())["isolated"] == 5, (
+        assert estado.get_pandemic_report()["isolated"] >= 6, (
             "la tarea de contagio de Ray no cuenta a los aislados")
-        assert ray.get(estado.get_recovered_len.remote()) == 0
+        assert estado.get_recovered_len() == 0
     finally:
         if arrancado_aqui and ray.is_initialized():
             ray.shutdown()

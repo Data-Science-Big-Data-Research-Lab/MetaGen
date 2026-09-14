@@ -1,6 +1,6 @@
 import copy
 from collections.abc import MutableSet
-from typing import Callable, Dict, Iterable, Iterator, NamedTuple, Optional, Tuple
+from typing import Any, Callable, Dict, Iterable, Iterator, NamedTuple, Optional, Protocol, Tuple
 
 from metagen.framework import Domain, Solution
 from metagen.framework.rng import get_rng
@@ -77,6 +77,39 @@ class StrainProperties(NamedTuple):
 
 # Individual state in the pandemic
 IndividualState = NamedTuple("IndividualState", [("recovered", bool), ("dead", bool), ("isolated", bool)])
+
+
+class PandemicState(Protocol):
+    """
+    What a strain asks of the state every strain shares: the recovered, the dead,
+    the isolated and the best individual of the whole pandemic.
+
+    LocalPandemicState implements it directly, under a lock, for the strains that
+    run as threads; RemotePandemicStateProxy implements it for the strains that run
+    on Ray, each call a synchronous call to the RemotePandemicState actor. The strain
+    talks to either through this interface and does not know which one it holds
+    (A-09).
+    """
+
+    def get_individual_state(self, individual: Solution) -> IndividualState: ...
+
+    def get_recovered_len(self) -> int: ...
+
+    def get_infected_again(self, individual: Solution) -> None: ...
+
+    def update_deaths(self, individuals: SolutionSet) -> None: ...
+
+    def update_recovered_with_deaths(self) -> None: ...
+
+    def recover_if_not_dead(self, individual: Solution) -> None: ...
+
+    def isolate(self, individual: Solution) -> None: ...
+
+    def update_best_individual(self, individual: Solution) -> None: ...
+
+    def get_best_individual(self) -> Solution: ...
+
+    def get_pandemic_report(self) -> Dict[str, Any]: ...
 
 
 
@@ -187,25 +220,3 @@ def insert_into_set_strain(strain_worst_superspreader:Solution, strain_best_dead
                 best_dead = to_insert
 
     return worst_superspreader, best_dead, inserted
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

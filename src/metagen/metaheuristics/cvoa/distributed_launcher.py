@@ -13,25 +13,27 @@ from metagen.framework import Domain, Solution
 from metagen.framework.rng import set_seed, spawn_seed
 from metagen.logging.metagen_logger import metagen_logger
 from metagen.metaheuristics.cvoa.common_tools import StrainProperties
-from metagen.metaheuristics.cvoa.cvoa_distributed import DistributedCVOA
+from metagen.metaheuristics.cvoa.cvoa_local import CVOA
 from metagen.metaheuristics.cvoa.distributed_tools import PandemicStateHandle, RemotePandemicState
 from metagen.metaheuristics.tools import solution_class
 
 
 @ray.remote
-def run_strain(seed: int, global_state:RemotePandemicState, domain:Domain, fitness_function: Callable[[Solution],float],
-               strain_properties:StrainProperties, update_isolated:bool, log_dir:Optional[str]) -> Solution:
+def run_strain(seed: int, global_state: PandemicStateHandle, domain: Domain,
+               fitness_function: Callable[[Solution], float], strain_properties: StrainProperties,
+               update_isolated: bool, log_dir: Optional[str], strain_class: type[CVOA]) -> Solution:
     # The strain runs in its own process: seeded here, from a seed drawn in the
     # driver, so the launcher's seed reaches it (A-06).
     set_seed(seed)
-    strain = DistributedCVOA(global_state, domain,fitness_function, strain_properties, update_isolated, log_dir)
+    strain = strain_class(global_state, domain, fitness_function, strain_properties, update_isolated, log_dir,
+                          distributed=True)
     return strain.run()
 
 
 
 def distributed_cvoa_launcher(strains: List[StrainProperties], domain: Domain, fitness_function: Callable[[Solution], float],
                               update_isolated: bool = False, log_dir: Optional[str] = None,
-                              seed: Optional[int] = None) -> Solution:
+                              seed: Optional[int] = None, strain_class: type[CVOA] = CVOA) -> Solution:
     """
     Run a distributed CVOA pandemic and return the best solution.
 
@@ -51,6 +53,9 @@ def distributed_cvoa_launcher(strains: List[StrainProperties], domain: Domain, f
         reproduces; with several strains the order in which they reach the shared
         state still depends on timing.
     :type seed: Optional[int], optional
+    :param strain_class: The class every strain is built from, run with ``distributed=True``
+        (default is CVOA, MetaGen's variant).
+    :type strain_class: type[CVOA], optional
     :return: The best solution found across every strain.
     :rtype: Solution
 
@@ -68,7 +73,7 @@ def distributed_cvoa_launcher(strains: List[StrainProperties], domain: Domain, f
     if started_ray:
         ray.init()
     try:
-        return _run_pandemic(strains, domain, fitness_function, update_isolated, log_dir)
+        return _run_pandemic(strains, domain, fitness_function, update_isolated, log_dir, strain_class)
     finally:
         if started_ray and ray.is_initialized():
             ray.shutdown()
@@ -76,7 +81,7 @@ def distributed_cvoa_launcher(strains: List[StrainProperties], domain: Domain, f
 
 def _run_pandemic(strains: List[StrainProperties], domain: Domain,
                   fitness_function: Callable[[Solution], float], update_isolated: bool,
-                  log_dir: Optional[str]) -> Solution:
+                  log_dir: Optional[str], strain_class: type[CVOA]) -> Solution:
     """
     Run the strains on an already started Ray runtime and report; see distributed_cvoa_launcher.
     """
@@ -89,7 +94,7 @@ def _run_pandemic(strains: List[StrainProperties], domain: Domain,
 
     t1 = time()
     futures = [run_strain.remote(spawn_seed(), global_state, domain, fitness_function, strain_properties,
-                                 update_isolated, log_dir)
+                                 update_isolated, log_dir, strain_class)
                for strain_properties in strains]
     results = ray.get(futures)
     t2 = time()

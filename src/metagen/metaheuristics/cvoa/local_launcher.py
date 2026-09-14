@@ -13,18 +13,19 @@ from metagen.metaheuristics.cvoa.local_tools import LocalPandemicState
 from metagen.metaheuristics.tools import solution_class
 
 
-def run_strain(global_state:LocalPandemicState, domain:Domain, fitness_function: Callable[[Solution],float],
-               strain_properties:StrainProperties, update_isolated:bool=False, log_dir:Optional[str]=None) -> Solution:
-    strain = CVOA(global_state, domain,fitness_function, strain_properties, update_isolated, log_dir)
+def run_strain(global_state: LocalPandemicState, domain: Domain, fitness_function: Callable[[Solution], float],
+               strain_properties: StrainProperties, update_isolated: bool = False, log_dir: Optional[str] = None,
+               strain_class: type[CVOA] = CVOA) -> Solution:
+    strain = strain_class(global_state, domain, fitness_function, strain_properties, update_isolated, log_dir)
     return strain.run()
 
 
 
 def cvoa_launcher(strains: List[StrainProperties], domain: Domain, fitness_function: Callable[[Solution], float],
                   update_isolated: bool = False, log_dir: Optional[str] = None,
-                  seed: Optional[int] = None) -> Solution:
+                  seed: Optional[int] = None, strain_class: type[CVOA] = CVOA) -> Solution:
     """
-    Run a CVOA pandemic over the given strains and return the best solution.
+    Run a CVOA pandemic over the given strains, one thread per strain, and return the best solution.
 
     :param strains: The strains taking part in the pandemic.
     :type strains: List[StrainProperties]
@@ -42,6 +43,9 @@ def cvoa_launcher(strains: List[StrainProperties], domain: Domain, fitness_funct
         share those generators, so a seed makes a single-strain run reproducible
         but does not pin down the interleaving of several strains.
     :type seed: Optional[int], optional
+    :param strain_class: The class every strain is built from (default is CVOA, MetaGen's
+        variant). A subclass of CVOA changes what a strain does; the launcher does not.
+    :type strain_class: type[CVOA], optional
     :return: The best solution found across every strain.
     :rtype: Solution
     """
@@ -54,7 +58,8 @@ def cvoa_launcher(strains: List[StrainProperties], domain: Domain, fitness_funct
 
     t1 = time()
     with ThreadPoolExecutor(max_workers=len(strains)) as executor:
-        futures = {strain.strain_id: executor.submit(run_strain, global_state, domain, fitness_function, strain, update_isolated, log_dir) for strain in strains}
+        futures = {strain.strain_id: executor.submit(run_strain, global_state, domain, fitness_function, strain, update_isolated, log_dir,
+                                                      strain_class) for strain in strains}
     t2 = time()
 
     best_solution = global_state.get_best_individual()

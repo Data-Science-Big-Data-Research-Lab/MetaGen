@@ -1,11 +1,11 @@
-from copy import deepcopy
-from typing import Any, Callable, TypeAlias
+from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, TypeAlias
 import ray
 from metagen.framework import Solution, Domain
-from metagen.metaheuristics.cvoa.common_tools import IndividualState, StrainProperties, \
-    compute_n_infected_travel_distance, SolutionSet
-from metagen.metaheuristics.distributed_tools import assign_load_equally
-from metagen.framework.rng import get_rng, set_seed, spawn_seed
+from metagen.metaheuristics.cvoa.common_tools import IndividualState, PandemicState, StrainProperties, SolutionSet
+from metagen.framework.rng import set_seed, spawn_seed
+
+if TYPE_CHECKING:
+    from metagen.metaheuristics.cvoa.cvoa_local import CVOA
 
 # A handle to the RemotePandemicState actor. Ray builds it with
 # RemotePandemicState.remote(...) and every method is called through .remote(); mypy
@@ -68,7 +68,7 @@ class RemotePandemicState:
     def get_best_individual(self) -> Solution:
         return self.best_individual
 
-    def get_pandemic_report(self):
+    def get_pandemic_report(self) -> Dict[str, Any]:
         return {
             "recovered": len(self.recovered),
             "deaths": len(self.deaths),
@@ -77,117 +77,80 @@ class RemotePandemicState:
         }
 
 
-def distributed_cvoa_new_infected_population(global_state, domain: Domain,
-                                             fitness_function: Callable[[Solution], float],
-                                             strain_properties: StrainProperties,
-                                             carrier_population: SolutionSet, superspreaders: SolutionSet,
-                                             time: int, update_isolated: bool) -> SolutionSet:
+class RemotePandemicStateProxy:
+    """
+    The strain's view of the RemotePandemicState actor: the same methods as
+    LocalPandemicState, each a synchronous call to the actor. The strain and the
+    contagion tasks hold this instead of the handle, so the code that talks to the
+    state is written once for threads and for Ray (A-09). It pickles with the handle
+    inside, which is how it reaches the tasks.
+    """
 
-    # Every task is seeded from the strain's generator, so the strain's seed reaches
-    # the contagion tasks too (A-06).
-    futures = [cvoa_remote_yield_infected_population_from_a_carrier.remote(spawn_seed(), global_state, domain,
-                                                                           fitness_function, strain_properties,
-                                                                           carrier, superspreaders, time,
-                                                                           update_isolated)
-               for carrier in carrier_population]
+    def __init__(self, handle: PandemicStateHandle):
+        self.handle = handle
 
-    new_infected_population = SolutionSet()
-    for result in ray.get(futures):
-        new_infected_population.update(result)
+    def get_individual_state(self, individual: Solution) -> IndividualState:
+        state: IndividualState = ray.get(self.handle.get_individual_state.remote(individual))
+        return state
 
-    return new_infected_population
+    def get_recovered_len(self) -> int:
+        recovered: int = ray.get(self.handle.get_recovered_len.remote())
+        return recovered
 
+    def get_infected_again(self, individual: Solution) -> None:
+        ray.get(self.handle.get_infected_again.remote(individual))
 
-def cvoa_local_yield_infected_population_from_a_carrier(global_state, domain: Domain,
-                                                        fitness_function: Callable[[Solution], float],
-                                                        strain_properties: StrainProperties,
-                                                        carrier: Solution, superspreaders: SolutionSet,
-                                                        time: int, update_isolated: bool) -> SolutionSet:
-    n_infected, travel_distance = compute_n_infected_travel_distance(domain, strain_properties, carrier, superspreaders)
+    def update_deaths(self, individuals: SolutionSet) -> None:
+        ray.get(self.handle.update_deaths.remote(individuals))
 
-    return distributed_infect_individuals(global_state, fitness_function, strain_properties, carrier, n_infected,
-                                          travel_distance,
-                                          time, update_isolated)
+    def update_recovered_with_deaths(self) -> None:
+        ray.get(self.handle.update_recovered_with_deaths.remote())
 
+    def recover_if_not_dead(self, individual: Solution) -> None:
+        ray.get(self.handle.recover_if_not_dead.remote(individual))
 
-@ray.remote
-def cvoa_remote_yield_infected_population_from_a_carrier(seed: int, global_state, domain: Domain,
-                                                         fitness_function: Callable[[Solution], float],
-                                                         strain_properties: StrainProperties,
-                                                         carrier: Solution, superspreaders: SolutionSet,
-                                                         time: int, update_isolated: bool) -> SolutionSet:
-    set_seed(seed)
-    return cvoa_local_yield_infected_population_from_a_carrier(global_state, domain, fitness_function,
-                                                               strain_properties, carrier, superspreaders, time,
-                                                               update_isolated)
+    def isolate(self, individual: Solution) -> None:
+        # Waited on, not wrapped in ray.remote(...), which raised (F-42).
+        ray.get(self.handle.isolate.remote(individual))
 
+    def update_best_individual(self, individual: Solution) -> None:
+        ray.get(self.handle.update_best_individual.remote(individual))
 
-def distributed_infect_individuals(global_state, fitness_function: Callable[[Solution], float],
-                                   strain_properties: StrainProperties,
-                                   carrier: Solution, n_infected: int, travel_distance: int, time: int,
-                                   update_isolated: bool) -> SolutionSet:
-    distribution = assign_load_equally(n_infected)
-    futures = []
-    for count in distribution:
-        futures.append(
-            cvoa_remote_yield_infected_from_carrier.remote(spawn_seed(), global_state, fitness_function,
-                                                           strain_properties, carrier, count, travel_distance, time,
-                                                           update_isolated))
-    new_infected_population = SolutionSet()
-    for result in ray.get(futures):
-        new_infected_population.update(result)
-    return new_infected_population
+    def get_best_individual(self) -> Solution:
+        best: Solution = ray.get(self.handle.get_best_individual.remote())
+        return best
 
-
-def cvoa_local_yield_infected_from_carrier(global_state, fitness_function: Callable[[Solution], float],
-                                           strain_properties: StrainProperties,
-                                           carrier: Solution, n_infected: int, travel_distance: int, time: int,
-                                           update_isolated: bool) -> SolutionSet:
-    new_infected_population: SolutionSet = SolutionSet()
-
-    for _ in range(0, n_infected):
-
-        if time < strain_properties.social_distancing:
-            new_infected_individual = deepcopy(carrier)
-            new_infected_individual.mutate(travel_distance)
-            new_infected_individual.evaluate(fitness_function)
-            update_new_infected_population(global_state, new_infected_population, new_infected_individual,
-                                           strain_properties.p_re_infection)
-
-        else:
-            new_infected_individual = deepcopy(carrier)
-            new_infected_individual.mutate(1)
-            new_infected_individual.evaluate(fitness_function)
-            # Isolated with probability p_isolation; infected otherwise (F-27, as in cvoa_local).
-            # The isolated individual is counted and the point stays open (F-45). Waited
-            # on, not wrapped in ray.remote(...), which raised (F-42).
-            if get_rng().random() < strain_properties.p_isolation:
-                ray.get(global_state.isolate.remote(new_infected_individual))
-            else:
-                update_new_infected_population(global_state, new_infected_population, new_infected_individual,
-                                               strain_properties.p_re_infection)
-
-    return new_infected_population
+    def get_pandemic_report(self) -> Dict[str, Any]:
+        report: Dict[str, Any] = ray.get(self.handle.get_pandemic_report.remote())
+        return report
 
 
 @ray.remote
-def cvoa_remote_yield_infected_from_carrier(seed: int, global_state, fitness_function: Callable[[Solution], float],
-                                            strain_properties: StrainProperties,
-                                            carrier: Solution, n_infected: int, travel_distance: int, time: int,
-                                            update_isolated: bool) -> SolutionSet:
+def _infect_from_carrier(seed: int, strain_class: "type[CVOA]", state: PandemicState, domain: Domain,
+                         fitness_function: Callable[[Solution], float], strain_properties: StrainProperties,
+                         carrier: Solution, superspreaders: SolutionSet, time: int) -> SolutionSet:
+    # Seeded from the strain's generator, so the strain's seed reaches every task (A-06).
     set_seed(seed)
-    return cvoa_local_yield_infected_from_carrier(global_state, fitness_function, strain_properties, carrier,
-                                                  n_infected, travel_distance, time, update_isolated)
+    return strain_class.infect_from_carrier(state, domain, fitness_function, strain_properties, carrier,
+                                            superspreaders, time)
 
 
-def update_new_infected_population(global_state, new_infected_population: SolutionSet,
-                                   new_infected_individual: Solution, p_re_infection: float) -> None:
-    individual_state: IndividualState = ray.get(global_state.get_individual_state.remote(new_infected_individual))
+def spread_on_ray(strain_class: "type[CVOA]", state: PandemicState, domain: Domain,
+                  fitness_function: Callable[[Solution], float], strain_properties: StrainProperties,
+                  carriers: Iterable[Solution], superspreaders: SolutionSet, time: int) -> SolutionSet:
+    """
+    The contagion step of one iteration on Ray: one task per carrier, each running the
+    strain class's own infect_from_carrier, so a subclass's variant of isolation or
+    admission runs in the tasks too. There used to be a second level of tasks that
+    split one carrier's few infections across CPUs; it only added dispatch (A-09).
 
-    if not individual_state.dead and not individual_state.recovered:
-        new_infected_population.add(new_infected_individual)
-
-    elif individual_state.recovered:
-        if get_rng().random() < p_re_infection:
-            new_infected_population.add(new_infected_individual)
-            ray.get(global_state.get_infected_again.remote(new_infected_individual))
+    :return: The newly infected population, in carrier order.
+    :rtype: SolutionSet
+    """
+    futures = [_infect_from_carrier.remote(spawn_seed(), strain_class, state, domain, fitness_function,
+                                           strain_properties, carrier, superspreaders, time)
+               for carrier in carriers]
+    new_infected_population = SolutionSet()
+    for result in ray.get(futures):
+        new_infected_population.update(result)
+    return new_infected_population
