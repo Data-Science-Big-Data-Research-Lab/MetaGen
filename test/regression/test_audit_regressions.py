@@ -2859,3 +2859,27 @@ def test_f46_el_reparto_respeta_el_tamano_minimo_de_isla():
     finally:
         if arrancado_aqui and ray.is_initialized():
             ray.shutdown()
+
+
+# --------------------------------------------------------------------------------
+# F-47 · TPE cuesta 220 evaluaciones antes de su primera iteracion, y el usuario no lo ve ni lo controla
+# --------------------------------------------------------------------------------
+
+def test_f47_tpe_expone_la_poblacion_y_su_coste_es_el_que_dice():
+    """F-47: TPE heredaba una poblacion de 20 que no exponia, y con 10 rondas de warmup
+    hacia 220 evaluaciones antes de iterar: una peticion de 100 evaluaciones recibia
+    320 sin que ninguna docstring lo dijera. Ahora `population_size` es un parametro
+    y la docstring da la formula: population * (warmup + 1) + pool * iteraciones."""
+    from metagen.metaheuristics import TPE
+
+    dominio, esfera = _esfera_2d()
+    llamadas = []
+    contada = lambda s: llamadas.append(1) or esfera(s)
+
+    TPE(dominio, contada, population_size=4, warmup_iterations=1, candidate_pool_size=2,
+        max_iterations=3, seed=0).run()
+    assert len(llamadas) == 4 * (1 + 1) + 2 * 3, "el coste de TPE no es el que documenta"
+
+    llamadas.clear()
+    TPE(dominio, contada, warmup_iterations=0, candidate_pool_size=2, max_iterations=1, seed=0).run()
+    assert len(llamadas) == 20 + 2, "sin warmup, TPE cuesta su poblacion mas el pool por iteracion"

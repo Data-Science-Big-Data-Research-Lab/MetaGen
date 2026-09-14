@@ -65,18 +65,32 @@ class TPE(Metaheuristic):
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
                  max_iterations: int = 50, warmup_iterations:int = 10, candidate_pool_size: int = 24,
                  gamma_config: Optional[GammaConfig] = None, distributed=False, log_dir: Optional[str] = None,
-                 seed: Optional[int] = None) -> None:
+                 seed: Optional[int] = None, population_size: int = 20) -> None:
         """
         Initialize the TPE algorithm.
+
+        What a run costs, in fitness evaluations: ``population_size * (warmup_iterations
+        + 1)`` before the first iteration, then ``candidate_pool_size`` per iteration.
+        With the defaults that is 220 evaluations before iterating and 24 per
+        iteration; ``max_iterations=10, candidate_pool_size=10`` is 320 evaluations,
+        not 100. The population size used to be inherited from the base class and
+        could not be set, and this docstring said it was 10 (F-47).
 
         :param domain: The problem domain that defines the solution space
         :type domain: Domain
         :param fitness_function: Function to evaluate solutions
         :type fitness_function: Callable[[Solution], float]
-        :param population_size: Size of the population to maintain, defaults to 10
-        :type population_size: int, optional
         :param max_iterations: Maximum number of iterations to run, defaults to 50
         :type max_iterations: int, optional
+        :param warmup_iterations: Rounds of random exploration before the search, each
+            evaluating ``population_size`` solutions; their best seeds the model,
+            defaults to 10
+        :type warmup_iterations: int, optional
+        :param candidate_pool_size: Solutions evaluated per iteration, defaults to 24
+        :type candidate_pool_size: int, optional
+        :param population_size: Solutions evaluated by the initialization and by each
+            warmup round, defaults to 20
+        :type population_size: int, optional
         :param gamma: Fraction of best solutions to consider when building models, defaults to 0.25
         :type gamma: float, optional
         :param distributed: Whether to use distributed computation, defaults to False
@@ -91,7 +105,8 @@ class TPE(Metaheuristic):
         domain = deepcopy(domain)
         domain._connector = TPEConnector()
 
-        super().__init__(domain, fitness_function, warmup_iterations=warmup_iterations, distributed=distributed, log_dir=log_dir, seed=seed)
+        super().__init__(domain, fitness_function, population_size=population_size,
+                         warmup_iterations=warmup_iterations, distributed=distributed, log_dir=log_dir, seed=seed)
 
         self.max_iterations = max_iterations
         self.candidate_pool_size = candidate_pool_size

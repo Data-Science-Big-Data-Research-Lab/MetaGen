@@ -35,6 +35,11 @@ class HillClimbing(Metaheuristic):
     :type fitness_function: Callable[[Solution], float]
     :param population_size: Size of the population (neighborhood) to maintain, defaults to 10
     :type population_size: int, optional
+    :param warmup_iterations: Rounds of random exploration before the search, each
+        evaluating ``population_size`` solutions, defaults to 5. A run costs
+        ``population_size * (warmup_iterations + 1 + max_iterations)`` evaluations:
+        with the defaults, 60 of them before the first iteration (F-47)
+    :type warmup_iterations: int, optional
     :param max_iterations: Maximum number of iterations to run, defaults to 10
     :type max_iterations: int, optional
     :param tabu_size: Maximum size of the tabu list, defaults to 5
