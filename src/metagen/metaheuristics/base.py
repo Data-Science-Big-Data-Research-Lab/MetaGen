@@ -40,6 +40,12 @@ class Metaheuristic(ABC):
     """
     Abstract base class for metaheuristic algorithms.
 
+    ``minimum_slice`` is the fewest individuals a distributed slice may hold: the
+    population is split into one slice per CPU, and an algorithm that needs several
+    individuals per step declares it here (the genetic ones need two to cross), so
+    that a cluster with more CPUs than individuals does not hand it islands of one
+    (F-46).
+
     :param domain: The problem domain.
     :type domain: Domain
     :param fitness_function: Function to evaluate solutions.
@@ -85,6 +91,8 @@ class Metaheuristic(ABC):
     :ivar best_solution_fitnesses: List of fitness values of the best solutions per iteration.
     :vartype best_solution_fitnesses: List[float]
     """
+
+    minimum_slice: int = 1
 
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float], population_size=20,
                  warmup_iterations: int = 0, distributed=False,
@@ -135,10 +143,11 @@ class Metaheuristic(ABC):
         # after whatever _warmup() left behind, which is one entry per warmup
         # round and has nothing to do with the population being built (F-03).
         if self.current_iteration == -1:
-            distribution = assign_load_equally(self.population_size)
+            distribution = assign_load_equally(self.population_size, self.minimum_slice)
         else:
             distribution = assign_load_equally(
-                len(self.current_solutions) if len(self.current_solutions) > 0 else self.population_size)
+                len(self.current_solutions) if len(self.current_solutions) > 0 else self.population_size,
+                self.minimum_slice)
         population = deepcopy(self.current_solutions)
         futures = []
 

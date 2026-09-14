@@ -69,6 +69,9 @@ class Memetic(Metaheuristic):
         best_solution = memetic.run()
     """
 
+    # Two parents to cross: a distributed slice of one individual raised IndexError (F-46).
+    minimum_slice: int = 2
+
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
                  population_size: int = 10,
                  max_iterations: int = 20, mutation_rate: float = 0.1,

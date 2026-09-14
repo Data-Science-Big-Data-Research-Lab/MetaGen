@@ -2844,7 +2844,6 @@ def test_f45_el_aislado_se_cuenta_en_distribuido():
 # F-46 · En distribuido, una poblacion menor que el numero de CPU deja islas de un individuo
 # --------------------------------------------------------------------------------
 
-@pytest.mark.xfail(reason="F-46: el reparto deja islas de un individuo y el GA revienta", strict=True)
 @pytest.mark.parametrize("nombre", ["GA", "Memetic"])
 def test_f46_una_poblacion_menor_que_las_cpu_no_deja_islas_de_un_individuo(nombre):
     """F-46: assign_load_equally parte la poblacion en una isla por CPU sin mirar
@@ -2870,6 +2869,25 @@ def test_f46_una_poblacion_menor_que_las_cpu_no_deja_islas_de_un_individuo(nombr
     try:
         mejor = fabricas[nombre]().run()
         assert mejor.get_fitness() == esfera(mejor)
+    finally:
+        if arrancado_aqui and ray.is_initialized():
+            ray.shutdown()
+
+
+def test_f46_el_reparto_respeta_el_tamano_minimo_de_isla():
+    """F-46, el mecanismo: con un minimo de dos por isla, tres individuos en dos CPU van
+    en una sola isla y cuatro en dos de dos; sin minimo, como antes, una isla por CPU."""
+    ray = pytest.importorskip("ray")
+    from metagen.metaheuristics.distributed_tools import assign_load_equally
+
+    arrancado_aqui = not ray.is_initialized()
+    if arrancado_aqui:
+        ray.init(num_cpus=2, include_dashboard=False, ignore_reinit_error=True)
+    try:
+        assert assign_load_equally(3) == [2, 1]
+        assert assign_load_equally(3, minimum_chunk=2) == [3]
+        assert assign_load_equally(4, minimum_chunk=2) == [2, 2]
+        assert assign_load_equally(1, minimum_chunk=2) == [1], "una poblacion menor que el minimo va entera a una isla"
     finally:
         if arrancado_aqui and ray.is_initialized():
             ray.shutdown()
