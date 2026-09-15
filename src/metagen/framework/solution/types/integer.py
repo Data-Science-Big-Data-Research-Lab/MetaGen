@@ -76,7 +76,9 @@ class Integer(BaseType):
 
     def mutate(self, alteration_limit: Any = None) -> None:
         """
-        Modify the value of this Integer instance to a rs category from its definition.
+        Modify the value of this Integer instance to another value of its definition,
+        never the current one (F-49): a mutation always changes the variable, as it
+        does for a Categorical.
 
         :param alteration_limit: How far the mutation may move the current value. A
             number is an absolute amount; a :py:class:`~metagen.framework.alteration.RelativeAlteration`
@@ -86,6 +88,10 @@ class Integer(BaseType):
         """
         _, min_value, max_value, step = self.get_definition().get_attributes()
         step = step or 1
+        # The grid is anchored on the domain's minimum, captured before the window
+        # narrows it (the same rule F-01 gave Real): a window such as [13, 27] over a
+        # step of 5 from 10 holds 15, 20 and 25, not 13, 18 and 23.
+        origin, domain_max = int(min_value), int(max_value)
 
         # Resolved here rather than by the caller because the caller has one number
         # for the whole solution, and every variable has a range of its own (F-32).
@@ -99,8 +105,30 @@ class Integer(BaseType):
             min_value = limited_min_value if max_value > limited_min_value > min_value else min_value
             max_value = limited_max_value if max_value > limited_max_value > min_value else max_value
 
-        random_integer = get_rng().randrange(int(min_value), int(max_value) + 1, step)
-        self.set(random_integer)
+        low, high = int(min_value), int(max_value)
+        first = low + (origin - low) % step
+        last = high - (high - origin) % step
+        if first > last:
+            # A hand-set value off the grid with a window too narrow to hold a grid
+            # point: draw over the whole domain instead.
+            first, last = origin, domain_max - (domain_max - origin) % step
+        grid_size = (last - first) // step + 1
+
+        # Mutating means changing: draw from the grid without the current value, as
+        # Categorical does. Drawing over the whole window left a two-valued integer,
+        # a bit, unchanged half of the time (F-49). A value off the grid, set by hand,
+        # is simply redrawn; a window with a single grid point has nothing to move to.
+        current = self.get()
+        on_grid = first <= current <= last and (current - first) % step == 0
+        if on_grid:
+            if grid_size == 1:
+                return
+            index = get_rng().randrange(grid_size - 1)
+            if index >= (current - first) // step:
+                index += 1
+        else:
+            index = get_rng().randrange(grid_size)
+        self.set(first + index * step)
 
     def set(self, value: Any) -> None:
         """

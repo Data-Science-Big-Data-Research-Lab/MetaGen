@@ -1281,6 +1281,47 @@ def test_f08_aislar_un_individuo_no_bloquea_la_hebra():
 
 
 # --------------------------------------------------------------------------------
+# F-49 · Integer.mutate resortea el valor y puede dejarlo igual: sobre un bit, la mitad de las veces
+# --------------------------------------------------------------------------------
+
+def test_f49_mutar_un_entero_siempre_lo_cambia():
+    """F-49: `Integer.mutate` sorteaba un valor nuevo sobre la ventana entera, valor
+    actual incluido, asi que sobre un dominio de dos valores no cambiaba nada la mitad
+    de las veces; `Categorical.mutate` ya excluia el actual. Un bit mutado es siempre el
+    bit contrario, y un entero con paso cambia y se queda en su rejilla."""
+    from metagen.framework.solution.types.integer import Integer
+    from metagen.framework.domain import IntegerDefinition
+
+    set_seed(3)
+    bit = Integer(IntegerDefinition(0, 1))
+    for _ in range(200):
+        antes = bit.get()
+        bit.mutate()
+        assert bit.get() == 1 - antes
+
+    con_paso = Integer(IntegerDefinition(10, 50, 5))
+    for _ in range(200):
+        antes = con_paso.get()
+        con_paso.mutate(alteration_limit=7)
+        assert con_paso.get() != antes
+        assert 10 <= con_paso.get() <= 50 and (con_paso.get() - 10) % 5 == 0
+        assert abs(con_paso.get() - antes) <= 7
+
+
+def test_f49_un_entero_de_un_solo_valor_no_revienta_al_mutar():
+    """Una ventana de un solo punto de rejilla no tiene a que mutar: se queda como esta,
+    igual que una categorica de una categoria (F-17)."""
+    from metagen.framework.solution.types.integer import Integer
+    from metagen.framework.domain import IntegerDefinition
+
+    set_seed(3)
+    entero = Integer(IntegerDefinition(0, 100, 10))
+    entero.set(50)
+    entero.mutate(alteration_limit=3)
+    assert entero.get() == 50
+
+
+# --------------------------------------------------------------------------------
 # F-48 · Los conjuntos acotados de CVOA eligen al reves: muere el mejor y contagia mas el peor
 # --------------------------------------------------------------------------------
 
