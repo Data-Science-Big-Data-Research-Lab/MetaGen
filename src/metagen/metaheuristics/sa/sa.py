@@ -78,6 +78,10 @@ class SA(Metaheuristic):
     :type distributed: bool, optional
     :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
     :type log_dir: str or None, optional
+    :param distribution_model: How a distributed run makes up the next population out of
+        the slices, ``"global"`` (the default: shuffled, selected among all workers) or
+        ``"islands"``; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type distribution_model: str, optional
 
     :ivar max_iterations: Maximum number of iterations
     :vartype max_iterations: int
@@ -97,7 +101,7 @@ class SA(Metaheuristic):
                  alteration_limit: Any = RelativeAlteration(0.2), initial_temp: float = 50.0,
                  cooling_rate: Optional[float] = None, neighbor_population_size: int = 5,
                  distributed=False, log_dir: Optional[str] = None,
-                 seed: Optional[int] = None) -> None:
+                 seed: Optional[int] = None, distribution_model: str = "global") -> None:
         """
         Initialize the Simulated Annealing algorithm.
 
@@ -131,7 +135,8 @@ class SA(Metaheuristic):
         # away — about 120 of SA's 135 evaluations (F-20).
         super().__init__(domain, fitness_function, population_size=1,
                          warmup_iterations=warmup_iterations, distributed=distributed,
-                         log_dir=log_dir, seed=seed)
+                         log_dir=log_dir, seed=seed,
+                         distribution_model=distribution_model)
         self.max_iterations = max_iterations
         self.alteration_limit = alteration_limit
         self.initial_temp = initial_temp
@@ -234,6 +239,13 @@ class SA(Metaheuristic):
         self.current_temp = max(self.current_temp * self.cooling_rate, self.T_min)
 
         return [current_solution], best_solution
+
+    def select_survivors(self, parents: List[Solution], offspring: List[Solution]) -> List[Solution]:
+        """SA walks a single solution and decides by the Metropolis criterion whether
+        it moves; under the global distribution model the driver keeps the worker's
+        decision rather than picking the best of the old and the new point, which
+        would never accept a worsening move."""
+        return offspring
 
     def stopping_criterion(self) -> bool:
         """

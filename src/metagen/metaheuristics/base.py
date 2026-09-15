@@ -15,12 +15,13 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import heapq
 from abc import ABC, abstractmethod
 
 from .import_helper import is_package_installed
 from typing import List, Tuple, Optional, Callable
 from metagen.framework import Domain, Solution
-from metagen.framework.rng import set_seed, spawn_seed
+from metagen.framework.rng import get_rng, set_seed, spawn_seed
 from copy import deepcopy
 
 from metagen.logging.metagen_logger import metagen_logger
@@ -34,6 +35,10 @@ if is_package_installed("tensorboard"):
 if IS_RAY_INSTALLED:
     import ray
     from .distributed_tools import assign_load_equally, call_distributed, distributed_random_exploration
+
+
+#: The two ways the slices of a distributed run make up the next population.
+DISTRIBUTION_MODELS = frozenset({"global", "islands"})
 
 
 class Metaheuristic(ABC):
@@ -52,19 +57,36 @@ class Metaheuristic(ABC):
     :type fitness_function: Callable[[Solution], float]
     :param population_size: The size of the population (default is 1).
     :type population_size: int, optional
-    :param distributed: Whether to run on Ray (default is False). This is an island
-        model, not a parallel evaluation of the same search: the population is split
-        into one slice per CPU of the cluster and each slice runs ``iterate`` on its
-        own in a worker, every iteration. The slices come back with the size they
-        left with, so the next split hands the same individuals to the same worker:
-        the islands never exchange individuals, and the only thing they share is the
-        best solution the driver keeps. The algorithm each worker runs is therefore
-        the algorithm on a smaller population, and the number of evaluations, the
-        elitism and the result all depend on how many CPUs the cluster has.
-        Distributed and sequential runs are not comparable value by value; two
-        distributed runs with the same ``seed`` on the same number of CPUs are, since
-        every worker task is seeded from the driver's generator (A-06).
+    :param distributed: Whether to run on Ray (default is False): the population is
+        split into one slice per CPU of the cluster and each slice runs ``iterate`` on
+        its own in a worker, every iteration. What happens to the slices afterwards is
+        the ``distribution_model``. Distributed and sequential runs are not comparable
+        value by value; two distributed runs with the same ``seed`` on the same number
+        of CPUs are, since every worker task is seeded from the driver's generator (A-06).
     :type distributed: bool, optional
+    :param distribution_model: How the slices make up the next population, ``"global"``
+        (the default) or ``"islands"``.
+
+        With ``"global"`` the driver shuffles the population before splitting it, so
+        that every iteration mixes the individuals across workers, and once the slices
+        return it selects the next population **from the parents it sent and every
+        candidate that came back**, all workers considered: a (μ+λ) survivor selection
+        by fitness, ``population_size`` strong, which ``select_survivors`` implements
+        and an algorithm may override (TPE merges the histories instead, HillClimbing,
+        TabuSearch and SA keep the fresh candidates only). The budget per iteration
+        does not grow with the CPU count: it is the sequential one for HillClimbing,
+        TabuSearch and TPE, and for GA and Memetic when the slices have an even
+        number of individuals (a slice breeds pairs, so an odd slice breeds one child
+        fewer); ``RandomSearch`` keeps one elite per slice and mutates one individual
+        fewer per slice, and ``SSGA`` breeds its two children in every slice.
+
+        With ``"islands"`` the slices come back with the size they left with and are
+        concatenated in order, so the next split hands the same individuals to the
+        same worker: the islands never exchange individuals and share only the best
+        solution the driver keeps. The algorithm each worker runs is the algorithm on
+        a smaller population, and the number of evaluations, the elitism and the
+        result depend on how many CPUs the cluster has.
+    :type distribution_model: str, optional
     :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
     :type log_dir: str or None, optional
     :param seed: Seed making the run reproducible (default is None, a different
@@ -96,14 +118,23 @@ class Metaheuristic(ABC):
 
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float], population_size=20,
                  warmup_iterations: int = 0, distributed=False,
-                 log_dir: Optional[str] = None, seed: Optional[int] = None) -> None:
+                 log_dir: Optional[str] = None, seed: Optional[int] = None,
+                 distribution_model: str = "global") -> None:
         super().__init__()
+
+        if distribution_model not in DISTRIBUTION_MODELS:
+            raise ValueError(f"distribution_model must be one of {sorted(DISTRIBUTION_MODELS)}, "
+                             f"not {distribution_model!r}")
 
         self.domain = domain
         self.fitness_function = fitness_function
         self.population_size = population_size
         self.warmup_iterations = warmup_iterations
         self.distributed = distributed
+        self.distribution_model = distribution_model
+        # How many slices the population was last split into, for an algorithm that
+        # shares a per-iteration budget among them (TPE splits its candidate pool).
+        self.distributed_slices: int = 1
         self.seed = seed
         # TensorBoard used to switch itself on for the mere fact of being
         # installed, with no way to turn it off, so a sweep of hundreds of
@@ -124,14 +155,14 @@ class Metaheuristic(ABC):
 
         The population is split with assign_load_equally and each slice is handed
         to a pickled copy of the algorithm in a worker, which runs the whole method
-        on that slice alone; the slices that come back are concatenated and the best
-        of the per-slice bests is kept. Slices are cut in order and every algorithm
-        but TPE returns as many individuals as it received, so the same individuals
-        go back to the same worker every iteration: with two CPUs a population of six
-        is two independent runs of three for the whole execution, sharing only the
-        driver's best solution, and how many islands there are depends on the CPU
-        count. While initializing there is no population yet, so each worker builds
-        its share from scratch.
+        on that slice alone; the best of the per-slice bests is kept. What becomes of
+        the slices is the ``distribution_model``: under ``"global"`` the population is
+        shuffled before the cut and the next population is chosen by
+        ``select_survivors`` out of the parents and everything that came back; under
+        ``"islands"`` the slices are concatenated in order, so the same individuals go
+        back to the same worker every iteration and with two CPUs a population of six
+        is two independent runs of three for the whole execution. While initializing
+        there is no population yet, so each worker builds its share from scratch.
 
         :param method: The method to distribute.
         :type method: Callable
@@ -148,10 +179,17 @@ class Metaheuristic(ABC):
             distribution = assign_load_equally(
                 len(self.current_solutions) if len(self.current_solutions) > 0 else self.population_size,
                 self.minimum_slice)
-        population = deepcopy(self.current_solutions)
+        parents = deepcopy(self.current_solutions)
+        iterating = self.current_iteration != -1
+        # Shuffled before the cut, so that the slices are made of different
+        # individuals every iteration: that is what lets them mix across workers.
+        if iterating and self.distribution_model == "global":
+            get_rng().shuffle(parents)
+        self.distributed_slices = len(distribution)
+        population = list(parents)
         futures = []
 
-        if self.current_iteration != -1:
+        if iterating:
             metagen_logger.info(
                 f"[ITERATION {self.current_iteration}] Distributing with {ray.cluster_resources().get('CPU', 0)} CPUs -- {distribution}")
         else:
@@ -160,17 +198,37 @@ class Metaheuristic(ABC):
 
         for count in distribution:
 
-            if self.current_iteration != -1:
+            if iterating:
                 futures.append(call_distributed.remote(spawn_seed(), method, population[:count]))
                 population = population[count:]
             else:
                 futures.append(call_distributed.remote(spawn_seed(), method, count))
 
         remote_results = ray.get(futures)
-        population = [individual for subpopulation in remote_results for individual in subpopulation[0]]
+        offspring = [individual for subpopulation in remote_results for individual in subpopulation[0]]
         best_individual = min([result[1] for result in remote_results], key=lambda sol: sol.get_fitness())
 
-        return population, best_individual
+        if iterating and self.distribution_model == "global":
+            return self.select_survivors(parents, offspring), best_individual
+        return offspring, best_individual
+
+    def select_survivors(self, parents: List[Solution], offspring: List[Solution]) -> List[Solution]:
+        """
+        Choose the next population of a distributed run under the ``"global"`` model,
+        on the driver, out of the parents that were sent to the workers and every
+        candidate they returned. The default keeps the ``population_size`` best by
+        fitness, without duplicates: a (μ+λ) selection. An algorithm whose population
+        is not a set of competing individuals overrides it.
+
+        :param parents: The population the workers received, before this iteration.
+        :type parents: List[Solution]
+        :param offspring: Everything the workers returned, all slices together.
+        :type offspring: List[Solution]
+        :return: The next population.
+        :rtype: List[Solution]
+        """
+        unique = list({individual: None for individual in [*parents, *offspring]})
+        return heapq.nsmallest(self.population_size, unique, key=Solution.get_fitness)
 
     def _initialize(self) -> Tuple[List[Solution], Solution]:
         """

@@ -44,6 +44,10 @@ class SSGA(Metaheuristic):
     :param tournament_size: How many individuals compete to become a parent (default is 2,
         the mildest tournament). Raising it makes the search greedier.
     :type tournament_size: int, optional
+    :param distribution_model: How a distributed run makes up the next population out of
+        the slices, ``"global"`` (the default: shuffled, selected among all workers) or
+        ``"islands"``; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type distribution_model: str, optional
 
     :ivar population_size: The size of the population.
     :vartype population_size: int
@@ -64,8 +68,9 @@ class SSGA(Metaheuristic):
                  max_iterations: int = 50, mutation_rate: float = 0.1,
                  tournament_size: int = 2,
                  distributed: bool = False, log_dir: Optional[str] = None,
-                 seed: Optional[int] = None):
-        super().__init__(domain, fitness_function, population_size=population_size, distributed=distributed, log_dir=log_dir, seed=seed)
+                 seed: Optional[int] = None, distribution_model: str = "global"):
+        super().__init__(domain, fitness_function, population_size=population_size, distributed=distributed, log_dir=log_dir, seed=seed,
+                         distribution_model=distribution_model)
 
         # Fails here, with a message that says what to do, instead of dying on
         # the first iteration with AttributeError: no attribute 'crossover' (A-07).

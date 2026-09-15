@@ -41,6 +41,10 @@ class RandomSearch(Metaheuristic):
     :type distributed: bool, optional
     :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
     :type log_dir: str or None, optional
+    :param distribution_model: How a distributed run makes up the next population out of
+        the slices, ``"global"`` (the default: shuffled, selected among all workers) or
+        ``"islands"``; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type distribution_model: str, optional
 
     :ivar max_iterations: Maximum number of iterations to run
     :vartype max_iterations: int
@@ -61,7 +65,7 @@ class RandomSearch(Metaheuristic):
         search = RandomSearch(domain, fitness_function, population_size=50, max_iterations=100)
         optimal_solution = search.run()
     """
-    def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float], population_size = 10, max_iterations: int = 20, distributed = False, log_dir: Optional[str] = None, seed: Optional[int] = None) -> None:
+    def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float], population_size = 10, max_iterations: int = 20, distributed = False, log_dir: Optional[str] = None, seed: Optional[int] = None, distribution_model: str = "global") -> None:
         """
         Initialize the RandomSearch algorithm.
 
@@ -78,7 +82,8 @@ class RandomSearch(Metaheuristic):
         :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
         :type log_dir: str or None, optional
         """
-        super().__init__(domain, fitness_function, population_size, distributed=distributed, log_dir=log_dir, seed=seed)
+        super().__init__(domain, fitness_function, population_size, distributed=distributed, log_dir=log_dir, seed=seed,
+                         distribution_model=distribution_model)
         self.max_iterations = max_iterations
 
     def initialize(self, num_solutions=10) -> Tuple[List[Solution], Solution]:

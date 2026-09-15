@@ -91,6 +91,10 @@ class TabuSearch(Metaheuristic):
     :type distributed: bool, optional
     :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
     :type log_dir: str or None, optional
+    :param distribution_model: How a distributed run makes up the next population out of
+        the slices, ``"global"`` (the default: shuffled, selected among all workers) or
+        ``"islands"``; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type distribution_model: str, optional
     :param seed: Seed for MetaGen's generators, defaults to None
     :type seed: int or None, optional
 
@@ -120,9 +124,10 @@ class TabuSearch(Metaheuristic):
                  population_size: int = 10, warmup_iterations: int = 5, max_iterations: int = 20,
                  tabu_size: int = 10, tabu_radius: Any = RelativeAlteration(0.02),
                  alteration_limit: Any = RelativeAlteration(0.2), distributed: bool = False,
-                 log_dir: Optional[str] = None, seed: Optional[int] = None):
+                 log_dir: Optional[str] = None, seed: Optional[int] = None,
+                 distribution_model: str = "global"):
         super().__init__(domain, fitness_function, population_size, warmup_iterations, distributed, log_dir,
-                         seed=seed)
+                         seed=seed, distribution_model=distribution_model)
         self.max_iterations = max_iterations
         self.tabu_size = tabu_size
         self.tabu_radius: Any = tabu_radius
@@ -190,6 +195,12 @@ class TabuSearch(Metaheuristic):
         else:
             self.current_solution = min(neighborhood, key=lambda n: (self._tabu_age(n), n.get_fitness()))
         self.tabu_list.append(self.current_solution)
+
+    def select_survivors(self, parents: List[Solution], offspring: List[Solution]) -> List[Solution]:
+        """The population is the fresh neighborhood of the current solution, which
+        post_iteration picks the move from: under the global distribution model the
+        driver keeps what the workers returned, all slices together."""
+        return offspring
 
     def stopping_criterion(self) -> bool:
         return self.current_iteration >= self.max_iterations

@@ -48,6 +48,10 @@ class Memetic(Metaheuristic):
     :type alteration_limit: RelativeAlteration or float or None
     :type distributed: bool
     :type log_dir: str or None, optional
+    :param distribution_model: How a distributed run makes up the next population out of
+        the slices, ``"global"`` (the default: shuffled, selected among all workers) or
+        ``"islands"``; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type distribution_model: str, optional
     :type distribution_level: int
 
     **Code example**
@@ -79,9 +83,11 @@ class Memetic(Metaheuristic):
                  neighbor_population_size: int = 10,
                  alteration_limit: Any = RelativeAlteration(0.2),
                  distributed: bool = False, log_dir: Optional[str] = None,
-                 distribution_level: int = 0, seed: Optional[int] = None) -> None:
+                 distribution_level: int = 0, seed: Optional[int] = None,
+                 distribution_model: str = "global") -> None:
         """Initialize the Memetic Algorithm with the given parameters."""
-        super().__init__(domain, fitness_function, population_size=population_size, distributed=distributed, log_dir=log_dir, seed=seed)
+        super().__init__(domain, fitness_function, population_size=population_size, distributed=distributed, log_dir=log_dir, seed=seed,
+                         distribution_model=distribution_model)
 
         # Fails here, with a message that says what to do, instead of dying on
         # the first iteration with AttributeError: no attribute 'crossover' (A-07).

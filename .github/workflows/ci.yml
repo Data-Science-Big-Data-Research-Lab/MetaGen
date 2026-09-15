@@ -62,7 +62,7 @@ jobs:
           pip install -e .[test,distributed]
 
       - name: Run the tests that need Ray
-        run: pytest test/metaheuristics/test_extras.py test/regression -q -rxXs
+        run: pytest test/metaheuristics/test_extras.py test/metaheuristics/test_distribution.py test/regression -q -rxXs
 
   types:
     name: mypy

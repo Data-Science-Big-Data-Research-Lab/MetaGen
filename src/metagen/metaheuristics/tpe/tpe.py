@@ -39,6 +39,10 @@ class TPE(Metaheuristic):
     :type distributed: bool, optional
     :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
     :type log_dir: str or None, optional
+    :param distribution_model: How a distributed run makes up the next population out of
+        the slices, ``"global"`` (the default: shuffled, selected among all workers) or
+        ``"islands"``; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type distribution_model: str, optional
 
     :ivar max_iterations: Maximum number of iterations
     :vartype max_iterations: int
@@ -65,7 +69,8 @@ class TPE(Metaheuristic):
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
                  max_iterations: int = 50, warmup_iterations:int = 10, candidate_pool_size: int = 24,
                  gamma_config: Optional[GammaConfig] = None, distributed=False, log_dir: Optional[str] = None,
-                 seed: Optional[int] = None, population_size: int = 20) -> None:
+                 seed: Optional[int] = None, population_size: int = 20,
+                 distribution_model: str = "global") -> None:
         """
         Initialize the TPE algorithm.
 
@@ -106,7 +111,8 @@ class TPE(Metaheuristic):
         domain._connector = TPEConnector()
 
         super().__init__(domain, fitness_function, population_size=population_size,
-                         warmup_iterations=warmup_iterations, distributed=distributed, log_dir=log_dir, seed=seed)
+                         warmup_iterations=warmup_iterations, distributed=distributed, log_dir=log_dir, seed=seed,
+                         distribution_model=distribution_model)
 
         self.max_iterations = max_iterations
         self.candidate_pool_size = candidate_pool_size
@@ -166,7 +172,13 @@ class TPE(Metaheuristic):
         best_candidate = self.sample_new_solution(best_solutions, worst_solutions)
         best_candidate.evaluate(self.fitness_function)
 
-        for _ in range(self.candidate_pool_size - 1):
+        # Under the global distribution model the pool is shared among the slices, so
+        # that an iteration costs the same on any number of CPUs; each slice draws its
+        # share and the driver merges the histories.
+        pool = self.candidate_pool_size
+        if self.distributed and self.distribution_model == "global":
+            pool = max(1, self.candidate_pool_size // self.distributed_slices)
+        for _ in range(pool - 1):
             candidate = self.sample_new_solution(best_solutions, worst_solutions)
             candidate.evaluate(self.fitness_function)
 
@@ -210,6 +222,19 @@ class TPE(Metaheuristic):
         new_solution.resample(best_solutions, worst_solutions)
 
         return new_solution
+
+    def select_survivors(self, parents: List[Solution], offspring: List[Solution]) -> List[Solution]:
+        """
+        TPE's population is its history, so under the global distribution model the
+        next population is the histories every slice returned, merged without
+        duplicates and oldest first, then trimmed as a single history would be. The
+        parents are already inside: each slice returns the history it received plus
+        its candidate.
+        """
+        merged = list({individual: None for individual in [*parents, *offspring]})
+        gamma = compute_gamma(self.gamma_config, iteration=self.current_iteration,
+                              max_iterations=self.max_iterations, num_solutions=len(merged))
+        return self._limit_solution_history(merged, gamma)
 
     def stopping_criterion(self) -> bool:
         """

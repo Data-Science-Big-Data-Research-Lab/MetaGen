@@ -4,7 +4,7 @@
 Distributed Execution
 =======================
 
-|metagen| can run its metaheuristics on **Ray**, splitting the population into one slice per CPU and running each slice in its own worker, on a single machine or on a cluster. It is an island model, and it changes the search: read *How Distributed Execution Works* before enabling it.
+|metagen| can run its metaheuristics on **Ray**, splitting the population into one slice per CPU and running each slice in its own worker, on a single machine or on a cluster. How the slices make up the next population is the **distribution model**, and there are two: read *How Distributed Execution Works* before enabling it.
 
 Enabling Distributed Execution
 ------------------------------
@@ -25,38 +25,72 @@ Example usage:
     metaheuristic = SomeMetaheuristic(domain=my_domain,
                                       fitness_function=my_fitness_function,
                                       population_size=100,
-                                      distributed=True)
+                                      distributed=True)                      # the "global" model
     best_solution = metaheuristic.run()
+
+    islands = SomeMetaheuristic(domain=my_domain,
+                                fitness_function=my_fitness_function,
+                                population_size=100,
+                                distributed=True,
+                                distribution_model="islands")
+    best_solution = islands.run()
 
 How Distributed Execution Works
 -------------------------------
-Distribution in |metagen| is an **island model**, not a parallel evaluation of the same
-search. At every iteration the population is split into **one slice per CPU of the Ray
-cluster**, each slice is handed to a worker that runs the whole ``iterate`` step **on that
-slice alone**, and the slices that come back are concatenated for the next iteration. Since
-every algorithm but TPE returns as many individuals as it received and the slices are cut in
-order, **the same individuals go back to the same worker every iteration: the islands never
-exchange individuals**. The only thing they share is the best solution the driver keeps,
-which the algorithms that start from the best (``HillClimbing``, ``RandomSearch``'s elite)
-read from there. The initialization works the same way: each worker builds its share of the
-initial population from scratch.
+At every iteration the population is split into **one slice per CPU of the Ray cluster**,
+each slice is handed to a worker that runs the whole ``iterate`` step **on that slice
+alone**, and the driver keeps the best of what comes back. The initialization works the
+same way: each worker builds its share of the initial population from scratch. What
+happens to the slices afterwards is the ``distribution_model``.
 
-This has consequences that the sequential mode does not have, and they are worth knowing
-before switching it on:
+**The global model** (``distribution_model="global"``, the default). Before the cut the
+driver **shuffles** the population, so that every iteration the slices are made of
+different individuals and they mix across workers. What each worker returns are the
+**candidates** its slice produced: children in the genetic algorithms, mutants in
+``RandomSearch``, neighbors in ``HillClimbing`` and ``TabuSearch``, a model's proposals
+in TPE. Once every slice is back, the driver **selects the next population out of the
+parents it sent and every candidate returned, all workers considered**: the
+``population_size`` best by fitness, without duplicates, a (μ+λ) survivor selection.
+An algorithm whose population is not a set of competing individuals overrides that
+step (``Metaheuristic.select_survivors``): TPE merges the histories every slice
+returned, and ``HillClimbing``, ``TabuSearch`` and ``SA`` keep the fresh candidates only.
+Two things follow:
 
-- **The algorithm each worker runs is the algorithm on a smaller population.** With two
-  CPUs, a genetic algorithm of 6 individuals is two independent genetic algorithms of 3
-  for the whole run; TPE builds its model over the slice it receives, not over the
-  whole history; ``RandomSearch`` keeps one elite copy **per slice**.
-- **The number of evaluations changes with the number of CPUs.** Measured with the same
-  configuration on two CPUs, per run: ``GA`` 24 evaluations sequential and 18
-  distributed, ``SSGA`` 12 and 18, ``Memetic`` 60 and 42, ``TPE`` 132 and 204.
-  ``HillClimbing`` and ``SA`` do not change.
-- **The result depends on the machine.** A distributed run on 2 CPUs and one on 8 CPUs are
-  different searches, and neither is comparable value by value with the sequential run.
-  Two distributed runs with the same ``seed`` **on the same number of CPUs** do
-  reproduce each other: every worker task is seeded from the driver's generator.
-- ``SA`` works on a population of one, so it gains nothing from distribution.
+- **The budget of an iteration does not grow with the number of CPUs.** Each worker
+  produces as many candidates as individuals it received, and TPE shares its candidate
+  pool among the slices, so ``HillClimbing``, ``TabuSearch`` and TPE cost exactly what
+  they cost sequentially. ``GA`` and ``Memetic`` breed pairs, so a slice with an odd
+  number of individuals breeds one child fewer; ``RandomSearch`` keeps one elite copy
+  per slice and mutates one individual fewer per slice; ``SSGA`` breeds its two
+  children in every slice. Measured on two CPUs with the bench's configuration, per
+  run: ``GA`` 160 evaluations sequential and 130 distributed, ``RandomSearch`` 145 and
+  130, ``SSGA`` 40 and 70, ``Memetic`` 610 and 490, the other three unchanged.
+- **It searches as well as, or better than, the island model on the same machine.**
+  Wins against random sampling on the same budget over Sphere, Rastrigin and Griewank,
+  ten seeds each, sequential / islands / global: ``GA`` 22 / 12 / 25, ``SSGA`` 16 / 11 /
+  17, ``HillClimbing`` 28 / 26 / 29, ``RandomSearch`` 18 / 16 / 20, ``Memetic`` 30 / 30 /
+  29, ``TabuSearch`` 27 / 28 / 26; TPE 22 / 26 / 21, where the island model spends
+  almost twice the evaluations (840 against 480).
+- **Distributed is still not the same search as sequential.** The survivor selection is
+  elitist in a way the sequential algorithms are not: a sequential ``GA`` is
+  generational with two elites, a distributed one is (μ+λ). Two distributed runs with
+  the same ``seed`` **on the same number of CPUs** reproduce each other, since the
+  shuffle and every worker task are seeded from the driver's generator.
+
+**The island model** (``distribution_model="islands"``). The slices come back with the
+size they left with and are concatenated in order, so the next split hands **the same
+individuals to the same worker every iteration: the islands never exchange
+individuals**, and the only thing they share is the best solution the driver keeps,
+which the algorithms that start from the best read from there. The algorithm each
+worker runs is the algorithm on a smaller population: with two CPUs, a genetic algorithm
+of 6 individuals is two independent genetic algorithms of 3 for the whole run, TPE
+builds its model over its slice, and ``RandomSearch`` keeps one elite per slice. **The
+number of evaluations changes with the number of CPUs**: measured with the same
+configuration on two CPUs, per run, ``GA`` 24 evaluations sequential and 18 on islands,
+``SSGA`` 12 and 18, ``Memetic`` 60 and 42, ``TPE`` 132 and 204. A run on 2 CPUs and a
+run on 8 are different searches.
+
+``SA`` works on a population of one, so it gains nothing from either model.
 
 If what you need is the **same search, only faster**, distribute the fitness function
 yourself and keep ``distributed=False``: that keeps the algorithm, the budget and the

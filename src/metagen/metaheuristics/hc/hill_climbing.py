@@ -52,6 +52,10 @@ class HillClimbing(Metaheuristic):
     :type distributed: bool, optional
     :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
     :type log_dir: str or None, optional
+    :param distribution_model: How a distributed run makes up the next population out of
+        the slices, ``"global"`` (the default: shuffled, selected among all workers) or
+        ``"islands"``; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type distribution_model: str, optional
 
     :ivar max_iterations: Maximum number of iterations to run
     :vartype max_iterations: int
@@ -68,7 +72,7 @@ class HillClimbing(Metaheuristic):
                  max_iterations: int = 20, tabu_size: int = 5,
                  alteration_limit: Any = RelativeAlteration(0.2),
                  gamma_config: Optional[GammaConfig] = None, distributed=False, log_dir: Optional[str] = None,
-                 seed: Optional[int] = None):
+                 seed: Optional[int] = None, distribution_model: str = "global"):
         """
         Initialize the hill climbing algorithm.
 
@@ -90,7 +94,8 @@ class HillClimbing(Metaheuristic):
         :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
         :type log_dir: str or None, optional
         """
-        super().__init__(domain, fitness_function, population_size, warmup_iterations, distributed, log_dir, seed=seed)
+        super().__init__(domain, fitness_function, population_size, warmup_iterations, distributed, log_dir, seed=seed,
+                         distribution_model=distribution_model)
         self.max_iterations = max_iterations
         self.tabu_size = tabu_size
         self.tabu_list:Deque[Solution] = deque(maxlen=tabu_size)
@@ -165,6 +170,12 @@ class HillClimbing(Metaheuristic):
         best_solution = self._best_so_far()
         if best_solution not in self.tabu_list:
             self.tabu_list.append(best_solution)
+
+    def select_survivors(self, parents: List[Solution], offspring: List[Solution]) -> List[Solution]:
+        """The population is the fresh neighborhood of the best solution: under the
+        global distribution model the driver keeps what the workers returned, all
+        slices together, and not the previous neighborhood."""
+        return offspring
 
     def stopping_criterion(self) -> bool:
         """
