@@ -5,4 +5,6 @@ Tree-structured Parzen Estimator (TPE)
     :members:
     :show-inheritance:
 
-
+.. autoclass:: metagen.metaheuristics.CanonicalTPE
+    :members:
+    :show-inheritance:

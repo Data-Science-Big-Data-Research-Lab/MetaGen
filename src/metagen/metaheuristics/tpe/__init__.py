@@ -15,5 +15,6 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 from .tpe import TPE
+from .canonical_tpe import CanonicalTPE
 
-__all__ = ["TPE"]
+__all__ = ["TPE", "CanonicalTPE"]

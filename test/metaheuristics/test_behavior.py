@@ -65,7 +65,7 @@ import pytest
 
 from metagen.framework import Domain, Solution
 from metagen.framework.rng import set_seed
-from metagen.metaheuristics import (GA, SA, SSGA, TPE, GAConnector, HillClimbing, TabuSearch,
+from metagen.metaheuristics import (GA, SA, SSGA, TPE, CanonicalTPE, GAConnector, HillClimbing, TabuSearch,
                                     Memetic, RandomSearch)
 
 SEEDS = tuple(range(10))
@@ -75,7 +75,7 @@ SEEDS = tuple(range(10))
 # broken one at 0-4, so anything in between is a signal rather than noise.
 REQUIRED_WINS = 7
 
-ALGORITHMS = ("RandomSearch", "SA", "HillClimbing", "TabuSearch", "GA", "SSGA", "TPE", "Memetic")
+ALGORITHMS = ("RandomSearch", "SA", "HillClimbing", "TabuSearch", "GA", "SSGA", "TPE", "CanonicalTPE", "Memetic")
 
 
 def _sphere(x: float, y: float) -> float:
@@ -317,6 +317,10 @@ def _build(name: str, problem: _Problem, fitness, seed: int, log_dir: str):
     if name == "TPE":
         return TPE(problem.domain(), fitness, max_iterations=15,
                    warmup_iterations=5, seed=seed, log_dir=log_dir)
+    if name == "CanonicalTPE":
+        # One evaluation per iteration: 360 of them make the 480 TPE spends above.
+        return CanonicalTPE(problem.domain(), fitness, max_iterations=360,
+                            warmup_iterations=5, seed=seed, log_dir=log_dir)
     if name == "Memetic":
         return Memetic(problem.domain(GAConnector()), fitness, population_size=10,
                        max_iterations=15, neighbor_population_size=3, seed=seed,

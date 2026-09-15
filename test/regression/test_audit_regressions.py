@@ -1520,6 +1520,7 @@ def _bloque_de_codigo(modulo: str) -> str:
     "metagen.metaheuristics.cvoa.cvoa_local",
     "metagen.metaheuristics.cvoa.cvoa_canonical",
     "metagen.metaheuristics.ts.tabu_search",
+    "metagen.metaheuristics.tpe.canonical_tpe",
 ])
 def test_p10_los_ejemplos_de_las_docstrings_usan_la_api_de_verdad(modulo, monkeypatch):
     """P-10: los ejemplos publicados llamaban a `domain.defineInteger(0, 1)`, que no
