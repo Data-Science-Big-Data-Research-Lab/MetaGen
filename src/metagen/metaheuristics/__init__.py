@@ -18,6 +18,7 @@ from metagen.metaheuristics.cvoa import CanonicalCVOA, StrainProperties, cvoa_la
 from metagen.metaheuristics.ga import GA, SSGA, GAConnector
 from metagen.metaheuristics.sa import SA
 from metagen.metaheuristics.hc import HillClimbing
+from metagen.metaheuristics.ts import TabuSearch
 from metagen.metaheuristics.tpe import TPE
 from metagen.metaheuristics.rs import RandomSearch
 from metagen.metaheuristics.mm import Memetic
@@ -25,7 +26,7 @@ from metagen.metaheuristics.mm import Memetic
 # Memetic used to be exported only when Ray was installed, because mm_tools
 # imported it at module level even for a run that never distributes (F-24).
 __all__ = ["RandomSearch", "GA", "SSGA", "GAConnector", "SA", "TPE",
-           "cvoa_launcher", "CanonicalCVOA", "StrainProperties", "HillClimbing", "Memetic"]
+           "cvoa_launcher", "CanonicalCVOA", "StrainProperties", "HillClimbing", "TabuSearch", "Memetic"]
 
 
 

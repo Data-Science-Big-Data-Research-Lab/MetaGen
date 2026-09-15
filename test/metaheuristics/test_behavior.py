@@ -65,7 +65,7 @@ import pytest
 
 from metagen.framework import Domain, Solution
 from metagen.framework.rng import set_seed
-from metagen.metaheuristics import (GA, SA, SSGA, TPE, GAConnector, HillClimbing,
+from metagen.metaheuristics import (GA, SA, SSGA, TPE, GAConnector, HillClimbing, TabuSearch,
                                     Memetic, RandomSearch)
 
 SEEDS = tuple(range(10))
@@ -75,7 +75,7 @@ SEEDS = tuple(range(10))
 # broken one at 0-4, so anything in between is a signal rather than noise.
 REQUIRED_WINS = 7
 
-ALGORITHMS = ("RandomSearch", "SA", "HillClimbing", "GA", "SSGA", "TPE", "Memetic")
+ALGORITHMS = ("RandomSearch", "SA", "HillClimbing", "TabuSearch", "GA", "SSGA", "TPE", "Memetic")
 
 
 def _sphere(x: float, y: float) -> float:
@@ -305,6 +305,9 @@ def _build(name: str, problem: _Problem, fitness, seed: int, log_dir: str):
     if name == "HillClimbing":
         return HillClimbing(problem.domain(), fitness, population_size=10,
                             max_iterations=15, seed=seed, log_dir=log_dir)
+    if name == "TabuSearch":
+        return TabuSearch(problem.domain(), fitness, population_size=10,
+                          max_iterations=15, seed=seed, log_dir=log_dir)
     if name == "GA":
         return GA(problem.domain(GAConnector()), fitness, population_size=10,
                   max_iterations=15, seed=seed, log_dir=log_dir)
@@ -410,6 +413,11 @@ _POLYNOMIAL_SSGA = ("Forty evaluations, the smallest budget of the seven, on a p
                     "where a length and its coefficients have to be found together: "
                     "5 of 10 against random sampling")
 
+_TABU = ("TabuSearch accepts a worsening move by design, and on deceptive Schwefel the "
+         "moves it accepts lead it into the field of better-looking local optima between "
+         "the middle and the corner where the global one sits: 6 of 10 against random "
+         "sampling, the same tie HillClimbing scores there. Measured over the tabu radius "
+         "as well, 0.02 to 0.10 and none: the cell does not move")
 _TPE = ("TPE models each variable on its own, which suits a separable bowl. Rosenbrock "
         "couples x and y along a curved valley, Rastrigin oscillates faster than the "
         "model resolves and Schwefel is deceptive: 15 iterations of an independent "
@@ -433,7 +441,8 @@ _BEATS_RANDOM = {
     **{("Ackley", n): r for n, r in (("SSGA", _SSGA),)},
     **{("Griewank", n): r for n, r in (("SSGA", _SSGA),)},
     **{("Schwefel", n): r for n, r in (("SA", _SA), ("GA", _GA), ("SSGA", _SSGA),
-                                       ("TPE", _TPE), ("HillClimbing", _DECEPTIVE))},
+                                       ("TPE", _TPE), ("HillClimbing", _DECEPTIVE),
+                                       ("TabuSearch", _TABU))},
     **{("Levy", n): r for n, r in (("GA", _GA),)},
     **{("Zakharov", n): r for n, r in (("GA", _ZAKHAROV), ("SSGA", _SSGA))},
     **{("Polynomial", n): r for n, r in (("SA", _POLYNOMIAL_SA), ("SSGA", _POLYNOMIAL_SSGA))},

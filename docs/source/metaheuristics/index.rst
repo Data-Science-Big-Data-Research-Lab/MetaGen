@@ -7,6 +7,7 @@ Metaheuristics
     rs
     sa
     tpe
+    hc
     tabu
     cvoa
     mm

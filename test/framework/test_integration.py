@@ -12,7 +12,7 @@ import pytest
 
 from metagen.framework import Domain, RelativeAlteration, Solution
 from metagen.framework.rng import set_seed
-from metagen.metaheuristics import GA, SSGA, TPE, GAConnector, HillClimbing, Memetic, RandomSearch, SA
+from metagen.metaheuristics import GA, SSGA, TPE, GAConnector, HillClimbing, Memetic, RandomSearch, SA, TabuSearch
 from metagen.metaheuristics.tools import solution_class
 
 from conftest import build_full_domain, full_domain_fitness
@@ -112,6 +112,7 @@ def _algorithms(domain: Domain, ga_domain: Domain, seed: int):
         "RandomSearch": RandomSearch(domain, full_domain_fitness, population_size=4, max_iterations=3, seed=seed),
         "SA": SA(domain, full_domain_fitness, warmup_iterations=1, max_iterations=3, neighbor_population_size=2, seed=seed),
         "HillClimbing": HillClimbing(domain, full_domain_fitness, population_size=4, warmup_iterations=1, max_iterations=3, seed=seed),
+        "TabuSearch": TabuSearch(domain, full_domain_fitness, population_size=4, warmup_iterations=1, max_iterations=3, seed=seed),
         "TPE": TPE(domain, full_domain_fitness, warmup_iterations=2, max_iterations=3, seed=seed),
         "GA": GA(ga_domain, full_domain_fitness, population_size=4, max_iterations=3, seed=seed),
         "SSGA": SSGA(ga_domain, full_domain_fitness, population_size=4, max_iterations=3, seed=seed),
@@ -120,7 +121,7 @@ def _algorithms(domain: Domain, ga_domain: Domain, seed: int):
     }
 
 
-@pytest.mark.parametrize("name", ["RandomSearch", "SA", "HillClimbing", "TPE", "GA", "SSGA", "Memetic"])
+@pytest.mark.parametrize("name", ["RandomSearch", "SA", "HillClimbing", "TabuSearch", "TPE", "GA", "SSGA", "Memetic"])
 def test_every_algorithm_searches_the_full_domain(name):
     domain, ga_domain = build_full_domain(), build_full_domain(connector=GAConnector())
     for seed in (0, 1, 2):

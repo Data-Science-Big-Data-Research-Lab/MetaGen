@@ -26,7 +26,7 @@
 .. |rs| replace:: :class:`RS <metagen.metaheuristics.rs.random_search.RandomSearch>`
 .. |tpe| replace:: :class:`TPE <metagen.metaheuristics.tpe.tpe.TPE>`
 .. |sa| replace:: :class:`SA <metagen.framework.metaheuristics.sa.sa.SA>`
-.. |ts| replace:: :class:`TS <metagen.framework.metaheuristics.tabu.tabu.TabuSearch>`
+.. |ts| replace:: :class:`TS <metagen.metaheuristics.ts.tabu_search.TabuSearch>`
 .. |mm| replace:: :class:`MM <metagen.framework.metaheuristics.memetic.memetic.Memetic>`
 .. |ga| replace:: :class:`GA <metagen.framework.metaheuristics.ga.ga.GA>`
 .. |ssga| replace:: :class:`SSGA <metagen.framework.metaheuristics.ga.ssga.SSGA>`
