@@ -14,7 +14,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-from metagen.metaheuristics.cvoa import cvoa_launcher
+from metagen.metaheuristics.cvoa import CanonicalCVOA, StrainProperties, cvoa_launcher
 from metagen.metaheuristics.ga import GA, SSGA, GAConnector
 from metagen.metaheuristics.sa import SA
 from metagen.metaheuristics.hc import HillClimbing
@@ -25,7 +25,7 @@ from metagen.metaheuristics.mm import Memetic
 # Memetic used to be exported only when Ray was installed, because mm_tools
 # imported it at module level even for a run that never distributes (F-24).
 __all__ = ["RandomSearch", "GA", "SSGA", "GAConnector", "SA", "TPE",
-           "cvoa_launcher", "HillClimbing", "Memetic"]
+           "cvoa_launcher", "CanonicalCVOA", "StrainProperties", "HillClimbing", "Memetic"]
 
 
 

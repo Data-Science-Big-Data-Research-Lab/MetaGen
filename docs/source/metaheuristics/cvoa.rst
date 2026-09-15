@@ -15,6 +15,13 @@ CVOA Local
     :members:
     :show-inheritance:
 
+CVOA as in the paper
+^^^^^^^^^^^^^^^^^^^^
+
+.. autoclass:: metagen.metaheuristics.cvoa.cvoa_canonical.CanonicalCVOA
+    :members:
+    :show-inheritance:
+
 CVOA Distributed
 ^^^^^^^^^^^^^^^^^
 

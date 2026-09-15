@@ -218,6 +218,7 @@ class CVOA(Metaheuristic):
 
         # 1.2. Every infected individual infects new ones, in this thread or on Ray.
         new_infected_population: SolutionSet = self.spread()
+        self.after_spreading()
 
         # 1.3. Then, add the best individual of the strain to the next population.
         new_infected_population.add(self._best_of_strain())
@@ -248,6 +249,13 @@ class CVOA(Metaheuristic):
         self.time += 1
 
         return list(self.infected), self._best_of_strain()
+
+    def after_spreading(self) -> None:
+        """
+        What happens to the carriers once they have infected. Nothing here: MetaGen's
+        CVOA settles their fate in update_pandemic_global_state, before they spread.
+        The paper's variant recovers them at this point instead.
+        """
 
     def spread(self) -> SolutionSet:
         """
