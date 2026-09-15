@@ -35,8 +35,8 @@ class CanonicalCVOA(CVOA):
 
     - **Death and superspreading are drawn per individual** (Algorithms 2 and 4): every
       carrier dies with ``p_die`` and superspreads with ``p_superspreader``, each
-      iteration. CVOA fills bounded sets in order of arrival and, once full, kills
-      the best candidate and makes the worst a superspreader.
+      iteration. CVOA picks them by fitness: the worst share dies and the best share
+      superspreads.
     - **The dead are drawn before spreading and the carriers recover after it**
       (Algorithm 1, lines 11 and 22). CVOA recovers them before.
     - **An isolated individual joins the recovered** (Algorithm 3, line 12), and only

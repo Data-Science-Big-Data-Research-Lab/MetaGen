@@ -14,6 +14,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
+import heapq
 import math
 import threading
 from typing import Callable, List, Optional, Tuple
@@ -25,8 +26,7 @@ from metagen.logging.metagen_logger import DETAILED_INFO, MetaGenLogger, get_rem
 from metagen.metaheuristics.base import Metaheuristic
 from metagen.metaheuristics.tools import solution_class
 from metagen.metaheuristics.cvoa.common_tools import (IndividualState, PandemicState, SolutionSet, StrainProperties,
-                                                     compute_n_infected_travel_distance, infect,
-                                                     insert_into_set_strain)
+                                                     compute_n_infected_travel_distance, infect)
 from metagen.framework.rng import get_rng
 
 
@@ -150,15 +150,6 @@ class CVOA(Metaheuristic):
         # Iterations gone by without a new global best. The flag above used to be
         # the stopping condition on its own and was never cleared (F-23).
         self.iterations_without_improvement: int = 0
-
-        # 4.4. The best strain-specific death individual will initially be the worst solution.
-        self.best_dead: Solution = self.solution_type(self.domain, connector=self.domain.get_connector())
-
-        # 4.5. The worst strain-specific superspreader individual will initially be the best solution.
-        # best=True, so that it really is the best one. Without it the default
-        # constructor built the worst, "to_insert > worst_superspreader" never held
-        # and the replacement mechanism this comment describes never ran (F-10).
-        self.worst_superspreader: Solution = self.solution_type(self.domain, best=True, connector=self.domain.get_connector())
 
         # 5. Main strain sets: infected, superspreaders and deaths. There used to be a
         # fourth, infected_superspreaders, that only ever received the patient zero and
@@ -383,70 +374,44 @@ class CVOA(Metaheuristic):
         type(self).admit(self.global_state, self.strain_properties, new_infected_population, new_infected_individual)
 
     def update_pandemic_global_state(self) -> None:
-        """ It updates the specific strain death and superspreader's sets and the global death and recovered sets.
+        """
+        Settle the fate of this iteration's carriers before they spread: the worst die,
+        the best become the superspreaders, the rest recover; and keep the strain's and
+        the pandemic's best up to date.
 
-        This is MetaGen's variant: the sets are bounded, filled in order of arrival and,
-        once full, a worse candidate displaces the worst superspreader and a better one
-        displaces the best dead. The paper draws death and superspreading per individual
+        This is MetaGen's variant, and what the original Java did before its ``sets``
+        branch: a share ``p_die`` of the carriers, the worst ones, dies, and a share
+        ``p_superspreader`` of the survivors, the best ones, superspreads. Both are
+        picked with a heap in ``n log k``, which is the saving that branch was after
+        when it replaced sorting the population with bounded sets filled in order of
+        arrival; that replacement also inverted the selection, so the best died and
+        the worst superspread, and MetaGen inherited it (F-48). A lone carrier never
+        dies, as in the Java. The paper draws death and superspreading per individual
         instead; its variant overrides this method.
         """
+        carriers = list(self.infected)
+        number_of_deaths = math.ceil(self.strain_properties.p_die * len(carriers)) if len(carriers) > 1 else 0
+        number_of_superspreaders = math.ceil(self.strain_properties.p_superspreader * len(carriers))
 
-        # 1. A percentage, p_superspreader, of the infected individuals in the strain (infected) will be superspreaders.
-        number_of_super_spreaders = math.ceil(self.strain_properties.p_superspreader * len(self.infected))
+        dying = SolutionSet(heapq.nlargest(number_of_deaths, carriers, key=Solution.get_fitness))
+        survivors = [carrier for carrier in carriers if carrier not in dying]
+        self.superspreaders = SolutionSet(heapq.nsmallest(number_of_superspreaders, survivors,
+                                                          key=Solution.get_fitness))
+        self.dead.update(dying)
 
-        # 2. A percentage, p_die, of the infected individuals in the strain (infected) will die.
-        number_of_deaths = math.ceil(self.strain_properties.p_die * len(self.infected))
+        for individual in carriers:
+            if individual not in dying:
+                self.global_state.recover_if_not_dead(individual)
 
-        # 3. If there are at least two infected individuals in the strain:
-        if len(self.infected) >= 1:
+            if individual.get_fitness() < self.global_state.get_best_individual().get_fitness():
+                self.global_state.update_best_individual(individual)
+                self.best_strain_solution_found = True
+                self._log(f"New global best individual found at {self.time}! ({individual})")
 
-            # 3.1. For each infected individual:
-            for individual in self.infected:
+            if individual.get_fitness() < self._best_of_strain().get_fitness():
+                self.best_strain_solution = individual
 
-                # 3.1.1. Insert the current individual into superspreader set; if the insertion was successful, decrement
-                # the superspreader's counter.
-
-                self.worst_superspreader, self.best_dead, inserted = insert_into_set_strain(self.worst_superspreader,
-                                                                                            self.best_dead,
-                                                                                            self.superspreaders,
-                                                                                            individual,
-                                                                                            number_of_super_spreaders,
-                                                                                            's')
-
-                if inserted:
-                    number_of_super_spreaders -= 1
-
-                # 3.1.2. Update the recovered and death sets.
-
-                # 3.1.2.1. Insert the current individual into death set; if the insertion was successful,
-                # the dead variable will be set to True; otherwise False.
-                self.worst_superspreader, self.best_dead, dead = insert_into_set_strain(self.worst_superspreader,
-                                                                                            self.best_dead, self.dead,
-                                                                                            individual,
-                                                                                            number_of_deaths, 'd')
-
-                # 3.1.2.2. If the current individual is not dead, it is added to the recovered set.
-                if dead:
-                    number_of_deaths -= 1
-                else:
-                    self.global_state.recover_if_not_dead(individual)
-
-                # 3.1.3. If the current individual is better than the current global one, a new global best individual is
-                # found, and its global variable is updated.
-                if individual.get_fitness() < self.global_state.get_best_individual().get_fitness():
-                    self.global_state.update_best_individual(individual)
-                    self.best_strain_solution_found = True
-                    self._log(f"New global best individual found at {self.time}! ({individual})")
-
-                # 3.1.4. If the current individual is better than the current strain one, a new strain the best individual is
-                # found, and its variable is updated.
-                if individual.get_fitness() < self._best_of_strain().get_fitness():
-                    self.best_strain_solution = individual
-
-            # 3.4. Update the global death set with the strain death set.
-            self.global_state.update_deaths(self.dead)
-
-        # 4. Remove the global dead individuals from the global recovered set.
+        self.global_state.update_deaths(self.dead)
         self.global_state.update_recovered_with_deaths()
 
     def stopping_criterion(self) -> bool:

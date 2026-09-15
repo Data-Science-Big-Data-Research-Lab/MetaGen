@@ -1272,70 +1272,65 @@ def test_f08_aislar_un_individuo_no_bloquea_la_hebra():
     assert individuo in estado.isolated
 
 
-def test_f09_insertar_en_el_conjunto_de_muertos_no_revienta():
-    """F-09: la rama 'd' hacia bag.remove(best_dead) sin comprobar pertenencia,
-    mientras que la de superspreaders si comprobaba. `best_dead` arranca siendo
-    una solucion recien construida que nunca estuvo en ningun conjunto.
-    """
-    from metagen.metaheuristics.cvoa.common_tools import insert_into_set_strain
-
-    set_seed(1)
-    dominio, fitness = _dominio_y_fitness_de_prueba()
-
-    # Tal como los inicializa CVOA: soluciones nuevas, ajenas a cualquier bolsa.
-    peor_superspreader = Solution(dominio)
-    mejor_muerto = Solution(dominio)
-    candidato = Solution(dominio)
-    candidato.evaluate(fitness)
-
-    bolsa = set()
-    # remaining=0 lleva a la rama del else, que es donde vive el fallo.
-    _, _, insertado = insert_into_set_strain(
-        peor_superspreader, mejor_muerto, bolsa, candidato, 0, "d")
-
-    assert insertado
-    assert candidato in bolsa
+# F-09 y F-10 protegian `insert_into_set_strain` y sus dos fronteras, `worst_superspreader`
+# y `best_dead`. F-48 retiro ese mecanismo: elegia al reves, muriendo el mejor y contagiando
+# mas el peor, heredado de la rama `sets` del Java original, y sus tres tests se retiran con
+# el (`test_f09_insertar_en_el_conjunto_de_muertos_no_revienta`,
+# `test_f10_el_peor_superspreader_arranca_siendo_el_mejor` y
+# `test_f10_el_reemplazo_del_peor_superspreader_se_ejecuta`). Lo correcto lo fija F-48.
 
 
-def test_f10_el_peor_superspreader_arranca_siendo_el_mejor():
-    """F-10: el comentario dice «inicialmente la mejor solucion» pero el constructor
-    por defecto creaba la peor, asi que `to_insert > worst_superspreader` no se
-    cumplia nunca y el reemplazo del peor superspreader no se ejecutaba jamas.
-    """
+# --------------------------------------------------------------------------------
+# F-48 · Los conjuntos acotados de CVOA eligen al reves: muere el mejor y contagia mas el peor
+# --------------------------------------------------------------------------------
+
+def _cepa_con_portadores(fitness_values, **propiedades):
+    """Una cepa con tantos portadores como valores, en ese orden de llegada, cada uno
+    con el fitness dado a mano."""
     from metagen.metaheuristics.cvoa.cvoa_local import CVOA
+    from metagen.metaheuristics.cvoa.common_tools import StrainProperties
     from metagen.metaheuristics.cvoa.local_tools import LocalPandemicState
 
     set_seed(1)
     dominio, fitness = _dominio_y_fitness_de_prueba()
-    cepa = CVOA(LocalPandemicState(Solution(dominio)), dominio, fitness)
+    cepa = CVOA(LocalPandemicState(Solution(dominio)), dominio, fitness, StrainProperties("S1", **propiedades))
+    portadores = []
+    for valor in fitness_values:
+        portador = Solution(dominio)
+        portador.set_fitness(valor)
+        cepa.infected.add(portador)
+        portadores.append(portador)
+    cepa.best_strain_solution = portadores[0]
+    return cepa, portadores
 
-    assert cepa.worst_superspreader.get_fitness() == -math.inf
-    # Y su pareja simetrica sigue siendo la peor, que es lo correcto para ella.
-    assert cepa.best_dead.get_fitness() == math.inf
+
+def test_f48_mueren_los_peores_y_contagian_mas_los_mejores():
+    """F-48: la rama `sets` del Java original sustituyo la ordenacion por fitness por
+    conjuntos acotados que se llenaban por orden de llegada y, llenos, reemplazaban al
+    reves: el conjunto de muertos se quedaba con el mejor y el de supercontagiadores con
+    el peor. MetaGen lo heredo. Con seis portadores que llegan de mejor a peor, p_die 0.5
+    y p_superspreader 1/3, tienen que morir los tres peores y ser supercontagiadores los
+    dos mejores; con el codigo anterior morian los tres primeros en llegar, que eran los
+    mejores."""
+    cepa, portadores = _cepa_con_portadores([1.0, 2.0, 3.0, 4.0, 5.0, 6.0], p_die=0.5, p_superspreader=1 / 3)
+
+    cepa.update_pandemic_global_state()
+
+    assert set(cepa.dead) == set(portadores[3:]), "tienen que morir los tres peores"
+    assert set(cepa.superspreaders) == set(portadores[:2]), "los supercontagiadores son los dos mejores"
+    informe = cepa.global_state.get_pandemic_report()
+    assert informe["deaths"] == 3 and informe["recovered"] == 3
 
 
-def test_f10_el_reemplazo_del_peor_superspreader_se_ejecuta():
-    """La consecuencia: con el conjunto lleno, un candidato peor que el peor
-    superspreader tiene que poder sustituirlo. Es la diversificacion que el codigo
-    documenta y que no llegaba a correr."""
-    from metagen.metaheuristics.cvoa.common_tools import insert_into_set_strain
-    from metagen.metaheuristics.cvoa.cvoa_local import CVOA
-    from metagen.metaheuristics.cvoa.local_tools import LocalPandemicState
+def test_f48_un_portador_solo_no_muere():
+    """Como en las dos versiones Java: con un unico infectado, el paciente cero, ceil(p_die)
+    daba 1 y lo mataba en la primera iteracion. Un portador solo contagia y no muere."""
+    cepa, portadores = _cepa_con_portadores([7.0])
 
-    set_seed(1)
-    dominio, fitness = _dominio_y_fitness_de_prueba()
-    cepa = CVOA(LocalPandemicState(Solution(dominio)), dominio, fitness)
+    cepa.update_pandemic_global_state()
 
-    candidato = Solution(dominio)
-    candidato.evaluate(fitness)
-
-    bolsa = set()
-    # remaining=0: el conjunto esta lleno, asi que toca reemplazar al peor.
-    _, _, insertado = insert_into_set_strain(
-        cepa.worst_superspreader, cepa.best_dead, bolsa, candidato, 0, "s")
-
-    assert insertado
-    assert candidato in bolsa
+    assert len(cepa.dead) == 0
+    assert set(cepa.superspreaders) == {portadores[0]}
 
 
 def test_f23_una_cepa_no_muere_al_encontrar_la_primera_mejora():

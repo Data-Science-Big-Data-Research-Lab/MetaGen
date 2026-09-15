@@ -76,10 +76,20 @@ def test_the_pandemic_curve_rises_peaks_and_decays(variant, seed):
     """Figure 2: with the paper's parameters the number of new infected grows until
     social distancing starts, peaks there, and decays afterwards. The tail does not
     reach zero because the strain keeps its best individual; it stays below a tenth
-    of the peak over the last ten iterations."""
+    of the peak over the last ten iterations.
+
+    A pandemic can also fail to take off: CanonicalCVOA makes patient zero a
+    superspreader only with p_superspreader, and a strain that starts with a handful
+    of carriers may never grow. That is a legitimate outcome of the paper's draws,
+    not a curve to fit: such a run stays small throughout and is checked as such."""
     properties = StrainProperties("S0")
     curves, _ = _run(variant, seed)
     curve = curves["S0"]
+
+    if max(curve) < 20:
+        assert variant is CanonicalCVOA, f"CVOA's patient zero always superspreads; it should take off: {curve}"
+        assert all(size <= 10 for size in curve), f"a pandemic that never took off should stay small: {curve}"
+        return
 
     peak = curve.index(max(curve))
     assert peak <= properties.social_distancing, f"the peak came after distancing started: {curve}"
