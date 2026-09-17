@@ -17,9 +17,9 @@
 import heapq
 from collections.abc import Callable
 from copy import deepcopy
-from typing import Optional, List, Tuple, cast
+from typing import Any, Optional, List, Tuple, cast
 
-from metagen.framework import Domain, Solution
+from metagen.framework import Domain, RelativeAlteration, Solution
 from .ga_tools import (GASolution, yield_two_children, require_crossover,
                        tournament_selection)
 from metagen.metaheuristics.base import Metaheuristic
@@ -44,6 +44,12 @@ class SSGA(Metaheuristic):
     :param tournament_size: How many individuals compete to become a parent (default is 2,
         the mildest tournament). Raising it makes the search greedier.
     :type tournament_size: int, optional
+    :param mutation_alteration_limit: How far a mutated child may move from where the
+        crossover left it. Defaults to ``RelativeAlteration(0.2)``, a fifth of each
+        variable's own range: measured on the benchmark, a local mutation beats redrawing
+        the variable over its whole domain. A plain number is an absolute amount and None
+        is the whole domain.
+    :type mutation_alteration_limit: RelativeAlteration or float or None, optional
     :param distribution_model: How a distributed run makes up the next population out of
         the slices, ``"global"`` (the default: shuffled, selected among all workers) or
         ``"islands"``; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
@@ -68,7 +74,8 @@ class SSGA(Metaheuristic):
                  max_iterations: int = 50, mutation_rate: float = 0.1,
                  tournament_size: int = 2,
                  distributed: bool = False, log_dir: Optional[str] = None,
-                 seed: Optional[int] = None, distribution_model: str = "global"):
+                 seed: Optional[int] = None, distribution_model: str = "global",
+                 mutation_alteration_limit: Any = RelativeAlteration(0.2)):
         super().__init__(domain, fitness_function, population_size=population_size, distributed=distributed, log_dir=log_dir, seed=seed,
                          distribution_model=distribution_model)
 
@@ -78,6 +85,7 @@ class SSGA(Metaheuristic):
         self.mutation_rate = mutation_rate
         self.max_iterations = max_iterations
         self.tournament_size = tournament_size
+        self.mutation_alteration_limit: Any = mutation_alteration_limit
 
     def initialize(self, num_solutions=10) -> Tuple[List[Solution], Solution]:
         current_solutions, best_solution = random_exploration(self.domain, self.fitness_function, num_solutions)
@@ -97,7 +105,8 @@ class SSGA(Metaheuristic):
         father = cast(GASolution, tournament_selection(solutions, self.tournament_size))
         mother = cast(GASolution, tournament_selection(solutions, self.tournament_size))
 
-        child1, child2 = yield_two_children((father,mother), self.mutation_rate, self.fitness_function)
+        child1, child2 = yield_two_children((father, mother), self.mutation_rate, self.fitness_function,
+                                              self.mutation_alteration_limit)
 
         best_solution = deepcopy(self._best_so_far())
 

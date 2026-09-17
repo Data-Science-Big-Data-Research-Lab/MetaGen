@@ -451,7 +451,8 @@ def tournament_selection(solutions: Sequence[Solution], tournament_size: int = 2
 
 
 def yield_two_children(parents: Tuple[GASolution, GASolution], mutation_rate: float,
-                      fitness_function: Callable[[Solution], float]) -> Tuple[GASolution, GASolution]:
+                      fitness_function: Callable[[Solution], float],
+                      mutation_alteration_limit: Any = None) -> Tuple[GASolution, GASolution]:
     """
     Generate two children solutions through crossover and mutation operations.
 
@@ -461,6 +462,11 @@ def yield_two_children(parents: Tuple[GASolution, GASolution], mutation_rate: fl
     :type mutation_rate: float
     :param fitness_function: Function to evaluate the fitness of solutions
     :type fitness_function: Callable[[Solution], float]
+    :param mutation_alteration_limit: How far a mutated child may move from where the
+        crossover left it: a :py:class:`~metagen.framework.RelativeAlteration`, a plain
+        number (an absolute amount) or None, the default, which redraws each mutated
+        variable over its whole domain
+    :type mutation_alteration_limit: RelativeAlteration or float or None, optional
     :return: A tuple containing two new solutions (children)
     :rtype: Tuple[GASolution, GASolution]
     """
@@ -468,9 +474,9 @@ def yield_two_children(parents: Tuple[GASolution, GASolution], mutation_rate: fl
     child1, child2 = parents[0].crossover(parents[1])
 
     if get_rng().uniform(0, 1) <= mutation_rate:
-        child1.mutate()
+        child1.mutate(alteration_limit=mutation_alteration_limit)
     if get_rng().uniform(0, 1) <= mutation_rate:
-        child2.mutate()
+        child2.mutate(alteration_limit=mutation_alteration_limit)
 
     child1.evaluate(fitness_function)
     child2.evaluate(fitness_function)

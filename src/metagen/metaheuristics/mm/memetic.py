@@ -35,6 +35,10 @@ class Memetic(Metaheuristic):
     :param neighbor_population_size: The size of neighborhood in local search, defaults to 10
     :param alteration_limit: How far a neighbor may move in the local search, defaults
         to a fifth of each variable's own range; a plain number is an absolute amount
+    :param mutation_alteration_limit: How far a mutated child may move from where the
+        crossover left it. None, the default, redraws each mutated variable over its whole
+        domain: the local search already works the neighborhood, and the wide mutation is
+        what lets the algorithm leave it (measured: a local one costs it Schwefel)
     :param distributed: Whether to use distributed computation, defaults to False
     :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
     :param distribution_level: The level of distribution (0=none), defaults to 0
@@ -46,6 +50,7 @@ class Memetic(Metaheuristic):
     :type tournament_size: int
     :type neighbor_population_size: int
     :type alteration_limit: RelativeAlteration or float or None
+    :type mutation_alteration_limit: RelativeAlteration or float or None, optional
     :type distributed: bool
     :type log_dir: str or None, optional
     :param distribution_model: How a distributed run makes up the next population out of
@@ -84,7 +89,8 @@ class Memetic(Metaheuristic):
                  alteration_limit: Any = RelativeAlteration(0.2),
                  distributed: bool = False, log_dir: Optional[str] = None,
                  distribution_level: int = 0, seed: Optional[int] = None,
-                 distribution_model: str = "global") -> None:
+                 distribution_model: str = "global",
+                 mutation_alteration_limit: Any = None) -> None:
         """Initialize the Memetic Algorithm with the given parameters."""
         super().__init__(domain, fitness_function, population_size=population_size, distributed=distributed, log_dir=log_dir, seed=seed,
                          distribution_model=distribution_model)
@@ -98,6 +104,7 @@ class Memetic(Metaheuristic):
         self.tournament_size = tournament_size
         self.neighbor_population_size = neighbor_population_size
         self.alteration_limit = alteration_limit
+        self.mutation_alteration_limit: Any = mutation_alteration_limit
 
         if not distributed:
             self.distribution_level = 0
@@ -142,7 +149,8 @@ class Memetic(Metaheuristic):
             # through untouched, as the elite above.
             father = cast(GASolution, tournament_selection(solutions, self.tournament_size))
             mother = cast(GASolution, tournament_selection(solutions, self.tournament_size))
-            child1, child2 = yield_two_children((father, mother), self.mutation_rate, self.fitness_function)
+            child1, child2 = yield_two_children((father, mother), self.mutation_rate, self.fitness_function,
+                                                  self.mutation_alteration_limit)
             lc_child1, lc_child2 = local_search_of_two_children((child1, child2), self.fitness_function,
                                                                 self.neighbor_population_size,
                                                                 self.alteration_limit, self.distribution_level)

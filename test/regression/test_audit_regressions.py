@@ -1837,9 +1837,9 @@ def test_a01_los_cruces_de_una_generacion_no_usan_la_misma_pareja(nombre, monkey
     original = modulo.yield_two_children
     parejas = []
 
-    def espia(padres, mutation_rate, fitness_function):
+    def espia(padres, mutation_rate, fitness_function, *resto):
         parejas.append((id(padres[0]), id(padres[1])))
-        return original(padres, mutation_rate, fitness_function)
+        return original(padres, mutation_rate, fitness_function, *resto)
 
     monkeypatch.setattr(modulo, "yield_two_children", espia)
 
@@ -1876,10 +1876,10 @@ def test_a01_ssga_no_cruza_un_punto_consigo_mismo_casi_siempre(monkeypatch):
     original = modulo.yield_two_children
     parejas = []
 
-    def espia(padres, mutation_rate, fitness_function):
+    def espia(padres, mutation_rate, fitness_function, *resto):
         parejas.append(tuple(
             tuple(round(padre[nombre], 9) for nombre in ("x", "y")) for padre in padres))
-        return original(padres, mutation_rate, fitness_function)
+        return original(padres, mutation_rate, fitness_function, *resto)
 
     monkeypatch.setattr(modulo, "yield_two_children", espia)
 

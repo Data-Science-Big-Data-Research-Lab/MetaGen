@@ -386,8 +386,9 @@ _SA = ("SA is third of the seven overall since F-30 tied the cooling schedule to
        "smoothly because two of its four variables are integers and one is categorical")
 
 _GA = ("GA clears random sampling overall since F-33 gave its numeric types a "
-       "real-coded crossover, but it has no local search, so a valley it must walk "
-       "rather than sample defeats it: Rosenbrock, Zakharov's weighted sum and "
+       "real-coded crossover, and since its children mutate within a fifth of each "
+       "variable's range it also holds Sphere, Levy and Zakharov. It still has no local "
+       "search, so a valley it must walk rather than sample defeats it: Rosenbrock and "
        "deceptive Schwefel. On 160 evaluations, blind recombination does not find one")
 
 _SSGA = ("A-01 gave it parent selection and F-33 a crossover that produces new values, "
@@ -401,12 +402,6 @@ _DECEPTIVE = ("Schwefel is deceptive: its global optimum sits near the corner of
               "uphill is led away from it. It scores exactly what RandomSearch scores, "
               "6 of 10, which is a tie rather than a defeat. F-32 was blamed here and "
               "is closed; only the memetic algorithm, on 610 evaluations, clears it")
-
-_ZAKHAROV = ("Zakharov couples the variables through a weighted sum raised to the "
-             "fourth power, so what makes a solution good is the combination, not "
-             "either coordinate on its own. F-33 produced its largest single jump "
-             "here, and it still falls short: recombining is not how a coupled valley "
-             "gets walked")
 
 _POLYNOMIAL_SA = ("SA walks one point whose structure resizes freely under mutation, "
                   "so on the polynomial problem it drifts through lengths -- 5.7 on "
@@ -438,17 +433,14 @@ _IMPROVES_ON_ITS_START = {
 }
 
 _BEATS_RANDOM = {
-    **{("Sphere", n): r for n, r in (("GA", _GA), ("SSGA", _SSGA))},
     **{("Rastrigin", n): r for n, r in (("SSGA", _SSGA), ("TPE", _TPE))},
     **{("Rosenbrock", n): r for n, r in (("SA", _SA), ("GA", _GA), ("SSGA", _SSGA),
                                          ("TPE", _TPE), ("Memetic", _DECEPTIVE))},
     **{("Ackley", n): r for n, r in (("SSGA", _SSGA),)},
-    **{("Griewank", n): r for n, r in (("SSGA", _SSGA),)},
     **{("Schwefel", n): r for n, r in (("SA", _SA), ("GA", _GA), ("SSGA", _SSGA),
                                        ("TPE", _TPE), ("HillClimbing", _DECEPTIVE),
                                        ("TabuSearch", _TABU))},
-    **{("Levy", n): r for n, r in (("GA", _GA),)},
-    **{("Zakharov", n): r for n, r in (("GA", _ZAKHAROV), ("SSGA", _SSGA))},
+    **{("Zakharov", n): r for n, r in (("SSGA", _SSGA),)},
     **{("Polynomial", n): r for n, r in (("SA", _POLYNOMIAL_SA), ("SSGA", _POLYNOMIAL_SSGA))},
 }
 
