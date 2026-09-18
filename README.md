@@ -188,4 +188,4 @@ MetaGen is free software, distributed under the [GNU General Public License v3 o
 - **Francisco José Torres-Maldonado**  
 - **Francisco Martínez-Álvarez**  
 
-All authors are members of [DataLabUPO](https://github.com/Data-Science-Big-Data-Research-Lab), the Data Science & Big Data Research Lab at Pablo de Olavide University.
+The authors are members of the [Minerva AI Lab Group](https://grupo.us.es/minerva/equipo/) at the University of Seville and of [DataLabUPO](https://github.com/Data-Science-Big-Data-Research-Lab), the Data Science & Big Data Research Lab at Pablo de Olavide University.
