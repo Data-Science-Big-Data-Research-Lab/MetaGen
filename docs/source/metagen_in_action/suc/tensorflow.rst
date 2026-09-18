@@ -23,9 +23,9 @@ As preliminary step the following code can be used to generate a synthetic datas
         x, y, test_size=0.33, random_state=42)
 
     xs_train = scaler_x.fit_transform(xs_train)
-    ys_train = scaler_y.fit_transform(ys_train)
+    ys_train = scaler_y.fit_transform(ys_train.reshape(-1, 1))
     xs_val = scaler_x.transform(xs_val)
-    ys_val = scaler_y.transform(ys_val)
+    ys_val = scaler_y.transform(ys_val.reshape(-1, 1))
 
     x_train = np.reshape(xs_train, (xs_train.shape[0], xs_train.shape[1], 1))
     y_train = np.reshape(ys_train, (ys_train.shape[0], 1))
@@ -33,12 +33,12 @@ As preliminary step the following code can be used to generate a synthetic datas
     y_val = np.reshape(ys_val, (ys_val.shape[0], 1))
 
 
-Firstly, the required libraries must be imported. In this case, the |domain|, |solution| and the |rs| metaheuristic are imported from the metagen framework. The RandomForestClassifier is imported from the scikit-learn library.
+Firstly, the required libraries must be imported. In this case, the |domain|, |solution| and the |rs| metaheuristic are imported from the metagen framework. TensorFlow is imported to build the network.
 
 .. code-block:: python
 
      from metagen.framework import Domain, Solution
-     from metagen.heuristics import RandomSearch
+     from metagen.metaheuristics import RandomSearch
      import tensorflow as tf
 
 Next, the domain definition is created. The domain definition is used to define the search space of the hyperparameters. In this case, the hyperparameters are the `learning_rate`, `ema`, `arch` and `layer` of the neural network.
@@ -49,7 +49,7 @@ The |define_dynamic_structure| method is used to define the dynamic structure of
 
 The |define_group| method is used to define the group of hyperparameters, while the |define_integer_in_group|, |define_categorical_in_group| and |define_real_in_group| methods are used to define the hyperparameters inside the group.
 
-Finally, the |set_structure_to_variable| method is used to link the `arch` variable to the definition of a `layer`. This will yield a architecture of from two to ten layers with a concrete set of `neurons`, `activation` function amd `dropout` for each potential |solution|.
+Finally, the |set_structure_to_variable| method is used to link the `arch` variable to the definition of a `layer`. This yields an architecture of two to ten layers, each with its own `neurons`, `activation` function and `dropout`, for each potential |solution|.
 
 .. code-block:: python
 
@@ -63,7 +63,7 @@ Finally, the |set_structure_to_variable| method is used to link the `arch` varia
     nn_domain.define_real_in_group("layer", "dropout", 0.0, 0.45)
     nn_domain.set_structure_to_variable("arch", "layer")
 
-Now, the fitness function is defined. It is used to evaluate every potential solution. In this case, the neural network is build considering the solution which encodes the hyperparameters. Secondly, the model is trained on the training set and evaluated on the validation set, returning the validation *MAPE*.
+Now, the fitness function is defined. It is used to evaluate every potential solution. In this case, the neural network is built from the solution which encodes the hyperparameters. Secondly, the model is trained on the training set and evaluated on the validation set, returning the validation *MAPE*.
 
 .. code-block:: python
 
@@ -75,7 +75,7 @@ Now, the fitness function is defined. It is used to evaluate every potential sol
             activation = layer["activation"]
             dropout = layer["dropout"]
             rs = True
-            if i == len(solution["arch"]):
+            if i == len(solution["arch"]) - 1:   # the last LSTM returns one vector, not a sequence
                 rs = False
             model.add(tf.keras.layers.LSTM(neurons, activation=activation, return_sequences=rs))
             model.add(tf.keras.layers.Dropout(dropout))
@@ -99,4 +99,4 @@ Finally, a metaheuristic is used to find the best hyperparameters. In this case,
 
     best_solution: Solution = RandomSearch(nn_domain, nn_fitness).run()
 
-Every metaheuristic receives the |domain| definition and the **fitness function** at least. The instances contains the **run** function which executes the algorithm and always returns a the best |solution|.
+Every metaheuristic receives at least the |domain| definition and the **fitness function**. Its **run** method executes the algorithm and returns the best |solution| found. Pass ``seed=<int>`` to the metaheuristic to make the run reproducible.

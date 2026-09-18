@@ -4,171 +4,172 @@
 Extending the Solution Framework for Custom Metaheuristics
 ===========================================================
 
-|metagen| allows developers to extend the **Solution framework** to accommodate domain-specific requirements in custom metaheuristics. This section illustrates how to extend the |solution| framework using the **Genetic Algorithm (GA)** as an example.
+|metagen| allows developers to extend the **Solution framework** to accommodate the needs of a custom metaheuristic. This section shows how, with a genetic algorithm as the example: its solutions need a **crossover operation**, which is not part of the default |solution| class. Four steps are involved:
 
-In |ga|, solutions require **crossover operations**, which are not part of the default |solution| class. To implement this functionality, the following steps are necessary:
+1. **Defining a custom structure type** that extends |structure| with a crossover operation.
+2. **Defining a custom solution type** that extends |solution| with the same operation.
+3. **Creating a custom connector** that maps the domain definitions to the new types.
+4. **Using the extended solution in a metaheuristic** that inherits from |metaheuristic|.
 
-1. **Defining a Custom Structure Type**: The |ga_structure| class extends the standard |structure| class to include a crossover operation.
-2. **Defining a Custom Solution Type**: The |ga_solution| class extends |solution|, implementing specific operations required by |ga|.
-3. **Creating a Custom Connector**: The |ga_connector| class maps |ga_solution| and |ga_structure| to the framework.
-4. **Using the Extended Solution in a Metaheuristic**: The |ga| class uses the extended solution representation to perform evolutionary optimization.
+The example is complete: the code blocks below, put together in one file in the order they appear, run as they are. It is deliberately small. The genetic algorithms that ship with |metagen| follow the same four steps with richer operators (see :doc:`../metaheuristics/ga`): |ga_solution| and |ga_structure| blend numeric values with BLX-alpha instead of exchanging them, |ga_structure| recombines the lengths of a dynamic structure as well as its values, and |ga| selects parents by tournament and mutates children within a fraction of each variable's range.
+
+.. code-block:: python
+
+    from __future__ import annotations
+
+    import heapq
+    from copy import deepcopy
+    from typing import Callable, List, Tuple
+
+    from metagen.framework import BaseConnector, Domain, Solution
+    from metagen.framework.domain.core import (BaseDefinition, CategoricalDefinition, IntegerDefinition,
+                                               RealDefinition, StaticStructureDefinition)
+    from metagen.framework.rng import get_rng
+    from metagen.framework.solution import types
+    from metagen.metaheuristics.base import Metaheuristic
+    from metagen.metaheuristics.tools import random_exploration, solution_class
 
 Custom Structure Type
 ---------------------
 
-The |ga_structure| class extends the default |structure| class, adding a crossover operation that allows solutions to recombine genetic information.
+``SwapStructure`` extends |structure| with a crossover that exchanges positions between two parents. Two details matter. The elements are **deep-copied**: a structure may hold groups, and a shallow copy would leave parent and child sharing the same variables. And each child is built whole and handed over with a single ``set``, which is what checks the length against the definition.
 
 .. code-block:: python
 
-    class GAStructure(types.Structure):
-        def crossover(self, other: GAStructure) -> Tuple[GAStructure, GAStructure]:
-            child1 = GAStructure(self.get_definition(), connector=self.connector)
-            child2 = GAStructure(self.get_definition(), connector=self.connector)
+    class SwapStructure(types.Structure):
+        """A structure whose positions are exchanged between two parents."""
 
-            current_size = min(len(self), len(other))
-            indexes_to_change = random.sample(range(current_size), random.randint(1, current_size))
+        def crossover(self, other: SwapStructure) -> Tuple[SwapStructure, SwapStructure]:
+            first, second = [], []
+            for i in range(len(self)):
+                mine, theirs = deepcopy(self.get(i)), deepcopy(other.get(i))
+                if get_rng().random() < 0.5:
+                    mine, theirs = theirs, mine
+                first.append(mine)
+                second.append(theirs)
 
-            for i in range(current_size):
-                if i in indexes_to_change:
-                    child1[i], child2[i] = copy(other.get(i)), copy(self.get(i))
-                else:
-                    child1[i], child2[i] = copy(self.get(i)), copy(other.get(i))
-
+            child1 = SwapStructure(self.get_definition(), connector=self.get_connector())
+            child2 = SwapStructure(self.get_definition(), connector=self.get_connector())
+            child1.set(first)
+            child2.set(second)
             return child1, child2
-
-This structure allows |ga| solutions to maintain genetic information in a structured manner.
 
 Custom Solution Type
 --------------------
 
-The |ga_solution| class extends |solution|, implementing the `crossover` method for solution-level recombination.
+``SwapSolution`` extends |solution|. For each variable it asks whether the value **knows how to cross over** and delegates to it if so; otherwise the two parents' values are exchanged with probability one half. Asking for the capability, rather than for a concrete class, is what lets another type with its own operator take part without touching this code.
 
 .. code-block:: python
 
-    class GASolution(Solution):
-        def crossover(self, other: GASolution) -> Tuple[GASolution, GASolution]:
-            assert self.get_variables().keys() == other.get_variables().keys()
+    class SwapSolution(Solution):
+        """A solution that knows how to recombine with another one."""
 
-            basic_variables = [var for var, val in self.get_variables().items()
-                               if self.connector.get_builtin(val) in [int, float, str]]
+        def crossover(self, other: SwapSolution) -> Tuple[SwapSolution, SwapSolution]:
+            child1 = SwapSolution(self.get_definition(), connector=self.connector)
+            child2 = SwapSolution(self.get_definition(), connector=self.connector)
 
-            if len(basic_variables) > 1:
-                variables_to_exchange = random.sample(basic_variables, random.randint(1, len(basic_variables) - 1))
-            else:
-                variables_to_exchange = []
-
-            child1 = GASolution(self.get_definition(), connector=self.connector)
-            child2 = GASolution(self.get_definition(), connector=self.connector)
-
-            for variable_name, variable_value in self.get_variables().items():
-                if variable_name in variables_to_exchange:
-                    child1.set(variable_name, copy(other.get(variable_name)))
-                    child2.set(variable_name, copy(variable_value))
+            for name in self.get_variables():
+                mine, theirs = self.get(name), other.get(name)
+                if hasattr(mine, "crossover"):
+                    # The variable brings its own operator: delegate to it.
+                    value1, value2 = mine.crossover(theirs)
+                elif get_rng().random() < 0.5:
+                    value1, value2 = deepcopy(theirs), deepcopy(mine)
                 else:
-                    child1.set(variable_name, copy(self.get(variable_name)))
-                    child2.set(variable_name, copy(variable_value))
+                    value1, value2 = deepcopy(mine), deepcopy(theirs)
+                child1.set(name, value1)
+                child2.set(name, value2)
 
             return child1, child2
-
-This extension enables **genetic operators** to be applied directly to solution objects.
 
 Creating a Custom Connector
 ---------------------------
 
-The |ga_connector| class defines mappings between base definitions and the new |ga_solution| and |ga_structure| types.
+The connector maps each definition of the domain to the type that represents it in a solution and to its builtin type. Registering ``SwapSolution`` for the core definition and ``SwapStructure`` for the static structure is all it takes; a structure is registered with a discriminator because ``list`` maps to the static definition and to the dynamic one.
 
 .. code-block:: python
 
-    class GAConnector(BaseConnector):
+    class SwapConnector(BaseConnector):
         def __init__(self) -> None:
             super().__init__()
-
-            self.register(BaseDefinition, GASolution, dict)
+            self.register(BaseDefinition, SwapSolution, dict)
             self.register(IntegerDefinition, types.Integer, int)
             self.register(RealDefinition, types.Real, float)
             self.register(CategoricalDefinition, types.Categorical, str)
-            self.register(StaticStructureDefinition, (GAStructure, "static"), list)
+            self.register(StaticStructureDefinition, (SwapStructure, "static"), list)
 
-This connector ensures that |metagen| correctly recognizes and processes the extended solution types.
+Extending the Metaheuristic class
+---------------------------------
 
-Using the Extended Solution in a Metaheuristic
-----------------------------------------------
+A metaheuristic inherits from |metaheuristic| and implements **three** methods:
 
-To integrate the extended solution with a metaheuristic, the developer must:
+1. ``initialize(num_solutions)`` returns the first population and its best solution.
+2. ``iterate(solutions)`` returns the next population and the best solution of the iteration.
+3. ``stopping_criterion()`` says when to stop. It is abstract: a subclass without it cannot be instantiated.
 
-- Instantiate the |domain| using the custom |ga_connector|.
-- Obtain the correct |solution| type dynamically.
+In exchange the base class provides the run loop, elitism (the best solution ever seen is kept even if an iteration returns something worse), and four constructor parameters that the subclass should pass through:
 
-Example:
+- ``seed``: the same seed reproduces the run. Draw every random number from :py:func:`metagen.framework.rng.get_rng` (or ``get_numpy_rng``), never from the global ``random`` module, or the seed will not control it.
+- ``log_dir``: a directory to write TensorBoard logs to. ``None``, the default, writes nothing.
+- ``distributed``: run ``initialize`` and ``iterate`` on slices of the population across the CPUs of a Ray cluster.
+- ``distribution_model``: how a distributed run makes up the next population, ``"global"`` (the default) or ``"islands"``; see :doc:`../distributed_execution/distributed`.
 
-.. code-block:: python
-
-    from metagen.framework import Domain
-    from metagen.metaheuristics.ga_tools import GAConnector
-
-    # Define a domain using the GA-specific connector
-    connector = GAConnector()
-    domain = Domain(connector)
-    domain.define_integer("max_depth", 2, 8)
-    domain.define_integer("n_estimators", 2, 16)
-
-    # Dynamically determine the correct solution type
-    solution_type: type[Solution] = domain.get_connector().get_type(domain.get_core())
-    potential: Solution = solution_type(domain, connector=domain.get_connector())
-
-This guarantees compatibility with both **standard** and **custom** solutions.
-
-Extending and Customizing the Metaheuristic class
---------------------------------------------------
-
-Developers can implement new metaheuristics by **inheriting from `Metaheuristic`**, which provides built-in support for:
-
-- **Distributed execution** with Ray.
-- **TensorBoard logging** for monitoring.
-
-Implementing a Genetic Algorithm
---------------------------------
-
-The |ga| class extends |metaheuristic| and implements:
-
-1. **`initialize()`** – Defines how the population is initialized.
-2. **`iterate()`** – Implements the logic for evolving solutions.
+One rule makes a metaheuristic work under ``distributed=True``: **``initialize`` and ``iterate`` must not keep state in ``self``**. Ray runs them on a serialized copy of the algorithm, and what they write there stays in the worker. State that must survive an iteration goes in what the method returns, or is rebuilt in ``post_iteration``, which runs in the driver.
 
 .. code-block:: python
 
-    from metagen.metaheuristics.base import Metaheuristic
-    from typing import List, Tuple
-    from metagen.metaheuristics.ga_tools import GASolution, yield_two_children
-    from copy import deepcopy
-
-    class GA(Metaheuristic):
+    class SwapGA(Metaheuristic):
         def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
-                     population_size: int = 20, max_iterations: int = 50, mutation_rate: float = 0.1):
-            super().__init__(domain, fitness_function, population_size)
-            self.mutation_rate = mutation_rate
+                     population_size: int = 20, max_iterations: int = 50, mutation_rate: float = 0.1,
+                     **kwargs) -> None:
+            super().__init__(domain, fitness_function, population_size=population_size, **kwargs)
             self.max_iterations = max_iterations
+            self.mutation_rate = mutation_rate
 
-        def initialize(self, num_solutions=10) -> Tuple[List[Solution], Solution]:
-            current_solutions, best_solution = random_exploration(self.domain, self.fitness_function, num_solutions)
-            return current_solutions, best_solution
+        def initialize(self, num_solutions: int = 10) -> Tuple[List[Solution], Solution]:
+            return random_exploration(self.domain, self.fitness_function, num_solutions)
 
         def iterate(self, solutions: List[Solution]) -> Tuple[List[Solution], Solution]:
-            best_parents = heapq.nsmallest(2, solutions, key=lambda sol: sol.get_fitness())
-            best_solution = deepcopy(self.best_solution)
-            current_solutions = [deepcopy(best_parents[0]), deepcopy(best_parents[1])]
+            elite = heapq.nsmallest(2, solutions, key=Solution.get_fitness)
+            offspring = [deepcopy(individual) for individual in elite]
 
-            for _ in range(len(solutions) // 2):
-                father = cast(GASolution, best_parents[0])
-                mother = cast(GASolution, best_parents[1])
-                child1, child2 = yield_two_children((father, mother), self.mutation_rate, self.fitness_function)
-                current_solutions.extend([child1, child2])
+            while len(offspring) < len(solutions):
+                father = min(get_rng().sample(solutions, 2))      # a binary tournament
+                mother = min(get_rng().sample(solutions, 2))
+                for child in father.crossover(mother):
+                    if get_rng().random() < self.mutation_rate:
+                        child.mutate()
+                    child.evaluate(self.fitness_function)
+                    offspring.append(child)
 
-                best_solution = min(best_solution, child1, child2, key=lambda sol: sol.get_fitness())
-
-            return current_solutions[:len(solutions)], best_solution
+            offspring = offspring[:len(solutions)]
+            return offspring, min(offspring)
 
         def stopping_criterion(self) -> bool:
             return self.current_iteration >= self.max_iterations
 
+Using it
+--------
 
-By following this methodology, developers can ensure their metaheuristics are **scalable, reusable, and extendable** within |metagen|.
+The domain is created with the custom connector, and from there everything is standard. ``solution_class`` returns the class the connector maps the domain to, which is how framework code builds solutions without naming a concrete type.
+
+.. code-block:: python
+
+    domain = Domain(connector=SwapConnector())
+    domain.define_integer("max_depth", 2, 8)
+    domain.define_real("learning_rate", 0.001, 0.1)
+    domain.define_static_structure("weights", 3)
+    domain.set_structure_to_real("weights", 0.0, 1.0)
+
+    # The class the connector maps the domain to: SwapSolution here, Solution by default.
+    assert solution_class(domain) is SwapSolution
+
+
+    def fitness(solution: Solution) -> float:
+        return solution["max_depth"] + solution["learning_rate"] + sum(solution["weights"])
+
+
+    best = SwapGA(domain, fitness, max_iterations=20, seed=0).run()
+    print(best)
+
+By following these steps a metaheuristic stays **reproducible, distributable and extendable** within |metagen|.

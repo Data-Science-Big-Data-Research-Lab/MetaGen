@@ -60,18 +60,17 @@ Example (GA with a custom `Solution` class):
 
 .. code-block:: python
 
-    from metagen.framework import Domain
-    from metagen.metaheuristics.ga import GA
-    from metagen.metaheuristics.ga_tools import GAConnector, GASolution
+    from metagen.framework import Domain, Solution
+    from metagen.metaheuristics import GA, GAConnector
+    from metagen.metaheuristics.tools import solution_class
 
     # Define a domain using the GA-specific connector
-    connector = GAConnector()
-    domain = Domain(connector)
+    domain = Domain(connector=GAConnector())
     domain.define_integer("max_depth", 2, 8)
     domain.define_integer("n_estimators", 2, 16)
 
-    # Dynamically determine the correct solution type
-    solution_type: type[Solution] = domain.get_connector().get_type(domain.get_core())
+    # The class the connector maps this domain to: GASolution here
+    solution_type = solution_class(domain)
     potential: Solution = solution_type(domain, connector=domain.get_connector())
 
 Key characteristics:

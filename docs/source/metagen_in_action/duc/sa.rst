@@ -1,3 +1,5 @@
+.. include:: ../../aliases.rst
+
 Implementing the Simulated Annealing metaheuristic with MetaGen
 ================================================================
 
@@ -9,43 +11,47 @@ The SA class is defined, and its constructor (__init__) is provided with the fol
 
     * domain: Domain: The domain of possible solutions.
     * fitness: Callable[[Solution], float]: A function that calculates the fitness of a solution.
-    * search_space_size: int = 30: The number of potential solutions to generate.
-    * n_iterations: int = 20: The number of search iterations to perform.
-    * alteration_limit: float = 0.1: The alteration applied to every `Solution` to generate the neighbors.
+    * n_iterations: int = 50: The number of search iterations to perform.
+    * alteration_limit: How far a neighbor may move from the current solution. ``RelativeAlteration(0.1)`` is a tenth of each variable's own range, which suits domains whose variables have different widths; a plain number is an absolute amount, the same for every variable.
     * initial_temp: float = 50.0: The initial temperature for the simulated annealing.
-    * cooling_rate: float = 0.99: Meassures the speed of the cooling procedure.
+    * cooling_rate: float = 0.99: Measures the speed of the cooling procedure.
     * The constructor stores these parameters as instance variables.
 
 **Generating initial Solution**
 
-Initially, a random solution is gennerated from the defined `Domain`.
+Initially, a random solution is generated from the defined `Domain`.
 
 
 **Best Solution search**
 The simulated annealing process attempts to find a global optimum by allowing occasional acceptance of worse solutions.
 
-The algorithm, iterates for the specified number of iterations (`n_iterations`).
+The algorithm iterates for the specified number of iterations (`n_iterations`).
 
 In each iteration:
     * Creates a neighboring solution by copying and mutating the current solution.
     * Evaluates the neighbor's fitness.
     * Computes an exploration rate based on the fitness difference and current temperature.
-    * Accepts the neighbor as the new solution if it is better or based on a probability influenced by the exploration rate.
+    * Accepts the neighbor as the new solution if it is better, or else with a probability that falls as the neighbor gets worse and as the temperature drops.
+    * Remembers the best solution seen, because the current one may get worse.
     * Lowers the temperature according to the cooling rate.
 
 Finally, the run method returns the best solution found after all iterations.
 
 .. code-block:: python
 
-    from metagen.framework import Domain, Solution
+    import math
+    import random
     from collections.abc import Callable
     from copy import deepcopy
-    import random
-    import math
+    from typing import Any
+
+    from metagen.framework import Domain, RelativeAlteration, Solution
 
     class SA:
 
-        def __init__(self, domain: Domain, fitness_func: Callable[[Solution], float], n_iterations: int = 50, alteration_limit: float=0.1, initial_temp: float = 50.0, cooling_rate: float=0.99) -> None:
+        def __init__(self, domain: Domain, fitness_func: Callable[[Solution], float], n_iterations: int = 50,
+                     alteration_limit: Any = RelativeAlteration(0.1), initial_temp: float = 50.0,
+                     cooling_rate: float = 0.99) -> None:
 
             self.domain: Domain = domain
             self.n_iterations: int = n_iterations
@@ -59,9 +65,9 @@ Finally, the run method returns the best solution found after all iterations.
 
         def initialize(self):
             """
-            Initialize the population of solutions by creating and evaluating initial solutions.
+            Create and evaluate the initial solution.
             """
-            self.solution = Solution()
+            self.solution = Solution(self.domain, connector=self.domain.get_connector())
             self.solution.evaluate(self.fitness_func)
 
 
@@ -73,25 +79,29 @@ Finally, the run method returns the best solution found after all iterations.
             :rtype: Solution
             """
 
-            current_iteration = 0
+            best = deepcopy(self.solution)
             temperature = self.initial_temp
 
-
-            while current_iteration <= self.n_iterations:
+            for _ in range(self.n_iterations):
 
                 neighbour = deepcopy(self.solution)
-
                 neighbour.mutate(alteration_limit=self.alteration_limit)
-
                 neighbour.evaluate(self.fitness_func)
 
-                exploration_rate = math.exp((self.solution.fitness - neighbour.fitness) / temperature)
+                worsening = neighbour.get_fitness() - self.solution.get_fitness()
 
-                if neighbour.fitness < self.solution.fitness or exploration_rate > random.random():
+                # A better neighbour is always taken; a worse one, with the Metropolis probability.
+                if worsening < 0 or random.random() < math.exp(-worsening / temperature):
                     self.solution = neighbour
+
+                if self.solution < best:
+                    best = deepcopy(self.solution)
 
                 temperature *= self.cooling_rate
 
-                current_iteration += 1
+            return best
 
-            return self.solution
+The class above is a teaching example. It draws from Python's global ``random`` module, so it is not
+controlled by |metagen|'s ``seed``; the simulated annealing that ships with the package,
+:py:class:`~metagen.metaheuristics.SA`, inherits from ``Metaheuristic``, is seedable, and ties its
+cooling schedule to the number of iterations.

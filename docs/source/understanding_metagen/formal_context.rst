@@ -1,5 +1,3 @@
-:orphan:
-
 ===============
 Formal context
 ===============
@@ -12,10 +10,6 @@ The formal context of MetaGen is outlined in Equation 1. The *solver* defines a 
 
    M(P) = S_{opt} \qquad (1a)\\
    P = \langle D,F \rangle \qquad (1b)
-
-.. toctree::
-   :maxdepth: 1
-   :hidden:
 
 Domain and solution
 ---------------------

@@ -67,3 +67,13 @@ Structure
     :members:
     :private-members:
     :show-inheritance:
+
+Relative alteration
+---------------------
+
+How far ``mutate`` may move a numeric variable is its ``alteration_limit``. A plain number is
+an absolute amount, the same for every variable; a ``RelativeAlteration`` is a fraction of each
+variable's own range, which is what a domain whose variables have different widths needs.
+
+.. autoclass:: metagen.framework.alteration.RelativeAlteration
+    :members:

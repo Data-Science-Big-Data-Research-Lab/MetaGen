@@ -53,7 +53,16 @@ To ensure compatibility, GA defines `GAConnector`, which **links the new solutio
         def __init__(self):
             super().__init__()
             self.register(BaseDefinition, GASolution, dict)
+            self.register(IntegerDefinition, GAInteger, int)
+            self.register(RealDefinition, GAReal, float)
+            self.register(CategoricalDefinition, types.Categorical, str)
             self.register(StaticStructureDefinition, (GAStructure, "static"), list)
+            self.register(DynamicStructureDefinition, (GAStructure, "dynamic"), list)
+
+Every type but the categorical is replaced by a GA one, and what each adds is a crossover
+operator: numeric values are blended (BLX-alpha), structures recombine position by position
+(and, when dynamic, their lengths too), and a categorical, which has no meaningful blend
+between two values, is exchanged whole.
 
 ---
 

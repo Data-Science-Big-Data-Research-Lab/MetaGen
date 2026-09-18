@@ -62,15 +62,11 @@ Two things follow:
   they cost sequentially. ``GA`` and ``Memetic`` breed pairs, so a slice with an odd
   number of individuals breeds one child fewer; ``RandomSearch`` keeps one elite copy
   per slice and mutates one individual fewer per slice; ``SSGA`` breeds its two
-  children in every slice. Measured on two CPUs with the bench's configuration, per
-  run: ``GA`` 160 evaluations sequential and 130 distributed, ``RandomSearch`` 145 and
-  130, ``SSGA`` 40 and 70, ``Memetic`` 610 and 490, the other three unchanged.
-- **It searches as well as, or better than, the island model on the same machine.**
-  Wins against random sampling on the same budget over Sphere, Rastrigin and Griewank,
-  ten seeds each, sequential / islands / global: ``GA`` 22 / 12 / 25, ``SSGA`` 16 / 11 /
-  17, ``HillClimbing`` 28 / 26 / 29, ``RandomSearch`` 18 / 16 / 20, ``Memetic`` 30 / 30 /
-  29, ``TabuSearch`` 27 / 28 / 26; TPE 22 / 26 / 21, where the island model spends
-  almost twice the evaluations (840 against 480).
+  children in every slice. For example, with a population of 10 over 15 iterations on
+  two CPUs, a run of ``GA`` makes 160 evaluations sequentially and 130 distributed,
+  ``RandomSearch`` 145 and 130, and ``SSGA`` 40 and 70.
+- **The whole population competes.** Every individual can meet every other across
+  iterations, which a population split into fixed islands cannot offer.
 - **Distributed is still not the same search as sequential.** The survivor selection is
   elitist in a way the sequential algorithms are not: a sequential ``GA`` is
   generational with two elites, a distributed one is (μ+λ). Two distributed runs with
@@ -85,9 +81,10 @@ which the algorithms that start from the best read from there. The algorithm eac
 worker runs is the algorithm on a smaller population: with two CPUs, a genetic algorithm
 of 6 individuals is two independent genetic algorithms of 3 for the whole run, TPE
 builds its model over its slice, and ``RandomSearch`` keeps one elite per slice. **The
-number of evaluations changes with the number of CPUs**: measured with the same
-configuration on two CPUs, per run, ``GA`` 24 evaluations sequential and 18 on islands,
-``SSGA`` 12 and 18, ``Memetic`` 60 and 42, ``TPE`` 132 and 204. A run on 2 CPUs and a
+number of evaluations changes with the number of CPUs**: for example, with a
+population of 6 over 3 iterations on two CPUs, a run of ``GA`` makes 24 evaluations
+sequentially and 18 on islands, and ``SSGA`` 12 and 18; ``TPE`` spends more on islands,
+because every island evaluates a whole candidate pool. A run on 2 CPUs and a
 run on 8 are different searches.
 
 ``SA`` works on a population of one, so it gains nothing from either model.

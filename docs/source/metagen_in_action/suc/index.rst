@@ -4,7 +4,7 @@
 How to define a problem and solve it using a metaheuristic (**Solving Use Case**)
 ==================================================================================
 
-A *solver* have to make the following steps to solve a optimization problem (typically a hyperparameter optimization problem) using a |metagen|:
+A *solver* follows these steps to solve an optimization problem (typically a hyperparameter optimization problem) with |metagen|:
 
 1. Define the problem space using the |domain| class.
 2. Implement the fitness function using the |solution| class.
@@ -15,7 +15,7 @@ For example, to solve the following simple problem :math:`x + 5` where :math:`x 
 .. code-block:: python
 
     from metagen.framework import Domain, Solution
-    from metagen.heuristics import RandomSearch
+    from metagen.metaheuristics import RandomSearch
 
     # Step 1: Define the problem space
     domain = Domain()
@@ -30,16 +30,16 @@ For example, to solve the following simple problem :math:`x + 5` where :math:`x 
     best_solution: Solution = RandomSearch(domain, fitness).run()
 
 
-Or, to solve another simple problem like :math:`x^2` where :math:`x \in \mathbb{R},\ 0 \leq x, y \leq 1`, you can use the Random Search algorithm by coding the following Python script:
+Or, to solve another simple problem like :math:`x^2` where :math:`x \in \mathbb{R},\ 0 \leq x \leq 1`, you can use the Random Search algorithm by coding the following Python script:
 
 .. code-block:: python
 
     from metagen.framework import Domain, Solution
-    from metagen.heuristics import RandomSearch
+    from metagen.metaheuristics import RandomSearch
 
     # Step 1: Define the problem space
     domain = Domain()
-    domain.define_real("x", 0, 1)
+    domain.define_real("x", 0.0, 1.0)
 
     # Step 2: Implement the fitness function
     def fitness(solution: Solution) -> float:

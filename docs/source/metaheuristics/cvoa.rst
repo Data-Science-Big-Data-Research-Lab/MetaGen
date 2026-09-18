@@ -1,30 +1,35 @@
+.. include:: ../aliases.rst
+
 CVOA - Coronavirus Optimization Algorithm
 ==========================================
 
-The CVOA (Coronavirus Optimization Algorithm) module implements a novel metaheuristic inspired by the spreading behavior of the coronavirus. It provides both local and distributed implementations of the algorithm.
+The Coronavirus Optimization Algorithm: several strains run at once over a shared pandemic state, through a launcher. How to run it, what it costs and how its two variants differ is in :ref:`choosing/index:Running CVOA`; this page is the reference.
 
-.. _cvoa_submodules_section:
+Launchers
+---------
 
-Submodules
-----------
+.. autofunction:: metagen.metaheuristics.cvoa.local_launcher.cvoa_launcher
 
-CVOA Local
-^^^^^^^^^^
+.. autofunction:: metagen.metaheuristics.cvoa.distributed_launcher.distributed_cvoa_launcher
+
+Strain properties
+-----------------
+
+.. autoclass:: metagen.metaheuristics.cvoa.common_tools.StrainProperties
+    :members:
+
+The strain classes
+------------------
 
 .. autoclass:: metagen.metaheuristics.cvoa.cvoa_local.CVOA
     :members:
     :show-inheritance:
 
-CVOA as in the paper
-^^^^^^^^^^^^^^^^^^^^
-
 .. autoclass:: metagen.metaheuristics.cvoa.cvoa_canonical.CanonicalCVOA
     :members:
     :show-inheritance:
 
-CVOA Distributed
-^^^^^^^^^^^^^^^^^
+``DistributedCVOA`` is kept for backward compatibility: it is |cvoa| with ``distributed=True``.
 
 .. autoclass:: metagen.metaheuristics.cvoa.cvoa_distributed.DistributedCVOA
-    :members:
     :show-inheritance:

@@ -6,12 +6,7 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 import pathlib
-import re
 import sys
-
-from docutils.parsers.rst import directives
-from sphinx.ext.autosummary import Autosummary, get_documenter
-from sphinx.util.inspect import safe_getattr
 
 sys.path.insert(0, f'{pathlib.Path(__file__).parents[2].resolve().as_posix()}/src')
 
@@ -65,8 +60,7 @@ html_theme = 'sphinx_rtd_theme'
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
-html_css_files = ['css/custom.css']
+html_static_path: list = []
 
 autodoc_mock_imports = ["sklearn","rs", 'numpy', 'scipy', 'matplotlib', 'matplotlib.pyplot', 'scipy.interpolate', 'tensorboard', 'tensorboardX', 'tensorboard-data-server', 'tensorboard-plugin-wit', 'ray']
 autodoc_member_order = 'bysource'

@@ -14,13 +14,14 @@ As preliminary step the following code can be used to generate a synthetic datas
                                                          n_informative=2, n_redundant=0,
                                                          random_state=0, shuffle=False)
 
-Firstly, the required libraries must be imported. In this case, the |domain|, |solution| and the |rs| metaheuristic are imported from the metagen framework. The RandomForestClassifier is imported from the scikit-learn library.
+Firstly, the required libraries must be imported. In this case, the |domain|, |solution| and the |rs| metaheuristic are imported from the metagen framework. The RandomForestClassifier and the cross-validation helper are imported from the scikit-learn library.
 
 .. code-block:: python
 
      from metagen.framework import Domain, Solution
-     from metagen.heuristics import RandomSearch
+     from metagen.metaheuristics import RandomSearch
      from sklearn.ensemble import RandomForestClassifier
+     from sklearn.model_selection import cross_val_score
 
 Next, the domain definition is created. The domain definition is used to define the search space of the hyperparameters. In this case, the hyperparameters are the `max_depth`, `n_estimators`, `criterion` and `max_features` of the RandomForestClassifier. The |define_integer| method is used to define the integer hyperparameters, while the |define_categorical| method is used to define the categorical hyperparameters.
 
@@ -30,9 +31,9 @@ Next, the domain definition is created. The domain definition is used to define 
     random_forest_classifier_definition.define_integer("max_depth", 2, 100, 1)
     random_forest_classifier_definition.define_integer("n_estimators", 10, 500, 1)
     random_forest_classifier_definition.define_categorical("criterion", ['gini', 'entropy'])
-    random_forest_classifier_definition.define_categorical("max_features", ['auto', 'sqrt', 'log2'])
+    random_forest_classifier_definition.define_categorical("max_features", ['sqrt', 'log2'])
 
-Now, the fitness function is defined. It is used to evaluate every potential solution. In this case, the fitness function is the averaged accuracy over the folds on the cross validation. The |solution| variables can be accessed like a dictionary to obtain the sampled hyperparameters.
+Now, the fitness function is defined. It is used to evaluate every potential solution. In this case, the fitness function is the accuracy averaged over the folds of a cross-validation, with its sign changed: |metagen| always minimizes. The |solution| variables can be accessed like a dictionary to obtain the sampled hyperparameters.
 
 .. code-block:: python
 
@@ -56,4 +57,4 @@ Finally, a metaheuristic is used to find the best hyperparameters. In this case,
     random_search: RandomSearch = RandomSearch(random_forest_classifier_definition, random_forest_classifier_fitness)
     best_solution: Solution = random_search.run()
 
-Every metaheuristic receives the |domain| definition and the **fitness function** at least. The instances contains the **run** function which executes the algorithm and always returns a the best |solution|.
+Every metaheuristic receives at least the |domain| definition and the **fitness function**. Its **run** method executes the algorithm and returns the best |solution| found. Pass ``seed=<int>`` to the metaheuristic to make the run reproducible.
