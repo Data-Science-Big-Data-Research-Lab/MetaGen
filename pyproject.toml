@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pymetagen-datalabupo"
-version = "0.3.0"
+version = "1.0.0"
 description = "MetaGen: A framework for metaheuristic development and hyperparameter optimization in machine and deep learning."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -13,6 +13,9 @@ license = "GPL-3.0-or-later"
 license-files = ["LICENSE"]
 authors = [{ name = "Data Science & Big Data Research Lab", email = "datalab@upo.es" }]
 classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
 ]

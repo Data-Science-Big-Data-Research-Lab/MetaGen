@@ -1019,7 +1019,7 @@ def _raiz_del_repo() -> pathlib.Path:
 
 
 def _pyproject() -> dict:
-    """`pyproject.toml` leido del arbol, que es donde vive la metadata desde la 0.3.0
+    """`pyproject.toml` leido del arbol, que es donde vive la metadata desde la 1.0.0
     (antes, en `setup.cfg`). `tomllib` existe desde Python 3.11; en 3.10 lo trae pip."""
     try:
         import tomllib

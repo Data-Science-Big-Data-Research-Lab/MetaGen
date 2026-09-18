@@ -1,8 +1,8 @@
 # Changelog
 
-## 0.3.0
+## 1.0.0
 
-MetaGen 0.3.0 adds new algorithms, reproducible runs, a second distribution model, type
+MetaGen 1.0.0 adds new algorithms, reproducible runs, a second distribution model, type
 information and a continuous integration suite.
 
 ### New
