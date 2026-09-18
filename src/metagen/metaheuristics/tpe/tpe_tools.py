@@ -45,7 +45,7 @@ class TPEInteger(types.Integer):
 
     def resample(self, best_values, worst_values):
         """
-        Modify the value of this Integer instance to a rs category from its definition.
+        Modify the value of this Integer instance to a random category from its definition.
         """
         _, min_value, max_value, _ = self.get_definition().get_attributes()
 

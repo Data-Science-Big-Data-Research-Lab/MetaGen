@@ -33,7 +33,7 @@ class HillClimbing(Metaheuristic):
         ``population_size * (warmup_iterations + 1 + max_iterations)`` evaluations:
         with the defaults, 60 of them before the first iteration
     :type warmup_iterations: int, optional
-    :param max_iterations: Maximum number of iterations to run, defaults to 10
+    :param max_iterations: Maximum number of iterations to run, defaults to 20
     :type max_iterations: int, optional
     :param tabu_size: Maximum size of the tabu list, defaults to 5
     :type tabu_size: int, optional
@@ -45,6 +45,15 @@ class HillClimbing(Metaheuristic):
     :type distributed: bool, optional
     :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
     :type log_dir: str or None, optional
+    :param gamma_config: When given, each iteration samples only a share of the
+        ``population_size`` neighbors, the share a gamma schedule gives for that
+        iteration; see :py:class:`~metagen.metaheuristics.gamma_schedules.GammaConfig`.
+        None, the default, samples them all.
+    :type gamma_config: GammaConfig or None, optional
+    :param seed: Seed for the package's random generators, applied at the start of
+        ``run()``; the same seed reproduces the run. None, the default, draws a different
+        run every time.
+    :type seed: int or None, optional
     :param distribution_model: How a distributed run makes up the next population out of
         the slices, ``"global"`` (the default: shuffled, selected among all workers) or
         ``"islands"``; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
@@ -95,7 +104,7 @@ class HillClimbing(Metaheuristic):
         :type fitness_function: Callable[[Solution], float]
         :param population_size: Size of the population (neighborhood) to maintain, defaults to 10
         :type population_size: int, optional
-        :param max_iterations: Maximum number of iterations to run, defaults to 10
+        :param max_iterations: Maximum number of iterations to run, defaults to 20
         :type max_iterations: int, optional
         :param tabu_size: Maximum size of the tabu list, defaults to 5
         :type tabu_size: int, optional
@@ -130,7 +139,7 @@ class HillClimbing(Metaheuristic):
             first_solution, self.fitness_function, num_solutions - 1, self.alteration_limit, list(self.tabu_list)
         )
 
-        # Asegurar que el tamaño de la población es exactamente `num_solutions`
+        # The population must hold exactly `num_solutions` individuals.
         current_neighborhood.append(first_solution)
 
         return current_neighborhood, first_solution
@@ -148,23 +157,22 @@ class HillClimbing(Metaheuristic):
         :return: A tuple containing the new neighborhood solutions and the best solution found
         :rtype: Tuple[List[Solution], Solution]
         """
-        # Ajustar dinámicamente el tamaño de la vecindad
-        # Si hay configuración de gamma, calcular `l` dinámicamente
+        # The neighborhood is the whole population, or the share of it a gamma schedule gives.
 
         if self.gamma_config:
             gamma = compute_gamma(self.gamma_config, iteration=self.current_iteration,
                                   max_iterations=self.max_iterations, num_solutions=max(1, len(solutions)))
-            l = max(1, round(gamma * len(solutions)))  # Asegurar al menos 1 vecino
+            l = max(1, round(gamma * len(solutions)))  # at least one neighbor
         else:
-            l = max(1, len(solutions))  # Sin gamma, aseguramos al menos 1 vecino para evitar problemas
+            l = max(1, len(solutions))  # at least one neighbor
 
-        # Aplicar búsqueda local con tabú respetando el tamaño `l`
+        # Local search over `l` neighbors, skipping the ones already visited.
         current_solutions, best_solution = local_search_with_tabu(
             self._best_so_far(), self.fitness_function, l, self.alteration_limit,
             list(self.tabu_list)
         )
 
-        # Si no se generan soluciones válidas, mantener la población anterior
+        # With no valid neighbor, keep the previous population.
         if not current_solutions:
             current_solutions = solutions
             best_solution = deepcopy(self._best_so_far())

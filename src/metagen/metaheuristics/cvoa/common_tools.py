@@ -56,6 +56,25 @@ class StrainProperties(NamedTuple):
     "Suggested parameters setup" section, from the epidemiology of COVID-19. With
     them a pandemic spends twenty-two of its thirty iterations under social
     distancing, which is the phase in which it dies out.
+
+    :param strain_id: The name of the strain, used in the logs and in the reports.
+    :param pandemic_duration: Iterations the strain runs, defaults to 30.
+    :param spreading_rate: The most individuals an ordinary carrier infects per iteration,
+        defaults to 5.
+    :param min_superspreading_rate: The fewest individuals a superspreader infects, defaults to 6.
+    :param max_superspreading_rate: The most individuals a superspreader infects, defaults to 15.
+    :param social_distancing: The iteration from which isolation applies and every contagion
+        is at distance one, defaults to 7.
+    :param p_isolation: The probability that an individual isolates once social distancing is
+        on, defaults to 0.7.
+    :param p_travel: The probability that a carrier travels, which lets its infections change
+        more than one variable, defaults to 0.1.
+    :param p_re_infection: The probability that a recovered individual is infected again,
+        defaults to 0.02.
+    :param p_superspreader: The share of the carriers that superspread, defaults to 0.1.
+    :param p_die: The share of the carriers that die, defaults to 0.05.
+    :param max_iterations_without_improvement: Iterations the strain may spend without
+        improving before it stops. None, the default, runs the whole ``pandemic_duration``.
     """
     # F-28: three defaults used to differ from the paper's (pandemic_duration 10,
     # p_isolation 0.5, p_re_infection 0.001), which left three iterations under social

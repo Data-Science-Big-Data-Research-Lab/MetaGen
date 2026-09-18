@@ -33,7 +33,7 @@ class RandomSearch(Metaheuristic):
     :type domain: Domain
     :param fitness_function: The fitness function used to evaluate solutions
     :type fitness_function: Callable[[Solution], float]
-    :param population_size: The size of the population to maintain, defaults to 1
+    :param population_size: The size of the population to maintain, defaults to 10
     :type population_size: int, optional
     :param max_iterations: The maximum number of iterations to run, defaults to 20
     :type max_iterations: int, optional
@@ -41,6 +41,10 @@ class RandomSearch(Metaheuristic):
     :type distributed: bool, optional
     :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
     :type log_dir: str or None, optional
+    :param seed: Seed for the package's random generators, applied at the start of
+        ``run()``; the same seed reproduces the run. None, the default, draws a different
+        run every time.
+    :type seed: int or None, optional
     :param distribution_model: How a distributed run makes up the next population out of
         the slices, ``"global"`` (the default: shuffled, selected among all workers) or
         ``"islands"``; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
@@ -73,7 +77,7 @@ class RandomSearch(Metaheuristic):
         :type domain: Domain
         :param fitness_function: The fitness function used to evaluate solutions
         :type fitness_function: Callable[[Solution], float]
-        :param population_size: The size of the population to maintain, defaults to 1
+        :param population_size: The size of the population to maintain, defaults to 10
         :type population_size: int, optional
         :param max_iterations: The maximum number of iterations to run, defaults to 20
         :type max_iterations: int, optional

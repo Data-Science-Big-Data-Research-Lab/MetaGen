@@ -31,16 +31,17 @@ class SSGA(Metaheuristic):
     """
     Steady State Genetic Algorithm (SSGA) class for optimization problems which is a variant of the Genetic Algorithm (GA) with population replacement.
     
-    :param domain: The domain representing the problem space.
+    :param domain: The domain representing the problem space, created with a connector
+        whose solutions can cross over, such as ``GAConnector``.
     :type domain: Domain
-    :param fitness_func: The fitness function used to evaluate solutions.
-    :type fitness_func: Callable[[Solution], float]
+    :param fitness_function: The fitness function used to evaluate solutions.
+    :type fitness_function: Callable[[Solution], float]
     :param population_size: The size of the population (default is 10).
     :type population_size: int, optional
-    :param mutation_rate: The probability of mutation for each solution (default is 0.1).
+    :param max_iterations: The number of iterations, two children each, to run (default is 50).
+    :type max_iterations: int, optional
+    :param mutation_rate: The probability of mutation for each child (default is 0.1).
     :type mutation_rate: float, optional
-    :param n_iterations: The number of generations to run the algorithm (default is 50).
-    :type n_iterations: int, optional
     :param tournament_size: How many individuals compete to become a parent (default is 2,
         the mildest tournament). Raising it makes the search greedier.
     :type tournament_size: int, optional
@@ -50,6 +51,14 @@ class SSGA(Metaheuristic):
         left it; a plain number is an absolute amount and None redraws the variable over
         its whole domain.
     :type mutation_alteration_limit: RelativeAlteration or float or None, optional
+    :param distributed: Whether to run on Ray (default is False).
+    :type distributed: bool, optional
+    :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
+    :type log_dir: str or None, optional
+    :param seed: Seed for the package's random generators, applied at the start of
+        ``run()``; the same seed reproduces the run. None, the default, draws a different
+        run every time.
+    :type seed: int or None, optional
     :param distribution_model: How a distributed run makes up the next population out of
         the slices, ``"global"`` (the default: shuffled, selected among all workers) or
         ``"islands"``; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
@@ -57,14 +66,12 @@ class SSGA(Metaheuristic):
 
     :ivar population_size: The size of the population.
     :vartype population_size: int
-    :ivar mutation_rate: The probability of mutation for each solution.
+    :ivar mutation_rate: The probability of mutation for each child.
     :vartype mutation_rate: float
-    :ivar n_iterations: The number of generations to run the algorithm.
-    :vartype n_iterations: int
-    :ivar domain: The domain representing the problem space.
-    :vartype domain: Domain
-    :ivar fitness_func: The fitness function used to evaluate solutions.
-    :vartype fitness_func: Callable[[Solution], float]
+    :ivar max_iterations: The number of iterations to run.
+    :vartype max_iterations: int
+    :ivar tournament_size: How many individuals compete to become a parent.
+    :vartype tournament_size: int
 
     **Code example**
 

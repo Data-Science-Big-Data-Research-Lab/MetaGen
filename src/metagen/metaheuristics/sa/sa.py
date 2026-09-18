@@ -74,10 +74,17 @@ class SA(Metaheuristic):
     :param neighbor_population_size: Number of neighbors to generate in each iteration,
         defaults to 5
     :type neighbor_population_size: int, optional
+    :param warmup_iterations: Random solutions evaluated before the search starts, the best
+        of which the walk begins from, defaults to 5
+    :type warmup_iterations: int, optional
     :param distributed: Whether to use distributed computation, defaults to False
     :type distributed: bool, optional
     :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
     :type log_dir: str or None, optional
+    :param seed: Seed for the package's random generators, applied at the start of
+        ``run()``; the same seed reproduces the run. None, the default, draws a different
+        run every time.
+    :type seed: int or None, optional
     :param distribution_model: How a distributed run makes up the next population out of
         the slices, ``"global"`` (the default: shuffled, selected among all workers) or
         ``"islands"``; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.

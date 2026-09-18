@@ -67,7 +67,7 @@ class Integer(BaseType):
 
     def initialize(self) -> None:
         """
-        Initialize the Integer variable with a rs integer value in the defined ranges considering the step size.
+        Initialize the Integer variable with a random integer value in the defined ranges considering the step size.
         """
         _, min_value, max_value, step = self.get_definition().get_attributes()
         step = step or 1

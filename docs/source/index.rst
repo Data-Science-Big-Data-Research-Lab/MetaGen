@@ -71,7 +71,7 @@ For more details, explore the :doc:`understanding_metagen/index` section.
 Installation
 -------------
 
-using pip:
+Using pip:
 
 .. code-block:: console
 

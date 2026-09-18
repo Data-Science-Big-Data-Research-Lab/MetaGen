@@ -62,7 +62,7 @@ html_theme = 'sphinx_rtd_theme'
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path: list = []
 
-autodoc_mock_imports = ["sklearn","rs", 'numpy', 'scipy', 'matplotlib', 'matplotlib.pyplot', 'scipy.interpolate', 'tensorboard', 'tensorboardX', 'tensorboard-data-server', 'tensorboard-plugin-wit', 'ray']
+autodoc_mock_imports = ["sklearn", 'numpy', 'scipy', 'matplotlib', 'matplotlib.pyplot', 'scipy.interpolate', 'tensorboard', 'tensorboardX', 'tensorboard-data-server', 'tensorboard-plugin-wit', 'ray']
 autodoc_member_order = 'bysource'
 add_module_names = False
 autoclass_content = 'both'

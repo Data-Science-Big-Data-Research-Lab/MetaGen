@@ -74,6 +74,11 @@ class Domain:
             >>> new_domain.define_real("RealValue", 0, 1)
             >>> new_domain.define_group("Group")
             >>> new_domain.link_variable_to_group("Group", "RealValue")
+
+        :param connector: The connector that maps the definitions of the domain to the types
+            of a solution. None, the default, builds a ``BaseConnector``; the genetic
+            algorithms need ``Domain(connector=GAConnector())``.
+        :type connector: BaseConnector or None, optional
         """
         # Built here and not in the signature: a default argument is evaluated once,
         # at import time, so every Domain shared one connector and a type registered
@@ -207,9 +212,11 @@ class Domain:
 
         :param group: The group name.
         :param var: The variable name.
-        :param remember: TODO
         :type group: str
-        :type remember: bool
+        :type var: str
+        :param remember: Whether the variable stays defined at the top level of the domain
+            as well. False, the default, moves it; True links a copy of it.
+        :type remember: bool, optional
         """
         group_def: BaseDefinition = _get_group_definition(
             group, self._core.get(group))
@@ -229,6 +236,12 @@ class Domain:
         :type min_len: int
         :type max_len: int
         :type step_len: int
+        :param var: The name of an already defined variable to use as the definition of the
+            elements. None, the default, leaves it to a later ``set_structure_to_...`` call.
+        :type var: str or None, optional
+        :param remember: Whether the variable stays defined at the top level of the domain
+            as well. False, the default, moves it; True links a copy of it.
+        :type remember: bool, optional
         """
         base_type: Base | None = _get_base_type(self._core, var, remember)
         dynamic_structure_definition = cast(type[DynamicStructureDefinition], self._connector.get_definition(
@@ -239,12 +252,18 @@ class Domain:
     def define_static_structure(self, name: str, length: int,
                                 var: str | None = None, remember: bool = False):
         """ It defines an **StaticStructure** variable receiving a name as its identifier, the size that it will
-        be able to have, and the step size to traverse the size.
+        have.
 
         :param name: The variable name.
         :param length: The length of the Structure.
         :type name: str
         :type length: int
+        :param var: The name of an already defined variable to use as the definition of the
+            elements. None, the default, leaves it to a later ``set_structure_to_...`` call.
+        :type var: str or None, optional
+        :param remember: Whether the variable stays defined at the top level of the domain
+            as well. False, the default, moves it; True links a copy of it.
+        :type remember: bool, optional
         """
         base_type: Base | None = _get_base_type(self._core, var, remember)
         static_structure_definition = cast(type[StaticStructureDefinition], self._connector.get_definition(
@@ -307,11 +326,15 @@ class Domain:
         structure.set_base(real_definition(min_value, max_value, step))
 
     def set_structure_to_variable(self, name: str, var: str, remember: bool = False):
-        """ It defines an already defined variable the base type for a Static or Dynamic Structure, receiving the name of the structure and the variable.
+        """ It sets an already defined variable as the definition of the elements of a static or dynamic structure.
+
         :param name: The structure name.
-        :param var: The variable value.
+        :param var: The name of the variable to use as the definition of the elements.
         :type name: str
         :type var: str
+        :param remember: Whether the variable stays defined at the top level of the domain
+            as well. False, the default, moves it; True links a copy of it.
+        :type remember: bool, optional
         """
         structure: BaseStructureDefinition = _get_structure_definition(
             name, self._core.get(name))
@@ -329,6 +352,11 @@ class Domain:
         return self._connector
 
     def to_string(self, level: int) -> str:
+        """ A textual description of the domain.
+
+        :param level: The indentation level the description starts at.
+        :type level: int
+        """
         return self.get_core().to_string(level)
 
     def __str__(self) -> str:

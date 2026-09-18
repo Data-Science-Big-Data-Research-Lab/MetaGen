@@ -4,8 +4,8 @@
 User profiles overview
 =======================
 
-- **[DUC]** Development Use Case: |metagen|'s is used by a developer to program a new metaheuristic algorithm, simplifying the development process and making it accessible to any user who wants to optimize a problem.
-- **[SUC]** Solving Use Case: |metagen|'s is used by a solver to define an optimization problem and use a metaheuristic to find the best hyperparameter configuration for a specific machine or deep learning model.
+- **[DUC]** Development Use Case: |metagen| is used by a developer to program a new metaheuristic algorithm, simplifying the development process and making it accessible to any user who wants to optimize a problem.
+- **[SUC]** Solving Use Case: |metagen| is used by a solver to define an optimization problem and use a metaheuristic to find the best hyperparameter configuration for a specific machine or deep learning model.
 
 
 .. figure:: ../images/duc.png

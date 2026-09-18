@@ -49,31 +49,19 @@ class CVOA(Metaheuristic):
     :py:func:`~metagen.metaheuristics.cvoa.distributed_launcher.distributed_cvoa_launcher`, one Ray
     task per strain.
 
-    :param strain_id: The strain name
-    :param pandemic_duration: The pandemic duration, defaults to 30
-    :param spreading_rate: The spreading rate, defaults to 5
-    :param min_super_spreading_rate: The minimum super spreading rate, defaults to 6
-    :param max_super_spreading_rate: The maximum super spreading rate, defaults to 15
-    :param social_distancing: The iteration from which social distancing applies, defaults to 7
-    :param p_isolation: The probability of an individual being isolated, defaults to 0.7
-    :param p_travel: The probability that an individual will travel, defaults to 0.1
-    :param p_re_infection: The probability of an individual being re-infected, defaults to 0.02
-    :param p_superspreader: The probability of an individual being a super-spreader, defaults to 0.1
-    :param p_die: The probability that an individual will die, defaults to 0.05
-    :param verbose: The verbosity option, defaults to True
-    :type strain_id: str
-    :type pandemic_duration: int
-    :type spreading_rate: int
-    :type min_super_spreading_rate: int
-    :type max_super_spreading_rate: int
-    :type social_distancing: int
-    :type p_isolation: float
-    :type p_travel: float
-    :type p_re_infection: float
-    :type p_superspreader: float
-    :type p_die: float
-    :type verbose: bool
-
+    :param global_state: The pandemic state every strain shares.
+    :param domain: The problem domain.
+    :type domain: Domain
+    :param fitness_function: The fitness function to minimize.
+    :type fitness_function: Callable[[Solution], float]
+    :param strain_properties: The parameters of the strain; see
+        :py:class:`~metagen.metaheuristics.cvoa.common_tools.StrainProperties`.
+    :type strain_properties: StrainProperties, optional
+    :param update_isolated: Kept for compatibility and ignored: every isolated individual is
+        recorded.
+    :type update_isolated: bool, optional
+    :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
+    :type log_dir: str or None, optional
 
     **Code example**
 

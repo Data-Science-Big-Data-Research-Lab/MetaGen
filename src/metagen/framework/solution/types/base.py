@@ -139,7 +139,7 @@ class BaseType(ABC):
     def _generate_numerical(self, left: int | float, right: int | float,
                             step_size: int | float | None = None,
                             origin: int | float | None = None) -> int | float:
-        """ From a value in an interval compute a new rs value by adding (to the right) or subtracting (to the left)
+        """ From a value in an interval compute a new random value by adding (to the right) or subtracting (to the left)
         a number of steps.
 
         With a step size, the result is a point of the grid anchored at ``origin``
@@ -156,7 +156,7 @@ class BaseType(ABC):
         :type right: int, float
         :type step_size: int, float
         :type origin: int, float
-        :returns: A rs value.
+        :returns: A random value.
         :rtype: int, float
         """
 
@@ -289,35 +289,21 @@ class BaseType(ABC):
         return other ** self.value
 
     def __lt__(self, other):
-        """ *Less than* function for :py:class:`~metagen.individual.Individual` objects. An individual **A** is less
-        than another individual **B** if the fitness value of **A** is strictly less than the fitness value of **B**.
-        It is necessary for set structure management.
-        """
+        """ Whether the value is strictly less than ``other``. """
         return self.value < other
 
     def __le__(self, other):
-        """ *Less equal* function for :py:class:`~metagen.individual.Individual` objects. An individual **A** is less or
-        equal than another individual **B** if the fitness value of **A** is less or equal than the fitness value
-        of **B**. It is necessary for set structure management.
-        """
+        """ Whether the value is less than or equal to ``other``. """
         return self.value <= other
 
     def __gt__(self, other):
-        """ *Greater than* function for :py:class:`~metagen.individual.Individual` objects. An individual **A** is
-        greater than another individual **B** if the fitness value of **A** strictly greater than the fitness value
-        of **B**. It is necessary for set structure management.
-        """
+        """ Whether the value is strictly greater than ``other``. """
         return self.value > other
 
     def __ge__(self, other):
-        """ *Greater equal* function for :py:class:`~metagen.individual.Individual` objects. An individual **A** is
-        greater or equal than another individual **B** if the fitness value of **A** greater or equal than the
-        fitness value of **B**. It is necessary for set structure management.
-        """
+        """ Whether the value is greater than or equal to ``other``. """
         return self.value >= other
 
     def __hash__(self):
-        """ Hash function for :py:class:`~metagen.individual.Individual` objects. It is necessary for set structure
-        management.
-        """
+        """ Hash of the value, so that a variable can be a member of a set or a key. """
         return hash(self.value)

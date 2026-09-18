@@ -315,10 +315,10 @@ class Solution:
 
     def initialize(self):
         """
-        Initializes the solution with rs values defined in its domain.
+        Initializes the solution with random values defined in its domain.
 
         .. note::
-            This method initializes the solution with rs values within its domain. It iterates through all the variables in the domain and generates a rs value according to their definition. The generated value is then set as the initial value of the variable in the solution.
+            This method initializes the solution with random values within its domain. It iterates through all the variables in the domain and generates a random value according to their definition. The generated value is then set as the initial value of the variable in the solution.
 
         .. seealso::
             :func:`_initialize`
@@ -333,10 +333,14 @@ class Solution:
     def mutate(self, alterations_number: Optional[int] = None,
                alteration_limit: Any = None) -> None:
         """
-        Modify a rs subset of the solution's variables calling its mutate method.
+        Modify a random subset of the solution's variables calling its mutate method.
 
-        :param alterations_number: The number of variables to mutate at the first level. If not specified, a rs number between 1 and the total number of variables will be chosen.
+        :param alterations_number: The number of variables to mutate at the first level. If not specified, a random number between 1 and the total number of variables will be chosen.
         :type alterations_number: int, optional
+        :param alteration_limit: How far a numeric variable may move: a ``RelativeAlteration``
+            (a fraction of each variable's own range), a plain number (an absolute amount)
+            or None, the default, which redraws it over its whole domain.
+        :type alteration_limit: RelativeAlteration or float or None, optional
 
         .. seealso::
             :func:`get_variables`
@@ -431,7 +435,7 @@ class Solution:
     # ** SET VALUE METHOD
 
     def __str__(self):
-        """ String representation of a :py:class:`~metagen.individual.Individual` object.
+        """ String representation of the solution: its fitness and its variables.
         """
         res = "F = " + str(self.fitness) + "\t{"
         count = 1
@@ -483,9 +487,8 @@ class Solution:
         return iter(self.get_variables())
 
     def __eq__(self, other):
-        """ Equity function of the :py:class:`~metagen.framework.Solution` class. An
-        :py:class:`~metagen.individual.Individual` object is equal to another :py:class:`~metagen.framework.Solution`
-        object if they have the same variables with the same values.
+        """ Two solutions are equal when they have the same variables with the same values,
+        whatever their fitness.
         """
         res = True
 
@@ -505,15 +508,12 @@ class Solution:
         return res
 
     def __ne__(self, other):
-        """ Non Equity function of the :py:class:`~metagen.individual.Individual` class. An
-        :py:class:`~metagen.individual.Individual` object is not equal to another :
-        py:class:`~metagen.individual.Individual` object if they do not have the same variables with the same values.
+        """ Two solutions differ when they do not have the same variables with the same values.
         """
         return not self.__eq__(other)
 
     def __hash__(self):
-        """ Hash function for :py:class:`~metagen.individual.Individual` objects. It is necessary for set structure
-        management.
+        """ Hash of the solution, so that it can be a member of a set or a key.
 
         It hashes the variables, and only the variables, so that it agrees with
         ``__eq__``: ``a == b`` implies ``hash(a) == hash(b)``, whatever their fitness.
@@ -526,29 +526,22 @@ class Solution:
                                  for name, value in self.get_variables().items())))
 
     def __lt__(self, other):
-        """ *Less than* function for :py:class:`~metagen.individual.Individual` objects. An individual **A** is less
-        than another individual **B** if the fitness value of **A** is strictly less than the fitness value of **B**.
-        It is necessary for set structure management.
+        """ A solution is less than another when its fitness is strictly lower, that is, better:
+        the package minimizes. It is what lets ``min`` and ``sorted`` rank solutions.
         """
         return self.fitness < other.fitness
 
     def __le__(self, other):
-        """ *Less equal* function for :py:class:`~metagen.individual.Individual` objects. An individual **A** is less or
-        equal than another individual **B** if the fitness value of **A** is less or equal than the fitness value
-        of **B**. It is necessary for set structure management.
+        """ A solution is less than or equal to another when its fitness is lower or the same.
         """
         return self.fitness <= other.fitness
 
     def __gt__(self, other):
-        """ *Greater than* function for :py:class:`~metagen.individual.Individual` objects. An individual **A** is
-        greater than another individual **B** if the fitness value of **A** strictly greater than the fitness value
-        of **B**. It is necessary for set structure management.
+        """ A solution is greater than another when its fitness is strictly higher, that is, worse.
         """
         return self.fitness > other.fitness
 
     def __ge__(self, other):
-        """ *Greater equal* function for :py:class:`~metagen.individual.Individual` objects. An individual **A** is
-        greater or equal than another individual **B** if the fitness value of **A** greater or equal than the
-        fitness value of **B**. It is necessary for set structure management.
+        """ A solution is greater than or equal to another when its fitness is higher or the same.
         """
         return self.fitness >= other.fitness

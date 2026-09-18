@@ -29,16 +29,23 @@ class TPE(Metaheuristic):
     :type domain: Domain
     :param fitness_function: Function to evaluate solutions
     :type fitness_function: Callable[[Solution], float]
-    :param population_size: Size of the population to maintain, defaults to 10
+    :param population_size: Solutions evaluated by the initialization and by each
+        warmup round, defaults to 20
     :type population_size: int, optional
     :param max_iterations: Maximum number of iterations to run, defaults to 50
     :type max_iterations: int, optional
-    :param gamma: Fraction of best solutions to consider when building models, defaults to 0.25
-    :type gamma: float, optional
+    :param gamma_config: How the fraction of best solutions used to build the models is
+        scheduled over the run; see :py:class:`~metagen.metaheuristics.gamma_schedules.GammaConfig`.
+        None, the default, is the sample-based schedule.
+    :type gamma_config: GammaConfig or None, optional
     :param distributed: Whether to use distributed computation, defaults to False
     :type distributed: bool, optional
     :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
     :type log_dir: str or None, optional
+    :param seed: Seed for the package's random generators, applied at the start of
+        ``run()``; the same seed reproduces the run. None, the default, draws a different
+        run every time.
+    :type seed: int or None, optional
     :param distribution_model: How a distributed run makes up the next population out of
         the slices, ``"global"`` (the default: shuffled, selected among all workers) or
         ``"islands"``; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
@@ -95,8 +102,9 @@ class TPE(Metaheuristic):
         :param population_size: Solutions evaluated by the initialization and by each
             warmup round, defaults to 20
         :type population_size: int, optional
-        :param gamma: Fraction of best solutions to consider when building models, defaults to 0.25
-        :type gamma: float, optional
+        :param gamma_config: How the fraction of best solutions used to build the models
+            is scheduled over the run. None, the default, is the sample-based schedule.
+        :type gamma_config: GammaConfig or None, optional
         :param distributed: Whether to use distributed computation, defaults to False
         :type distributed: bool, optional
         :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.

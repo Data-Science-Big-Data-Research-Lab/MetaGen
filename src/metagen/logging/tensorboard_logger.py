@@ -122,7 +122,7 @@ class TensorBoardLogger:
         # Log fitness statistics
         iteration_fitnesses = [ps.get_fitness() for ps in potential_solutions]
         len_iter_fit = len(iteration_fitnesses)
-        # TODO: para evitar division por cero
+        # Guard against a division by zero.
         if len_iter_fit == 0:
             len_iter_fit = 1
 

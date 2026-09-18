@@ -64,7 +64,7 @@ class Real(BaseType):
 
     def initialize(self) -> None:
         """
-        Initialize the Real variable with a rs float value in the defined ranges considering the step size.
+        Initialize the Real variable with a random float value in the defined ranges considering the step size.
         """
         _, min_value, max_value, step = self.get_definition().get_attributes()
 
@@ -75,7 +75,7 @@ class Real(BaseType):
 
     def mutate(self, alteration_limit: Any = None) -> None:
         """
-        Modify the value of this Real instance to a rs value from its definition.
+        Modify the value of this Real instance to a random value from its definition.
 
         :param alteration_limit: How far the mutation may move the current value. A
             number is an absolute amount; a :py:class:`~metagen.framework.alteration.RelativeAlteration`

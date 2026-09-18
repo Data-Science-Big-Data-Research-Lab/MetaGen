@@ -56,6 +56,10 @@ class Metaheuristic(ABC):
     :type fitness_function: Callable[[Solution], float]
     :param population_size: The size of the population (default is 20).
     :type population_size: int, optional
+    :param warmup_iterations: Rounds of random exploration run before ``initialize``, each
+        evaluating ``population_size`` solutions; the best solution they find is kept as
+        the starting best (default is 0).
+    :type warmup_iterations: int, optional
     :param distributed: Whether to run on Ray (default is False): the population is
         split into one slice per CPU of the cluster and each slice runs ``iterate`` on
         its own in a worker, every iteration. What happens to the slices afterwards is
