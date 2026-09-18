@@ -13,9 +13,6 @@ information and a continuous integration suite.
   CPUs.
 - **`HillClimbing`**, `metagen.metaheuristics.hc`: stochastic hill climbing with a short
   memory of visited solutions.
-- **`TabuSearch`**, `metagen.metaheuristics.ts`: moves to the best non-tabu neighbor even
-  when it is worse, with an aspiration criterion and a relative `tabu_radius` for
-  continuous variables.
 - **`KernelTPE`**: a Tree-structured Parzen Estimator that models each variable with a
   mixture of kernels and evaluates one candidate per iteration, for fitness functions
   that are expensive to evaluate. `TPE` evaluates a pool of candidates per iteration.
@@ -41,7 +38,8 @@ information and a continuous integration suite.
 
 ### Changes that may require updating your code
 
-- **`TabuSearch`** accepts worsening moves and applies an aspiration criterion. The
+- **`TabuSearch`** moves to the best non-tabu neighbor even when it is worse and applies
+  an aspiration criterion, with a relative `tabu_radius` for continuous variables. The
   previous behavior is available as `HillClimbing`.
 - **TensorBoard logging is enabled with `log_dir`**, which defaults to `None` in every
   metaheuristic and in the CVOA launchers; pass a directory to write the logs.
