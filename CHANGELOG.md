@@ -39,8 +39,8 @@ information and a continuous integration suite.
 ### Changes that may require updating your code
 
 - **`TabuSearch`** moves to the best non-tabu neighbor even when it is worse and applies
-  an aspiration criterion, with a relative `tabu_radius` for continuous variables. The
-  previous behavior is available as `HillClimbing`.
+  an aspiration criterion, with a relative `tabu_radius` for continuous variables. For a
+  search that only accepts improving moves, use `HillClimbing`.
 - **TensorBoard logging is enabled with `log_dir`**, which defaults to `None` in every
   metaheuristic and in the CVOA launchers; pass a directory to write the logs.
 - **Console output is enabled with `set_metagen_logger_level()`.** Importing the package
@@ -49,17 +49,16 @@ information and a continuous integration suite.
   and a `list` for a structure. `solution.get("name")` returns the objects.
 - **Structures check their length** against the definition on `set`, `append`, `insert`
   and `del`, including the length step of a dynamic structure.
-- **CVOA**: `p_isolation` is the probability that an individual isolates, and the
-  defaults of `StrainProperties` follow the setup suggested in the CVOA paper
-  (`pandemic_duration` 30, `p_isolation` 0.7, `p_re_infection` 0.02). A strain runs its
-  whole `pandemic_duration`.
+- **CVOA**: the defaults of `StrainProperties` follow the setup suggested in the CVOA
+  paper (`pandemic_duration` 30, `p_isolation` 0.7, `p_re_infection` 0.02), and a strain
+  runs its whole `pandemic_duration` unless `max_iterations_without_improvement` is set.
 - **`GA`, `SSGA` and `Memetic` check at construction** that the domain was created with a
   connector whose solutions can cross over, such as `GAConnector`.
 - **Defaults**: `SA` evaluates five neighbors per iteration and derives its cooling rate
   from `max_iterations` when none is given; `GA` and `SSGA` mutate a child within a fifth
   of each variable's range (`mutation_alteration_limit=None` redraws it over its whole
   domain).
-- Package metadata declares the license of the code, GPL-3.0-or-later.
+- MetaGen is distributed under the GNU General Public License v3 or later.
 
 ### Project
 
