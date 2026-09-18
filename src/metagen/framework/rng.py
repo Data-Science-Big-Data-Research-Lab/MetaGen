@@ -64,7 +64,7 @@ def spawn_seed() -> int:
     Draw a seed for a worker from MetaGen's own generator.
 
     Ray workers are separate processes with their own generator state, so seeding
-    the driver did not make a distributed run reproducible (A-06). Every task now
+    the driver alone does not make a distributed run reproducible. Every task
     receives a seed drawn here and applies it with :func:`set_seed` before working:
     the driver's seed then determines every worker's stream. Drawing consumes one
     value of the driver's generator, so only distributed paths call this.
@@ -72,6 +72,7 @@ def spawn_seed() -> int:
     :return: A seed for one worker.
     :rtype: int
     """
+    # A-06: before this, no distributed run was reproducible.
     return _python_rng.getrandbits(63)
 
 

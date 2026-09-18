@@ -54,16 +54,15 @@ class CanonicalTPE(TPE):
       evaluation per iteration. MetaGen's TPE evaluates a whole pool per iteration,
       drawn from both models.
 
-    Putting the selection rule on MetaGen's single-Gaussian model was measured and
-    collapses the search (26 of 100 wins against random sampling, against 70 for
-    MetaGen's TPE as it is): the two pieces go together, which is why this is a class
-    of its own.
+    The two pieces go together, which is why this is a class of its own: choosing
+    greedily by ``l(x) / g(x)`` over a single Gaussian per variable collapses the search
+    into a small region, and it is the mixture of kernels that keeps it open.
 
     A run costs ``population_size * (warmup_iterations + 1) + max_iterations``
     evaluations: 220 with the defaults. The history is never trimmed, since every
     observation is a kernel. On a dynamic structure the length is not modeled: a
     candidate is born with a random length and the positions it has are drawn from
-    the observations that have them, as in MetaGen's TPE (F-35). Under the global
+    the observations that have them, as in MetaGen's TPE. Under the global
     distribution model every slice proposes and evaluates one candidate, so an
     iteration costs as many evaluations as there are slices.
 
@@ -113,6 +112,10 @@ class CanonicalTPE(TPE):
         search = CanonicalTPE(domain, fitness_function, max_iterations=100, seed=0)
         best_solution = search.run()
     """
+    # Measured on the behavior bench: the l(x)/g(x) selection on MetaGen's single-Gaussian
+    # model won 26 of 100 against random sampling, against 70 for MetaGen's TPE as it is;
+    # on the mixture of kernels it wins 98 of 110 on the same 480 evaluations.
+    # F-35: the length of a dynamic structure is not modeled, here or in TPE.
 
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
                  max_iterations: int = 100, warmup_iterations: int = 5, n_candidates: int = 24,

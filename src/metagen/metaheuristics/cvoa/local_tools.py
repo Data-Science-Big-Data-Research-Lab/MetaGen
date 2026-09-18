@@ -63,10 +63,12 @@ class LocalPandemicState:
 
         It does not join the recovered: MetaGen departs from the paper's Algorithm 3
         here on purpose, so the point stays open to be infected again. Sending it to
-        the recovered locks 70 % of every carrier's neighborhood and was measured to
-        search worse on binary domains (F-45). The set used to demand a state no
-        individual can have, so it never held anyone.
+        the recovered would lock, with the default ``p_isolation``, 70 % of every
+        carrier's neighborhood.
         """
+        # F-45: sending it to the recovered was measured to search worse on binary
+        # domains. The set used to demand a state no individual can have, so it never
+        # held anyone.
         with self.lock:
             self.isolated.add(individual)
 

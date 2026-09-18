@@ -56,8 +56,9 @@ class RemotePandemicState:
     def isolate(self, individual: Solution) -> None:
         """
         Count an individual as isolated. It does not join the recovered: MetaGen
-        departs from the paper here on purpose, see LocalPandemicState.isolate (F-45).
+        departs from the paper here on purpose, see LocalPandemicState.isolate.
         """
+        # F-45.
         self.isolated.add(individual)
 
     # Best Individual
@@ -82,9 +83,10 @@ class RemotePandemicStateProxy:
     The strain's view of the RemotePandemicState actor: the same methods as
     LocalPandemicState, each a synchronous call to the actor. The strain and the
     contagion tasks hold this instead of the handle, so the code that talks to the
-    state is written once for threads and for Ray (A-09). It pickles with the handle
+    state is written once for threads and for Ray. It pickles with the handle
     inside, which is how it reaches the tasks.
     """
+    # A-09: eleven ray.get calls left the strain's code when this proxy came in.
 
     def __init__(self, handle: PandemicStateHandle):
         self.handle = handle
@@ -141,12 +143,13 @@ def spread_on_ray(strain_class: "type[CVOA]", state: PandemicState, domain: Doma
     """
     The contagion step of one iteration on Ray: one task per carrier, each running the
     strain class's own infect_from_carrier, so a subclass's variant of isolation or
-    admission runs in the tasks too. There used to be a second level of tasks that
-    split one carrier's few infections across CPUs; it only added dispatch (A-09).
+    admission runs in the tasks too.
 
     :return: The newly infected population, in carrier order.
     :rtype: SolutionSet
     """
+    # A-09: there used to be a second level of tasks that split one carrier's few
+    # infections across CPUs; it only added dispatch.
     futures = [_infect_from_carrier.remote(spawn_seed(), strain_class, state, domain, fitness_function,
                                            strain_properties, carrier, superspreaders, time)
                for carrier in carriers]

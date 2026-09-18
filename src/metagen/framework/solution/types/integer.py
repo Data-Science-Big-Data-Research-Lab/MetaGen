@@ -58,7 +58,7 @@ class Integer(BaseType):
         Narrows what :py:meth:`~metagen.framework.solution.types.base.BaseType.get_definition`
         declares, which is the union of every definition and whose ``get_attributes``
         is therefore a union of tuples of two to five elements. Every unpacking here
-        is of a fixed width, so without the narrowing none of them type-checks (P-11).
+        is of a fixed width, so without the narrowing none of them type-checks.
 
         :return: The definition of this variable.
         :rtype: IntegerDefinition
@@ -77,15 +77,17 @@ class Integer(BaseType):
     def mutate(self, alteration_limit: Any = None) -> None:
         """
         Modify the value of this Integer instance to another value of its definition,
-        never the current one (F-49): a mutation always changes the variable, as it
+        never the current one: a mutation always changes the variable, as it
         does for a Categorical.
 
         :param alteration_limit: How far the mutation may move the current value. A
             number is an absolute amount; a :py:class:`~metagen.framework.alteration.RelativeAlteration`
-            is a fraction of this variable's own range (F-32). If not provided, the
+            is a fraction of this variable's own range. If not provided, the
             mutation can replace the current value with any within the domain.
         :type alteration_limit: int or RelativeAlteration or None
         """
+        # F-49: the draw included the current value, so on a two-valued domain half
+        # the mutations changed nothing. F-32 brought the relative limit.
         _, min_value, max_value, step = self.get_definition().get_attributes()
         step = step or 1
         # The grid is anchored on the domain's minimum, captured before the window

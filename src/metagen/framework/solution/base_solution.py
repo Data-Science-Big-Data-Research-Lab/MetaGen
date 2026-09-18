@@ -37,16 +37,17 @@ def builtin_value(value: Any) -> Any:
     The plain Python value behind a variable, at any depth.
 
     A scalar type holds an int, a float or a str; a Structure holds a list of types;
-    a group is a Solution holding types of its own. Reading a variable used to
-    unwrap one level only, so a group came back as a dict of Integer, Real and
-    Categorical objects and a structure as a list of them: values the domain's own
-    check refused and json could not serialize (F-37).
+    a group is a Solution holding types of its own. All of them are unwrapped, down
+    to the last level, so that what comes back is a value the domain's own check
+    accepts and json can serialize.
 
     :param value: A solution type, a solution, or a plain builtin.
     :type value: Any
     :return: The same value made of int, float, str, list and dict only.
     :rtype: Any
     """
+    # F-37: reading a variable unwrapped one level only, so a group came back as a
+    # dict of Integer, Real and Categorical objects and a structure as a list of them.
     if isinstance(value, Solution):
         return {name: value[name] for name in value}
     if isinstance(value, types.Structure):
@@ -60,13 +61,14 @@ def _hashable(value: Any) -> Any:
 
     A solution keeps its variables in a dict, and those values may in turn be a list
     (a Structure) or another solution (a group). None of the three hashes on its own,
-    which is why the hash used to sidestep them altogether (F-15).
+    so each is turned into a tuple, recursively.
 
     :param value: A solution type, a solution, or a plain builtin.
     :type value: Any
     :return: An equivalent value made of tuples and builtins, safe to hash.
     :rtype: Any
     """
+    # F-15: the old hash sidestepped the variables altogether for this reason.
     if isinstance(value, Solution):
         return tuple(sorted((name, _hashable(item))
                             for name, item in value.get_variables().items()))
@@ -128,10 +130,10 @@ class Solution:
 
     def __init__(self, definition: Domain | BaseDefinition, best=False, connector=None):
         """
-        It is the default and unique, constructor builds an empty solution with the worst fitness value
-        (:math:`best=False`, by default) or the best fitness value (:math:`best=False`). Furthermore, a
-        :py:class:`~metagen.problem.facades.Domain` object can be passed to check the variable definitions internally and,
-        therefore boost the Solution fucntionality.
+        The only constructor. It builds a solution whose variables are drawn at random from the
+        definition, with the worst fitness value (``best=False``, the default) or the best one
+        (``best=True``). The :py:class:`~metagen.framework.Domain` it receives is what every later
+        assignment is checked against.
 
         :param definition: The Domain of the solution. If the definition is an instance of Base the connector must be provided.
         :type definition: Domain | BaseDefinition
@@ -514,12 +516,12 @@ class Solution:
         management.
 
         It hashes the variables, and only the variables, so that it agrees with
-        ``__eq__``. It used to be ``hash((self.get_variables().__hash__, self.fitness))``,
-        where ``dict.__hash__`` is None for every solution alike, leaving the fitness as
-        the only ingredient: two equal solutions with different fitness broke
-        ``a == b => hash(a) == hash(b)``, and every solution sharing a fitness value
-        landed in one bucket (F-15).
+        ``__eq__``: ``a == b`` implies ``hash(a) == hash(b)``, whatever their fitness.
         """
+        # F-15: it was hash((self.get_variables().__hash__, self.fitness)), where
+        # dict.__hash__ is None for every solution alike, leaving the fitness as the
+        # only ingredient: two equal solutions with different fitness broke the
+        # invariant, and every solution sharing a fitness value landed in one bucket.
         return hash(tuple(sorted((name, _hashable(value))
                                  for name, value in self.get_variables().items())))
 

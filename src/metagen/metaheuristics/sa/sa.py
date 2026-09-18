@@ -69,7 +69,7 @@ class SA(Metaheuristic):
     :type initial_temp: float, optional
     :param cooling_rate: Rate at which the temperature decreases each iteration.
         Derived from the budget when not given, so that the temperature travels from
-        initial_temp down to T_min over the iterations available (F-30)
+        initial_temp down to T_min over the iterations available
     :type cooling_rate: float or None, optional
     :param neighbor_population_size: Number of neighbors to generate in each iteration,
         defaults to 5
@@ -93,6 +93,23 @@ class SA(Metaheuristic):
     :vartype cooling_rate: float
     :ivar neighbor_population_size: Number of neighbors per iteration
     :vartype neighbor_population_size: int
+
+    **Code example**
+
+    .. code-block:: python
+
+        from metagen.framework import Domain, Solution
+        from metagen.metaheuristics import SA
+
+        domain = Domain()
+        domain.define_real("x", -5.0, 5.0)
+        domain.define_real("y", -5.0, 5.0)
+
+        def fitness_function(solution: Solution) -> float:
+            return solution["x"] ** 2 + solution["y"] ** 2
+
+        algorithm = SA(domain, fitness_function, max_iterations=50, seed=0)
+        best_solution = algorithm.run()
     """
 
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
@@ -118,17 +135,19 @@ class SA(Metaheuristic):
         :type initial_temp: float, optional
         :param cooling_rate: Rate at which the temperature decreases each iteration.
             Derived from the budget when not given, so that the temperature travels
-            from initial_temp down to T_min over max_iterations (F-30)
+            from initial_temp down to T_min over max_iterations
         :type cooling_rate: float or None, optional
         :param neighbor_population_size: Number of neighbors to generate in each
-            iteration, defaults to 5. One leaves nothing to choose between, which is
-            what F-25 measured
+            iteration, defaults to 5. One leaves nothing to choose between
         :type neighbor_population_size: int, optional
         :param distributed: Whether to use distributed computation, defaults to False
         :type distributed: bool, optional
         :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
         :type log_dir: str or None, optional
         """
+        # F-30: cooling_rate is derived from the budget. F-25: with one neighbor there is
+        # nothing to choose between; over the nine functions and thirty seeds, one neighbor
+        # won 161 of 270 against random sampling and five won 214, so the default is 5.
         # population_size=1: annealing walks a single point, and iterate() only ever
         # looks at solutions[0]. Inheriting the default of 20 meant the warmup drew
         # 5 x 20 solutions and the initialization 20 more, of which 39 were thrown
@@ -160,13 +179,13 @@ class SA(Metaheuristic):
 
     def pre_execution(self) -> None:
         """
-        Reset the annealing schedule so that every run starts from the same state.
-
-        The temperature was only ever set in the constructor, so a second run() on
-        the same object picked up wherever the first left off. It went unnoticed
-        while the schedule barely moved (F-30); with a schedule that reaches T_min
-        it would break the guarantee that a seed reproduces a run (A-06).
+        Reset the annealing schedule so that every run starts from the same state:
+        a second run() on the same object starts at ``initial_temp`` again, which is
+        what makes a seed reproduce a run.
         """
+        # F-30, A-06: the temperature was only ever set in the constructor, so a second
+        # run() picked up wherever the first left off. It went unnoticed while the
+        # schedule barely moved; with one that reaches T_min it broke reproducibility.
         super().pre_execution()
         self.current_temp = self.initial_temp
 

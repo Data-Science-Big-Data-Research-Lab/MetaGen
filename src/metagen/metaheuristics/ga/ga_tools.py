@@ -33,17 +33,18 @@ class Crossable(Protocol):
     What GASolution.crossover asks of a variable: that it knows how to cross over.
 
     It is a capability and not a class on purpose -- the connector is the extension
-    point, and a user's own type with its own operator qualifies (A-07) -- so the
-    check is hasattr and this is what passing it means to the type checker.
+    point, and a user's own type with its own operator qualifies -- so the check is
+    hasattr and this is what passing it means to the type checker.
     """
+    # A-07: the capability check is what keeps a user's own connector valid.
 
     def crossover(self, other: Any) -> Tuple[Any, Any]: ...
 
 
 #: Width of the BLX interval, as a share of the distance between the two parents,
-#: added at each end. Eshelman and Schaffer's own recommendation; measured over the
-#: nine benchmark functions and 30 seeds, anything from 0.25 to 0.75 performs the
-#: same, so the value from the literature is the one that needs no defending.
+#: added at each end. Eshelman and Schaffer's own recommendation.
+# Measured over the nine benchmark functions and 30 seeds, anything from 0.25 to 0.75
+# performs the same, so the value from the literature is the one that needs no defending.
 BLX_ALPHA = 0.5
 
 
@@ -54,10 +55,10 @@ def blend_interval(first: float, second: float, min_value: float, max_value: flo
 
     Uniform crossover hands a whole variable to one child or the other, so on a
     numerical variable the offspring can only ever hold values the population
-    already had; every value the search has not seen has to come from a mutation
-    (F-33). BLX draws instead from the interval the two parents span, widened by
-    ``alpha`` of its width at each end, which is what lets a crossover produce a
-    value neither parent held.
+    already had; every value the search has not seen has to come from a mutation.
+    BLX draws instead from the interval the two parents span, widened by ``alpha``
+    of its width at each end, which is what lets a crossover produce a value
+    neither parent held.
 
     It is symmetric in its two arguments, so which parent is which does not matter
     -- that is why a blended variable is not also exchanged.
@@ -75,6 +76,7 @@ def blend_interval(first: float, second: float, min_value: float, max_value: flo
     :return: The interval to draw the child's value from.
     :rtype: Tuple[float, float]
     """
+    # F-33: BLX replaced the uniform swap on numeric variables.
     spread = abs(first - second) * alpha
     return (max(min_value, min(first, second) - spread),
             min(max_value, max(first, second) + spread))
@@ -166,14 +168,15 @@ class GAStructure(types.Structure):
 
         A static structure recombines position by position. A dynamic one has to
         decide what happens where the parents' lengths differ, and that is cut and
-        splice (F-31); the positions both parents share recombine by the same rule
-        either way.
+        splice; the positions both parents share recombine by the same rule either
+        way.
 
         :param other: Another GAStructure instance to perform crossover with
         :type other: GAStructure
         :return: A tuple containing two new GAStructure instances (children)
         :rtype: Tuple[GAStructure, GAStructure]
         """
+        # F-31: the dynamic branch; it raised NotImplementedError until then.
         definition = self.get_definition()
         common = min(len(self), len(other))
 
@@ -197,7 +200,7 @@ class GAStructure(types.Structure):
         An element that knows how to cross over does its own recombining, the same
         rule GASolution follows one level up: a structure of reals blends component
         by component, which is how BLX is defined for a vector, instead of only
-        shuffling values between positions (F-33). Elements that do not, categoricals
+        shuffling values between positions. Elements that do not, categoricals
         among them, swap positions, some of them chosen at random.
 
         :param other: The other parent.
@@ -207,6 +210,7 @@ class GAStructure(types.Structure):
         :return: The recombined leading elements of each child.
         :rtype: Tuple[list, list]
         """
+        # F-33: elements that can cross over blend instead of being shuffled.
         head1: list = []
         head2: list = []
         if size == 0:
@@ -230,8 +234,10 @@ class GAStructure(types.Structure):
 def _valid_length(definition: DynamicStructureDefinition, length: int) -> bool:
     """Whether ``length`` is one the definition allows, step included.
 
-    The definition's own rule: this used to restate it here because check_length
-    ignored the step (F-41), and two copies of one rule is how they drift apart."""
+    It is the definition's own rule, asked of the definition so that there is a
+    single copy of it."""
+    # F-41: this used to restate the rule because check_length ignored the step,
+    # and two copies of one rule is how they drift apart.
     return definition.check_length(range(length))
 
 
@@ -246,14 +252,16 @@ def prefix_and_tails(first: GAStructure, second: GAStructure,
     is what cut_and_splice falls back on when no cut gives two valid lengths.
 
     It is the fallback and not the operator because it never produces a length the
-    population did not already hold, and that showed: measured over 30 seeds on the
-    polynomial problem, whose right length is four, GA settled at a mean length of
-    2.5 with this and 3.6 with cut and splice, and won 19 seeds against 24 (F-31).
-    It is F-33's lesson again, for lengths instead of values.
+    population did not already hold: only a mutation could then change how long the
+    solutions of a population are.
 
     :return: The elements of each child.
     :rtype: Tuple[list, list]
     """
+    # F-31: measured over 30 seeds on the polynomial problem, whose right length is
+    # four, GA settled at a mean length of 2.5 with this and 3.6 with cut and splice,
+    # and won 19 seeds against 24. It is F-33's lesson again, for lengths instead of
+    # values.
     common = min(len(first), len(second))
     head1, head2 = first._recombine_prefix(second, common)
     tail1 = [deepcopy(first.get(i)) for i in range(common, len(first))]
@@ -273,13 +281,16 @@ def cut_and_splice(first: GAStructure, second: GAStructure,
     of the other -- a length neither parent need have had. The cut points are drawn
     among the pairs that give both children a length the definition allows, step
     included; when no such pair exists the parents' own lengths are kept instead.
-    The positions both heads share recombine by the usual rule (F-31).
+    The positions both heads share recombine by the usual rule.
 
-    Chosen over keeping the parents' lengths by measurement: see prefix_and_tails.
+    It is the operator, and prefix_and_tails the fallback, because it is the one
+    that can give a child a length no parent had.
 
     :return: The elements of each child.
     :rtype: Tuple[list, list]
     """
+    # F-31: chosen over keeping the parents' lengths by measurement; the figures
+    # are in the comment of prefix_and_tails.
     length1, length2 = len(first), len(second)
     pairs = [(cut1, cut2)
              for cut1 in range(length1 + 1) for cut2 in range(length2 + 1)
@@ -368,9 +379,9 @@ def require_crossover(domain: Domain, algorithm: str) -> None:
     Check that the domain's connector yields solutions that know how to cross over.
 
     GA, SSGA and the memetic algorithm all cross solutions, an operator that only
-    GASolution and GAStructure provide. With a plain Domain() they used to die on the
-    first iteration with `AttributeError: 'Solution' object has no attribute
-    'crossover'`, which says nothing about what to do (A-07).
+    GASolution and GAStructure provide. A plain Domain() maps to solutions without
+    it, so the algorithm refuses the domain at construction, with a message that
+    says how to build it.
 
     The check asks for the capability rather than for GAConnector itself, so that a
     user bringing their own connector with their own crossover operator still works:
@@ -382,6 +393,9 @@ def require_crossover(domain: Domain, algorithm: str) -> None:
     :type algorithm: str
     :raises ValueError: If the domain's solutions have no crossover operator.
     """
+    # A-07: without this check the run died on the first iteration with
+    # AttributeError: 'Solution' object has no attribute 'crossover', which says
+    # nothing about what to do.
     solution_type: type = domain.get_connector().get_type(domain.get_core())
     if not hasattr(solution_type, "crossover"):
         raise ValueError(
@@ -429,10 +443,9 @@ def tournament_selection(solutions: Sequence[Solution], tournament_size: int = 2
     """
     Pick a parent by tournament: draw a few individuals at random and keep the best.
 
-    This is the selection operator GA, SSGA and the memetic algorithm share. They
-    used to take the two best of the population instead, which is truncation
-    selection at its most extreme: the population converged on that pair within a
-    couple of generations and the crossover stopped recombining anything (A-01).
+    This is the selection operator GA, SSGA and the memetic algorithm share. Every
+    crossover draws its own pair of parents, which keeps the population from
+    converging on a single pair and the crossover recombining.
 
     ``tournament_size`` is the selection pressure. Two is the mildest tournament and
     the usual default; raising it makes the search greedier and converge sooner. A
@@ -446,6 +459,9 @@ def tournament_selection(solutions: Sequence[Solution], tournament_size: int = 2
     :return: The best of the drawn individuals.
     :rtype: :py:class:`~metagen.framework.Solution`
     """
+    # A-01: the algorithms used to take the two best of the population instead,
+    # truncation selection at its most extreme: the population converged on that pair
+    # within a couple of generations and the crossover stopped recombining anything.
     contenders = get_rng().sample(solutions, min(tournament_size, len(solutions)))
     return min(contenders, key=lambda solution: solution.get_fitness())
 

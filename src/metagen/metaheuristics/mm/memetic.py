@@ -38,7 +38,7 @@ class Memetic(Metaheuristic):
     :param mutation_alteration_limit: How far a mutated child may move from where the
         crossover left it. None, the default, redraws each mutated variable over its whole
         domain: the local search already works the neighborhood, and the wide mutation is
-        what lets the algorithm leave it (measured: a local one costs it Schwefel)
+        what lets the algorithm leave it
     :param distributed: Whether to use distributed computation, defaults to False
     :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
     :param distribution_level: The level of distribution (0=none), defaults to 0
@@ -77,6 +77,10 @@ class Memetic(Metaheuristic):
         memetic = Memetic(domain, fitness_function, population_size=50, max_iterations=100)
         best_solution = memetic.run()
     """
+
+    # mutation_alteration_limit: measured on the benchmark over thirty seeds, a local
+    # mutation is a trade for this algorithm (299 to 297 wins of 330: it gains Rosenbrock
+    # and loses Schwefel and the decision tree), so it keeps the wide one that GA dropped.
 
     # Two parents to cross: a distributed slice of one individual raised IndexError (F-46).
     minimum_slice: int = 2

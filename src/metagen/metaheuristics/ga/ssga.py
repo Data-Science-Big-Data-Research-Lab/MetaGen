@@ -46,9 +46,9 @@ class SSGA(Metaheuristic):
     :type tournament_size: int, optional
     :param mutation_alteration_limit: How far a mutated child may move from where the
         crossover left it. Defaults to ``RelativeAlteration(0.2)``, a fifth of each
-        variable's own range: measured on the benchmark, a local mutation beats redrawing
-        the variable over its whole domain. A plain number is an absolute amount and None
-        is the whole domain.
+        variable's own range, so that a mutation moves a child near where the crossover
+        left it; a plain number is an absolute amount and None redraws the variable over
+        its whole domain.
     :type mutation_alteration_limit: RelativeAlteration or float or None, optional
     :param distribution_model: How a distributed run makes up the next population out of
         the slices, ``"global"`` (the default: shuffled, selected among all workers) or
@@ -64,7 +64,30 @@ class SSGA(Metaheuristic):
     :ivar domain: The domain representing the problem space.
     :vartype domain: Domain
     :ivar fitness_func: The fitness function used to evaluate solutions.
-    :vartype fitness_func: Callable[[Solution], float]"""
+    :vartype fitness_func: Callable[[Solution], float]
+
+    **Code example**
+
+    .. code-block:: python
+
+        from metagen.framework import Domain, Solution
+        from metagen.metaheuristics import SSGA, GAConnector
+
+        # A genetic algorithm crosses solutions over, so its domain needs the GA connector.
+        domain = Domain(connector=GAConnector())
+        domain.define_real("x", -5.0, 5.0)
+        domain.define_real("y", -5.0, 5.0)
+
+        def fitness_function(solution: Solution) -> float:
+            return solution["x"] ** 2 + solution["y"] ** 2
+
+        algorithm = SSGA(domain, fitness_function, population_size=10, max_iterations=50, seed=0)
+        best_solution = algorithm.run()
+    """
+
+    # mutation_alteration_limit: measured on the benchmark over thirty seeds, the local
+    # mutation took SSGA from 168 to 176 wins of 330 against random sampling on the
+    # same budget: neutral for it, a clear gain for GA, so the two share the default.
 
     # Two parents to cross: a distributed slice of one individual raised IndexError (F-46).
     minimum_slice: int = 2

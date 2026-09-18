@@ -62,13 +62,13 @@ def population_local_search(population: List[Solution], fitness_function: Callab
         from metagen.metaheuristics.mm.mm_distributed_tools import \
             distributed_local_search
 
-        neighbours = []
+        neighbors = []
         for individual in population:
-            neighbours.append(distributed_local_search(individual, fitness_function, neighbor_population_size, alteration_limit))
+            neighbors.append(distributed_local_search(individual, fitness_function, neighbor_population_size, alteration_limit))
     else:
-        neighbours = []
+        neighbors = []
         for individual in population:
-            neighbours.append(local_search(individual, fitness_function, neighbor_population_size, alteration_limit))
-    return neighbours
+            neighbors.append(local_search(individual, fitness_function, neighbor_population_size, alteration_limit))
+    return neighbors
 
 

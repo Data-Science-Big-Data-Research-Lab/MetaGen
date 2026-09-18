@@ -43,8 +43,8 @@ def distributed_cvoa_launcher(strains: List[StrainProperties], domain: Domain, f
     :type domain: Domain
     :param fitness_function: Function to evaluate solutions.
     :type fitness_function: Callable[[Solution], float]
-    :param update_isolated: Kept for compatibility and ignored: since F-45 every isolated
-        individual is counted.
+    :param update_isolated: Kept for compatibility and ignored: every isolated
+        individual is recorded.
     :type update_isolated: bool, optional
     :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
     :type log_dir: str or None, optional

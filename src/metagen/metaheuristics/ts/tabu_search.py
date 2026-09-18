@@ -33,16 +33,16 @@ class TabuSearch(Metaheuristic):
     when that neighbor is worse than the current solution**: that is what lets the
     search leave a local optimum, and what separates it from hill climbing. The
     solutions visited lately are tabu, so the walk cannot turn straight back, and a
-    tabu neighbor is still taken if it beats the best solution ever found (the
+    tabu neighbor is still taken if it improves on the best solution ever found (the
     aspiration criterion). The best solution found is tracked apart from the walker
     and is what ``run()`` returns.
 
     .. note::
-        The package's first ``TabuSearch`` was not one and is now
-        :py:class:`~metagen.metaheuristics.HillClimbing` (A-02); it never accepts a
-        worsening move, so its list of visited solutions cannot steer it. This class
-        is the algorithm the name promises. Code written against the 0.2.0 release
-        that imports ``TabuSearch`` gets this class, another optimizer.
+        The class that version 0.2.0 shipped as ``TabuSearch`` is now
+        :py:class:`~metagen.metaheuristics.HillClimbing`: it never accepts a worsening
+        move, so its list of visited solutions cannot steer it. This class is the
+        algorithm the name promises. Code written against the 0.2.0 release that
+        imports ``TabuSearch`` gets this class, another optimizer.
 
     **What "tabu" means on a continuous domain.** Two real-valued solutions are
     never exactly equal, so a list of visited points would forbid nothing. A
@@ -51,8 +51,8 @@ class TabuSearch(Metaheuristic):
     own range by default, and equal to it on every categorical one.
 
     **Neighbors are drawn around the current solution, not in a chain.** Chaining is
-    right for hill climbing, which walks uphill step by step (A-03); a tabu search
-    needs a neighborhood of the current point to choose its move from.
+    right for hill climbing, which walks uphill step by step; a tabu search needs a
+    neighborhood of the current point to choose its move from.
 
     A run costs ``population_size * (warmup_iterations + 1 + max_iterations)``
     evaluations: the same as :py:class:`~metagen.metaheuristics.HillClimbing` with
@@ -75,10 +75,8 @@ class TabuSearch(Metaheuristic):
     :param tabu_radius: How close to a visited solution a neighbor has to be, on every
         numeric variable, to count as tabu. Defaults to a fiftieth of each variable's
         range; a plain number is an absolute distance, and None demands equality.
-        Measured on the eleven problems of the behavior bench over ten seeds, wins
-        against random sampling on the same budget: 90 of 110 with 0.02, 87 with 0.05,
-        82 with 0.10 and 89 with None, so a small radius is as good as it gets and the
-        list itself matters little on those landscapes; HillClimbing scores 96.
+        A small radius is enough to keep the walk from turning back; a large one
+        forbids whole regions around every visited point.
     :type tabu_radius: RelativeAlteration or float or None, optional
     :param alteration_limit: How far a neighbor may move from the current solution.
         Defaults to a fifth of each variable's own range; a plain number is an
@@ -119,6 +117,12 @@ class TabuSearch(Metaheuristic):
         search = TabuSearch(domain, fitness_function, population_size=10, max_iterations=20, seed=0)
         best_solution = search.run()
     """
+    # A-02, A-03: the first TabuSearch was a hill climber and was renamed; chaining the
+    # neighbors is measured to be right for it and wrong for this class.
+    # tabu_radius, measured on the eleven problems of the behavior bench over ten seeds,
+    # wins against random sampling on the same budget: 90 of 110 with 0.02, 87 with 0.05,
+    # 82 with 0.10 and 89 with None, so a small radius is as good as it gets and the list
+    # itself matters little on those landscapes; HillClimbing scores 96.
 
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
                  population_size: int = 10, warmup_iterations: int = 5, max_iterations: int = 20,
@@ -138,7 +142,8 @@ class TabuSearch(Metaheuristic):
         self._aspiration_level: float = float("inf")
 
     def pre_execution(self) -> None:
-        """Start every run from nothing visited, so that a seed reproduces a run (A-06)."""
+        """Start every run from nothing visited, so that a seed reproduces a run."""
+        # A-06: state left over from a previous run() would change what the seed gives.
         super().pre_execution()
         self.tabu_list.clear()
         self.current_solution = None
@@ -160,8 +165,9 @@ class TabuSearch(Metaheuristic):
         """
         Sample as many neighbors around the current solution as the population
         handed in has individuals, and return them with the best of them. The move
-        itself is chosen in post_iteration, on the driver (F-40).
+        itself is chosen in post_iteration, on the driver.
         """
+        # F-40: Ray runs this on a copy of the algorithm, so it keeps no state in self.
         around = self._around if self._around is not None else self._best_so_far()
         neighborhood = self._neighborhood(around, max(1, len(solutions)))
         return neighborhood, min(neighborhood, key=Solution.get_fitness)
@@ -171,8 +177,9 @@ class TabuSearch(Metaheuristic):
         Fix where this iteration's neighborhood is drawn, the current solution or the
         best known before the first move, and the aspiration level: the best fitness
         before the neighborhood is seen. Both are set on the driver, so a Ray worker
-        sees them (F-40).
+        sees them.
         """
+        # F-40: what a worker needs is set here, before the algorithm is serialized.
         super().pre_iteration()
         self._around = self.current_solution if self.current_solution is not None else self._best_so_far()
         self._aspiration_level = self._best_so_far().get_fitness()

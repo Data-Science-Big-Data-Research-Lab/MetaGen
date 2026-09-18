@@ -184,12 +184,13 @@ class Preconditions:
     @final
     class Structure:
         """
-        Length checks for the two structure definitions, which had none (F-19).
+        Length checks for the two structure definitions.
 
         Unlike Integer and Real, a minimum equal to the maximum is allowed here:
-        it declares a structure of a fixed length, and check_length already
+        it declares a structure of a fixed length, and check_length
         accepts it as ``min <= length <= max``.
         """
+        # F-19: the structure definitions had no length checks at all.
 
         @staticmethod
         def length(length: int):

@@ -129,8 +129,7 @@ class BaseConnector:
 
         Takes an instance, a class, or a class paired with its discriminator. A
         structure is registered under a discriminator, because a list stands for both
-        the static and the dynamic definition, and this used to look an instance up by
-        its bare class and fail on every structure (F-36). An instance carries its own
+        the static and the dynamic definition. An instance carries its own
         definition, which says which of the entries registered for its class is the
         right one; a bare class alone cannot, so it has to come with its discriminator.
 
@@ -142,6 +141,8 @@ class BaseConnector:
         :raises ValueError: If the solution type is not registered in the connector, or
             if a bare class is registered under several discriminators.
         """
+        # F-36: this looked an instance up by its bare class, which is not a key for a
+        # structure, and failed on every one of them.
         # A local rather than reassigning the parameter, which arrives as an
         # instance or as a class and would otherwise hold both types at once.
         # The cast says what inspect.isclass established and mypy cannot follow: what
@@ -185,8 +186,7 @@ class BaseConnector:
 
         Takes an instance, a class, or a class paired with its discriminator. A
         structure is registered under a discriminator, because a list stands for both
-        the static and the dynamic definition, and this used to look a structure up by
-        its bare class and fail on every one (F-34). When the bare class is not a key,
+        the static and the dynamic definition. When the bare class is not a key,
         the entries registered under a discriminator for that class are consulted:
         they all map to the same builtin, so no discriminator is needed to answer.
 
@@ -197,6 +197,7 @@ class BaseConnector:
         :raises ValueError: If the solution type is not registered in the connector,
             or if it is registered under discriminators that map to different builtins.
         """
+        # F-34: this looked a structure up by its bare class and failed on every one.
         # Same cast as in get_definition: the parameter arrives as an instance or as
         # a class, and mypy cannot tell which of the two type() is applied to.
         key: SolutionEntry

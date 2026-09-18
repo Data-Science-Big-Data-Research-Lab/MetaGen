@@ -18,31 +18,34 @@
 
 class RelativeAlteration:
     """
-    A mutation neighbourhood expressed as a fraction of each variable's own range.
+    A mutation neighborhood expressed as a fraction of each variable's own range.
 
     ``alteration_limit`` is a single number handed to every variable of a solution
-    alike, and a single number cannot suit a domain whose variables have different
-    widths. With the 1.0 that the local searches used to default to, a real in
-    [0, 1] jumped over half its range on every mutation -- resampling rather than
-    neighbouring -- while an integer in [1, 1000] moved by one part in a thousand
-    and sat still. That is F-32.
+    alike, and a single absolute number cannot suit a domain whose variables have
+    different widths: an absolute limit of 1.0 lets a real in [0, 1] jump over half
+    its range on every mutation -- resampling rather than neighboring -- while an
+    integer in [1, 1000] moves by one part in a thousand and sits still.
 
     Passing one of these instead says *how far* rather than *how much*, and each
-    variable resolves it against the bounds of its own definition. Plain numbers
-    keep meaning an absolute amount, and ``None`` keeps meaning the whole domain,
-    so nothing written against the old behaviour changes.
+    variable resolves it against the bounds of its own definition. A plain number
+    means an absolute amount, and ``None`` means the whole domain.
 
     Instances are immutable, which is why one of them can safely be a default
-    argument -- the trap F-12 was about.
+    argument.
 
     :param fraction: The share of a variable's range a mutation may travel, in (0, 1].
         The local searches default to 0.2. Anything from about a tenth to a fifth
-        performs the same -- measured over 30 seeds the differences are noise -- and
-        well beyond that the neighbourhood stops being one: at half the range
-        HillClimbing drops from 79 wins out of 90 to 71.
+        behaves alike; well beyond that, towards half the range, the neighborhood
+        stops being one and the search turns into resampling.
     :type fraction: float
     :raises ValueError: If the fraction is outside (0, 1].
     """
+    # F-32: the local searches defaulted to an absolute 1.0, which is the example the
+    # docstring gives. Plain numbers and None kept their meaning, so nothing written
+    # against the old behavior changed. The 0.2 was chosen by measuring: over 30 seeds
+    # a tenth to a fifth of the range differ by noise, and at half the range
+    # HillClimbing dropped from 79 wins out of 90 to 71. Immutability is what keeps this
+    # class clear of the mutable default argument trap of F-12.
 
     __slots__ = ("fraction",)
 

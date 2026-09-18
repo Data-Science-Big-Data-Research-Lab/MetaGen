@@ -36,7 +36,7 @@ class Structure(BaseType):
 
         :param definition: The structure's definition, static or dynamic. Declared as the
             two concrete classes and not as their mixin ``BaseStructureDefinition``,
-            which is not a ``Base`` and so is not what ``BaseType`` accepts (P-11).
+            which is not a ``Base`` and so is not what ``BaseType`` accepts.
         :type definition: DynamicStructureDefinition or StaticStructureDefinition
         """
 
@@ -49,7 +49,7 @@ class Structure(BaseType):
         Narrows what :py:meth:`~metagen.framework.solution.types.base.BaseType.get_definition`
         declares. Two things need it: ``get_base`` lives on the structure definitions
         and not on ``Base``, and the attribute tuples of the two have different widths,
-        five for the dynamic one and three for the static (P-11).
+        five for the dynamic one and three for the static.
 
         :return: The definition of this structure.
         :rtype: DynamicStructureDefinition or StaticStructureDefinition
@@ -64,7 +64,7 @@ class Structure(BaseType):
         The class comes from the connector's registry, so it is a Solution when the
         base is a group and a BaseType subclass otherwise. Both are constructed the
         same way, but their declared parameter types differ and mypy cannot follow a
-        runtime registry, hence the cast to the shape they share (P-11).
+        runtime registry, hence the cast to the shape they share.
 
         :return: A new element, uninitialized.
         :rtype: BaseType or Solution
@@ -167,7 +167,7 @@ class Structure(BaseType):
     def get(self, index=None) -> Any:
         """
         The elements of the Structure as type objects, all of them or the one at the
-        given index. Use [] for plain Python values instead (F-37).
+        given index. Use [] for plain Python values instead.
 
         :param index: The position wanted, or None for the whole list.
         :type index: int | None
@@ -295,7 +295,7 @@ class Structure(BaseType):
     def __getitem__(self, i) -> Any:
         """
         Returns the value at the given index in the Structure, as a plain Python
-        value at any depth (F-37). Use get(i) for the type object instead.
+        value at any depth. Use get(i) for the type object instead.
 
         :param i: The index of the value to return.
         :type i: int

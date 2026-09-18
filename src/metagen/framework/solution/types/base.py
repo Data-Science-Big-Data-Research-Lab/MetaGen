@@ -50,13 +50,14 @@ class BaseType(ABC):
 
         A simple type can be built without one and never need it; a structure cannot,
         since it builds its elements through the connector's registry. Reading it when
-        there is none used to fail one line later, on the None, with nothing pointing
-        at the cause (P-11).
+        there is none raises an error that says so.
 
         :return: The connector.
         :rtype: BaseConnector
         :raises RuntimeError: If this variable was built without a connector.
         """
+        # P-11: without this, the failure came one line later, on the None, with
+        # nothing pointing at the cause.
         if self.connector is None:
             raise RuntimeError(
                 f"{type(self).__name__} was built without a connector and needs one here")

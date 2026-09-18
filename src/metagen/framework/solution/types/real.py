@@ -55,7 +55,7 @@ class Real(BaseType):
         Narrows what :py:meth:`~metagen.framework.solution.types.base.BaseType.get_definition`
         declares, which is the union of every definition and whose ``get_attributes``
         is therefore a union of tuples of two to five elements. Every unpacking here
-        is of a fixed width, so without the narrowing none of them type-checks (P-11).
+        is of a fixed width, so without the narrowing none of them type-checks.
 
         :return: The definition of this variable.
         :rtype: RealDefinition
@@ -79,7 +79,7 @@ class Real(BaseType):
 
         :param alteration_limit: How far the mutation may move the current value. A
             number is an absolute amount; a :py:class:`~metagen.framework.alteration.RelativeAlteration`
-            is a fraction of this variable's own range (F-32). If not provided, the
+            is a fraction of this variable's own range. If not provided, the
             mutation can replace the current value with any within the domain.
         :type alteration_limit: float or RelativeAlteration or None
         """

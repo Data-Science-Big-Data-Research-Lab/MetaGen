@@ -39,15 +39,15 @@ class CVOA(Metaheuristic):
     It solves an optimization problem defined by a :py:class:`~metagen.framework.Domain` object and an
     implementation of a fitness function.
 
-    By instantiate :py:class:`~metagen.metaheuristics.CVOA` object, i.e. a strain, the configuration parameters must be provided.
+    A :py:class:`~metagen.metaheuristics.cvoa.cvoa_local.CVOA` object is one strain, configured by the
+    :py:class:`~metagen.metaheuristics.cvoa.common_tools.StrainProperties` it receives.
 
-    This class supports multiple strain execution by means of multy-threading. Each strain
-    (:py:class:`~metagen.metaheuristics.CVOA` object) will execute its *CVOA* algorithm (:py:meth:`~metagen.metaheuristics.CVOA.cvoa`)
-    in a thread and, finally, the best :py:class:`~metagen.framework.Solution` (i.e. the best fitness function
-    is obtained).
-
-    To launch a multi-strain execution, this module provides the :py:meth:`~metagen.metaheuristics.cvoa_launcher`
-    method.
+    Several strains run at once over a shared pandemic state and the best
+    :py:class:`~metagen.framework.Solution` of them all is returned. Strains are not run by hand but
+    through a launcher: :py:func:`~metagen.metaheuristics.cvoa.local_launcher.cvoa_launcher`, one
+    thread per strain, or
+    :py:func:`~metagen.metaheuristics.cvoa.distributed_launcher.distributed_cvoa_launcher`, one Ray
+    task per strain.
 
     :param strain_id: The strain name
     :param pandemic_duration: The pandemic duration, defaults to 30
@@ -161,9 +161,9 @@ class CVOA(Metaheuristic):
     def _log(self, message: str) -> None:
         """
         Report at the DETAILED_INFO level, prefixed with the strain and, in thread
-        mode, the thread. The two former twins differed only in which logger and
-        which prefix (A-09).
+        mode, the thread; on Ray it goes through the remote logger.
         """
+        # A-09: the two former twins differed only in which logger and which prefix.
         if self.spread_on_ray:
             self._logger.detailed_info(f"[{self.strain_properties.strain_id}] {message}")
         else:
@@ -175,12 +175,13 @@ class CVOA(Metaheuristic):
 
         ``best_strain_solution`` is None until ``initialize()`` names the patient zero,
         which is before anything reads it; this narrows it there, the way the base
-        class does with ``_best_so_far()`` (P-11).
+        class does with ``_best_so_far()``.
 
         :return: The best solution of the strain.
         :rtype: Solution
         :raises RuntimeError: If read before the strain has a patient zero.
         """
+        # P-11: the narrowing that let mypy check every read of the strain's best.
         if self.best_strain_solution is None:
             raise RuntimeError("best_strain_solution is not available yet: initialize() has not run")
         return self.best_strain_solution
@@ -254,12 +255,12 @@ class CVOA(Metaheuristic):
         infects, before the strain's best is added.
 
         In thread mode it runs infect_from_carrier for each carrier here; on Ray,
-        spread_on_ray runs the same function in one task per carrier. There used to be
-        three copies of this step, one per way of dispatching it (A-09).
+        spread_on_ray runs the same function in one task per carrier.
 
         :return: The newly infected population.
         :rtype: SolutionSet
         """
+        # A-09: there used to be three copies of this step, one per way of dispatching it.
         if self.spread_on_ray:
             from metagen.metaheuristics.cvoa.distributed_tools import spread_on_ray
             return spread_on_ray(type(self), self.global_state, self.domain, self.fitness_function,
@@ -279,12 +280,13 @@ class CVOA(Metaheuristic):
         """
         Everything one carrier does in one iteration: draw how many it infects and how
         far, then infect. A function of its arguments alone, so that a Ray task can run
-        it on a copy of the class (F-40); the class is what carries the variant, since
+        it on a copy of the class; the class is what carries the variant, since
         a subclass may change what isolation or admission mean.
 
         :return: The individuals this carrier infected that enter the next population.
         :rtype: SolutionSet
         """
+        # F-40: state written on a strain inside a Ray task would stay in the worker.
         n_infected, travel_distance = compute_n_infected_travel_distance(domain, strain_properties, carrier,
                                                                          superspreaders)
         return cls.infect_individuals_from(state, fitness_function, strain_properties, carrier, travel_distance,
@@ -330,8 +332,10 @@ class CVOA(Metaheuristic):
         """
         What happens to an individual that isolates. In MetaGen's CVOA it is counted
         and the point stays open to be infected again: this departs from the paper's
-        Algorithm 3 on purpose, measured (F-45). The paper's variant overrides it.
+        Algorithm 3 on purpose. The paper's variant overrides it.
         """
+        # F-45: sending the isolated to the recovered, as the paper does, was measured
+        # to search worse on binary domains; see LocalPandemicState.isolate.
         state.isolate(individual)
 
     @classmethod
@@ -379,16 +383,18 @@ class CVOA(Metaheuristic):
         the best become the superspreaders, the rest recover; and keep the strain's and
         the pandemic's best up to date.
 
-        This is MetaGen's variant, and what the original Java did before its ``sets``
-        branch: a share ``p_die`` of the carriers, the worst ones, dies, and a share
-        ``p_superspreader`` of the survivors, the best ones, superspreads. Both are
-        picked with a heap in ``n log k``, which is the saving that branch was after
-        when it replaced sorting the population with bounded sets filled in order of
-        arrival; that replacement also inverted the selection, so the best died and
-        the worst superspread, and MetaGen inherited it (F-48). A lone carrier never
-        dies, as in the Java. The paper draws death and superspreading per individual
-        instead; its variant overrides this method.
+        This is MetaGen's variant: a share ``p_die`` of the carriers, the worst ones,
+        dies, and a share ``p_superspreader`` of the survivors, the best ones,
+        superspreads. Both are picked with a heap, in ``n log k``, and the
+        superspreaders are chosen anew in every iteration. A lone carrier never dies.
+        The paper draws death and superspreading per individual instead; its variant
+        overrides this method.
         """
+        # F-48: this is what the original Java did before its ``sets`` branch, which
+        # replaced sorting the population with bounded sets filled in order of arrival
+        # to save time; that replacement also inverted the selection, so the best died
+        # and the worst superspread, and MetaGen inherited it. The heap is the saving
+        # that branch was after, done right. A lone carrier never dies, as in the Java.
         carriers = list(self.infected)
         number_of_deaths = math.ceil(self.strain_properties.p_die * len(carriers)) if len(carriers) > 1 else 0
         number_of_superspreaders = math.ceil(self.strain_properties.p_superspreader * len(carriers))
@@ -447,7 +453,7 @@ class CVOA(Metaheuristic):
         return report
 
     def __str__(self):
-        """ String representation of a :py:class:`~metagen.metaheuristics.CVOA` object (a strain).
+        """ String representation of a :py:class:`~metagen.metaheuristics.cvoa.cvoa_local.CVOA` object (a strain).
         """
         res = ""
         res += self.strain_properties.strain_id + "\n"

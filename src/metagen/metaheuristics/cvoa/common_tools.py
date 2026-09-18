@@ -14,10 +14,11 @@ class SolutionSet(MutableSet[Solution]):
     CVOA keeps its populations in sets, to drop repeated individuals as the paper
     recommends, and iterates them to spread the disease. A plain set iterates in
     hash order, and the hash of a Solution depends on the hashes of its variable
-    names, which Python randomizes on every interpreter start (PEP 456): the same
-    seed gave a different pandemic in every process (F-29). Backed by a dict, this
+    names, which Python randomizes on every interpreter start (PEP 456), so the same
+    seed would give a different pandemic in every process. Backed by a dict, this
     keeps the deduplication and makes the order follow the draws alone.
     """
+    # F-29: with plain sets the same seed gave a different pandemic in every process.
 
     def __init__(self, iterable: Iterable[Solution] = ()) -> None:
         self._items: Dict[Solution, None] = dict.fromkeys(iterable)
@@ -52,12 +53,13 @@ class SolutionSet(MutableSet[Solution]):
 class StrainProperties(NamedTuple):
     """
     The parameters of one strain. The defaults are the ones the paper fixes in its
-    "Suggested parameters setup" section, from the epidemiology of COVID-19: they
-    used to differ in three of them (pandemic_duration 10, p_isolation 0.5,
-    p_re_infection 0.001), which left three iterations under social distancing
-    instead of twenty-two, so the pandemic never reached the phase in which it
-    dies out (F-28).
+    "Suggested parameters setup" section, from the epidemiology of COVID-19. With
+    them a pandemic spends twenty-two of its thirty iterations under social
+    distancing, which is the phase in which it dies out.
     """
+    # F-28: three defaults used to differ from the paper's (pandemic_duration 10,
+    # p_isolation 0.5, p_re_infection 0.001), which left three iterations under social
+    # distancing instead of twenty-two, so the pandemic never reached that phase.
     strain_id: str = "Strain#1"
     pandemic_duration: int = 30
     spreading_rate: int = 5
@@ -87,9 +89,9 @@ class PandemicState(Protocol):
     LocalPandemicState implements it directly, under a lock, for the strains that
     run as threads; RemotePandemicStateProxy implements it for the strains that run
     on Ray, each call a synchronous call to the RemotePandemicState actor. The strain
-    talks to either through this interface and does not know which one it holds
-    (A-09).
+    talks to either through this interface and does not know which one it holds.
     """
+    # A-09: the interface that let the two CVOA twins become one class.
 
     def get_individual_state(self, individual: Solution) -> IndividualState: ...
 

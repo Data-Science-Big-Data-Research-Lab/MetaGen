@@ -74,7 +74,7 @@ def remote_population_local_search(seed: int, population: List[Solution], fitnes
     """
     Remote worker function for distributed population local search.
 
-    :param seed: Seed for this worker's generators, drawn in the driver (A-06)
+    :param seed: Seed for this worker's generators, drawn in the driver
     :param population: List of solutions to improve
     :param fitness_function: Function to evaluate solution fitness
     :param neighbor_population_size: Number of neighbors to generate in local search
@@ -88,6 +88,7 @@ def remote_population_local_search(seed: int, population: List[Solution], fitnes
     :return: List of improved solutions
     :rtype: List[:py:class:`~metagen.framework.Solution`]
     """
+    # A-06: every Ray task is seeded from the driver, or a distributed run does not reproduce.
     set_seed(seed)
     return population_local_search(population, fitness_function, neighbor_population_size, alteration_limit, distribution_level)
 
@@ -98,7 +99,7 @@ def remote_local_search(seed: int, solution: Solution, fitness_function: Callabl
     """
     Remote worker function for distributed local search on a single solution.
 
-    :param seed: Seed for this worker's generators, drawn in the driver (A-06)
+    :param seed: Seed for this worker's generators, drawn in the driver
     :param solution: Solution to improve
     :param fitness_function: Function to evaluate solution fitness
     :param neighbor_population_size: Number of neighbors to generate
@@ -110,6 +111,7 @@ def remote_local_search(seed: int, solution: Solution, fitness_function: Callabl
     :return: Improved solution
     :rtype: :py:class:`~metagen.framework.Solution`
     """
+    # A-06: every Ray task is seeded from the driver, or a distributed run does not reproduce.
     set_seed(seed)
     return local_search(solution, fitness_function, neighbor_population_size, alteration_limit)
 
@@ -132,13 +134,13 @@ def distributed_local_search(solution: Solution, fitness_function: Callable[[Sol
     distribution = assign_load_equally(neighbor_population_size)
 
     get_remote_metagen_logger().debug(
-        f"[LEVEL 2] Distributed local search of an individual with {neighbor_population_size} neighbours,"
+        f"[LEVEL 2] Distributed local search of an individual with {neighbor_population_size} neighbors,"
         f" with {ray.cluster_resources().get('CPU', 0)} CPUs -- {distribution}")
 
     futures = []
     for count in distribution:
         futures.append(
             remote_local_search.remote(spawn_seed(), solution, fitness_function, count, alteration_limit))
-    neighbourhood = ray.get(futures)
-    best_neighbour = min(neighbourhood, key=lambda sol: sol.get_fitness())
-    return best_neighbour
+    neighborhood = ray.get(futures)
+    best_neighbor = min(neighborhood, key=lambda sol: sol.get_fitness())
+    return best_neighbor

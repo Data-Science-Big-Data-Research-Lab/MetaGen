@@ -55,7 +55,7 @@ class Categorical(BaseType):
         Narrows what :py:meth:`~metagen.framework.solution.types.base.BaseType.get_definition`
         declares, which is the union of every definition and whose ``get_attributes``
         is therefore a union of tuples of two to five elements. Every unpacking here
-        is of a fixed width, so without the narrowing none of them type-checks (P-11).
+        is of a fixed width, so without the narrowing none of them type-checks.
 
         :return: The definition of this variable.
         :rtype: CategoricalDefinition

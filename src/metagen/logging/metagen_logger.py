@@ -28,10 +28,11 @@ class MetaGenLogger(logging.Logger):
     """
     A logger that knows the DETAILED_INFO level, sitting between INFO and DEBUG.
 
-    The method used to be attached onto ``logging.Logger`` itself, which handed it
-    to every logger in the process, MetaGen's or not (A-11). Only the two loggers
-    built below need it, so it lives in a subclass of their own.
+    Only the two loggers built below need the method, so it lives in a subclass of
+    their own and no other logger in the process is touched.
     """
+    # A-11: the method was attached onto logging.Logger itself, which handed it to
+    # every logger in the process, MetaGen's or not.
 
     def detailed_info(self, message: str, *args: Any, **kwargs: Any) -> None:
         """

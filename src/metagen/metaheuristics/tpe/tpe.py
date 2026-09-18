@@ -78,8 +78,7 @@ class TPE(Metaheuristic):
         + 1)`` before the first iteration, then ``candidate_pool_size`` per iteration.
         With the defaults that is 220 evaluations before iterating and 24 per
         iteration; ``max_iterations=10, candidate_pool_size=10`` is 320 evaluations,
-        not 100. The population size used to be inherited from the base class and
-        could not be set, and this docstring said it was 10 (F-47).
+        not 100.
 
         :param domain: The problem domain that defines the solution space
         :type domain: Domain
@@ -103,6 +102,9 @@ class TPE(Metaheuristic):
         :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
         :type log_dir: str or None, optional
         """
+        # F-47: population_size used to be inherited from the base class and could not
+        # be set, and the docstring said it was 10. The warmup pays for itself: on the
+        # behavior bench, 78 wins of 110 with warmup 5, 66 with 2 and 66 with 0.
         # TPE needs a domain wired to its own connector, which replaces the solution
         # and type classes. Rewiring the one it was given left it modified for good,
         # so comparing several metaheuristics in a loop depended on the order they

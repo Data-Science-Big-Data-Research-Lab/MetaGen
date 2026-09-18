@@ -654,8 +654,7 @@ class DynamicStructureDefinition(Base, BaseStructureDefinition):
         """
         Checks whether the length of the given value is one the dynamic structure
         definition allows: between the minimum and the maximum, and on the grid the
-        step draws from the minimum. It used to ignore the step, so a length that
-        initialize, mutate and the crossover never produce was accepted by set (F-41).
+        step draws from the minimum.
 
         :param value: The value whose length is checked.
         :type value: Sized
@@ -663,6 +662,8 @@ class DynamicStructureDefinition(Base, BaseStructureDefinition):
         :return: Whether the length is allowed by this definition.
         :rtype: bool
         """
+        # F-41: the step was ignored, so a length that initialize, mutate and the
+        # crossover never produce was accepted by set.
         length = len(value)
         return (self.__min_length <= length <= self.__max_length
                 and (length - self.__min_length) % (self.__step_length or 1) == 0)

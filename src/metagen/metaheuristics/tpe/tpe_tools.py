@@ -115,19 +115,21 @@ class TPEStructure(types.Structure):
         """
         Resample every position from the reference structures that have it.
 
-        With a dynamic structure the references come in different lengths, and this
-        used to ask each of them for every one of its own positions, so the first
-        reference shorter than itself raised IndexError (F-35). A position no
-        reference reaches keeps the value it was initialized with.
+        With a dynamic structure the references come in different lengths, so each
+        position is resampled from the references long enough to have it. A position
+        no reference reaches keeps the value it was initialized with.
 
         The length itself is not resampled: a new structure keeps the length it was
-        born with, drawn uniformly by initialize(). Modeling it with TPE's own rule was
-        measured on the variable-degree polynomial problem and was not distinguishable
-        from this -- 17 wins of 20 against 16 -- so the sampling rule stays as it is.
+        born with, drawn uniformly by initialize().
 
         :param best_values: The structures of the best reference solutions.
         :param worst_values: The structures of the worst reference solutions.
         """
+        # F-35: this used to ask every reference for every one of its own positions, so
+        # the first reference shorter than itself raised IndexError. Modeling the length
+        # with TPE's own rule was measured on the variable-degree polynomial problem and
+        # was not distinguishable from this -- 17 wins of 20 against 16 -- so the
+        # sampling rule stays as it is.
         for i in range(len(self)):
             best = [val.get(i) for val in best_values if i < len(val)]
             worst = [val.get(i) for val in worst_values if i < len(val)]

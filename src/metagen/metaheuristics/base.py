@@ -48,21 +48,20 @@ class Metaheuristic(ABC):
     ``minimum_slice`` is the fewest individuals a distributed slice may hold: the
     population is split into one slice per CPU, and an algorithm that needs several
     individuals per step declares it here (the genetic ones need two to cross), so
-    that a cluster with more CPUs than individuals does not hand it islands of one
-    (F-46).
+    that a cluster with more CPUs than individuals does not hand it islands of one.
 
     :param domain: The problem domain.
     :type domain: Domain
     :param fitness_function: Function to evaluate solutions.
     :type fitness_function: Callable[[Solution], float]
-    :param population_size: The size of the population (default is 1).
+    :param population_size: The size of the population (default is 20).
     :type population_size: int, optional
     :param distributed: Whether to run on Ray (default is False): the population is
         split into one slice per CPU of the cluster and each slice runs ``iterate`` on
         its own in a worker, every iteration. What happens to the slices afterwards is
         the ``distribution_model``. Distributed and sequential runs are not comparable
         value by value; two distributed runs with the same ``seed`` on the same number
-        of CPUs are, since every worker task is seeded from the driver's generator (A-06).
+        of CPUs are, since every worker task is seeded from the driver's generator.
     :type distributed: bool, optional
     :param distribution_model: How the slices make up the next population, ``"global"``
         (the default) or ``"islands"``.
@@ -114,6 +113,8 @@ class Metaheuristic(ABC):
     :vartype best_solution_fitnesses: List[float]
     """
 
+    # minimum_slice exists since F-46: islands of one individual crashed GA and Memetic.
+    # Worker tasks are seeded from the driver since A-06.
     minimum_slice: int = 1
 
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float], population_size=20,
@@ -324,13 +325,13 @@ class Metaheuristic(ABC):
         ``_initialize()`` sets it, and that is true of the object's whole life. It
         is not true of any point a subclass reads it from -- ``iterate()`` and the
         callbacks only run after initialization -- so this narrows it there, and
-        turns the AttributeError on None that reading it too early used to raise
-        into an error that says what happened (P-11).
+        reading it too early raises an error that says what happened.
 
         :return: The best solution so far.
         :rtype: Solution
         :raises RuntimeError: If read before the run has initialized it.
         """
+        # P-11: reading it too early used to be an AttributeError on None.
         if self.best_solution is None:
             raise RuntimeError(
                 "best_solution is not available yet: run() has not initialized it")
@@ -350,7 +351,7 @@ class Metaheuristic(ABC):
 
         Everything the algorithm needs later has to be in what this returns. In
         distributed mode Ray runs it on a pickled copy of the algorithm, so anything
-        it stores on self stays in the worker and is lost (F-40); state that must
+        it stores on self stays in the worker and is lost; state that must
         persist is rebuilt on the driver, in post_iteration, from what came back.
 
         :param num_solutions: The number of solutions to initialize.
@@ -374,7 +375,7 @@ class Metaheuristic(ABC):
 
         Same contract as initialize: in distributed mode this runs on a pickled copy,
         on a slice of the population, so it must not rely on storing anything on self
-        between iterations (F-40). What it returns is what the next iteration gets.
+        between iterations. What it returns is what the next iteration gets.
 
         :param solutions: The current population of solutions.
         :type solutions: List[Solution]
@@ -388,12 +389,14 @@ class Metaheuristic(ABC):
         """
         Check if the algorithm should stop.
 
-        Abstract on purpose: it used to return False, so a subclass that forgot to
-        implement it looped for ever with nothing to say why (A-10).
+        Abstract on purpose: a subclass that does not implement it cannot be
+        instantiated, instead of looping for ever.
 
         :return: True if the algorithm should stop, False otherwise.
         :rtype: bool
         """
+        # A-10: it used to return False, so a subclass that forgot to implement it
+        # looped for ever with nothing to say why.
 
     def post_iteration(self) -> None:
         """

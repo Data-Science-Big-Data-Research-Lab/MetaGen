@@ -14,20 +14,19 @@ class HillClimbing(Metaheuristic):
     """
     Stochastic hill climbing for optimization problems.
 
-    Each iteration samples several neighbours around the best solution found so far and
-    moves to the best of them, if it improves. A worse neighbour is never accepted, so
+    Each iteration samples several neighbors around the best solution found so far and
+    moves to the best of them, if it improves. A worse neighbor is never accepted, so
     the search only ever walks uphill.
 
     .. note::
-        This class used to be called ``TabuSearch``, and it is not one: exploring from
-        ``self.best_solution`` and refusing every worsening move leaves the tabu list
-        with nothing to steer away from, because the search cannot go anywhere it would
-        need steering from (A-02). It is a good optimizer, and the best of the package
-        as measured, but under its own name. The list is kept, as a memory of solutions
-        already seen that are not worth evaluating again.
+        Version 0.2.0 shipped this algorithm under the name ``TabuSearch``. It is a hill
+        climber: exploring from the best solution and refusing every worsening move
+        leaves a tabu list with nothing to steer away from. The list is kept as a memory
+        of solutions already seen that are not worth evaluating again.
 
-        A tabu search proper, one that moves to the best non-tabu neighbour even when it
-        is worse, is a different algorithm and belongs in its own class.
+        A tabu search proper, one that moves to the best non-tabu neighbor even when it
+        is worse, is a different algorithm:
+        :py:class:`~metagen.metaheuristics.TabuSearch`.
 
     :param domain: The problem's domain to explore
     :type domain: Domain
@@ -38,7 +37,7 @@ class HillClimbing(Metaheuristic):
     :param warmup_iterations: Rounds of random exploration before the search, each
         evaluating ``population_size`` solutions, defaults to 5. A run costs
         ``population_size * (warmup_iterations + 1 + max_iterations)`` evaluations:
-        with the defaults, 60 of them before the first iteration (F-47)
+        with the defaults, 60 of them before the first iteration
     :type warmup_iterations: int, optional
     :param max_iterations: Maximum number of iterations to run, defaults to 10
     :type max_iterations: int, optional
@@ -61,11 +60,31 @@ class HillClimbing(Metaheuristic):
     :vartype max_iterations: int
     :ivar tabu_size: Maximum size of the tabu list
     :vartype tabu_size: int
-    :ivar tabu_list: Solutions already visited, skipped when sampling neighbours
+    :ivar tabu_list: Solutions already visited, skipped when sampling neighbors
     :vartype tabu_list: Deque[Solution]
     :ivar alteration_limit: How far a neighbor may move from the current solution
     :vartype alteration_limit: RelativeAlteration or float or None
+
+    **Code example**
+
+    .. code-block:: python
+
+        from metagen.framework import Domain, Solution
+        from metagen.metaheuristics import HillClimbing
+
+        domain = Domain()
+        domain.define_real("x", -5.0, 5.0)
+        domain.define_real("y", -5.0, 5.0)
+
+        def fitness_function(solution: Solution) -> float:
+            return solution["x"] ** 2 + solution["y"] ** 2
+
+        algorithm = HillClimbing(domain, fitness_function, population_size=10, max_iterations=20, seed=0)
+        best_solution = algorithm.run()
     """
+    # A-02: renamed from TabuSearch instead of rewritten, because the algorithm is good:
+    # on the behavior bench it was the best of the package when it was renamed.
+    # F-47: the warmup's cost went into the docstring because nobody could see it.
 
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
                  population_size: int = 10, warmup_iterations:int = 5,
@@ -163,9 +182,10 @@ class HillClimbing(Metaheuristic):
     def post_iteration(self) -> None:
         """
         Remembers the best solution of the iteration in the tabu list, so that the
-        next neighbourhood skips it. Runs on the driver, which is why the list
-        survives a distributed run (F-40).
+        next neighborhood skips it. Runs on the driver, which is why the list
+        survives a distributed run.
         """
+        # F-40: appended here and not in iterate, which Ray runs on a copy.
         super().post_iteration()
         best_solution = self._best_so_far()
         if best_solution not in self.tabu_list:
