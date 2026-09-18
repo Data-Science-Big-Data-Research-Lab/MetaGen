@@ -14,12 +14,12 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-import random
-from typing import Any
+from typing import Any, cast
 
 from metagen.framework.domain import CategoricalDefinition
 
 from .base import BaseType
+from metagen.framework.rng import get_rng
 
 
 class Categorical(BaseType):
@@ -48,24 +48,43 @@ class Categorical(BaseType):
             raise ValueError(
                 f"The value provided must be a str in: {categories}")
 
+    def get_definition(self) -> CategoricalDefinition:
+        """
+        The definition this variable was built from.
+
+        Narrows what :py:meth:`~metagen.framework.solution.types.base.BaseType.get_definition`
+        declares, which is the union of every definition and whose ``get_attributes``
+        is therefore a union of tuples of two to five elements. Every unpacking here
+        is of a fixed width, so without the narrowing none of them type-checks.
+
+        :return: The definition of this variable.
+        :rtype: CategoricalDefinition
+        """
+        return cast(CategoricalDefinition, super().get_definition())
+
     def initialize(self) -> None:
         """
-        Initialize the categorical variable with a rs category from the available categories.
+        Initialize the categorical variable with a random category from the available categories.
         """
         _, categories = self.get_definition().get_attributes()
-        random_category = random.choice(categories)
+        random_category = get_rng().choice(categories)
 
         self.set(random_category)
 
     def mutate(self, alteration_limit: Any = None) -> None:
         """
-        Modify the value of this Categorical instance to a rs category from its definition, excluding its current value.
+        Modify the value of this Categorical instance to a random category from its definition, excluding its current value.
         """
         _, categories = self.get_definition().get_attributes()
         current_category = self.get()
-        random_category = random.choice(
-            [category for category in categories if category != current_category])
-        self.set(random_category)
+        others = [category for category in categories if category != current_category]
+
+        # A definition may legitimately hold a single category since F-17, and then
+        # there is nothing to mutate to: choice([]) would raise.
+        if not others:
+            return
+
+        self.set(get_rng().choice(others))
 
     def set(self, value: Any) -> None:
         """

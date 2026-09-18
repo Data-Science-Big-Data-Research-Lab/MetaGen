@@ -16,10 +16,11 @@
 """
 import heapq
 
-from metagen.framework import Domain, Solution
-from .ga_tools import GASolution, yield_two_children
+from metagen.framework import Domain, RelativeAlteration, Solution
+from .ga_tools import (GASolution, yield_two_children, require_crossover,
+                       tournament_selection)
 from metagen.metaheuristics.base import Metaheuristic
-from typing import Callable, List, Tuple, cast
+from typing import Any, Optional, Callable, List, Tuple, cast
 from copy import deepcopy
 
 from metagen.metaheuristics.tools import random_exploration
@@ -29,35 +30,91 @@ class GA(Metaheuristic):
     """
     Genetic Algorithm (GA) class for optimization problems.
     
-    :param domain: The domain representing the problem space.
+    :param domain: The domain representing the problem space, created with a connector
+        whose solutions can cross over, such as ``GAConnector``.
     :type domain: Domain
-    :param fitness_func: The fitness function used to evaluate solutions.
-    :type fitness_func: Callable[[Solution], float]
-    :param population_size: The size of the population (default is 10).
+    :param fitness_function: The fitness function used to evaluate solutions.
+    :type fitness_function: Callable[[Solution], float]
+    :param population_size: The size of the population (default is 20).
     :type population_size: int, optional
-    :param mutation_rate: The probability of mutation for each solution (default is 0.1).
+    :param max_iterations: The number of generations to run (default is 50).
+    :type max_iterations: int, optional
+    :param mutation_rate: The probability of mutation for each child (default is 0.1).
     :type mutation_rate: float, optional
-    :param n_generations: The number of generations to run the algorithm (default is 50).
-    :type n_generations: int, optional
+    :param tournament_size: How many individuals compete to become a parent (default is 2,
+        the mildest tournament). Raising it makes the search greedier.
+    :type tournament_size: int, optional
+    :param mutation_alteration_limit: How far a mutated child may move from where the
+        crossover left it. Defaults to ``RelativeAlteration(0.2)``, a fifth of each
+        variable's own range, so that a mutation moves a child near where the crossover
+        left it; a plain number is an absolute amount and None redraws the variable over
+        its whole domain.
+    :type mutation_alteration_limit: RelativeAlteration or float or None, optional
+    :param distributed: Whether to run on Ray (default is False).
+    :type distributed: bool, optional
+    :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
+    :type log_dir: str or None, optional
+    :param seed: Seed for the package's random generators, applied at the start of
+        ``run()``; the same seed reproduces the run. None, the default, draws a different
+        run every time.
+    :type seed: int or None, optional
+    :param distribution_model: How a distributed run makes up the next population out of
+        the slices, ``"global"`` (the default: shuffled, selected among all workers) or
+        ``"islands"``; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type distribution_model: str, optional
 
     :ivar population_size: The size of the population.
     :vartype population_size: int
-    :ivar mutation_rate: The probability of mutation for each solution.
+    :ivar mutation_rate: The probability of mutation for each child.
     :vartype mutation_rate: float
-    :ivar n_generations: The number of generations to run the algorithm.
-    :vartype n_generations: int
-    :ivar domain: The domain representing the problem space.
-    :vartype domain: Domain
-    :ivar fitness_func: The fitness function used to evaluate solutions.
-    :vartype fitness_func: Callable[[Solution], float]"""
+    :ivar max_iterations: The number of iterations to run.
+    :vartype max_iterations: int
+    :ivar tournament_size: How many individuals compete to become a parent.
+    :vartype tournament_size: int
+
+    **Code example**
+
+    .. code-block:: python
+
+        from metagen.framework import Domain, Solution
+        from metagen.metaheuristics import GA, GAConnector
+
+        # A genetic algorithm crosses solutions over, so its domain needs the GA connector.
+        domain = Domain(connector=GAConnector())
+        domain.define_real("x", -5.0, 5.0)
+        domain.define_real("y", -5.0, 5.0)
+
+        def fitness_function(solution: Solution) -> float:
+            return solution["x"] ** 2 + solution["y"] ** 2
+
+        algorithm = GA(domain, fitness_function, population_size=20, max_iterations=50, seed=0)
+        best_solution = algorithm.run()
+    """
+
+    # mutation_alteration_limit: measured on the benchmark over thirty seeds, the local
+    # mutation took GA from 221 to 238 wins of 330 against random sampling on the same
+    # budget, and from 6 to 8 problems with a one-sided Wilcoxon p < 0.05.
+
+    # Two parents to cross: a distributed slice of one individual raised IndexError (F-46).
+    minimum_slice: int = 2
 
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
                  population_size: int = 20,
                  max_iterations: int = 50, mutation_rate: float = 0.1,
-                 distributed: bool = False, log_dir: str = "logs/GA"):
-        super().__init__(domain, fitness_function, population_size=population_size, distributed=distributed, log_dir=log_dir)
+                 tournament_size: int = 2,
+                 distributed: bool = False, log_dir: Optional[str] = None,
+                 seed: Optional[int] = None, distribution_model: str = "global",
+                 mutation_alteration_limit: Any = RelativeAlteration(0.2)):
+        super().__init__(domain, fitness_function, population_size=population_size, distributed=distributed, log_dir=log_dir, seed=seed,
+                         distribution_model=distribution_model)
+
+        # Fails here, with a message that says what to do, instead of dying on
+        # the first iteration with AttributeError: no attribute 'crossover' (A-07).
+        require_crossover(domain, "GA")
         self.mutation_rate = mutation_rate
         self.max_iterations = max_iterations
+        self.tournament_size = tournament_size
+        self.mutation_alteration_limit: Any = mutation_alteration_limit
 
     def initialize(self, num_solutions=10) -> Tuple[List[Solution], Solution]:
         """Initialize the population"""
@@ -68,15 +125,21 @@ class GA(Metaheuristic):
     def iterate(self, solutions: List[Solution]) -> Tuple[List[Solution], Solution]:
         """Execute one generation of the genetic algorithm"""
         num_solutions = len(solutions)
-        best_parents = heapq.nsmallest(2, solutions, key=lambda sol: sol.get_fitness())
-        best_solution = deepcopy(self.best_solution)
-        current_solutions = [deepcopy(best_parents[0]), deepcopy(best_parents[1])]
+        elite = heapq.nsmallest(2, solutions, key=lambda sol: sol.get_fitness())
+        best_solution = deepcopy(self._best_so_far())
+        current_solutions = [deepcopy(elite[0]), deepcopy(elite[1])]
 
         for _ in range(num_solutions // 2):
 
-            father = cast(GASolution, best_parents[0])
-            mother = cast(GASolution, best_parents[1])
-            child1, child2 = yield_two_children((father, mother), self.mutation_rate, self.fitness_function)
+            # A-01: the pair is drawn again for every crossover. Taking the two best
+            # once, outside the loop, bred the same pair num_solutions // 2 times, so
+            # the generation held a handful of distinct points at most; the population
+            # then converged on one of them and crossing it with itself gave it back.
+            # The two best still go through untouched, as the elite above.
+            father = cast(GASolution, tournament_selection(solutions, self.tournament_size))
+            mother = cast(GASolution, tournament_selection(solutions, self.tournament_size))
+            child1, child2 = yield_two_children((father, mother), self.mutation_rate, self.fitness_function,
+                                                  self.mutation_alteration_limit)
             current_solutions.extend([child1, child2])
 
             if best_solution is None or child1 < best_solution:

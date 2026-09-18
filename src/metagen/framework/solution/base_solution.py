@@ -16,18 +16,70 @@
 """
 from __future__ import annotations
 
-import random
-import sys
+import math
+import numbers
 from collections.abc import Callable
-from typing import TYPE_CHECKING, KeysView, ValuesView, Dict, Any
+from typing import (TYPE_CHECKING, Any, Dict, KeysView, Optional, Union,
+                    ValuesView, cast)
 
 import metagen.framework.solution as types
+from metagen.framework.rng import get_rng
 
 if TYPE_CHECKING:
     from metagen.framework import BaseConnector, Domain
     from metagen.framework.domain import Base, BaseDefinition
     from metagen.framework.solution.literals import (InputValue, SolLayer)
     from metagen.framework.solution.bounds import BaseTypeClass, SolutionClass
+
+
+def builtin_value(value: Any) -> Any:
+    """
+    The plain Python value behind a variable, at any depth.
+
+    A scalar type holds an int, a float or a str; a Structure holds a list of types;
+    a group is a Solution holding types of its own. All of them are unwrapped, down
+    to the last level, so that what comes back is a value the domain's own check
+    accepts and json can serialize.
+
+    :param value: A solution type, a solution, or a plain builtin.
+    :type value: Any
+    :return: The same value made of int, float, str, list and dict only.
+    :rtype: Any
+    """
+    # F-37: reading a variable unwrapped one level only, so a group came back as a
+    # dict of Integer, Real and Categorical objects and a structure as a list of them.
+    if isinstance(value, Solution):
+        return {name: value[name] for name in value}
+    if isinstance(value, types.Structure):
+        return [builtin_value(element) for element in value.value]
+    return value.get() if isinstance(value, types.BaseType) else value
+
+
+def _hashable(value: Any) -> Any:
+    """
+    Build a hashable, canonical snapshot of a variable's value.
+
+    A solution keeps its variables in a dict, and those values may in turn be a list
+    (a Structure) or another solution (a group). None of the three hashes on its own,
+    so each is turned into a tuple, recursively.
+
+    :param value: A solution type, a solution, or a plain builtin.
+    :type value: Any
+    :return: An equivalent value made of tuples and builtins, safe to hash.
+    :rtype: Any
+    """
+    # F-15: the old hash sidestepped the variables altogether for this reason.
+    if isinstance(value, Solution):
+        return tuple(sorted((name, _hashable(item))
+                            for name, item in value.get_variables().items()))
+
+    raw = value.get() if isinstance(value, types.BaseType) else value
+
+    if isinstance(raw, list):
+        return tuple(_hashable(item) for item in raw)
+    if isinstance(raw, dict):
+        return tuple(sorted((name, _hashable(item)) for name, item in raw.items()))
+    return raw
 
 
 class Solution:
@@ -63,25 +115,25 @@ class Solution:
         >>> domain.define_integer('example', 0, 10)
         >>> best_solution  = Solution(domain, best=True)
         >>> best_solution.fitness
-        0.0
+        -inf
         >>> best_solution
-        F = 0     {example = 3}
+        F = -inf     {example = 3}
         >>> worst_solution  = Solution(domain)
         >>> worst_solution.fitness
-        1.7976931348623157e+308
+        inf
         >>> worst_solution
-        F = 1.7976931348623157e+308     {example = 5}
+        F = inf     {example = 5}
         >>> boosted_solution = Solution(domain)
         >>> boosted_solution
-        F = 1.7976931348623157e+308     {example = 1}
+        F = inf     {example = 1}
     """
 
     def __init__(self, definition: Domain | BaseDefinition, best=False, connector=None):
         """
-        It is the default and unique, constructor builds an empty solution with the worst fitness value
-        (:math:`best=False`, by default) or the best fitness value (:math:`best=False`). Furthermore, a
-        :py:class:`~metagen.problem.facades.Domain` object can be passed to check the variable definitions internally and,
-        therefore boost the Solution fucntionality.
+        The only constructor. It builds a solution whose variables are drawn at random from the
+        definition, with the worst fitness value (``best=False``, the default) or the best one
+        (``best=True``). The :py:class:`~metagen.framework.Domain` it receives is what every later
+        assignment is checked against.
 
         :param definition: The Domain of the solution. If the definition is an instance of Base the connector must be provided.
         :type definition: Domain | BaseDefinition
@@ -90,16 +142,25 @@ class Solution:
         :param connector: The connector to be used by the class, if None the definition must be a Domain instance.
         :type connector: BaseConnector
         """
-        self.connector = connector or definition.get_connector()
-        self.__definition: BaseDefinition = definition.get_core(
-        ) if definition.__class__.__name__ == 'Domain' else definition
+        # Compared by name and not with isinstance to avoid importing Domain, which
+        # imports this module. mypy cannot narrow on a class name, hence the casts.
+        is_domain = definition.__class__.__name__ == 'Domain'
+        self.connector = connector or cast('Domain', definition).get_connector()
+        self.__definition: BaseDefinition = (
+            cast('Domain', definition).get_core() if is_domain
+            else cast('BaseDefinition', definition))
 
-        self.value: Dict[str, types.BaseType] = {}
-        self.fitness: float = sys.float_info.min if best else sys.float_info.max
+        # A group variable holds a Solution, which is not a BaseType: its MRO is
+        # ['Solution', 'object'], as F-05 had to spell out.
+        self.value: Dict[str, Union[types.BaseType, 'Solution']] = {}
+        # Infinities, not sys.float_info: its .min is +2.2e-308, a positive number,
+        # so any objective able to go negative was already better than the
+        # "best possible" sentinel (F-14).
+        self.fitness: float = -math.inf if best else math.inf
 
         self.initialize()
 
-    def get_variables(self) -> Dict[str, types.BaseType]:
+    def get_variables(self) -> Dict[str, Union[types.BaseType, 'Solution']]:
         """
         It obtains the defined variables which constitutes the solution.
 
@@ -117,7 +178,7 @@ class Solution:
         """
         return self.__definition
 
-    def set(self, variable: str, value: InputValue | types.BaseType) -> None:
+    def set(self, variable: str, value: Union[InputValue, types.BaseType, 'Solution']) -> None:
         """
         Sets the value of a variable in the solution.
 
@@ -134,11 +195,15 @@ class Solution:
             :func:`_set_sub_solution`
             :func:`_set_value`
         """
-        if isinstance(value, (int, float, str, list)):
-            base_type_class: type[BaseTypeClass] = self.get_connector().get_type(
-                value)
+        if isinstance(value, (numbers.Number, str, list)) and not isinstance(value, bool):
             variable_definition: Base = self.get_definition().get(variable)
-            variable_definition.check_value(value)
+
+            # The type comes from the definition, not from the value. Asking the
+            # connector for get_type(value) made a real variable hold an Integer when
+            # given 1, and refused a numpy scalar outright because bool, numpy.int64
+            # and the like are not registered as builtins (A-08).
+            base_type_class = cast(Callable[..., types.BaseType],
+                                   self.get_connector().get_type(variable_definition))
 
             type_value: types.BaseType = base_type_class(
                 variable_definition, self.get_connector())
@@ -146,13 +211,16 @@ class Solution:
             self._set_value(variable, type_value)
         elif isinstance(value, dict):
             self._set_sub_solution(variable, value)
-        elif types.BaseType:  # Compatibility with already defined types
+        # Solution is not a BaseType, so both have to be named here. Testing the
+        # class itself, as this did, is always true and left the raise below
+        # unreachable, so any unsupported type went straight into the solution.
+        elif isinstance(value, (types.BaseType, Solution)):  # Compatibility with already defined types
             self._set_value(variable, value)
         else:
             raise TypeError(
                 f"The type {type(value)} is not supported by the solution.")
 
-    def get(self, variable: str) -> types.BaseType:
+    def get(self, variable: str) -> Union[types.BaseType, 'Solution']:
         """
         Returns the value of a variable in the solution.
 
@@ -247,10 +315,10 @@ class Solution:
 
     def initialize(self):
         """
-        Initializes the solution with rs values defined in its domain.
+        Initializes the solution with random values defined in its domain.
 
         .. note::
-            This method initializes the solution with rs values within its domain. It iterates through all the variables in the domain and generates a rs value according to their definition. The generated value is then set as the initial value of the variable in the solution.
+            This method initializes the solution with random values within its domain. It iterates through all the variables in the domain and generates a random value according to their definition. The generated value is then set as the initial value of the variable in the solution.
 
         .. seealso::
             :func:`_initialize`
@@ -262,22 +330,30 @@ class Solution:
             definition = domain.get(variable)
             self._initialize(variable, definition)
 
-    def mutate(self, alterations_number: int = None, alteration_limit: Any = None):
+    def mutate(self, alterations_number: Optional[int] = None,
+               alteration_limit: Any = None) -> None:
         """
-        Modify a rs subset of the solution's variables calling its mutate method.
+        Modify a random subset of the solution's variables calling its mutate method.
 
-        :param alterations_number: The number of variables to mutate at the first level. If not specified, a rs number between 1 and the total number of variables will be chosen.
+        :param alterations_number: The number of variables to mutate at the first level. If not specified, a random number between 1 and the total number of variables will be chosen.
         :type alterations_number: int, optional
+        :param alteration_limit: How far a numeric variable may move: a ``RelativeAlteration``
+            (a fraction of each variable's own range), a plain number (an absolute amount)
+            or None, the default, which redraws it over its whole domain.
+        :type alteration_limit: RelativeAlteration or float or None, optional
 
         .. seealso::
             :func:`get_variables`
             :func:`initialize`
         """
         variables = self.get_variables().keys()
-        alterations_number = alterations_number or random.randint(
+        alterations_number = alterations_number or get_rng().randint(
             1, len(variables))
-        altered_variables = set(random.sample(
-            list(variables), alterations_number))
+        # Kept as the list sample() returns, not turned into a set: set iteration
+        # over strings follows their hashes, which Python randomizes per process,
+        # and the order decides which draw each variable gets (F-26).
+        altered_variables = get_rng().sample(
+            list(variables), alterations_number)
 
         for variable in altered_variables:
             value = self.get(variable)
@@ -322,8 +398,8 @@ class Solution:
         """
         variable_definition = self.get_definition().get(variable)
 
-        solution_definition: type[SolutionClass] = self.get_connector().get_type(
-            value)
+        solution_definition = cast(Callable[..., 'Solution'],
+                                   self.get_connector().get_type(value))
         subsolution: Solution = solution_definition(
             variable_definition, connector=self.get_connector())
         subsolution.value = {}
@@ -350,8 +426,8 @@ class Solution:
             :meth:`initialize`
             :meth:`set`
         """
-        type_class: type[BaseTypeClass] = self.get_connector().get_type(
-            definition)
+        type_class = cast(Callable[..., Union[types.BaseType, 'Solution']],
+                          self.get_connector().get_type(definition))
         variable_definition = self.get_definition().get(variable)
         self.set(variable, type_class(
             variable_definition, connector=self.get_connector()))
@@ -359,7 +435,7 @@ class Solution:
     # ** SET VALUE METHOD
 
     def __str__(self):
-        """ String representation of a :py:class:`~metagen.individual.Individual` object.
+        """ String representation of the solution: its fitness and its variables.
         """
         res = "F = " + str(self.fitness) + "\t{"
         count = 1
@@ -392,13 +468,15 @@ class Solution:
 
     def __getitem__(self, variable):
         """
-        Returns the value of a variable given its name.
+        Returns the value of a variable given its name, as plain Python values at any
+        depth: a group is a dict and a structure a list, of builtins all the way
+        down. Use get() for the underlying type object instead.
         :param variable: The name of the variable.
         :type variable: str
         :return: The value of the variable.
         :rtype: InputValue
         """
-        return self.value[variable].value
+        return builtin_value(self.value[variable])
 
     def __iter__(self):
         """
@@ -409,9 +487,8 @@ class Solution:
         return iter(self.get_variables())
 
     def __eq__(self, other):
-        """ Equity function of the :py:class:`~metagen.framework.Solution` class. An
-        :py:class:`~metagen.individual.Individual` object is equal to another :py:class:`~metagen.framework.Solution`
-        object if they have the same variables with the same values.
+        """ Two solutions are equal when they have the same variables with the same values,
+        whatever their fitness.
         """
         res = True
 
@@ -431,42 +508,40 @@ class Solution:
         return res
 
     def __ne__(self, other):
-        """ Non Equity function of the :py:class:`~metagen.individual.Individual` class. An
-        :py:class:`~metagen.individual.Individual` object is not equal to another :
-        py:class:`~metagen.individual.Individual` object if they do not have the same variables with the same values.
+        """ Two solutions differ when they do not have the same variables with the same values.
         """
         return not self.__eq__(other)
 
     def __hash__(self):
-        """ Hash function for :py:class:`~metagen.individual.Individual` objects. It is necessary for set structure
-        management.
+        """ Hash of the solution, so that it can be a member of a set or a key.
+
+        It hashes the variables, and only the variables, so that it agrees with
+        ``__eq__``: ``a == b`` implies ``hash(a) == hash(b)``, whatever their fitness.
         """
-        return hash((self.get_variables().__hash__, self.fitness))
+        # F-15: it was hash((self.get_variables().__hash__, self.fitness)), where
+        # dict.__hash__ is None for every solution alike, leaving the fitness as the
+        # only ingredient: two equal solutions with different fitness broke the
+        # invariant, and every solution sharing a fitness value landed in one bucket.
+        return hash(tuple(sorted((name, _hashable(value))
+                                 for name, value in self.get_variables().items())))
 
     def __lt__(self, other):
-        """ *Less than* function for :py:class:`~metagen.individual.Individual` objects. An individual **A** is less
-        than another individual **B** if the fitness value of **A** is strictly less than the fitness value of **B**.
-        It is necessary for set structure management.
+        """ A solution is less than another when its fitness is strictly lower, that is, better:
+        the package minimizes. It is what lets ``min`` and ``sorted`` rank solutions.
         """
         return self.fitness < other.fitness
 
     def __le__(self, other):
-        """ *Less equal* function for :py:class:`~metagen.individual.Individual` objects. An individual **A** is less or
-        equal than another individual **B** if the fitness value of **A** is less or equal than the fitness value
-        of **B**. It is necessary for set structure management.
+        """ A solution is less than or equal to another when its fitness is lower or the same.
         """
         return self.fitness <= other.fitness
 
     def __gt__(self, other):
-        """ *Greater than* function for :py:class:`~metagen.individual.Individual` objects. An individual **A** is
-        greater than another individual **B** if the fitness value of **A** strictly greater than the fitness value
-        of **B**. It is necessary for set structure management.
+        """ A solution is greater than another when its fitness is strictly higher, that is, worse.
         """
         return self.fitness > other.fitness
 
     def __ge__(self, other):
-        """ *Greater equal* function for :py:class:`~metagen.individual.Individual` objects. An individual **A** is
-        greater or equal than another individual **B** if the fitness value of **A** greater or equal than the
-        fitness value of **B**. It is necessary for set structure management.
+        """ A solution is greater than or equal to another when its fitness is higher or the same.
         """
         return self.fitness >= other.fitness

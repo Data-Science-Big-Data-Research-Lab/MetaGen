@@ -14,39 +14,75 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-import random
-from typing import Any, cast, TYPE_CHECKING
+from typing import Any, Callable, cast
 
 from metagen.framework.domain.core import (BaseStructureDefinition,
                                            DynamicStructureDefinition,
                                            StaticStructureDefinition)
 from metagen.framework.solution.literals import InputValue, SolVector
 from metagen.framework.solution import Solution
+from metagen.framework.solution.base_solution import builtin_value
 
 from .base import BaseType
-
-if TYPE_CHECKING:
-    from metagen.framework.solution.bounds import BaseTypeClass
+from metagen.framework.rng import get_rng
 
 
 class Structure(BaseType):
 
-    def __init__(self, definition: BaseStructureDefinition, connector=None):
+    def __init__(self, definition: DynamicStructureDefinition | StaticStructureDefinition,
+                 connector=None):
         """
         The Real class inherits from the BaseType class and represents a Real variable.
 
-        :param definition: An instance of `BaseStructureDefinition` class representing the definition of the categorical variable.
-        :type definition: `BaseStructureDefinition`
+        :param definition: The structure's definition, static or dynamic. Declared as the
+            two concrete classes and not as their mixin ``BaseStructureDefinition``,
+            which is not a ``Base`` and so is not what ``BaseType`` accepts.
+        :type definition: DynamicStructureDefinition or StaticStructureDefinition
         """
 
         super(Structure, self).__init__(definition, connector)
 
+    def get_definition(self) -> DynamicStructureDefinition | StaticStructureDefinition:
+        """
+        The definition this structure was built from, static or dynamic.
+
+        Narrows what :py:meth:`~metagen.framework.solution.types.base.BaseType.get_definition`
+        declares. Two things need it: ``get_base`` lives on the structure definitions
+        and not on ``Base``, and the attribute tuples of the two have different widths,
+        five for the dynamic one and three for the static.
+
+        :return: The definition of this structure.
+        :rtype: DynamicStructureDefinition or StaticStructureDefinition
+        """
+        return cast(DynamicStructureDefinition | StaticStructureDefinition,
+                    super().get_definition())
+
+    def _new_element(self) -> BaseType | Solution:
+        """
+        A fresh element of this structure, built from its base definition.
+
+        The class comes from the connector's registry, so it is a Solution when the
+        base is a group and a BaseType subclass otherwise. Both are constructed the
+        same way, but their declared parameter types differ and mypy cannot follow a
+        runtime registry, hence the cast to the shape they share.
+
+        :return: A new element, uninitialized.
+        :rtype: BaseType or Solution
+        """
+        base = self.get_definition().get_base()
+        element_class = cast(Callable[..., BaseType | Solution],
+                             self.get_connector().get_type(base))
+        return element_class(base, connector=self.get_connector())
+
     def check(self, value: Any) -> None:
         """
-        Check if the input value is a valid Real value, according to the definition of the Real instance.
+        Check that a single element is valid for the base definition of this Structure.
 
-        :param value: The value to check.
-        :raises ValueError: if the value does not correspond to the definition.
+        This is about one element: what the whole list may hold, and how long it may
+        be, is checked by set().
+
+        :param value: The element to check.
+        :raises ValueError: if the value does not correspond to the base definition.
         """
 
         if not isinstance(value, BaseType) and not self.get_definition().get_base().check_value(value):
@@ -69,7 +105,7 @@ class Structure(BaseType):
 
     def initialize(self) -> None:
         """
-        Initializes the Structure according to the definition provided. If the definition is of type DynamicStructureDefinition, a rs size is chosen within the min_size and max_size range (inclusive), with an optional step size. If the definition is of type StaticStructureDefinition, the provided size value is used instead.
+        Initializes the Structure according to the definition provided. If the definition is of type DynamicStructureDefinition, a random size is chosen within the min_size and max_size range (inclusive), with an optional step size. If the definition is of type StaticStructureDefinition, the provided size value is used instead.
 
         For each position in the Structure, a new instance of the BaseType class is created based on the base type provided by the definition. The `initialize()` method is then called on this instance to set a value for it, and the instance is appended to the Structure. 
 
@@ -77,31 +113,34 @@ class Structure(BaseType):
             :meth:`get_definition`
         """
 
-        self.set([])
-
         size = 0
 
-        if isinstance(self.get_definition(), DynamicStructureDefinition):
-            _, min_size, max_size, step_size, _ = self.get_definition().get_attributes()
+        # Bound to a local so that isinstance narrows it: the two definitions carry
+        # attribute tuples of different widths, and asking get_definition() again
+        # inside the branch throws that narrowing away (P-11).
+        definition = self.get_definition()
 
-            size = random.randrange(min_size, max_size, step_size or 1)
+        if isinstance(definition, DynamicStructureDefinition):
+            _, min_size, max_size, step_size, _ = definition.get_attributes()
 
-        elif isinstance(self.get_definition(), StaticStructureDefinition):
-            _, size, _ = self.get_definition().get_attributes()
+            # max_size + 1, because randrange excludes its upper bound while
+            # check_length and _resize both accept min <= length <= max (F-19).
+            size = get_rng().randrange(min_size, max_size + 1, step_size or 1)
 
-        for _ in range(size):
-            base_type_class = self.get_connector().get_type(self.get_definition().get_base())
+        elif isinstance(definition, StaticStructureDefinition):
+            _, size, _ = definition.get_attributes()
 
-            base_value: BaseType = base_type_class(
-                self.get_definition().get_base(), connector=self.get_connector())
-            self.append(base_value)
+        # Built as a list and handed over whole: set() checks the length, so growing
+        # from empty one append at a time would be rejected at the first element
+        # (F-38). Each element is initialized by its own constructor.
+        self.set([self._new_element() for _ in range(size)])
 
     def mutate(self, alteration_limit: Any = None) -> None:
         """
         Modify the Structure by performing an action selected randomly from three options:
-        1. Resizing: if the Structure definition is dynamic, resizes the vector to a new rs size.
+        1. Resizing: if the Structure definition is dynamic, resizes the vector to a new random size.
         2. Altering: modify the values of the vector. Note this option is the only one allowed for a static structure definition.
-        3. Resizing and Altering: if the Structure definition is dynamic, resizes the vector by calling and modify a rs set of values of the vector.
+        3. Resizing and Altering: if the Structure definition is dynamic, resizes the vector by calling and modify a random set of values of the vector.
 
         .. seealso::
             :meth:`_resize`
@@ -109,7 +148,7 @@ class Structure(BaseType):
         """
 
         if isinstance(self.get_definition(), DynamicStructureDefinition):
-            action = random.choice([1, 2, 3])
+            action = get_rng().choice([1, 2, 3])
         else:
             action = 2
 
@@ -127,7 +166,13 @@ class Structure(BaseType):
 
     def get(self, index=None) -> Any:
         """
-        Obtains the builtin value of the Structure or an specific index builtin value.
+        The elements of the Structure as type objects, all of them or the one at the
+        given index. Use [] for plain Python values instead.
+
+        :param index: The position wanted, or None for the whole list.
+        :type index: int | None
+        :return: The list of type objects, or the type object at the position.
+        :rtype: list | BaseType | Solution
         """
 
         if index is not None:
@@ -138,31 +183,38 @@ class Structure(BaseType):
     def _resize(self) -> None:
         """
         Resizes the vector based on the definition provided at initialization. The vector size can increase or decrease,
-        depending on the minimum, maximum, and step size defined in the definition. When increasing, a rs set of values are included from the defined type.
-        When decreasing, a rs set of values are deleted from the structure.
+        depending on the minimum, maximum, and step size defined in the definition. When increasing, a random set of values are included from the defined type.
+        When decreasing, a random set of values are deleted from the structure.
         """
 
         current_size = len(self)
-        _, min_size, max_size, step_size, _ = self.get_definition().get_attributes()
+        # Only a dynamic structure resizes; mutate() reaches here through the branch
+        # that has already established that.
+        definition = cast(DynamicStructureDefinition, self.get_definition())
+        _, min_size, max_size, step_size, _ = definition.get_attributes()
         new_size = round(self._generate_numerical(
             min_size, max_size, step_size))
 
+        # On a copy, handed over whole at the end: every intermediate length would
+        # have to be valid otherwise, and set() checks it (F-38). The draws are the
+        # ones there always were, in the same order: each new element is initialized
+        # twice, once by its constructor and once here, and each deletion picks its
+        # index from the list as it shrinks.
+        values = list(self.get())
         if new_size > current_size:
             n_deletions = 0
-            base_type_class = self.get_connector().get_type(self.get_definition().get_base())
             for _ in range(new_size - current_size):
-                new_value: BaseType = base_type_class(
-                    self.get_definition().get_base(), connector=self.get_connector())
+                new_value = self._new_element()
                 new_value.initialize()
-                self.append(new_value)
+                values.append(new_value)
         elif current_size > new_size:
             n_deletions = current_size - new_size
         else:
             n_deletions = 0
-
         for _ in range(n_deletions):
-            ri = random.choice(range(len(self)))
-            del self[ri]
+            ri = get_rng().choice(range(len(values)))
+            del values[ri]
+        self.set(values)
 
     def _alterate(self, alteration_limit: Any=None) -> None:
         """
@@ -170,14 +222,20 @@ class Structure(BaseType):
         """
 
         current_size = len(self)
-        number_of_changes = random.randint(1, current_size)
-        index_to_change = random.sample(
+
+        # A dynamic structure whose minimum length is zero can be empty, and
+        # there is nothing to alter then. randint(1, 0) raised instead (F-19).
+        if current_size == 0:
+            return
+
+        number_of_changes = get_rng().randint(1, current_size)
+        index_to_change = get_rng().sample(
             list(range(0, current_size)), number_of_changes)
 
         for i in index_to_change:
             self.get(i).mutate(alteration_limit=alteration_limit)
 
-    def _convert(self, value: InputValue) -> BaseType:
+    def _convert(self, value: InputValue | BaseType | Solution) -> BaseType | Solution:
         """
         This method takes an input value which usually represents a builtin type and returns an instance of the corresponding BaseType. For instance:
 
@@ -194,18 +252,36 @@ class Structure(BaseType):
         :return: A BaseType instance created from the input value.
         :raises ValueError: If the type of the input value is not supported by the Structure [int, float, str, list, dict, BaseType]. 
         """
-        if isinstance(value, int | float | str | list | dict):
-            base_type_class: type[BaseType] = self.get_connector().get_type(
-                value)
-            value = base_type_class(self.get_definition(
-            ).get_base(), connector=self.get_connector())
-        elif BaseType:  # Compatibility with already defined types
-            pass
-        else:
-            raise ValueError(
-                f"The type {type(value)} is not supported by the structure. An instance of [int, float, str, list, dict, BaseType] was expected.")
+        # Solution is not a BaseType, so both have to be named here: a structure
+        # whose base is a group holds Solution instances.
+        if isinstance(value, (BaseType, Solution)):  # Compatibility with already defined types
+            return value
 
-        return value
+        if isinstance(value, int | float | str | list | dict):
+            # From the value's own type rather than from the base, so a dict becomes
+            # a group; built with the base definition all the same. Same registry mypy
+            # cannot follow as in _new_element.
+            element_class = cast(Callable[..., BaseType | Solution],
+                                 self.get_connector().get_type(value))
+            converted = element_class(self.get_definition().get_base(),
+                                      connector=self.get_connector())
+
+            # The constructor initializes the instance at random, so the input
+            # value has to be applied on top of it. Without this the structure
+            # kept a random element and dropped what the caller assigned (F-05).
+            if isinstance(value, dict):
+                # A dict base is a group, which the connector maps to Solution, whose
+                # set takes (variable, value) instead of just the value.
+                sub_solution = cast(Solution, converted)
+                for variable, variable_value in value.items():
+                    sub_solution.set(variable, variable_value)
+            else:
+                cast(BaseType, converted).set(value)
+
+            return converted
+
+        raise ValueError(
+            f"The type {type(value)} is not supported by the structure. An instance of [int, float, str, list, dict, BaseType] was expected.")
 
     def __len__(self) -> int:
         """
@@ -216,16 +292,17 @@ class Structure(BaseType):
         """
         return len(self.value)
 
-    def __getitem__(self, i) -> BaseType:
+    def __getitem__(self, i) -> Any:
         """
-        Returns the value at the given index in the Structure.
+        Returns the value at the given index in the Structure, as a plain Python
+        value at any depth. Use get(i) for the type object instead.
 
         :param i: The index of the value to return.
         :type i: int
         :return: The value at the given index.
-        :rtype: BaseType
+        :rtype: InputValue
         """
-        return self.value[i].value
+        return builtin_value(self.value[i])
 
     def __delitem__(self, i) -> None:
         """
@@ -234,8 +311,11 @@ class Structure(BaseType):
         :param i: The index of the value to delete.
         :type i: int
         :return: None
+        :raises ValueError: if the Structure would be left with an invalid length.
         """
-        del self.value[i]
+        values = list(self.get())
+        del values[i]
+        self.set(values)
 
     def __setitem__(self, index: int, value: int | float | str | list | dict | BaseType) -> None:
         """
@@ -248,10 +328,9 @@ class Structure(BaseType):
         :return: None
         """
         self.check(value)
-
-        current_values = self.get()
-        current_values[index] = self._convert(value)
-        self.set(current_values)
+        values = list(self.get())
+        values[index] = value
+        self.set(values)
 
     def insert(self, index: int, value: int | float | str | list | dict | BaseType) -> None:
         """
@@ -262,40 +341,51 @@ class Structure(BaseType):
         :param value: The value to insert.
         :type value: int | float | str | list | dict | BaseType
         :return: None
+        :raises ValueError: if the Structure would be left with an invalid length.
         """
         self.check(value)
-        current_values = self.get()
-        current_values[index].insert(index, self._convert(value))
-        self.set(current_values)
+        # On a copy, so that a rejected length leaves the Structure as it was: get()
+        # returns the list itself, and inserting into it before set() could refuse
+        # would already have changed it (F-38). Was current_values[index].insert(...),
+        # which asked the element at that position to insert, not the list (F-06).
+        values = list(self.get())
+        values.insert(index, value)
+        self.set(values)
 
-    def append(self, value: int | float | str | list | dict | BaseType) -> None:
+    def append(self, value: int | float | str | list | dict | BaseType | Solution) -> None:
         """
         Appends the given value to the end of the Structure.
 
         :param value: The value to append.
         :type value: int | float | str | list | dict | BaseType
         :return: None
+        :raises ValueError: if the Structure would be left with an invalid length.
         """
         self.check(value)
-        current_values = self.get()
-        current_values.append(self._convert(value))
-        self.set(current_values)
+        self.set(list(self.get()) + [value])
 
     def set(self, value: list[BaseType | Any]) -> None:
+        """
+        Sets the whole content of the Structure, converting any builtin in the list.
 
-        base_type_class: type[BaseTypeClass] = self.get_connector().get_type(
-            self.get_definition())
-
-        # Transform the values inside the list if they are a builtin
-        for index in range(len(value)):
-            v = value[index]
-            if not isinstance(v, (BaseType, Solution)):
-                type_value: BaseType | Solution = base_type_class(
-                    self.get_definition().get_base(), self.get_connector())
-                type_value.set(v)
-                value[index] = type_value
-
-        self.value = value
+        :param value: The values to store, either builtins or already built types.
+        :type value: list[BaseType | Any]
+        :return: None
+        :raises ValueError: if the list has a length the definition does not allow.
+        """
+        # The length first, against the definition's own rule: the elements were
+        # validated one by one and the count never, so a static structure of ten
+        # took three and a dynamic one grew past its maximum (F-38). Before
+        # converting, so that a rejected list costs no draws and changes nothing.
+        definition = self.get_definition()
+        if not definition.check_length(value):
+            raise ValueError(
+                f"A structure of {len(value)} elements is not valid for definition: {definition}")
+        # Each element goes through the same conversion append and __setitem__ use.
+        # Asking the connector for the type of the structure's own definition, as
+        # this did, answered Structure and then tried to build one out of the base
+        # definition, so a plain list of builtins raised (F-06).
+        self.value = [self._convert(element) for element in value]
 
     def __str__(self) -> str:
         """

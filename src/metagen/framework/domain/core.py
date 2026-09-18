@@ -16,8 +16,9 @@
 """
 from __future__ import annotations
 
+import numbers
 from abc import ABC, abstractmethod
-from typing import Any, Dict, cast
+from typing import Any, Dict, Sized, cast
 
 from metagen.framework.domain.literals import (DF, METAGEN_TYPE, Attributes, C,
                                                CatAttr, CatVal, D, DefAttr,
@@ -137,10 +138,14 @@ class IntegerDefinition(Base):
         """
         res: bool = True
 
-        if not isinstance(value, int):
+        # numbers.Integral rather than int, so that a numpy integer counts, and bool
+        # ruled out explicitly, since it is a subclass of int and True used to pass as
+        # a valid integer (A-08).
+        if isinstance(value, bool) or not isinstance(value, numbers.Integral):
             res = False
         else:
-            if value < self.__min_value or value > self.__max_value:
+            numeric = int(value)
+            if numeric < self.__min_value or numeric > self.__max_value:
                 res = False
         return res
 
@@ -216,10 +221,14 @@ class RealDefinition(Base):
         """
         res: bool = True
 
-        if not isinstance(value, float):
+        # numbers.Real rather than float: isinstance(1, float) is False, so a real
+        # variable rejected 1, and a numpy float32 too. bool is ruled out for the same
+        # reason as in IntegerDefinition (A-08).
+        if isinstance(value, bool) or not isinstance(value, numbers.Real):
             res = False
         else:
-            if value < self.__min_value or value > self.__max_value:
+            numeric = float(value)
+            if numeric < self.__min_value or numeric > self.__max_value:
                 res = False
         return res
 
@@ -512,7 +521,7 @@ class BaseStructureDefinition(ABC):
             raise ValueError(Messages.BASE_TYPE_NOT_DEFINED)
 
     @abstractmethod
-    def check_length(self, value: Any) -> bool:
+    def check_length(self, value: Sized) -> bool:
         """
         Abstract method to check if the value has the correct length.
 
@@ -549,7 +558,7 @@ class BaseStructureDefinition(ABC):
         self.__base_type_defined()
         return cast(Base, self.__base)
 
-    def set_base(self, base: Base):
+    def set_base(self, base: Base) -> None:
         """
         Set the base type.
 
@@ -611,6 +620,7 @@ class DynamicStructureDefinition(Base, BaseStructureDefinition):
         :param step_length: An optional integer representing the step length of the dynamic structure definition.
         :type step_length: int or None
         """
+        Preconditions.Structure.range(min_length, max_length, step_length)
         Base.__init__(self, D)
         BaseStructureDefinition.__init__(self, base)
         self.__name: str = name
@@ -640,18 +650,23 @@ class DynamicStructureDefinition(Base, BaseStructureDefinition):
         return D, self.__min_length, self.__max_length, \
             self.__step_length, super().get_base().get_attributes()
 
-    def check_length(self, value: StrVal) -> bool:
+    def check_length(self, value: Sized) -> bool:
         """
-        Checks whether the length of the given value is within the minimum and maximum length of the dynamic structure
-        definition.
+        Checks whether the length of the given value is one the dynamic structure
+        definition allows: between the minimum and the maximum, and on the grid the
+        step draws from the minimum.
 
-        :param value: A string value to be checked.
-        :type value: StrVal
+        :param value: The value whose length is checked.
+        :type value: Sized
 
-        :return: A boolean value indicating whether the length of the given value is within the minimum and maximum length of the dynamic structure definition.
+        :return: Whether the length is allowed by this definition.
         :rtype: bool
         """
-        return self.__min_length <= len(value) <= self.__max_length
+        # F-41: the step was ignored, so a length that initialize, mutate and the
+        # crossover never produce was accepted by set.
+        length = len(value)
+        return (self.__min_length <= length <= self.__max_length
+                and (length - self.__min_length) % (self.__step_length or 1) == 0)
 
     def __str__(self):
         """
@@ -692,7 +707,10 @@ class StaticStructureDefinition(Base, BaseStructureDefinition):
         :param length: Length of the structure definition.
         :type length: int
         """
-        Base.__init__(self, D)
+        Preconditions.Structure.length(length)
+        # S, not D: get_attributes already reports STATIC, so a static structure
+        # used to print and identify itself as DYNAMIC (F-18).
+        Base.__init__(self, S)
         BaseStructureDefinition.__init__(self, base)
         self.__name: str = name
         self.__length: int = length
@@ -717,12 +735,12 @@ class StaticStructureDefinition(Base, BaseStructureDefinition):
         """
         return S, self.__length, super().get_base().get_attributes()
 
-    def check_length(self, value: StrVal) -> bool:
+    def check_length(self, value: Sized) -> bool:
         """
         Checks if the given value has the correct length for this StaticStructureDefinition.
 
         :param value: The value to check.
-        :type value: StrVal
+        :type value: Sized
         :return: True if the given value has the correct length for this StaticStructureDefinition, False otherwise.
         :rtype: bool
         """

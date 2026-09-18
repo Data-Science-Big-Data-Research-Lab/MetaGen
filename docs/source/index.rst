@@ -71,11 +71,18 @@ For more details, explore the :doc:`understanding_metagen/index` section.
 Installation
 -------------
 
-using pip:
+Using pip:
 
 .. code-block:: console
 
    (.venv) $ pip install pymetagen-datalabupo
+
+Distributed execution and TensorBoard logging are optional and installed on demand:
+
+.. code-block:: console
+
+   (.venv) $ pip install pymetagen-datalabupo[distributed]
+   (.venv) $ pip install pymetagen-datalabupo[tensorboard]
 
 
 Quick Example
@@ -88,8 +95,8 @@ Quick Example
 
     # Define problem domain
     domain = Domain()
-    domain.defineInteger('x', -10, 10)
-    domain.defineReal('y', -5, 5)
+    domain.define_integer('x', -10, 10)
+    domain.define_real('y', -5.0, 5.0)
 
     # Define fitness function
     def fitness_function(solution):
@@ -108,6 +115,7 @@ Index
 
     understanding_metagen/index
     metagen_in_action/index
+    choosing/index
     performance_tracking/index
     distributed_execution/index
     advanced_topics/index

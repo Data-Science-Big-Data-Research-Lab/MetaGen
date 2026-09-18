@@ -1,5 +1,3 @@
-:orphan:
-
 ===============
 Formal context
 ===============
@@ -12,10 +10,6 @@ The formal context of MetaGen is outlined in Equation 1. The *solver* defines a 
 
    M(P) = S_{opt} \qquad (1a)\\
    P = \langle D,F \rangle \qquad (1b)
-
-.. toctree::
-   :maxdepth: 1
-   :hidden:
 
 Domain and solution
 ---------------------
@@ -43,7 +37,7 @@ The MetaGen supported definitions are defined in Equation 3. The definitions of 
    Def^{D} = \langle LN_{min}, LN_{max}, Def^{B|G} \rangle  \qquad (3d)\\
    Def^{S} = \langle LN, Def^{B|G} \rangle \qquad (3e)
 
-A collection of example problems can be found in the next table to support the formal definition. The problem :math:`P_1` is composed of a domain with an :math:`INTEGER` variable :math:`x` that moves within the interval :math:`[-10, 10]`, and the function to be optimized is :math:`f(x)=x+5`. Similarly, the problem :math:`P_2` has a domain consisting of a :math:`REAL` variable :math:`x` that moves within the interval :math:`[0.0, 1.0]`, and the objective function is :math:`f(x)=x^5`.
+A collection of example problems can be found in the following table to support the formal definition. The problem :math:`P_1` is composed of a domain with an :math:`INTEGER` variable :math:`x` that moves within the interval :math:`[-10, 10]`, and the function to be optimized is :math:`f(x)=x+5`. Similarly, the problem :math:`P_2` has a domain consisting of a :math:`REAL` variable :math:`x` that moves within the interval :math:`[0.0, 1.0]`, and the objective function is :math:`f(x)=x^5`.
 
 **Sample problems**
 

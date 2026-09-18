@@ -30,13 +30,17 @@ class Primitives:
         return r
 
     @staticmethod
-    def is_categories_value(value: Any):
-        r = False
-        if isinstance(value, list):
-            if len(value) >= 2:
-                r = all(type(x) == type(y) and Primitives.is_basic_value(x) and x != y
-                        for x, y in pairwise(value))
-        return r
+    def is_categories_value(value: Any) -> bool:
+        # pairwise only compared adjacent items, so ["a", "b", "a"] passed and even
+        # ["a", "b", "a", "b"] did. And len >= 2 forbade pinning a hyperparameter to a
+        # single value, which is a legitimate thing to declare (F-17).
+        if not isinstance(value, list) or not value:
+            return False
+        if not all(Primitives.is_basic_value(x) for x in value):
+            return False
+        if any(type(x) is not type(value[0]) for x in value):
+            return False
+        return len(set(value)) == len(value)
 
     @staticmethod
     def is_layer_value(value: Any) -> bool:
@@ -74,7 +78,7 @@ class Messages:
     @staticmethod
     def step_zero(mode: Literal["i", "r", "s"]) -> str:
         context = Messages.get_context(mode)
-        return context[0] + " The  " + context[1] + " must be greater than zero."
+        return context[0] + " The " + context[1] + " must be greater than zero."
 
     @staticmethod
     def step(step: int | float, avg: int | float, mode: Literal["i", "r", "s"]) -> str:
@@ -83,6 +87,24 @@ class Messages:
             + ") of the variable must be less or equal than (maximum" \
             + context[1] + " - minimum " + context[1] + ") / 2 (" \
             + str(avg) + ")."
+
+    @staticmethod
+    def min_max_length(min_length: int, max_length: int) -> str:
+        prefix, suffix = Messages.get_context("s")
+        return prefix + " The minimum " + suffix + " of the variable (" + str(min_length) \
+            + ") must be less than or equal to the maximum one (" + str(max_length) + ")."
+
+    @staticmethod
+    def negative_length(length: int) -> str:
+        prefix, suffix = Messages.get_context("s")
+        return prefix + " The minimum " + suffix + " of the variable (" \
+            + str(length) + ") can not be negative."
+
+    @staticmethod
+    def not_positive_length(length: int) -> str:
+        prefix, suffix = Messages.get_context("s")
+        return prefix + " The " + suffix + " of the variable (" + str(length) \
+            + ") must be greater than zero."
 
     NOT_CATEGORIES: Final = "The categories must be a list, have the same type (int, float or str) and can not " \
                             "contain repeated values"
@@ -104,7 +126,10 @@ class Messages:
         elif mode == "r":
             prefix = "[REAL definition error]"
             suffix = "value"
-        elif mode == ("d_a", "d_g"):
+        # `mode in (...)`, not `mode == (...)`: comparing a str against a tuple is
+        # always false, so every definition error came out with the STRUCTURE prefix
+        # and "length" as its suffix — "The variable i is length." (F-16)
+        elif mode in ("d_a", "d_n", "d_g", "d_s"):
             prefix = "[DEFINITION error]"
             if mode == "d_a":
                 suffix = "already defined"
@@ -155,3 +180,28 @@ class Preconditions:
         def categories(value: Any):
             if not Primitives.is_categories_value(value):
                 raise ValueError(Messages.NOT_CATEGORIES)
+
+    @final
+    class Structure:
+        """
+        Length checks for the two structure definitions.
+
+        Unlike Integer and Real, a minimum equal to the maximum is allowed here:
+        it declares a structure of a fixed length, and check_length
+        accepts it as ``min <= length <= max``.
+        """
+        # F-19: the structure definitions had no length checks at all.
+
+        @staticmethod
+        def length(length: int):
+            if length < 1:
+                raise ValueError(Messages.not_positive_length(length))
+
+        @staticmethod
+        def range(min_length: int, max_length: int, step_length: int | None):
+            if min_length < 0:
+                raise ValueError(Messages.negative_length(min_length))
+            if min_length > max_length:
+                raise ValueError(Messages.min_max_length(min_length, max_length))
+            if step_length is not None:
+                Preconditions.length(step_length, "s")

@@ -14,13 +14,13 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-from metagen.framework import Domain, Solution
+from metagen.framework import Domain, RelativeAlteration, Solution
 from metagen.metaheuristics.tools import random_exploration
 import math
-import random
 from copy import deepcopy
-from typing import Callable, Tuple, List
+from typing import Any, Optional, Callable, Tuple, List
 from metagen.metaheuristics.base import Metaheuristic
+from metagen.framework.rng import get_rng
 
 
 def calculate_exploration_rate(best_solution_fitness: float, neighbor_fitness: float,
@@ -61,37 +61,71 @@ class SA(Metaheuristic):
     :type fitness_function: Callable[[Solution], float]
     :param max_iterations: Maximum number of iterations to run, defaults to 20
     :type max_iterations: int, optional
-    :param alteration_limit: Maximum proportion of solution to alter when generating neighbors, defaults to 0.1
-    :type alteration_limit: float, optional
+    :param alteration_limit: How far a neighbor may move from the current solution.
+        Defaults to a fifth of each variable's own range; a plain number is an
+        absolute amount instead, and None lets a mutation land anywhere in the domain.
+    :type alteration_limit: RelativeAlteration or float or None, optional
     :param initial_temp: Initial temperature for annealing process, defaults to 50.0
     :type initial_temp: float, optional
-    :param cooling_rate: Rate at which temperature decreases, defaults to 0.99
-    :type cooling_rate: float, optional
-    :param neighbor_population_size: Number of neighbors to generate in each iteration, defaults to 1
+    :param cooling_rate: Rate at which the temperature decreases each iteration.
+        Derived from the budget when not given, so that the temperature travels from
+        initial_temp down to T_min over the iterations available
+    :type cooling_rate: float or None, optional
+    :param neighbor_population_size: Number of neighbors to generate in each iteration,
+        defaults to 5
     :type neighbor_population_size: int, optional
+    :param warmup_iterations: Random solutions evaluated before the search starts, the best
+        of which the walk begins from, defaults to 5
+    :type warmup_iterations: int, optional
     :param distributed: Whether to use distributed computation, defaults to False
     :type distributed: bool, optional
-    :param log_dir: Directory for logging, defaults to "logs/SA"
-    :type log_dir: str, optional
+    :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
+    :type log_dir: str or None, optional
+    :param seed: Seed for the package's random generators, applied at the start of
+        ``run()``; the same seed reproduces the run. None, the default, draws a different
+        run every time.
+    :type seed: int or None, optional
+    :param distribution_model: How a distributed run makes up the next population out of
+        the slices, ``"global"`` (the default: shuffled, selected among all workers) or
+        ``"islands"``; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type distribution_model: str, optional
 
     :ivar max_iterations: Maximum number of iterations
     :vartype max_iterations: int
-    :ivar alteration_limit: Maximum proportion of solution to alter
-    :vartype alteration_limit: float
+    :ivar alteration_limit: How far a neighbor may move from the current solution
+    :vartype alteration_limit: RelativeAlteration or float or None
     :ivar initial_temp: Current temperature in the annealing process
     :vartype initial_temp: float
-    :ivar cooling_rate: Rate of temperature decrease
+    :ivar cooling_rate: Rate of temperature decrease, derived from the budget unless given
     :vartype cooling_rate: float
     :ivar neighbor_population_size: Number of neighbors per iteration
     :vartype neighbor_population_size: int
+
+    **Code example**
+
+    .. code-block:: python
+
+        from metagen.framework import Domain, Solution
+        from metagen.metaheuristics import SA
+
+        domain = Domain()
+        domain.define_real("x", -5.0, 5.0)
+        domain.define_real("y", -5.0, 5.0)
+
+        def fitness_function(solution: Solution) -> float:
+            return solution["x"] ** 2 + solution["y"] ** 2
+
+        algorithm = SA(domain, fitness_function, max_iterations=50, seed=0)
+        best_solution = algorithm.run()
     """
 
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
                  warmup_iterations: int = 5,
                  max_iterations: int = 20,
-                 alteration_limit: int = 1, initial_temp: float = 50.0,
-                 cooling_rate: float = 0.99, neighbor_population_size: int = 1,
-                 distributed=False, log_dir: str = "logs/SA") -> None:
+                 alteration_limit: Any = RelativeAlteration(0.2), initial_temp: float = 50.0,
+                 cooling_rate: Optional[float] = None, neighbor_population_size: int = 5,
+                 distributed=False, log_dir: Optional[str] = None,
+                 seed: Optional[int] = None, distribution_model: str = "global") -> None:
         """
         Initialize the Simulated Annealing algorithm.
 
@@ -101,27 +135,66 @@ class SA(Metaheuristic):
         :type fitness_function: Callable[[Solution], float]
         :param max_iterations: Maximum number of iterations to run, defaults to 20
         :type max_iterations: int, optional
-        :param alteration_limit: Maximum proportion of solution to alter when generating neighbors, defaults to 0.1
-        :type alteration_limit: float, optional
+        :param alteration_limit: How far a neighbor may move from the current solution,
+            defaults to a fifth of each variable's own range
+        :type alteration_limit: RelativeAlteration or float or None, optional
         :param initial_temp: Initial temperature for annealing process, defaults to 50.0
         :type initial_temp: float, optional
-        :param cooling_rate: Rate at which temperature decreases, defaults to 0.99
-        :type cooling_rate: float, optional
-        :param neighbor_population_size: Number of neighbors to generate in each iteration, defaults to 1
+        :param cooling_rate: Rate at which the temperature decreases each iteration.
+            Derived from the budget when not given, so that the temperature travels
+            from initial_temp down to T_min over max_iterations
+        :type cooling_rate: float or None, optional
+        :param neighbor_population_size: Number of neighbors to generate in each
+            iteration, defaults to 5. One leaves nothing to choose between
         :type neighbor_population_size: int, optional
         :param distributed: Whether to use distributed computation, defaults to False
         :type distributed: bool, optional
-        :param log_dir: Directory for logging, defaults to "logs/SA"
-        :type log_dir: str, optional
+        :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
+        :type log_dir: str or None, optional
         """
-        super().__init__(domain, fitness_function, warmup_iterations=warmup_iterations,distributed=distributed, log_dir=log_dir)
+        # F-30: cooling_rate is derived from the budget. F-25: with one neighbor there is
+        # nothing to choose between; over the nine functions and thirty seeds, one neighbor
+        # won 161 of 270 against random sampling and five won 214, so the default is 5.
+        # population_size=1: annealing walks a single point, and iterate() only ever
+        # looks at solutions[0]. Inheriting the default of 20 meant the warmup drew
+        # 5 x 20 solutions and the initialization 20 more, of which 39 were thrown
+        # away — about 120 of SA's 135 evaluations (F-20).
+        super().__init__(domain, fitness_function, population_size=1,
+                         warmup_iterations=warmup_iterations, distributed=distributed,
+                         log_dir=log_dir, seed=seed,
+                         distribution_model=distribution_model)
         self.max_iterations = max_iterations
         self.alteration_limit = alteration_limit
         self.initial_temp = initial_temp
         self.current_temp = self.initial_temp
-        self.cooling_rate = cooling_rate
         self.neighbor_population_size = neighbor_population_size
+
+        # Floor of the cooling schedule, applied in iterate(). It was assigned and
+        # never read, so the temperature decayed towards zero and the Metropolis
+        # criterion silently stopped accepting anything worse (F-20).
         self.T_min = 1e-8
+
+        # Tied to the budget instead of being a loose rate. With the 0.99 this used
+        # to default to, 50 degrees became 43 over 15 iterations and reaching 0.1
+        # would have taken 618 of them, so the Metropolis criterion never got cold
+        # enough to discriminate and the search was a random walk (F-30). Derived,
+        # the temperature travels the whole way from initial_temp to T_min in the
+        # iterations actually available, whatever the budget. max() because a budget
+        # of zero iterations is legal and has no schedule to speak of.
+        self.cooling_rate = cooling_rate if cooling_rate is not None else (
+            (self.T_min / self.initial_temp) ** (1 / max(1, self.max_iterations)))
+
+    def pre_execution(self) -> None:
+        """
+        Reset the annealing schedule so that every run starts from the same state:
+        a second run() on the same object starts at ``initial_temp`` again, which is
+        what makes a seed reproduce a run.
+        """
+        # F-30, A-06: the temperature was only ever set in the constructor, so a second
+        # run() picked up wherever the first left off. It went unnoticed while the
+        # schedule barely moved; with one that reaches T_min it broke reproducibility.
+        super().pre_execution()
+        self.current_temp = self.initial_temp
 
     def initialize(self, num_solutions: int = 1) -> Tuple[List[Solution], Solution]:
         """
@@ -150,19 +223,27 @@ class SA(Metaheuristic):
         :rtype: Tuple[List[Solution], Solution]
         """
         current_solution = deepcopy(solutions[0])
-        best_solution = deepcopy(self.best_solution)
+        best_solution = deepcopy(self._best_so_far())
 
         # Generate the first neighbor and initialize best_neighbor
         neighbor = deepcopy(current_solution)
         neighbor.mutate(alteration_limit=self.alteration_limit)
         neighbor.evaluate(self.fitness_function)
 
-        best_neighbor = neighbor
+        # A copy, not an alias: the loop below kept mutating the very object
+        # best_neighbor pointed at, so when the first neighbor turned out to be the
+        # best one, best_fitness announced its value while best_neighbor had become
+        # the last one generated (F-25).
+        best_neighbor = deepcopy(neighbor)
         best_fitness = neighbor.get_fitness()
 
         # Generate additional neighbors and update best_neighbor if needed
         for _ in range(self.neighbor_population_size - 1):
-            neighbor.mutate(alteration_limit=self.alteration_limit)  # Reuse the same neighbor object
+            # Each neighbor starts from the current solution. Mutating the previous
+            # neighbor again built a chain that wandered away from the point being
+            # explored instead of sampling its neighborhood (F-25).
+            neighbor = deepcopy(current_solution)
+            neighbor.mutate(alteration_limit=self.alteration_limit)
             neighbor.evaluate(self.fitness_function)
 
             if neighbor.get_fitness() < best_fitness:
@@ -177,13 +258,20 @@ class SA(Metaheuristic):
         else:
             exploration_rate = calculate_exploration_rate(current_solution.get_fitness(),
                                                           best_fitness, self.current_temp)
-            if random.random() < exploration_rate:
+            if get_rng().random() < exploration_rate:
                 current_solution = best_neighbor
 
-        # Cool down
-        self.current_temp *= self.cooling_rate
+        # Cool down, no further than T_min
+        self.current_temp = max(self.current_temp * self.cooling_rate, self.T_min)
 
         return [current_solution], best_solution
+
+    def select_survivors(self, parents: List[Solution], offspring: List[Solution]) -> List[Solution]:
+        """SA walks a single solution and decides by the Metropolis criterion whether
+        it moves; under the global distribution model the driver keeps the worker's
+        decision rather than picking the best of the old and the new point, which
+        would never accept a worsening move."""
+        return offspring
 
     def stopping_criterion(self) -> bool:
         """

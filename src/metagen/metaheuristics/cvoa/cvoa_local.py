@@ -14,20 +14,20 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
+import heapq
 import math
-import random
 import threading
-from typing import Set, List, Tuple, Callable
+from typing import Callable, List, Optional, Tuple
 
 from metagen.framework import Domain
 from metagen.framework.solution import Solution
-from metagen.framework.solution.bounds import SolutionClass
-from metagen.logging.metagen_logger import metagen_logger
+from metagen.logging.metagen_logger import DETAILED_INFO, MetaGenLogger, get_remote_metagen_logger, metagen_logger
 
 from metagen.metaheuristics.base import Metaheuristic
-from metagen.metaheuristics.cvoa.common_tools import StrainProperties, IndividualState, \
-    compute_n_infected_travel_distance, infect, insert_into_set_strain
-from metagen.metaheuristics.cvoa.local_tools import LocalPandemicState
+from metagen.metaheuristics.tools import solution_class
+from metagen.metaheuristics.cvoa.common_tools import (IndividualState, PandemicState, SolutionSet, StrainProperties,
+                                                     compute_n_infected_travel_distance, infect)
+from metagen.framework.rng import get_rng
 
 
 class CVOA(Metaheuristic):
@@ -39,85 +39,88 @@ class CVOA(Metaheuristic):
     It solves an optimization problem defined by a :py:class:`~metagen.framework.Domain` object and an
     implementation of a fitness function.
 
-    By instantiate :py:class:`~metagen.metaheuristics.CVOA` object, i.e. a strain, the configuration parameters must be provided.
+    A :py:class:`~metagen.metaheuristics.cvoa.cvoa_local.CVOA` object is one strain, configured by the
+    :py:class:`~metagen.metaheuristics.cvoa.common_tools.StrainProperties` it receives.
 
-    This class supports multiple strain execution by means of multy-threading. Each strain
-    (:py:class:`~metagen.metaheuristics.CVOA` object) will execute its *CVOA* algorithm (:py:meth:`~metagen.metaheuristics.CVOA.cvoa`)
-    in a thread and, finally, the best :py:class:`~metagen.framework.Solution` (i.e. the best fitness function
-    is obtained).
+    Several strains run at once over a shared pandemic state and the best
+    :py:class:`~metagen.framework.Solution` of them all is returned. Strains are not run by hand but
+    through a launcher: :py:func:`~metagen.metaheuristics.cvoa.local_launcher.cvoa_launcher`, one
+    thread per strain, or
+    :py:func:`~metagen.metaheuristics.cvoa.distributed_launcher.distributed_cvoa_launcher`, one Ray
+    task per strain.
 
-    To launch a multi-strain execution, this module provides the :py:meth:`~metagen.metaheuristics.cvoa_launcher`
-    method.
-
-    :param strain_id: The strain name
-    :param pandemic_duration: The pandemic duration, defaults to 10
-    :param spreading_rate: The spreading rate, defaults to 6
-    :param min_super_spreading_rate: The minimum super spreading rate, defaults to 6
-    :param max_super_spreading_rate: The maximum super spreading rate, defaults to 15
-    :param social_distancing: The distancing stablished between the individuals, defaults to 10
-    :param p_isolation: The probability of an individual being isolated, defaults to 0.7
-    :param p_travel: The probability that an individual will travel, defaults to 0.1
-    :param p_re_infection: The probability of an individual being re-infected, defaults to 0.0014
-    :param p_superspreader: The probability of an individual being a super-spreader, defaults to 0.1
-    :param p_die: The probability that an individual will die, defaults to 0.05
-    :param verbose: The verbosity option, defaults to True
-    :type strain_id: str
-    :type pandemic_duration: int
-    :type spreading_rate: int
-    :type min_super_spreading_rate: int
-    :type max_super_spreading_rate: int
-    :type social_distancing: int
-    :type p_isolation: float
-    :type p_travel: float
-    :type p_re_infection: float
-    :type p_superspreader: float
-    :type p_die: float
-    :type verbose: bool
-
+    :param global_state: The pandemic state every strain shares.
+    :param domain: The problem domain.
+    :type domain: Domain
+    :param fitness_function: The fitness function to minimize.
+    :type fitness_function: Callable[[Solution], float]
+    :param strain_properties: The parameters of the strain; see
+        :py:class:`~metagen.metaheuristics.cvoa.common_tools.StrainProperties`.
+    :type strain_properties: StrainProperties, optional
+    :param update_isolated: Kept for compatibility and ignored: every isolated individual is
+        recorded.
+    :type update_isolated: bool, optional
+    :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
+    :type log_dir: str or None, optional
 
     **Code example**
 
     .. code-block:: python
 
         from metagen.framework import Domain, Solution
-        from metagen.metaheuristics import CVOA, cvoa_launcher
+        from metagen.metaheuristics import cvoa_launcher
+        from metagen.metaheuristics.cvoa.common_tools import StrainProperties
+
         domain = Domain()
-        multithread = True
+        domain.define_real("x", -5.0, 5.0)
 
-        domain.defineInteger(0, 1)
+        def fitness_function(solution: Solution) -> float:
+            return solution["x"] ** 2
 
-        fitness_function = ...
-
-        if multithread: # For multiple thread excecution
-
-            CVOA.initialize_pandemic(domain, fitness_function)
-            strain1 = CVOA("Strain1", pandemic_duration=100)
-            strain2 = CVOA("Strain2",  pandemic_duration=100)
-            ...
-
-            strains = [strain1, strain2, ...]
-            optimal_solution = cvoa_launcher(strains)
-        else: # For individual thread excecution
-
-            CVOA.initialize_pandemic(domain, fitness_function)
-            search = CVOA(pandemic_duration=100)
-            optimal_solution = search.run()
+        # One strain per concurrent thread, each with its own properties.
+        strains = [
+            StrainProperties(strain_id="Strain1", pandemic_duration=10),
+            StrainProperties(strain_id="Strain2", pandemic_duration=10),
+        ]
+        optimal_solution = cvoa_launcher(strains, domain, fitness_function)
     """
 
-    def __init__(self, global_state: LocalPandemicState, domain: Domain, fitness_function: Callable[[Solution], float],
-                 strain_properties: StrainProperties = StrainProperties(), update_isolated=False,
-                 log_dir="logs/CVOA"):
-
-        # 1. Initialize the base class.
+    def __init__(self, global_state: PandemicState, domain: Domain, fitness_function: Callable[[Solution], float],
+                 strain_properties: StrainProperties = StrainProperties(), update_isolated: bool = False,
+                 log_dir: Optional[str] = None, distributed: bool = False, detailed_info: bool = False):
+        """
+        :param global_state: The state every strain of the pandemic shares. With
+            ``distributed=True`` it may be the handle of the RemotePandemicState actor,
+            which is wrapped here.
+        :param distributed: Whether the contagion step runs on Ray, one task per carrier
+            (default is False: it runs in this thread). This is CVOA's own switch and is
+            not handed to Metaheuristic, whose distributed mode splits a population into
+            one slice per CPU and is not what a strain does.
+        :param detailed_info: Whether the remote logger of a Ray strain reports at the
+            DETAILED_INFO level (default is False). Ignored in thread mode, where the
+            package logger decides.
+        """
+        # 1. Initialize the base class. Its own distributed mode stays off: see above.
         super().__init__(domain, fitness_function, log_dir=log_dir)
 
-        # 2. The Pandemic global state and strain properties.
-        self.global_state: LocalPandemicState = global_state
+        # 2. The pandemic global state and the strain properties. On Ray the strain
+        # holds a proxy of the actor with the same methods as the local state (A-09).
+        self.spread_on_ray: bool = distributed
+        if distributed:
+            from metagen.metaheuristics.cvoa.distributed_tools import RemotePandemicStateProxy
+            if not isinstance(global_state, RemotePandemicStateProxy):
+                global_state = RemotePandemicStateProxy(global_state)
+            self._logger: MetaGenLogger = (get_remote_metagen_logger(DETAILED_INFO) if detailed_info
+                                           else get_remote_metagen_logger())
+        else:
+            self._logger = metagen_logger
+        self.global_state: PandemicState = global_state
         self.strain_properties: StrainProperties = strain_properties
 
-        # 3. Auxiliary strain control variables.
+        # 3. Auxiliary strain control variables. update_isolated is kept for
+        # compatibility and has no effect since F-45: every isolated individual counts.
         self.update_isolated: bool = update_isolated
-        self.solution_type: type[SolutionClass] = self.domain.get_connector().get_type(self.domain.get_core())
+        self.solution_type: type[Solution] = solution_class(self.domain)
 
         # 4. Strain control flow variables.
 
@@ -132,180 +135,206 @@ class CVOA(Metaheuristic):
         self.best_strain_solution: Solution | None = None
         self.best_strain_solution_found: bool = False
 
-        # 4.4. The best strain-specific death individual will initially be the worst solution.
-        self.best_dead: Solution = self.solution_type(self.domain, connector=self.domain.get_connector())
+        # Iterations gone by without a new global best. The flag above used to be
+        # the stopping condition on its own and was never cleared (F-23).
+        self.iterations_without_improvement: int = 0
 
-        # 4.5. The worst strain-specific superspreader individual will initially be the best solution.
-        self.worst_superspreader: Solution = self.solution_type(self.domain, connector=self.domain.get_connector())
+        # 5. Main strain sets: infected, superspreaders and deaths. There used to be a
+        # fourth, infected_superspreaders, that only ever received the patient zero and
+        # was never read: the superspreaders' role is played by the superspreaders set.
+        self.infected: SolutionSet = SolutionSet()
+        self.superspreaders: SolutionSet = SolutionSet()
+        self.dead: SolutionSet = SolutionSet()
 
-        # 5. Main strain sets: infected, superspreaders, infected superspreaders and deaths.
-        self.infected: Set[Solution] = set()
-        self.superspreaders: Set[Solution] = set()
-        self.infected_superspreaders: Set[Solution] = set()
-        self.dead: Set[Solution] = set()
+    def _log(self, message: str) -> None:
+        """
+        Report at the DETAILED_INFO level, prefixed with the strain and, in thread
+        mode, the thread; on Ray it goes through the remote logger.
+        """
+        # A-09: the two former twins differed only in which logger and which prefix.
+        if self.spread_on_ray:
+            self._logger.detailed_info(f"[{self.strain_properties.strain_id}] {message}")
+        else:
+            self._logger.detailed_info(f"[{self.strain_properties.strain_id}, {threading.get_ident()}] {message}")
+
+    def _best_of_strain(self) -> Solution:
+        """
+        The best solution the strain has found, once initialized.
+
+        ``best_strain_solution`` is None until ``initialize()`` names the patient zero,
+        which is before anything reads it; this narrows it there, the way the base
+        class does with ``_best_so_far()``.
+
+        :return: The best solution of the strain.
+        :rtype: Solution
+        :raises RuntimeError: If read before the strain has a patient zero.
+        """
+        # P-11: the narrowing that let mypy check every read of the strain's best.
+        if self.best_strain_solution is None:
+            raise RuntimeError("best_strain_solution is not available yet: initialize() has not run")
+        return self.best_strain_solution
 
     def initialize(self, num_solutions=10) -> Tuple[List[Solution], Solution]:
 
         # 1. Yield the patient zero (pz).
         pz: Solution = self.solution_type(self.domain, connector=self.domain.get_connector())
         pz.evaluate(self.fitness_function)
-        metagen_logger.detailed_info(
-            f'[{self.strain_properties.strain_id}, {threading.get_ident()}] Patient zero: {pz}')
+        self._log(f"Patient zero: {pz}")
 
         # 2. Add the patient zero to the strain-specific infected set.
         self.infected.add(pz)
-        self.infected_superspreaders.add(pz)
 
         # 3. The best strain-specific individual will initially be the patient zero.
         self.best_strain_solution = pz
 
-        return list(self.infected), self.best_strain_solution
+        return list(self.infected), self._best_of_strain()
 
     def iterate(self, solutions: List[Solution]) -> Tuple[List[Solution], Solution]:
 
         # 1. Spreading the disease.
 
-        # 1.1. Initialize the new infected population set
-        new_infected_population: Set[Solution] = set()
-
-        # 1.2. Before the new propagation, update the strain (superspreader, death) and global (death, recovered) sets.
+        # 1.1. Before the new propagation, update the strain (superspreader, death) and global (death, recovered) sets.
         self.update_pandemic_global_state()
 
-        # 1.3. For each infected individual in the strain:
-        for individual in self.infected:
-            # ** 1.3.1. Determine the travel distance and the number of infections **
-            n_infected, travel_distance = compute_n_infected_travel_distance(self.domain, self.strain_properties,
-                                                                             individual, self.superspreaders)
+        # 1.2. Every infected individual infects new ones, in this thread or on Ray.
+        new_infected_population: SolutionSet = self.spread()
+        self.after_spreading()
 
-            # ** 1.3.2. Infect the new individuals. **
-            new_infected_population.update(self.infect_individuals(individual, travel_distance, n_infected))
+        # 1.3. Then, add the best individual of the strain to the next population.
+        new_infected_population.add(self._best_of_strain())
 
-        # 1.4. Then, add the best individual of the strain to the next population.
-        new_infected_population.add(self.best_strain_solution)
-
-        # 1.5. Update the infected strain population for the next iteration
+        # 1.4. Update the infected strain population for the next iteration
         self.infected.clear()
         self.infected.update(new_infected_population)
 
         # 2. Stop if no new infected individuals.
         if not self.infected:
             self.epidemic = False
-            metagen_logger.detailed_info(
-                f'[{self.strain_properties.strain_id}, {threading.get_ident()}] No new infected individuals at {self.time}')
+            self._log(f"No new infected individuals at {self.time}")
 
-        metagen_logger.detailed_info(
-            f'[{self.strain_properties.strain_id}, {threading.get_ident()}] Iteration #{self.time} - {self.r0_report(len(new_infected_population))}'
-            f' - Best strain individual: {self.best_strain_solution} , Best global individual: {self.global_state.get_best_individual()} ')
+        self._log(f"Iteration #{self.time} - {self.r0_report(len(new_infected_population))}"
+                  f" - Best strain individual: {self.best_strain_solution} , "
+                  f"Best global individual: {self.global_state.get_best_individual()} ")
 
         # 3. Update the elapsed pandemic time.
+        # The improvement flag becomes a stagnation count here, and is cleared. Left
+        # standing, it ended the strain on the iteration after its first improvement:
+        # the strain stopped because it was working (F-23).
+        if self.best_strain_solution_found:
+            self.iterations_without_improvement = 0
+            self.best_strain_solution_found = False
+        else:
+            self.iterations_without_improvement += 1
+
         self.time += 1
 
-        return list(self.infected), self.best_strain_solution
+        return list(self.infected), self._best_of_strain()
 
-    def update_pandemic_global_state(self) -> None:
-        """ It updates the specific strain death and superspreader's sets and the global death and recovered sets.
+    def after_spreading(self) -> None:
+        """
+        What happens to the carriers once they have infected. Nothing here: their fate
+        is settled in update_pandemic_global_state, before they spread. A subclass may
+        override it.
         """
 
-        # 1. A percentage, p_superspreader, of the infected individuals in the strain (infected) will be superspreaders.
-        number_of_super_spreaders = math.ceil(self.strain_properties.p_superspreader * len(self.infected))
+    def spread(self) -> SolutionSet:
+        """
+        The contagion step of one iteration: the population every current carrier
+        infects, before the strain's best is added.
 
-        # 2. A percentage, p_die, of the infected individuals in the strain (infected) will die.
-        number_of_deaths = math.ceil(self.strain_properties.p_die * len(self.infected))
+        In thread mode it runs infect_from_carrier for each carrier here; on Ray,
+        spread_on_ray runs the same function in one task per carrier.
 
-        # 3. If there are at least two infected individuals in the strain:
-        if len(self.infected) >= 1:
+        :return: The newly infected population.
+        :rtype: SolutionSet
+        """
+        # A-09: there used to be three copies of this step, one per way of dispatching it.
+        if self.spread_on_ray:
+            from metagen.metaheuristics.cvoa.distributed_tools import spread_on_ray
+            return spread_on_ray(type(self), self.global_state, self.domain, self.fitness_function,
+                                 self.strain_properties, self.infected, self.superspreaders, self.time)
 
-            # 3.1. For each infected individual:
-            for individual in self.infected:
+        new_infected_population: SolutionSet = SolutionSet()
+        for carrier in self.infected:
+            new_infected_population.update(
+                type(self).infect_from_carrier(self.global_state, self.domain, self.fitness_function,
+                                               self.strain_properties, carrier, self.superspreaders, self.time))
+        return new_infected_population
 
-                # 3.1.1. Insert the current individual into superspreader set; if the insertion was successful, decrement
-                # the superspreader's counter.
+    @classmethod
+    def infect_from_carrier(cls, state: PandemicState, domain: Domain, fitness_function: Callable[[Solution], float],
+                            strain_properties: StrainProperties, carrier: Solution, superspreaders: SolutionSet,
+                            time: int) -> SolutionSet:
+        """
+        Everything one carrier does in one iteration: draw how many it infects and how
+        far, then infect. A function of its arguments alone, so that a Ray task can run
+        it on a copy of the class; the class is what carries the strain's rules, since
+        a subclass may change what isolation or admission mean.
 
-                self.worst_superspreader, self.best_dead, inserted = insert_into_set_strain(self.worst_superspreader,
-                                                                                            self.best_dead,
-                                                                                            self.superspreaders,
-                                                                                            individual,
-                                                                                            number_of_super_spreaders,
-                                                                                            's')
+        :return: The individuals this carrier infected that enter the next population.
+        :rtype: SolutionSet
+        """
+        # F-40: state written on a strain inside a Ray task would stay in the worker.
+        n_infected, travel_distance = compute_n_infected_travel_distance(domain, strain_properties, carrier,
+                                                                         superspreaders)
+        return cls.infect_individuals_from(state, fitness_function, strain_properties, carrier, travel_distance,
+                                           n_infected, time)
 
-                if inserted:
-                    number_of_super_spreaders -= 1
-
-                # 3.1.2. Update the recovered and death sets.
-
-                # 3.1.2.1. Insert the current individual into death set; if the insertion was successful,
-                # the dead variable will be set to True; otherwise False.
-                self.worst_superspreader, self.best_dead, dead = insert_into_set_strain(self.worst_superspreader,
-                                                                                            self.best_dead, self.dead,
-                                                                                            individual,
-                                                                                            number_of_deaths, 'd')
-
-                # 3.1.2.2. If the current individual is not dead, it is added to the recovered set.
-                if dead:
-                    number_of_deaths -= 1
-                else:
-                    self.global_state.recover_if_not_dead(individual)
-
-                # 3.1.3. If the current individual is better than the current global one, a new global best individual is
-                # found, and its global variable is updated.
-                if individual.get_fitness() < self.global_state.get_best_individual().get_fitness():
-                    self.global_state.update_best_individual(individual)
-                    self.best_strain_solution_found = True
-                    metagen_logger.detailed_info(
-                        f'[{self.strain_properties.strain_id}, {threading.get_ident()}] New global best individual found at {self.time}! ({individual})')
-
-                # 3.1.4. If the current individual is better than the current strain one, a new strain the best individual is
-                # found, and its variable is updated.
-                if individual.get_fitness() < self.best_strain_solution.get_fitness():
-                    self.best_strain_solution = individual
-
-            # 3.4. Update the global death set with the strain death set.
-            self.global_state.update_deaths(self.dead)
-
-        # 4. Remove the global dead individuals from the global recovered set.
-        self.global_state.update_recovered_with_deaths()
-
-    def infect_individuals(self, carrier_individual: Solution, travel_distance: int, n_infected: int) -> Set[Solution]:
-
-        infected_population: Set[Solution] = set()
+    @classmethod
+    def infect_individuals_from(cls, state: PandemicState, fitness_function: Callable[[Solution], float],
+                                strain_properties: StrainProperties, carrier: Solution, travel_distance: int,
+                                n_infected: int, time: int) -> SolutionSet:
+        """
+        Infect ``n_infected`` individuals from a carrier. Before social distancing they
+        are placed at the travel distance; from then on at distance one, and each is
+        isolated with probability p_isolation.
+        """
+        infected_population: SolutionSet = SolutionSet()
 
         for _ in range(0, n_infected):
 
             # If the current disease time is not affected by the social_distancing policy, the current
             # individual infects another with a travel distance (using infect), and it is added
             # to the newly infected population.
-            if self.time < self.strain_properties.social_distancing:
-                new_infected_individual = infect(carrier_individual, self.fitness_function, travel_distance)
-                self.update_new_infected_population(infected_population, new_infected_individual)
+            if time < strain_properties.social_distancing:
+                new_infected_individual = infect(carrier, fitness_function, travel_distance)
+                cls.admit(state, strain_properties, infected_population, new_infected_individual)
 
             # After social_distancing iterations (when the social_distancing policy is applied),
             # the current individual infects another with a travel distance of one (using infect) then,
-            # the newly infected individual can be isolated or not.
+            # the newly infected individual is isolated with probability p_isolation. The
+            # comparison used to run the other way, infecting when the draw fell below
+            # p_isolation, so the parameter meant the probability of NOT isolating: the
+            # published pseudocode reads that way, but the paper's text and its Figure 5 do
+            # not, and more isolation made the pandemic grow (F-27).
             else:
-                new_infected_individual = infect(carrier_individual, self.fitness_function, 1)
-                if random.random() < self.strain_properties.p_isolation:
-                    self.update_new_infected_population(infected_population, new_infected_individual)
+                new_infected_individual = infect(carrier, fitness_function, 1)
+                if get_rng().random() < strain_properties.p_isolation:
+                    cls.isolate(state, new_infected_individual)
                 else:
-                    # If the new individual is isolated, and update_isolated is true, this is sent to the
-                    # Isolated population.
-                    if self.update_isolated:
-                        self.global_state.isolate_individual_conditional_state(new_infected_individual,
-                                                                               IndividualState(True, True,
-                                                                                               True))
+                    cls.admit(state, strain_properties, infected_population, new_infected_individual)
         return infected_population
 
-    def update_new_infected_population(self, new_infected_population: Set[Solution],
-                                       new_infected_individual: Solution) -> None:
-        """ It updates the next infected population with a new infected individual.
-
-        :param new_infected_population: The population of the next iteration.
-        :param new_infected_individual: The new infected individual that will be inserted into the netx iteration set.
-        :type new_infected_population: set of :py:class:`~metagen.framework.Solution`
-        :type new_infected_individual: :py:class:`~metagen.framework.Solution`
+    @classmethod
+    def isolate(cls, state: PandemicState, individual: Solution) -> None:
         """
+        What happens to an individual that isolates: it is counted, and the point
+        stays open to be infected again. A subclass may override it.
+        """
+        # F-45: sending the isolated to the recovered, as the paper does, was measured
+        # to search worse on binary domains; see LocalPandemicState.isolate.
+        state.isolate(individual)
 
+    @classmethod
+    def admit(cls, state: PandemicState, strain_properties: StrainProperties,
+              new_infected_population: SolutionSet, new_infected_individual: Solution) -> None:
+        """
+        Let a newly infected individual into the next population unless the pandemic
+        already knows it: a dead one never enters, a recovered one only with
+        p_re_infection, leaving the recovered when it does.
+        """
         # Get the global individual state.
-        individual_state: IndividualState = self.global_state.get_individual_state(new_infected_individual)
+        individual_state: IndividualState = state.get_individual_state(new_infected_individual)
 
         # If the new individual is not in global death and recovered sets, then insert it in the next population.
         if not individual_state.dead and not individual_state.recovered:
@@ -315,9 +344,66 @@ class CVOA(Metaheuristic):
         # p_reinfection. If it can be reinfected, insert it into the new population and remove it from the global
         # recovered set.
         elif individual_state.recovered:
-            if random.random() < self.strain_properties.p_re_infection:
+            if get_rng().random() < strain_properties.p_re_infection:
                 new_infected_population.add(new_infected_individual)
-                self.global_state.get_infected_again(new_infected_individual)
+                state.get_infected_again(new_infected_individual)
+
+    def infect_individuals(self, carrier_individual: Solution, travel_distance: int, n_infected: int) -> SolutionSet:
+        """The contagion of one carrier with the strain's own state, properties and time."""
+        return type(self).infect_individuals_from(self.global_state, self.fitness_function, self.strain_properties,
+                                                  carrier_individual, travel_distance, n_infected, self.time)
+
+    def update_new_infected_population(self, new_infected_population: SolutionSet,
+                                       new_infected_individual: Solution) -> None:
+        """ It updates the next infected population with a new infected individual.
+
+        :param new_infected_population: The population of the next iteration.
+        :param new_infected_individual: The new infected individual that will be inserted into the netx iteration set.
+        :type new_infected_population: set of :py:class:`~metagen.framework.Solution`
+        :type new_infected_individual: :py:class:`~metagen.framework.Solution`
+        """
+        type(self).admit(self.global_state, self.strain_properties, new_infected_population, new_infected_individual)
+
+    def update_pandemic_global_state(self) -> None:
+        """
+        Settle the fate of this iteration's carriers before they spread: the worst die,
+        the best become the superspreaders, the rest recover; and keep the strain's and
+        the pandemic's best up to date.
+
+        A share ``p_die`` of the carriers, the worst ones, dies, and a share
+        ``p_superspreader`` of the survivors, the best ones, superspreads. Both are
+        picked with a heap, in ``n log k``, and the superspreaders are chosen anew in
+        every iteration. A lone carrier never dies. A subclass may override this method.
+        """
+        # F-48: this is what the original Java did before its ``sets`` branch, which
+        # replaced sorting the population with bounded sets filled in order of arrival
+        # to save time; that replacement also inverted the selection, so the best died
+        # and the worst superspread, and MetaGen inherited it. The heap is the saving
+        # that branch was after, done right. A lone carrier never dies, as in the Java.
+        carriers = list(self.infected)
+        number_of_deaths = math.ceil(self.strain_properties.p_die * len(carriers)) if len(carriers) > 1 else 0
+        number_of_superspreaders = math.ceil(self.strain_properties.p_superspreader * len(carriers))
+
+        dying = SolutionSet(heapq.nlargest(number_of_deaths, carriers, key=Solution.get_fitness))
+        survivors = [carrier for carrier in carriers if carrier not in dying]
+        self.superspreaders = SolutionSet(heapq.nsmallest(number_of_superspreaders, survivors,
+                                                          key=Solution.get_fitness))
+        self.dead.update(dying)
+
+        for individual in carriers:
+            if individual not in dying:
+                self.global_state.recover_if_not_dead(individual)
+
+            if individual.get_fitness() < self.global_state.get_best_individual().get_fitness():
+                self.global_state.update_best_individual(individual)
+                self.best_strain_solution_found = True
+                self._log(f"New global best individual found at {self.time}! ({individual})")
+
+            if individual.get_fitness() < self._best_of_strain().get_fitness():
+                self.best_strain_solution = individual
+
+        self.global_state.update_deaths(self.dead)
+        self.global_state.update_recovered_with_deaths()
 
     def stopping_criterion(self) -> bool:
 
@@ -329,27 +415,30 @@ class CVOA(Metaheuristic):
         # Second condition: When the pandemic duration has been reached
         second_condition: bool = self.time > self.strain_properties.pandemic_duration
 
-        # Third condition: When the best individual has been found and the time is greater than 1
-        third_condition = self.best_strain_solution_found and self.time > 1
+        # Third condition: when the strain has spent too long without improving.
+        # This used to be "best_strain_solution_found and self.time > 1", with a
+        # flag nothing ever cleared, so a strain died right after its first
+        # improvement (F-23). Off unless the strain asks for it.
+        stagnation_limit = self.strain_properties.max_iterations_without_improvement
+        third_condition = (stagnation_limit is not None
+                           and self.iterations_without_improvement >= stagnation_limit)
 
         return first_condition or second_condition or third_condition
 
     def post_execution(self) -> None:
-        metagen_logger.detailed_info(
-            f'[{self.strain_properties.strain_id}, {threading.get_ident()}] Pandemic finished at {self.time} with best individual: {self.best_strain_solution}')
+        self._log(f"Pandemic finished at {self.time} with best individual: {self.best_strain_solution}")
         super().post_execution()
-
 
     def r0_report(self, new_infections: int) -> str:
         recovered = self.global_state.get_recovered_len()
-        r0 = new_infections
+        r0: float = new_infections
         if recovered != 0:
             r0 = new_infections / recovered
         report = "New infected = " + str(new_infections) + ", Recovered = " + str(recovered) + ", R0 = " + str(r0)
         return report
 
     def __str__(self):
-        """ String representation of a :py:class:`~metagen.metaheuristics.CVOA` object (a strain).
+        """ String representation of a :py:class:`~metagen.metaheuristics.cvoa.cvoa_local.CVOA` object (a strain).
         """
         res = ""
         res += self.strain_properties.strain_id + "\n"

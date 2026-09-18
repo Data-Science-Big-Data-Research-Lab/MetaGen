@@ -8,42 +8,39 @@ Domain
 Definitions
 =================
    
-This module describes the ``domain`` class which represents the space of the solution.
+The ``Domain`` class describes the space of the solutions: which variables a solution has, of which type, and between which bounds. A variable is of one of three kinds:
 
-The variable definitions are internally stored in a member variable which support three different TYPES:
+* **Basic**: a single value.
 
-* ``BASIC``: Includes support for the basic types INTEGER, REAL and CATEGORICAL which are definitions of int, float and list respectively.
-    
-    * ``INTEGER``: Support integer possitive/negative numerical values.
-    * ``REAL``: Support floating point possitive/negative numerical values.
-    * ``CATEGORICAL``: Support list of int, float and str values. Every component in the category must have the same type.
+    * ``INTEGER``: an integer between a minimum and a maximum, optionally on a grid of a given step that starts at the minimum.
+    * ``REAL``: a floating point number between a minimum and a maximum, optionally on a grid of a given step.
+    * ``CATEGORICAL``: one value out of a list of categories, which must all be of the same type (``int``, ``float``, ``str`` or ``bool``) and must not repeat. A single category is allowed, to fix a hyperparameter to one value.
 
-* ``VECTOR``: Support an list of numerical values (``INTEGER`` or ``REAL``) with fixed range. The ``VECTOR`` also support for variable size definition.
-* ``LAYER``: Support complex structures as a dictionary. The layer defines some variables (string) which value may be the previously described.
+* **Structure**: a list whose elements all share one definition, which may be basic, a group or another structure. A **static** structure has a fixed length; a **dynamic** one has a length between a minimum and a maximum, optionally on a grid of a given step, and the search changes it.
+* **Group**: a set of named variables that travel together, such as the settings of one layer of a neural network. A structure of groups describes, for instance, an architecture with a variable number of layers.
 
-Every variable has a different definition depending of its ``TYPE`` using the tuple:
 .. code-block:: python
 
-    (``TYPE``, ``*args``)
+    from metagen.framework import Domain
 
-where ``TYPE`` represents any type defined previously, while args are the specific configuration depending of its ``TYPE``.
+    domain = Domain()
+    domain.define_real("learning_rate", 0.0001, 0.1)
+    domain.define_integer("batch_size", 16, 256, 16)            # 16, 32, 48 ... 256
+    domain.define_categorical("solver", ["adam", "sgd"])
 
-**Structure for** ``BASIC`` **definition (** ``BASICDEF`` **)**
+    domain.define_group("layer")
+    domain.define_integer_in_group("layer", "neurons", 8, 128)
+    domain.define_real_in_group("layer", "dropout", 0.0, 0.5)
+    domain.define_dynamic_structure("architecture", 1, 4)       # one to four layers
+    domain.set_structure_to_variable("architecture", "layer")
 
-* ``INTEGERDEF``: (``INTEGER``, Maximum value [int], Minimum value [int], Step[int])
-* ``REALDEF``: (``REAL``, Maximum value [float], Minimum value [float], Step[float])
-* ``CATEGORICALDEF``: (``CATEGORICAL``, Categories[list(``BASIC``)*])
+Internally every definition answers ``get_attributes()`` with a tuple whose first element names its type:
 
-**Internal structure for** ``LAYER`` **definition (** ``LAYERDEF`` **)**
-
-(``LAYER``, {``"ATTRIBUTE"``: ``BASICDEF``, ``"ATTRIBUTE"``: ``VECTORDEF``, ...})
-
-**Internal structure for** ``VECTOR`` **definition (** ``VECTORDEF`` **)**
-
-* (``VECTOR``, Maximum size [int], Minimum size [int], Step size [int], [``INTEGERDEF``, ...])
-* (``VECTOR``, Maximum size [float], Minimum size [float], Step size [float], [``REALDEF``, ...])
-* (``VECTOR``, Maximum size [float], Minimum size [float], Step size [float], [``CATEGORICALDEF``, ...])
-* (``VECTOR``, Maximum size [float], Minimum size [float], Step size [float], [``LAYERDEF``, ...])
+* ``("INTEGER", minimum, maximum, step)`` and ``("REAL", minimum, maximum, step)``, with ``None`` as the step when there is no grid.
+* ``("CATEGORICAL", [categories])``.
+* ``("DEFINITION", {"name": attributes, ...})`` for a group.
+* ``("STATIC", length, attributes of the element)`` for a static structure.
+* ``("DYNAMIC", minimum length, maximum length, length step, attributes of the element)`` for a dynamic one.
 
 The details of the definition are described in the `Core`_.
 

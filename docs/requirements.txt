@@ -1,0 +1,4 @@
+# What Read the Docs installs to build the documentation. Pinned to a major version on
+# purpose: an unpinned Sphinx once removed a name conf.py imported and broke the build.
+sphinx>=8,<10
+sphinx-rtd-theme>=3,<4

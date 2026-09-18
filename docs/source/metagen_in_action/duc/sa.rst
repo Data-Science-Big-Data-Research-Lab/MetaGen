@@ -9,22 +9,21 @@ The SA class is defined, and its constructor (__init__) is provided with the fol
 
     * domain: Domain: The domain of possible solutions.
     * fitness: Callable[[Solution], float]: A function that calculates the fitness of a solution.
-    * search_space_size: int = 30: The number of potential solutions to generate.
-    * n_iterations: int = 20: The number of search iterations to perform.
+    * n_iterations: int = 50: The number of search iterations to perform.
     * alteration_limit: float = 0.1: The alteration applied to every `Solution` to generate the neighbors.
     * initial_temp: float = 50.0: The initial temperature for the simulated annealing.
-    * cooling_rate: float = 0.99: Meassures the speed of the cooling procedure.
+    * cooling_rate: float = 0.99: Measures the speed of the cooling procedure.
     * The constructor stores these parameters as instance variables.
 
 **Generating initial Solution**
 
-Initially, a random solution is gennerated from the defined `Domain`.
+Initially, a random solution is generated from the defined `Domain`.
 
 
 **Best Solution search**
 The simulated annealing process attempts to find a global optimum by allowing occasional acceptance of worse solutions.
 
-The algorithm, iterates for the specified number of iterations (`n_iterations`).
+The algorithm iterates for the specified number of iterations (`n_iterations`).
 
 In each iteration:
     * Creates a neighboring solution by copying and mutating the current solution.
@@ -39,6 +38,7 @@ Finally, the run method returns the best solution found after all iterations.
 
     from metagen.framework import Domain, Solution
     from collections.abc import Callable
+    from typing import Any
     from copy import deepcopy
     import random
     import math
@@ -61,7 +61,7 @@ Finally, the run method returns the best solution found after all iterations.
             """
             Initialize the population of solutions by creating and evaluating initial solutions.
             """
-            self.solution = Solution()
+            self.solution = Solution(self.domain, connector=self.domain.get_connector())
             self.solution.evaluate(self.fitness_func)
 
 
@@ -79,16 +79,16 @@ Finally, the run method returns the best solution found after all iterations.
 
             while current_iteration <= self.n_iterations:
 
-                neighbour = deepcopy(self.solution)
+                neighbor = deepcopy(self.solution)
 
-                neighbour.mutate(alteration_limit=self.alteration_limit)
+                neighbor.mutate(alteration_limit=self.alteration_limit)
 
-                neighbour.evaluate(self.fitness_func)
+                neighbor.evaluate(self.fitness_func)
 
-                exploration_rate = math.exp((self.solution.fitness - neighbour.fitness) / temperature)
+                exploration_rate = math.exp((self.solution.fitness - neighbor.fitness) / temperature)
 
-                if neighbour.fitness < self.solution.fitness or exploration_rate > random.random():
-                    self.solution = neighbour
+                if neighbor.fitness < self.solution.fitness or exploration_rate > random.random():
+                    self.solution = neighbor
 
                 temperature *= self.cooling_rate
 

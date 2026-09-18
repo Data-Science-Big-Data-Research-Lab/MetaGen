@@ -11,6 +11,12 @@ Copyright.txt
 licenseadd.sh
 *.eps
 logs/
+.DS_Store
+.claude/
+CLAUDE.md
 *.xlsx
 *.csv
+# ...but test data may be CSV, and it used to be left out of the commit without a
+# word: `git status` did not even mention it (P-07).
+!test/**/*.csv
 *.tex

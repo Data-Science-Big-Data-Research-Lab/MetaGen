@@ -1,0 +1,178 @@
+"""What needs an optional extra: every algorithm on Ray, and the TensorFlow problem
+of the examples. Each test skips cleanly where its extra is missing, so this module
+collects everywhere and runs wherever it can. The CI installs neither on purpose
+(P-06); on a development machine with Ray, the Ray half runs."""
+import math
+import os
+import pathlib
+import sys
+import tempfile
+import time
+
+import pytest
+
+from metagen.framework import Domain
+from metagen.metaheuristics import GA, SSGA, TPE, KernelTPE, GAConnector, HillClimbing, Memetic, RandomSearch, SA, TabuSearch
+
+REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
+
+
+def _sphere_domain(connector=None) -> Domain:
+    domain = Domain(connector=connector)
+    domain.define_real("x", -5.12, 5.12)
+    domain.define_real("y", -5.12, 5.12)
+    return domain
+
+
+def _sphere(solution) -> float:
+    return solution["x"] ** 2 + solution["y"] ** 2
+
+
+def _fitness_for_the_workers():
+    """A Ray worker unpickles a module-level function by importing its module, and
+    test_extras is not on the worker's path. A nested function is pickled by value,
+    so this is what the algorithms get; the driver keeps checking with _sphere."""
+    def sphere(solution) -> float:
+        return solution["x"] ** 2 + solution["y"] ** 2
+    return sphere
+
+
+@pytest.fixture(scope="module")
+def ray_runtime():
+    """One Ray runtime for the module. Started here, so that run() finds it running
+    and neither starts nor stops one per test (F-21), and stopped at the end."""
+    ray = pytest.importorskip("ray")
+    started_here = not ray.is_initialized()
+    if started_here:
+        ray.init(num_cpus=2, include_dashboard=False, log_to_driver=False)
+    yield ray
+    if started_here:
+        ray.shutdown()
+
+
+def _distributed(name: str, seed: int):
+    domain, ga_domain = _sphere_domain(), _sphere_domain(GAConnector())
+    _sphere = _fitness_for_the_workers()
+    return {
+        "RandomSearch": lambda: RandomSearch(domain, _sphere, population_size=6, max_iterations=3,
+                                             distributed=True, seed=seed),
+        "SA": lambda: SA(domain, _sphere, warmup_iterations=1, max_iterations=3,
+                         neighbor_population_size=2, distributed=True, seed=seed),
+        "HillClimbing": lambda: HillClimbing(domain, _sphere, population_size=6, warmup_iterations=1,
+                                             max_iterations=3, distributed=True, seed=seed),
+        "TabuSearch": lambda: TabuSearch(domain, _sphere, population_size=6, warmup_iterations=1,
+                                         max_iterations=3, distributed=True, seed=seed),
+        "TPE": lambda: TPE(domain, _sphere, warmup_iterations=2, max_iterations=3,
+                           distributed=True, seed=seed),
+        "KernelTPE": lambda: KernelTPE(domain, _sphere, population_size=6, warmup_iterations=1,
+                                             max_iterations=3, distributed=True, seed=seed),
+        "GA": lambda: GA(ga_domain, _sphere, population_size=6, max_iterations=3,
+                         distributed=True, seed=seed),
+        "SSGA": lambda: SSGA(ga_domain, _sphere, population_size=6, max_iterations=3,
+                             distributed=True, seed=seed),
+        "Memetic": lambda: Memetic(ga_domain, _sphere, population_size=6, max_iterations=3,
+                                   neighbor_population_size=2, distributed=True, seed=seed),
+    }[name]()
+
+
+@pytest.mark.parametrize("name", ["RandomSearch", "SA", "HillClimbing", "TabuSearch", "TPE", "KernelTPE", "GA", "SSGA", "Memetic"])
+def test_every_algorithm_runs_distributed(ray_runtime, name):
+    for seed in (0, 1):
+        algorithm = _distributed(name, seed)
+        best = algorithm.run()
+        assert ray_runtime.is_initialized(), "run() shut down a Ray it did not start (F-21)"
+        assert best.get_fitness() == _sphere(best)
+        assert not math.isinf(best.get_fitness())
+        history = algorithm.best_solution_fitnesses
+        assert history == sorted(history, reverse=True), f"{name} reports a history that worsens"
+        assert best.get_fitness() == history[-1]
+
+
+def test_the_distributed_initialization_builds_the_whole_population(ray_runtime):
+    """The load used to be split by len(current_solutions), which after the warmup is
+    one entry per warmup round and not the population (F-03)."""
+    algorithm = RandomSearch(_sphere_domain(), _fitness_for_the_workers(), population_size=7,
+                             max_iterations=1, distributed=True, seed=0)
+    algorithm.run()
+    assert len(algorithm.current_solutions) == 7
+
+
+def test_the_tensorflow_problem_of_the_examples_can_be_searched():
+    """The dynamic neural network of examples/problems: a structure of two to ten
+    layers, each a group of neurons, activation and dropout, evaluated by training an
+    LSTM. Not verified on the development machine nor in the CI, where TensorFlow is
+    not installed; it is here so that an installation with the extra runs it."""
+    pytest.importorskip("tensorflow")
+    if str(REPO_ROOT) not in sys.path:
+        sys.path.insert(0, str(REPO_ROOT))
+    from examples.problems.dispatcher import problem_dispatcher
+
+    domain, fitness = problem_dispatcher("d-nn")
+    best = RandomSearch(domain, fitness, population_size=2, max_iterations=1, seed=0).run()
+
+    assert 2 <= len(best.get("arch")) <= 10
+    assert math.isfinite(best.get_fitness())
+    assert best.get_fitness() == best.get_fitness()   # not NaN
+
+
+@pytest.mark.parametrize("update_isolated", [False, True])
+def test_distributed_cvoa_runs_on_ray(ray_runtime, update_isolated):
+    """The distributed twin of CVOA, which no other test ran: one strain, the strain
+    as a Ray task and its contagions as sub-tasks, talking to the pandemic-state
+    actor. With update_isolated on, the branch that used to wrap a remote call in
+    ray.remote(...) and raise (F-42)."""
+    from metagen.metaheuristics.cvoa.common_tools import StrainProperties
+    from metagen.metaheuristics.cvoa.distributed_launcher import distributed_cvoa_launcher
+
+    domain = _sphere_domain()
+    fitness = _fitness_for_the_workers()
+    best = distributed_cvoa_launcher(
+        [StrainProperties("S1", pandemic_duration=3, social_distancing=1)],
+        domain, fitness, update_isolated=update_isolated, seed=0)
+    assert ray_runtime.is_initialized()
+    assert best.get_fitness() == _sphere(best)
+    assert not math.isinf(best.get_fitness())
+
+
+@pytest.mark.parametrize("name", ["RandomSearch", "HillClimbing", "TabuSearch", "TPE", "KernelTPE", "GA", "SSGA", "Memetic"])
+def test_the_work_is_spread_across_workers(ray_runtime, name):
+    """Every individual is evaluated in some worker process; with two CPUs and a
+    fitness slow enough for the split to matter, more than one worker has to show up.
+    The split used to be sized by the CPUs free at that instant, so from the first
+    iteration on the whole population went to a single worker (F-43). SA is not here:
+    its population is one individual, and one worker is all it can use."""
+    record = pathlib.Path(tempfile.mkdtemp()) / "pids.txt"
+
+    def fitness(solution) -> float:
+        # Slow enough that the driver cannot reuse the same worker for every task.
+        time.sleep(0.02)
+        with open(record, "a") as handle:
+            handle.write(f"{os.getpid()}\n")
+        return solution["x"] ** 2 + solution["y"] ** 2
+
+    domain, ga_domain = _sphere_domain(), _sphere_domain(GAConnector())
+    algorithm = {
+        "RandomSearch": lambda: RandomSearch(domain, fitness, population_size=6, max_iterations=3,
+                                             distributed=True, seed=0),
+        "HillClimbing": lambda: HillClimbing(domain, fitness, population_size=6, warmup_iterations=1,
+                                             max_iterations=3, distributed=True, seed=0),
+        "TabuSearch": lambda: TabuSearch(domain, fitness, population_size=6, warmup_iterations=1,
+                                         max_iterations=3, distributed=True, seed=0),
+        "TPE": lambda: TPE(domain, fitness, warmup_iterations=2, max_iterations=3,
+                           distributed=True, seed=0),
+        "KernelTPE": lambda: KernelTPE(domain, fitness, population_size=6, warmup_iterations=1,
+                                             max_iterations=3, distributed=True, seed=0),
+        "GA": lambda: GA(ga_domain, fitness, population_size=6, max_iterations=3,
+                         distributed=True, seed=0),
+        "SSGA": lambda: SSGA(ga_domain, fitness, population_size=6, max_iterations=3,
+                             distributed=True, seed=0),
+        "Memetic": lambda: Memetic(ga_domain, fitness, population_size=6, max_iterations=3,
+                                   neighbor_population_size=2, distributed=True, seed=0),
+    }[name]()
+    algorithm.run()
+
+    pids = record.read_text().split()
+    workers = {pid for pid in pids if pid != str(os.getpid())}
+    assert pids, "no evaluation was recorded"
+    assert str(os.getpid()) not in pids, "the driver evaluated individuals itself"
+    assert len(workers) >= 2, f"{name} used a single worker for {len(pids)} evaluations"

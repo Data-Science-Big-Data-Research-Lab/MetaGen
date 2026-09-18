@@ -17,7 +17,7 @@
 from metagen.framework import Domain, Solution
 from metagen.metaheuristics.tools import random_exploration
 from metagen.metaheuristics.base import Metaheuristic
-from typing import List, Tuple, Callable
+from typing import Optional, List, Tuple, Callable
 from copy import deepcopy
 
 
@@ -33,14 +33,22 @@ class RandomSearch(Metaheuristic):
     :type domain: Domain
     :param fitness_function: The fitness function used to evaluate solutions
     :type fitness_function: Callable[[Solution], float]
-    :param population_size: The size of the population to maintain, defaults to 1
+    :param population_size: The size of the population to maintain, defaults to 10
     :type population_size: int, optional
     :param max_iterations: The maximum number of iterations to run, defaults to 20
     :type max_iterations: int, optional
     :param distributed: Whether to use distributed computation, defaults to False
     :type distributed: bool, optional
-    :param log_dir: Directory for logging, defaults to "logs/RS"
-    :type log_dir: str, optional
+    :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
+    :type log_dir: str or None, optional
+    :param seed: Seed for the package's random generators, applied at the start of
+        ``run()``; the same seed reproduces the run. None, the default, draws a different
+        run every time.
+    :type seed: int or None, optional
+    :param distribution_model: How a distributed run makes up the next population out of
+        the slices, ``"global"`` (the default: shuffled, selected among all workers) or
+        ``"islands"``; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type distribution_model: str, optional
 
     :ivar max_iterations: Maximum number of iterations to run
     :vartype max_iterations: int
@@ -49,18 +57,19 @@ class RandomSearch(Metaheuristic):
 
     .. code-block:: python
 
-        from metagen.framework import Domain
+        from metagen.framework import Domain, Solution
         from metagen.metaheuristics import RandomSearch
-        
+
         domain = Domain()
-        domain.defineInteger(0, 1)
-        
-        fitness_function = ...
+        domain.define_integer("n", 0, 100)
+
+        def fitness_function(solution: Solution) -> float:
+            return abs(solution["n"] - 42)
 
         search = RandomSearch(domain, fitness_function, population_size=50, max_iterations=100)
         optimal_solution = search.run()
     """
-    def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float], population_size = 10, max_iterations: int = 20, distributed = False, log_dir: str = "logs/RS") -> None:
+    def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float], population_size = 10, max_iterations: int = 20, distributed = False, log_dir: Optional[str] = None, seed: Optional[int] = None, distribution_model: str = "global") -> None:
         """
         Initialize the RandomSearch algorithm.
 
@@ -68,16 +77,17 @@ class RandomSearch(Metaheuristic):
         :type domain: Domain
         :param fitness_function: The fitness function used to evaluate solutions
         :type fitness_function: Callable[[Solution], float]
-        :param population_size: The size of the population to maintain, defaults to 1
+        :param population_size: The size of the population to maintain, defaults to 10
         :type population_size: int, optional
         :param max_iterations: The maximum number of iterations to run, defaults to 20
         :type max_iterations: int, optional
         :param distributed: Whether to use distributed computation, defaults to False
         :type distributed: bool, optional
-        :param log_dir: Directory for logging, defaults to "logs/RS"
-        :type log_dir: str, optional
+        :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
+        :type log_dir: str or None, optional
         """
-        super().__init__(domain, fitness_function, population_size, distributed=distributed, log_dir=log_dir)
+        super().__init__(domain, fitness_function, population_size, distributed=distributed, log_dir=log_dir, seed=seed,
+                         distribution_model=distribution_model)
         self.max_iterations = max_iterations
 
     def initialize(self, num_solutions=10) -> Tuple[List[Solution], Solution]:
@@ -104,10 +114,18 @@ class RandomSearch(Metaheuristic):
         :return: A tuple containing the updated population and the best solution found
         :rtype: Tuple[List[Solution], Solution]
         """
-        best_solution = deepcopy(self.best_solution)
+        best_solution = deepcopy(self._best_so_far())
         current_solutions = [best_solution]
 
-        for individual in solutions[:-1]:
+        # The elite copy above takes one slot, so one individual has to go, and it
+        # should be the worst. This used to drop solutions[-1] whatever it was, which
+        # is as often as not the best of the population (A-04).
+        worst_index = max(range(len(solutions)),
+                          key=lambda index: solutions[index].get_fitness())
+
+        for index, individual in enumerate(solutions):
+            if index == worst_index:
+                continue
             individual.mutate()
             individual.evaluate(self.fitness_function)
             current_solutions.append(individual)

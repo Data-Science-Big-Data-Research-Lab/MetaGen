@@ -1,12 +1,13 @@
 import heapq
 from copy import deepcopy
-from typing import Callable, Tuple, List, cast
+from typing import Any, Optional, Callable, Tuple, List, cast
 
-from metagen.framework import Domain, Solution
+from metagen.framework import Domain, RelativeAlteration, Solution
 from metagen.metaheuristics.tools import random_exploration
 from metagen.metaheuristics.base import Metaheuristic
 from metagen.metaheuristics.ga import GASolution
-from metagen.metaheuristics.ga.ga_tools import yield_two_children
+from metagen.metaheuristics.ga.ga_tools import (yield_two_children, require_crossover,
+                                                tournament_selection)
 from metagen.metaheuristics.mm.mm_tools import local_search_of_two_children
 
 
@@ -20,7 +21,7 @@ class Memetic(Metaheuristic):
 
     The algorithm combines genetic algorithms with local search strategies to enhance solution quality.
     Each generation involves:
-    1. Selection of best parents
+    1. Selection of the parents by tournament
     2. Genetic operations (crossover and mutation)
     3. Local search improvement
     4. Population update
@@ -30,52 +31,88 @@ class Memetic(Metaheuristic):
     :param population_size: The population size, defaults to 10
     :param max_iterations: The maximum number of iterations, defaults to 20
     :param mutation_rate: The mutation rate, defaults to 0.1
+    :param tournament_size: How many individuals compete to become a parent, defaults to 2
     :param neighbor_population_size: The size of neighborhood in local search, defaults to 10
-    :param alteration_limit: The maximum alteration allowed in local search, defaults to 1.0
+    :param alteration_limit: How far a neighbor may move in the local search, defaults
+        to a fifth of each variable's own range; a plain number is an absolute amount
+    :param mutation_alteration_limit: How far a mutated child may move from where the
+        crossover left it. None, the default, redraws each mutated variable over its whole
+        domain: the local search already works the neighborhood, and the wide mutation is
+        what lets the algorithm leave it
     :param distributed: Whether to use distributed computation, defaults to False
-    :param log_dir: The logging directory, defaults to "logs/MM"
+    :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
     :param distribution_level: The level of distribution (0=none), defaults to 0
     :type domain: :py:class:`~metagen.framework.Domain`
     :type fitness_function: Callable[[:py:class:`~metagen.framework.Solution`], float]
     :type population_size: int
     :type max_iterations: int
     :type mutation_rate: float
+    :type tournament_size: int
     :type neighbor_population_size: int
-    :type alteration_limit: float
+    :type alteration_limit: RelativeAlteration or float or None
+    :type mutation_alteration_limit: RelativeAlteration or float or None, optional
     :type distributed: bool
-    :type log_dir: str
+    :type log_dir: str or None, optional
+    :param seed: Seed for the package's random generators, applied at the start of
+        ``run()``; the same seed reproduces the run. None, the default, draws a different
+        run every time.
+    :type seed: int or None, optional
+    :param distribution_model: How a distributed run makes up the next population out of
+        the slices, ``"global"`` (the default: shuffled, selected among all workers) or
+        ``"islands"``; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type distribution_model: str, optional
     :type distribution_level: int
 
     **Code example**
 
     .. code-block:: python
 
-        from metagen.framework import Domain
-        from metagen.metaheuristics import Memetic
+        from metagen.framework import Domain, Solution
+        from metagen.metaheuristics import GAConnector, Memetic
 
-        # Create domain and fitness function
-        domain = Domain()
-        domain.defineInteger(0, 1)
-        fitness_function = lambda x: sum(x)
+        # The memetic algorithm crosses solutions over, so its domain needs the
+        # GA connector; a plain Domain() fails on the first iteration.
+        domain = Domain(connector=GAConnector())
+        domain.define_real("x", -5.0, 5.0)
 
-        # Create and run memetic algorithm
-        memetic = Memetic(domain, fitness_function, population_size=50)
+        def fitness_function(solution: Solution) -> float:
+            return solution["x"] ** 2
+
+        memetic = Memetic(domain, fitness_function, population_size=50, max_iterations=100)
         best_solution = memetic.run()
     """
+
+    # mutation_alteration_limit: measured on the benchmark over thirty seeds, a local
+    # mutation is a trade for this algorithm (299 to 297 wins of 330: it gains Rosenbrock
+    # and loses Schwefel and the decision tree), so it keeps the wide one that GA dropped.
+
+    # Two parents to cross: a distributed slice of one individual raised IndexError (F-46).
+    minimum_slice: int = 2
 
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
                  population_size: int = 10,
                  max_iterations: int = 20, mutation_rate: float = 0.1,
-                 neighbor_population_size: int = 10, alteration_limit: float = 1.0,
-                 distributed: bool = False, log_dir: str = "logs/MM",
-                 distribution_level: int = 0) -> None:
+                 tournament_size: int = 2,
+                 neighbor_population_size: int = 10,
+                 alteration_limit: Any = RelativeAlteration(0.2),
+                 distributed: bool = False, log_dir: Optional[str] = None,
+                 distribution_level: int = 0, seed: Optional[int] = None,
+                 distribution_model: str = "global",
+                 mutation_alteration_limit: Any = None) -> None:
         """Initialize the Memetic Algorithm with the given parameters."""
-        super().__init__(domain, fitness_function, population_size=population_size, distributed=distributed, log_dir=log_dir)
+        super().__init__(domain, fitness_function, population_size=population_size, distributed=distributed, log_dir=log_dir, seed=seed,
+                         distribution_model=distribution_model)
+
+        # Fails here, with a message that says what to do, instead of dying on
+        # the first iteration with AttributeError: no attribute 'crossover' (A-07).
+        require_crossover(domain, "Memetic")
 
         self.mutation_rate = mutation_rate
         self.max_generations = max_iterations
+        self.tournament_size = tournament_size
         self.neighbor_population_size = neighbor_population_size
         self.alteration_limit = alteration_limit
+        self.mutation_alteration_limit: Any = mutation_alteration_limit
 
         if not distributed:
             self.distribution_level = 0
@@ -93,30 +130,35 @@ class Memetic(Metaheuristic):
         current_solutions, best_solution = random_exploration(self.domain, self.fitness_function, num_solutions)
         return current_solutions, best_solution
 
-    def iterate(self, solutions: List[GASolution]) -> Tuple[List[Solution], Solution]:
+    def iterate(self, solutions: List[Solution]) -> Tuple[List[Solution], Solution]:
         """Perform one iteration of the memetic algorithm.
 
         This method:
-        1. Selects the best parents
+        1. Selects the parents by tournament
         2. Creates offspring through genetic operations
         3. Improves offspring through local search
         4. Updates the population
 
         :param solutions: The current population
-        :type solutions: List[:py:class:`~metagen.metaheuristics.ga.GASolution`]
+        :type solutions: List[:py:class:`~metagen.framework.Solution`]
         :return: A tuple containing the updated population and the best solution
         :rtype: Tuple[List[:py:class:`~metagen.framework.Solution`], :py:class:`~metagen.framework.Solution`]
         """
         num_solutions = len(solutions)
-        best_parents = heapq.nsmallest(2, solutions, key=lambda sol: sol.get_fitness())
-        best_solution = deepcopy(self.best_solution)
-        current_solutions = [deepcopy(best_parents[0]), deepcopy(best_parents[1])]
+        elite = heapq.nsmallest(2, solutions, key=lambda sol: sol.get_fitness())
+        best_solution = deepcopy(self._best_so_far())
+        current_solutions = [deepcopy(elite[0]), deepcopy(elite[1])]
 
         for _ in range(num_solutions // 2):
 
-            father = cast(GASolution, best_parents[0])
-            mother = cast(GASolution, best_parents[1])
-            child1, child2 = yield_two_children((father, mother), self.mutation_rate, self.fitness_function)
+            # A-01: the pair is drawn again for every crossover, as in GA. Taking the
+            # two best once, outside the loop, bred the same pair every time and the
+            # population converged on a couple of points. The two best still go
+            # through untouched, as the elite above.
+            father = cast(GASolution, tournament_selection(solutions, self.tournament_size))
+            mother = cast(GASolution, tournament_selection(solutions, self.tournament_size))
+            child1, child2 = yield_two_children((father, mother), self.mutation_rate, self.fitness_function,
+                                                  self.mutation_alteration_limit)
             lc_child1, lc_child2 = local_search_of_two_children((child1, child2), self.fitness_function,
                                                                 self.neighbor_population_size,
                                                                 self.alteration_limit, self.distribution_level)

@@ -7,6 +7,7 @@ from metagen.framework.domain import (BaseDefinition, CategoricalDefinition,
                                       StaticStructureDefinition, DynamicStructureDefinition)
 from scipy.stats import norm
 import numpy as np
+from metagen.framework.rng import get_numpy_rng
 
 def sample_from_values(tpe_type, best_values, worst_values):
     _, min_value, max_value, step = tpe_type.get_definition().get_attributes()
@@ -22,14 +23,17 @@ def sample_from_values(tpe_type, best_values, worst_values):
         p_best = norm.pdf(tpe_type.value, mu_best, sigma_best)
         p_worst = norm.pdf(tpe_type.value, mu_worst, sigma_worst)
     
-        if p_best / (p_best + p_worst + 1e-16) > np.random.rand():
-            value = np.clip(np.random.normal(mu_best, sigma_best), min_value, max_value).item()
+        if p_best / (p_best + p_worst + 1e-16) > get_numpy_rng().random():
+            value = np.clip(get_numpy_rng().normal(mu_best, sigma_best), min_value, max_value).item()
         else:
-            value = np.clip(np.random.normal(mu_worst, sigma_worst), min_value, max_value).item()
+            value = np.clip(get_numpy_rng().normal(mu_worst, sigma_worst), min_value, max_value).item()
     else:
-        value = np.random.uniform(min_value, max_value + 1)
+        # max_value, not max_value + 1: that +1 belongs to numpy's integers(), whose
+        # upper bound is exclusive. On a uniform draw it just reached past the domain
+        # (F-22).
+        value = get_numpy_rng().uniform(min_value, max_value)
 
-    return value
+    return float(value)
 
 class TPEInteger(types.Integer):
     """
@@ -41,19 +45,24 @@ class TPEInteger(types.Integer):
 
     def resample(self, best_values, worst_values):
         """
-        Modify the value of this Integer instance to a rs category from its definition.
+        Modify the value of this Integer instance to a random category from its definition.
         """
         _, min_value, max_value, _ = self.get_definition().get_attributes()
 
         best_values = [val.value for val in best_values]
         worst_values = [val.value for val in worst_values]
 
-        value = round(sample_from_values(self, best_values, worst_values))
+        value = sample_from_values(self, best_values, worst_values)
 
-        if np.isnan(value) or value is None:
-            value = np.random.randint(min_value, max_value + 1)
-        
-        self.value = value
+        # `value is None` first: np.isnan(None) raises TypeError, so the guard could
+        # never have caught a None (F-22).
+        if value is None or np.isnan(value):
+            # +1 is right here: numpy's integers() excludes its upper bound.
+            value = get_numpy_rng().integers(min_value, max_value + 1)
+
+        # set(), not self.value: assigning straight to the attribute skipped check()
+        # and let an out-of-domain value reach the user's fitness function (F-22).
+        self.set(int(round(float(value))))
 
 class TPEReal(types.Real):
     """
@@ -69,10 +78,10 @@ class TPEReal(types.Real):
 
         _, min_value, max_value, _ = self.get_definition().get_attributes()
         value = sample_from_values(self, best_values, worst_values)
-        if np.isnan(value) or value is None:
-            value = np.random.uniform(min_value, max_value + 1)
-        
-        self.value = value
+        if value is None or np.isnan(value):
+            value = get_numpy_rng().uniform(min_value, max_value)
+
+        self.set(float(value))
 
 class TPECategorical(types.Categorical):
     """
@@ -87,14 +96,16 @@ class TPECategorical(types.Categorical):
         unique, counts = np.unique(best_values, return_counts=True)
         probabilities = counts / counts.sum() if len(unique) > 1 else None
 
-        self.value = np.random.choice(unique,p=probabilities) if probabilities is not None else np.random.choice(categories)
+        elegida = (get_numpy_rng().choice(unique, p=probabilities)
+                   if probabilities is not None
+                   else get_numpy_rng().choice(categories))
+
+        # .item(), so the user gets a str and not a numpy.str_ (F-22).
+        self.set(elegida.item() if hasattr(elegida, "item") else elegida)
 
 class TPEStructure(types.Structure):
     """
-    Represents the custom Structure type for the Genetic Algorithm (GA).
-    
-    This class extends the base Structure type to add genetic algorithm specific operations
-    like crossover.
+    The Structure type TPE resamples position by position.
 
     :ivar connector: The connector used to link different types
     :vartype connector: BaseConnector
@@ -102,9 +113,28 @@ class TPEStructure(types.Structure):
 
     def resample(self, best_values, worst_values):
         """
+        Resample every position from the reference structures that have it.
+
+        With a dynamic structure the references come in different lengths, so each
+        position is resampled from the references long enough to have it. A position
+        no reference reaches keeps the value it was initialized with.
+
+        The length itself is not resampled: a new structure keeps the length it was
+        born with, drawn uniformly by initialize().
+
+        :param best_values: The structures of the best reference solutions.
+        :param worst_values: The structures of the worst reference solutions.
         """
+        # F-35: this used to ask every reference for every one of its own positions, so
+        # the first reference shorter than itself raised IndexError. Modeling the length
+        # with TPE's own rule was measured on the variable-degree polynomial problem and
+        # was not distinguishable from this -- 17 wins of 20 against 16 -- so the
+        # sampling rule stays as it is.
         for i in range(len(self)):
-            self.get(i).resample([val.get(i) for val in best_values], [val.get(i) for val in  worst_values])
+            best = [val.get(i) for val in best_values if i < len(val)]
+            worst = [val.get(i) for val in worst_values if i < len(val)]
+            if best and worst:
+                self.get(i).resample(best, worst)
 
 class TPESolution(Solution):
     """

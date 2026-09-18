@@ -14,12 +14,13 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-import random
-from typing import Any
+from typing import Any, cast
 
 from metagen.framework.domain import RealDefinition
 
 from .base import BaseType
+from metagen.framework.alteration import RelativeAlteration
+from metagen.framework.rng import get_rng
 
 
 class Real(BaseType):
@@ -47,33 +48,61 @@ class Real(BaseType):
             raise ValueError(
                 f"The value provided must be a float in the range [{min_value}, {max_value}]")
 
+    def get_definition(self) -> RealDefinition:
+        """
+        The definition this variable was built from.
+
+        Narrows what :py:meth:`~metagen.framework.solution.types.base.BaseType.get_definition`
+        declares, which is the union of every definition and whose ``get_attributes``
+        is therefore a union of tuples of two to five elements. Every unpacking here
+        is of a fixed width, so without the narrowing none of them type-checks.
+
+        :return: The definition of this variable.
+        :rtype: RealDefinition
+        """
+        return cast(RealDefinition, super().get_definition())
+
     def initialize(self) -> None:
         """
-        Initialize the Real variable with a rs float value in the defined ranges considering the step size.
+        Initialize the Real variable with a random float value in the defined ranges considering the step size.
         """
         _, min_value, max_value, step = self.get_definition().get_attributes()
 
-        random_real = random.uniform(min_value, max_value)
-        if step is not None:
-            random_real = self._closest_number(random_real, step)
-        self.set(random_real)
+        # Delegated instead of rounding here: this used to skip the clipping that
+        # _generate_numerical does, and could hand set() a value its own check()
+        # rejects (F-01).
+        self.set(self._generate_numerical(min_value, max_value, step))
 
-    def mutate(self, alteration_limit: float = None) -> None:
+    def mutate(self, alteration_limit: Any = None) -> None:
         """
-        Modify the value of this Real instance to a rs value from its definition.
+        Modify the value of this Real instance to a random value from its definition.
 
-        :param alteration_limit: The determined how much the mutation will alter the current value. If not provided, the mutation can replace the current value with any within the domain.
+        :param alteration_limit: How far the mutation may move the current value. A
+            number is an absolute amount; a :py:class:`~metagen.framework.alteration.RelativeAlteration`
+            is a fraction of this variable's own range. If not provided, the
+            mutation can replace the current value with any within the domain.
+        :type alteration_limit: float or RelativeAlteration or None
         """
         _, min_value, max_value, step = self.get_definition().get_attributes()
+        # Kept before the alteration limit narrows the interval: the grid belongs to
+        # the domain, so anchoring it at a narrowed bound would put the mutated value
+        # off the grid every other call (F-01).
+        domain_min_value = min_value
 
-        if alteration_limit != None:
+        # Resolved here rather than by the caller because the caller has one number
+        # for the whole solution, and every variable has a range of its own (F-32).
+        if isinstance(alteration_limit, RelativeAlteration):
+            alteration_limit = alteration_limit.of(min_value, max_value)
+
+        if alteration_limit is not None:
             limited_min_value = self.get() - alteration_limit
             limited_max_value = self.get() + alteration_limit
 
             min_value = limited_min_value if max_value > limited_min_value > min_value else min_value
             max_value = limited_max_value if max_value > limited_max_value > min_value else max_value
 
-        self.set(self._generate_numerical(min_value, max_value, step))
+        self.set(self._generate_numerical(min_value, max_value, step,
+                                          origin=domain_min_value))
 
     def set(self, value: Any) -> None:
         """
@@ -84,4 +113,8 @@ class Real(BaseType):
 
         """
         self.check(value)
-        super().set(value)
+
+        # Normalized: the definition accepts anything numbers.Integral/Real since A-08,
+        # so 1 into a real variable or a numpy scalar would otherwise be stored as it
+        # came in. What the user reads back is always a native float.
+        super().set(float(value))

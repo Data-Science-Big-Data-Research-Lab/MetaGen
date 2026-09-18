@@ -1,18 +1,23 @@
 import threading
-from typing import Set
+from typing import Any, Dict
 
 from metagen.framework import Solution
-from metagen.metaheuristics.cvoa.common_tools import IndividualState
+from metagen.metaheuristics.cvoa.common_tools import IndividualState, SolutionSet
 
 
 # Local pandemic state (multi-threading)
 class LocalPandemicState:
     def __init__(self, initial_individual:Solution):
         # Lock fot multi-threading safety access to the shared structures.
-        self.lock = threading.Lock()
-        self.recovered:Set[Solution] = set()
-        self.deaths:Set[Solution] = set()
-        self.isolated:Set[Solution] = set()
+        # Reentrant on purpose: isolate_individual_conditional_state holds it and
+        # calls get_individual_state, which takes it again. A plain Lock is not
+        # reentrant, so that thread blocked against itself (F-08). The failure mode
+        # of getting the nesting wrong is a silent hang, which is reason enough to
+        # let a thread reacquire a lock it already owns.
+        self.lock = threading.RLock()
+        self.recovered: SolutionSet = SolutionSet()
+        self.deaths: SolutionSet = SolutionSet()
+        self.isolated: SolutionSet = SolutionSet()
         self.best_individual_found:bool = False
         self.best_individual:Solution = initial_individual
 
@@ -37,7 +42,7 @@ class LocalPandemicState:
             self.recovered.remove(individual)
 
     # Deaths
-    def update_deaths(self, individuals:Set[Solution])-> None:
+    def update_deaths(self, individuals:SolutionSet)-> None:
         with self.lock:
             self.deaths.update(individuals)
 
@@ -52,11 +57,17 @@ class LocalPandemicState:
                 self.recovered.add(individual)
 
     # Isolated
-    def isolate_individual_conditional_state(self, individual:Solution, conditional_state:IndividualState) -> None:
+    def isolate(self, individual: Solution) -> None:
+        """
+        Count an individual as isolated.
+
+        It does not join the recovered, so the point stays open to be infected again.
+        """
+        # F-45: sending it to the recovered was measured to search worse on binary
+        # domains. The set used to demand a state no individual can have, so it never
+        # held anyone.
         with self.lock:
-            current_state:IndividualState = self.get_individual_state(individual)
-            if current_state == conditional_state:
-                self.isolated.add(individual)
+            self.isolated.add(individual)
 
     # Best Individual
     def update_best_individual(self, individual:Solution) -> None:
@@ -68,7 +79,7 @@ class LocalPandemicState:
         with self.lock:
             return self.best_individual
 
-    def get_pandemic_report(self):
+    def get_pandemic_report(self) -> Dict[str, Any]:
         with self.lock:
             return {
                 "recovered": len(self.recovered),
