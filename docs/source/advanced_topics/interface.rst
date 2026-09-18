@@ -61,6 +61,31 @@ Example: a search that mutates every solution in each iteration and stops after 
 
 Passing ``**kwargs`` through to the base class is what gives the new algorithm ``seed``, ``log_dir``, ``distributed`` and ``distribution_model`` for free.
 
+Callbacks
+---------
+
+Four methods do nothing in the base class and may be overridden to hook into the run. They run
+in the driver, also under ``distributed=True``, so they are where state that must survive an
+iteration is kept:
+
+- ``pre_execution()`` – once, before the warmup and the initialization.
+- ``pre_iteration()`` – before every iteration.
+- ``post_iteration()`` – after every iteration, with ``self.current_solutions`` and
+  ``self.best_solution`` already updated. Call ``super().post_iteration()`` to keep the
+  TensorBoard logging.
+- ``post_execution()`` – once, when the stopping criterion is met.
+
+.. code-block:: python
+
+    class MutateAllWithTrace(MutateAll):
+        def pre_execution(self) -> None:
+            super().pre_execution()
+            self.trace = []
+
+        def post_iteration(self) -> None:
+            super().post_iteration()
+            self.trace.append(self.best_solution.get_fitness())
+
 Two rules to keep
 -----------------
 

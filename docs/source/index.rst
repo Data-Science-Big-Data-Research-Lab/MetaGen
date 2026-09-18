@@ -77,6 +77,13 @@ Using pip:
 
    (.venv) $ pip install pymetagen-datalabupo
 
+Distributed execution and TensorBoard logging are optional and installed on demand:
+
+.. code-block:: console
+
+   (.venv) $ pip install pymetagen-datalabupo[distributed]
+   (.venv) $ pip install pymetagen-datalabupo[tensorboard]
+
 
 Quick Example
 --------------

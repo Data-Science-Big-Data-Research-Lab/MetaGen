@@ -38,6 +38,12 @@ Inside this loop, each potential solution in the potential_solutions list is pro
 
 .. code-block:: python
 
+    from copy import deepcopy
+    from typing import Callable, List
+
+    from metagen.framework import Domain, Solution
+
+
     class RandomSearch:
 
         def __init__(self, domain: Domain, fitness: Callable[[Solution], float], search_space_size: int = 30,

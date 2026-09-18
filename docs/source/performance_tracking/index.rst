@@ -13,11 +13,18 @@ Logging is **off by default**: ``log_dir=None`` writes nothing, whether or not T
 
 .. code-block:: python
 
+    from metagen.framework import Domain, Solution
     from metagen.metaheuristics import RandomSearch
+
+    domain = Domain()
+    domain.define_real("x", -5.0, 5.0)
+
+    def fitness_function(solution: Solution) -> float:
+        return solution["x"] ** 2
 
     best_solution = RandomSearch(domain, fitness_function, log_dir="logs/random_search").run()
 
-A different directory per run keeps the runs apart in the dashboard. The CVOA launchers take the same parameter.
+Each run writes to its own timestamped subdirectory of ``log_dir``, so several runs can share one directory and be compared in the dashboard. The CVOA launchers take the same parameter.
 
 Installing TensorBoard
 ----------------------
@@ -48,3 +55,20 @@ The dashboard shows, per iteration:
 - **Average value of each numeric variable**, and the average length of each structure, which show where in the domain the population is settling.
 
 and, at the end of the run, a **text summary** with the best solution found.
+
+Console and file logs
+---------------------
+
+Apart from TensorBoard, the package reports its progress through Python's ``logging``. It is
+silent by default; two functions of ``metagen.logging.metagen_logger`` turn it on:
+
+.. code-block:: python
+
+    import logging
+    from metagen.logging.metagen_logger import (set_metagen_logger_level,
+                                                set_metagen_logger_file_handler)
+
+    set_metagen_logger_level(logging.INFO)             # print to the console from INFO up
+    set_metagen_logger_file_handler("metagen_logs")    # and write a log file in that directory
+
+Both can be called at any point before ``run()``, and calling them again does not duplicate the output.

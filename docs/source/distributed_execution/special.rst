@@ -29,6 +29,9 @@ When initializing the `Memetic` algorithm, users can specify the ``distributed``
     my_domain.define_real("x", -5.0, 5.0)
     my_domain.define_real("y", -5.0, 5.0)
 
+    def my_fitness_function(solution):
+        return solution["x"] ** 2 + solution["y"] ** 2
+
     memetic = Memetic(domain=my_domain,
                       fitness_function=my_fitness_function,
                       population_size=100,
@@ -78,8 +81,16 @@ The launcher starts Ray if it is not running, and shuts it down afterwards only 
 
 .. code-block:: python
 
+    from metagen.framework import Domain, Solution
     from metagen.metaheuristics import StrainProperties
     from metagen.metaheuristics.cvoa import distributed_cvoa_launcher
+
+    my_domain = Domain()
+    my_domain.define_real("x", -5.0, 5.0)
+    my_domain.define_real("y", -5.0, 5.0)
+
+    def my_fitness_function(solution: Solution) -> float:
+        return solution["x"] ** 2 + solution["y"] ** 2
 
     my_strains = [StrainProperties("Strain#1", pandemic_duration=10),
                   StrainProperties("Strain#2", pandemic_duration=10, p_travel=0.2)]

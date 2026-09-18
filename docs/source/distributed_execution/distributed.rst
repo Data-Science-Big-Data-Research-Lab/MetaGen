@@ -20,19 +20,25 @@ Example usage:
 
 .. code-block:: python
 
-    from metagen.metaheuristics import SomeMetaheuristic
+    from metagen.framework import Domain, Solution
+    from metagen.metaheuristics import HillClimbing
 
-    metaheuristic = SomeMetaheuristic(domain=my_domain,
-                                      fitness_function=my_fitness_function,
-                                      population_size=100,
-                                      distributed=True)                      # the "global" model
+    my_domain = Domain()
+    my_domain.define_real("x", -5.0, 5.0)
+    my_domain.define_real("y", -5.0, 5.0)
+
+    def my_fitness_function(solution: Solution) -> float:
+        return solution["x"] ** 2 + solution["y"] ** 2
+
+    metaheuristic = HillClimbing(my_domain, my_fitness_function,
+                                 population_size=100,
+                                 distributed=True)                      # the "global" model
     best_solution = metaheuristic.run()
 
-    islands = SomeMetaheuristic(domain=my_domain,
-                                fitness_function=my_fitness_function,
-                                population_size=100,
-                                distributed=True,
-                                distribution_model="islands")
+    islands = HillClimbing(my_domain, my_fitness_function,
+                           population_size=100,
+                           distributed=True,
+                           distribution_model="islands")
     best_solution = islands.run()
 
 How Distributed Execution Works

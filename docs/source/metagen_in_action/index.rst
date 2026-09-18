@@ -7,5 +7,6 @@
 .. toctree::
     :maxdepth: 1
 
-    duc/index
     suc/index
+    working_with_solutions
+    duc/index
