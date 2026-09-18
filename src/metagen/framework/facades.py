@@ -28,14 +28,21 @@ from metagen.framework.domain.literals import CatVal
 from metagen.framework.domain.preconditions import Messages
 
 
+def _lookup(core: BaseDefinition, name: str) -> Base:
+    """The definition of a variable, or an error that names the variable that is missing."""
+    if not core.is_variable(name):
+        raise ValueError(Messages.definition(name, "d_n"))
+    return cast(Base, core.get(name))
+
+
 def _get_base_type(core: BaseDefinition, var: str | None, remember: bool = False) -> Base | None:
     res: Base | None = None
     if var is not None:
         if not remember:
-            res = cast(Base, core.get(var))
+            res = _lookup(core, var)
             core.delete(var)
         else:
-            res = cast(Base, deepcopy(core.get(var)))
+            res = deepcopy(_lookup(core, var))
     return res
 
 
@@ -163,7 +170,7 @@ class Domain:
         :type step: int
         """
         group_def: BaseDefinition = _get_group_definition(
-            group, self._core.get(group))
+            group, _lookup(self._core, group))
         integer_definition = cast(type[IntegerDefinition], self._connector.get_definition(
             self._connector.get_type(int)))
         group_def.define(name, integer_definition(min_value, max_value, step))
@@ -185,7 +192,7 @@ class Domain:
         :type step: float
         """
         group_def: BaseDefinition = _get_group_definition(
-            group, self._core.get(group))
+            group, _lookup(self._core, group))
         real_definition = cast(type[RealDefinition], self._connector.get_definition(
             self._connector.get_type(float)))
         group_def.define(name, real_definition(min_value, max_value, step))
@@ -202,7 +209,7 @@ class Domain:
         :type categories: list of int, float or str
         """
         group_def: BaseDefinition = _get_group_definition(
-            group, self._core.get(group))
+            group, _lookup(self._core, group))
         categorical_definition = cast(type[CategoricalDefinition], self._connector.get_definition(
             self._connector.get_type(str)))
         group_def.define(name, categorical_definition(categories))
@@ -219,7 +226,7 @@ class Domain:
         :type remember: bool, optional
         """
         group_def: BaseDefinition = _get_group_definition(
-            group, self._core.get(group))
+            group, _lookup(self._core, group))
         base_type: Base = _check_base_type(self._core, var, remember)
         group_def.define(var, base_type)
 
@@ -285,7 +292,7 @@ class Domain:
         :type step: int
         """
         structure: BaseStructureDefinition = _get_structure_definition(
-            name, self._core.get(name))
+            name, _lookup(self._core, name))
         integer_definition = cast(type[IntegerDefinition], self._connector.get_definition(
             self._connector.get_type(int)))
         structure.set_base(integer_definition(min_value, max_value, step))
@@ -300,7 +307,7 @@ class Domain:
         :type categories: list of int, float or str
         """
         structure: BaseStructureDefinition = _get_structure_definition(
-            name, self._core.get(name))
+            name, _lookup(self._core, name))
         categorical_definition = cast(type[CategoricalDefinition], self._connector.get_definition(
             self._connector.get_type(str)))
         structure.set_base(categorical_definition(categories))
@@ -320,7 +327,7 @@ class Domain:
         :type step: float
         """
         structure: BaseStructureDefinition = _get_structure_definition(
-            name, self._core.get(name))
+            name, _lookup(self._core, name))
         real_definition = cast(type[RealDefinition], self._connector.get_definition(
             self._connector.get_type(float)))
         structure.set_base(real_definition(min_value, max_value, step))
@@ -337,7 +344,7 @@ class Domain:
         :type remember: bool, optional
         """
         structure: BaseStructureDefinition = _get_structure_definition(
-            name, self._core.get(name))
+            name, _lookup(self._core, name))
         base_type: Base = _check_base_type(self._core, var, remember)
         structure.set_base(base_type)
 

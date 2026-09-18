@@ -9,7 +9,8 @@ import pytest
 
 from metagen.framework import Domain, Solution
 from metagen.framework.rng import set_seed
-from metagen.metaheuristics import GA, TPE, GAConnector, HillClimbing, RandomSearch, TabuSearch
+from metagen.metaheuristics import (GA, SA, SSGA, TPE, GAConnector, HillClimbing, KernelTPE, Memetic,
+                                    RandomSearch, TabuSearch)
 
 
 def _sphere_domain(connector=None) -> Domain:
@@ -160,3 +161,42 @@ def test_the_same_seed_reproduces_a_run_under_either_model(ray_runtime, model):
     results = [run.run().get_fitness() for run in runs]
     assert results[0] == results[1]
     assert runs[0].best_solution_fitnesses == runs[1].best_solution_fitnesses
+
+
+def _build(name: str, fitness, model: str, **extra):
+    """One of the nine population-based or single-point algorithms, small, on Ray."""
+    genetic = name in ("GA", "SSGA", "Memetic")
+    domain = _sphere_domain(GAConnector() if genetic else None)
+    common = dict(max_iterations=3, distributed=True, seed=2, distribution_model=model, **extra)
+    if name == "SA":
+        return SA(domain, fitness, warmup_iterations=1, **common)
+    if name in ("TPE", "KernelTPE"):
+        return {"TPE": TPE, "KernelTPE": KernelTPE}[name](domain, fitness, population_size=6,
+                                                          warmup_iterations=1, **common)
+    if name == "Memetic":
+        return Memetic(domain, fitness, population_size=6, neighbor_population_size=2, **common)
+    algorithm = {"RandomSearch": RandomSearch, "HillClimbing": HillClimbing, "TabuSearch": TabuSearch,
+                 "GA": GA, "SSGA": SSGA}[name]
+    return algorithm(domain, fitness, population_size=6, **common)
+
+
+@pytest.mark.parametrize("model", ["global", "islands"])
+@pytest.mark.parametrize("name", ["RandomSearch", "HillClimbing", "TabuSearch", "SA", "GA", "SSGA",
+                                  "TPE", "KernelTPE", "Memetic"])
+def test_every_algorithm_runs_under_both_models(ray_runtime, name, model):
+    """The run ends, returns the best solution it saw, and its history never gets worse."""
+    algorithm = _build(name, _sphere_for_the_workers(), model)
+    best = algorithm.run()
+    history = algorithm.best_solution_fitnesses
+    assert best.get_fitness() == min(history)
+    assert all(later <= earlier for earlier, later in zip(history, history[1:]))
+    assert best.get_fitness() == pytest.approx(_sphere(best))
+
+
+@pytest.mark.parametrize("model", ["global", "islands"])
+@pytest.mark.parametrize("level", [1, 2])
+def test_the_memetic_algorithm_runs_at_every_distribution_level(ray_runtime, level, model):
+    algorithm = _build("Memetic", _sphere_for_the_workers(), model, distribution_level=level)
+    best = algorithm.run()
+    assert best.get_fitness() == min(algorithm.best_solution_fitnesses)
+    assert best.get_fitness() == pytest.approx(_sphere(best))

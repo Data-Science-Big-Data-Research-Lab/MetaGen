@@ -133,6 +133,9 @@ class Metaheuristic(ABC):
 
         self.domain = domain
         self.fitness_function = fitness_function
+        if population_size < self.minimum_slice:
+            raise ValueError(f"{type(self).__name__} needs a population of at least {self.minimum_slice} "
+                             f"and population_size is {population_size}.")
         self.population_size = population_size
         self.warmup_iterations = warmup_iterations
         self.distributed = distributed
