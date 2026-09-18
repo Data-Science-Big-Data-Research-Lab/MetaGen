@@ -14,7 +14,7 @@ To install Ray, run:
 
 .. code-block:: bash
 
-    pip install ray
+    pip install pymetagen-datalabupo[distributed]
 
 Example usage:
 
@@ -67,11 +67,9 @@ Two things follow:
   ``RandomSearch`` 145 and 130, and ``SSGA`` 40 and 70.
 - **The whole population competes.** Every individual can meet every other across
   iterations, which a population split into fixed islands cannot offer.
-- **Distributed is still not the same search as sequential.** The survivor selection is
-  elitist in a way the sequential algorithms are not: a sequential ``GA`` is
-  generational with two elites, a distributed one is (μ+λ). Two distributed runs with
-  the same ``seed`` **on the same number of CPUs** reproduce each other, since the
-  shuffle and every worker task are seeded from the driver's generator.
+- **Runs are reproducible.** Two distributed runs with the same ``seed`` on the same
+  number of CPUs reproduce each other, since the shuffle and every worker task are
+  seeded from the driver's generator.
 
 **The island model** (``distribution_model="islands"``). The slices come back with the
 size they left with and are concatenated in order, so the next split hands **the same
@@ -84,22 +82,15 @@ builds its model over its slice, and ``RandomSearch`` keeps one elite per slice.
 number of evaluations changes with the number of CPUs**: for example, with a
 population of 6 over 3 iterations on two CPUs, a run of ``GA`` makes 24 evaluations
 sequentially and 18 on islands, and ``SSGA`` 12 and 18; ``TPE`` spends more on islands,
-because every island evaluates a whole candidate pool. A run on 2 CPUs and a
-run on 8 are different searches.
+because every island evaluates a whole candidate pool.
 
 ``SA`` works on a population of one, so it gains nothing from either model.
-
-If what you need is the **same search, only faster**, distribute the fitness function
-yourself and keep ``distributed=False``: that keeps the algorithm, the budget and the
-reproducibility of the sequential mode.
 
 Resource Allocation
 -------------------
 The workload is split into as many slices as **CPUs the cluster has**, read once per
-iteration from ``ray.cluster_resources()``. It is not the number of CPUs free at that
-instant, which lags behind the tasks that just finished and used to send the whole
-population to a single worker from the second iteration on. Logging at each iteration
-shows the CPU count and the split:
+iteration from ``ray.cluster_resources()``. Logging at each iteration shows the CPU
+count and the split:
 
 .. code-block:: text
 
@@ -114,8 +105,7 @@ Limitations and Considerations
 - Distributed execution pays off **only for computationally expensive fitness functions**:
   Ray serializes a copy of the algorithm and the slice for every task, and with a fitness of
   a few milliseconds that overhead dominates.
-- Since distributing changes the search, **compare distributed runs only with distributed
-  runs on the same number of CPUs**.
+- To compare runs, use the same ``seed`` and the same number of CPUs.
 - Running Ray in a **multi-node cluster** requires additional setup beyond the default
   single-machine execution.
 

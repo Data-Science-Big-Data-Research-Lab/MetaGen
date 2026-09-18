@@ -61,10 +61,7 @@ class LocalPandemicState:
         """
         Count an individual as isolated.
 
-        It does not join the recovered: MetaGen departs from the paper's Algorithm 3
-        here on purpose, so the point stays open to be infected again. Sending it to
-        the recovered would lock, with the default ``p_isolation``, 70 % of every
-        carrier's neighborhood.
+        It does not join the recovered, so the point stays open to be infected again.
         """
         # F-45: sending it to the recovered was measured to search worse on binary
         # domains. The set used to demand a state no individual can have, so it never

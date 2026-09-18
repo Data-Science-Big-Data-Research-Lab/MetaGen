@@ -1518,9 +1518,9 @@ def _bloque_de_codigo(modulo: str) -> str:
     "metagen.metaheuristics.tpe.tpe",
     "metagen.metaheuristics.mm.memetic",
     "metagen.metaheuristics.cvoa.cvoa_local",
-    "metagen.metaheuristics.cvoa.cvoa_canonical",
+    "metagen.metaheuristics.cvoa.cvoa_probabilistic",
     "metagen.metaheuristics.ts.tabu_search",
-    "metagen.metaheuristics.tpe.canonical_tpe",
+    "metagen.metaheuristics.tpe.kernel_tpe",
     "metagen.metaheuristics.ga.ga",
     "metagen.metaheuristics.ga.ssga",
     "metagen.metaheuristics.sa.sa",
@@ -2798,7 +2798,7 @@ def test_f45_el_aislado_se_cuenta_y_no_bloquea_el_punto(update_isolated):
     aislan: ninguno entra en la poblacion y los cinco se cuentan, pida lo que pida
     update_isolated. Y NO pasan a recuperados: MetaGen se aparta ahi del articulo a
     proposito, medido, para que el punto siga abierto; la semantica del articulo ira
-    en CanonicalCVOA."""
+    en ProbabilisticCVOA."""
     cepa, estado, portador = _portador_y_cepa_local(update_isolated)
 
     nuevos = cepa.infect_individuals(portador, 1, 5)

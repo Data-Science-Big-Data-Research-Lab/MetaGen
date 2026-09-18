@@ -55,8 +55,8 @@ class RemotePandemicState:
     # Isolated
     def isolate(self, individual: Solution) -> None:
         """
-        Count an individual as isolated. It does not join the recovered: MetaGen
-        departs from the paper here on purpose, see LocalPandemicState.isolate.
+        Count an individual as isolated. It does not join the recovered, so the point
+        stays open to be infected again.
         """
         # F-45.
         self.isolated.add(individual)
@@ -142,7 +142,7 @@ def spread_on_ray(strain_class: "type[CVOA]", state: PandemicState, domain: Doma
                   carriers: Iterable[Solution], superspreaders: SolutionSet, time: int) -> SolutionSet:
     """
     The contagion step of one iteration on Ray: one task per carrier, each running the
-    strain class's own infect_from_carrier, so a subclass's variant of isolation or
+    strain class's own infect_from_carrier, so a subclass's rules for isolation or
     admission runs in the tasks too.
 
     :return: The newly infected population, in carrier order.

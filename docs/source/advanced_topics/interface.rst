@@ -4,7 +4,7 @@
 Extending the Metaheuristic Class
 ==================================
 
-Developers can extend |metagen| by implementing new metaheuristics that **inherit from the abstract** |metaheuristic| **class**. The base class provides:
+A metaheuristic can be any class that takes a |domain| and a fitness function and returns a |solution| (see :doc:`../metagen_in_action/duc/index`). It can also **inherit from the abstract** |metaheuristic| **class**, which provides:
 
 - The **run loop**: warmup, initialization, iterations and the callbacks around them.
 - **Elitism**: the best solution ever seen is kept even if an iteration returns a worse one.
@@ -15,7 +15,7 @@ Developers can extend |metagen| by implementing new metaheuristics that **inheri
 Implementing a Custom Metaheuristic
 -----------------------------------
 
-To create a new metaheuristic, extend |metaheuristic| and implement three methods:
+A metaheuristic that extends |metaheuristic| implements three methods:
 
 1. ``initialize(num_solutions)`` – returns the first population and its best solution.
 2. ``iterate(solutions)`` – returns the next population and the best solution of the iteration.

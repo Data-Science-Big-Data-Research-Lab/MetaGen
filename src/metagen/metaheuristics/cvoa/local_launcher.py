@@ -43,8 +43,7 @@ def cvoa_launcher(strains: List[StrainProperties], domain: Domain, fitness_funct
         share those generators, so a seed makes a single-strain run reproducible
         but does not pin down the interleaving of several strains.
     :type seed: Optional[int], optional
-    :param strain_class: The class every strain is built from (default is CVOA, MetaGen's
-        variant). A subclass of CVOA changes what a strain does; the launcher does not.
+    :param strain_class: The class every strain is built from (default is CVOA). A subclass of CVOA changes what a strain does; the launcher does not.
     :type strain_class: type[CVOA], optional
     :return: The best solution found across every strain.
     :rtype: Solution

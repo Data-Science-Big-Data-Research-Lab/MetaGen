@@ -59,9 +59,9 @@ class Metaheuristic(ABC):
     :param distributed: Whether to run on Ray (default is False): the population is
         split into one slice per CPU of the cluster and each slice runs ``iterate`` on
         its own in a worker, every iteration. What happens to the slices afterwards is
-        the ``distribution_model``. Distributed and sequential runs are not comparable
-        value by value; two distributed runs with the same ``seed`` on the same number
-        of CPUs are, since every worker task is seeded from the driver's generator.
+        the ``distribution_model``. Two distributed runs with the same ``seed`` on the
+        same number of CPUs reproduce each other, since every worker task is seeded
+        from the driver's generator.
     :type distributed: bool, optional
     :param distribution_model: How the slices make up the next population, ``"global"``
         (the default) or ``"islands"``.
@@ -389,8 +389,7 @@ class Metaheuristic(ABC):
         """
         Check if the algorithm should stop.
 
-        Abstract on purpose: a subclass that does not implement it cannot be
-        instantiated, instead of looping for ever.
+        Abstract: every metaheuristic defines when it stops.
 
         :return: True if the algorithm should stop, False otherwise.
         :rtype: bool

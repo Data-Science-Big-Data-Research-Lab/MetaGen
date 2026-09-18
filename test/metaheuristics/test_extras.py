@@ -12,7 +12,7 @@ import time
 import pytest
 
 from metagen.framework import Domain
-from metagen.metaheuristics import GA, SSGA, TPE, CanonicalTPE, GAConnector, HillClimbing, Memetic, RandomSearch, SA, TabuSearch
+from metagen.metaheuristics import GA, SSGA, TPE, KernelTPE, GAConnector, HillClimbing, Memetic, RandomSearch, SA, TabuSearch
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 
@@ -64,7 +64,7 @@ def _distributed(name: str, seed: int):
                                          max_iterations=3, distributed=True, seed=seed),
         "TPE": lambda: TPE(domain, _sphere, warmup_iterations=2, max_iterations=3,
                            distributed=True, seed=seed),
-        "CanonicalTPE": lambda: CanonicalTPE(domain, _sphere, population_size=6, warmup_iterations=1,
+        "KernelTPE": lambda: KernelTPE(domain, _sphere, population_size=6, warmup_iterations=1,
                                              max_iterations=3, distributed=True, seed=seed),
         "GA": lambda: GA(ga_domain, _sphere, population_size=6, max_iterations=3,
                          distributed=True, seed=seed),
@@ -75,7 +75,7 @@ def _distributed(name: str, seed: int):
     }[name]()
 
 
-@pytest.mark.parametrize("name", ["RandomSearch", "SA", "HillClimbing", "TabuSearch", "TPE", "CanonicalTPE", "GA", "SSGA", "Memetic"])
+@pytest.mark.parametrize("name", ["RandomSearch", "SA", "HillClimbing", "TabuSearch", "TPE", "KernelTPE", "GA", "SSGA", "Memetic"])
 def test_every_algorithm_runs_distributed(ray_runtime, name):
     for seed in (0, 1):
         algorithm = _distributed(name, seed)
@@ -134,7 +134,7 @@ def test_distributed_cvoa_runs_on_ray(ray_runtime, update_isolated):
     assert not math.isinf(best.get_fitness())
 
 
-@pytest.mark.parametrize("name", ["RandomSearch", "HillClimbing", "TabuSearch", "TPE", "CanonicalTPE", "GA", "SSGA", "Memetic"])
+@pytest.mark.parametrize("name", ["RandomSearch", "HillClimbing", "TabuSearch", "TPE", "KernelTPE", "GA", "SSGA", "Memetic"])
 def test_the_work_is_spread_across_workers(ray_runtime, name):
     """Every individual is evaluated in some worker process; with two CPUs and a
     fitness slow enough for the split to matter, more than one worker has to show up.
@@ -160,7 +160,7 @@ def test_the_work_is_spread_across_workers(ray_runtime, name):
                                          max_iterations=3, distributed=True, seed=0),
         "TPE": lambda: TPE(domain, fitness, warmup_iterations=2, max_iterations=3,
                            distributed=True, seed=0),
-        "CanonicalTPE": lambda: CanonicalTPE(domain, fitness, population_size=6, warmup_iterations=1,
+        "KernelTPE": lambda: KernelTPE(domain, fitness, population_size=6, warmup_iterations=1,
                                              max_iterations=3, distributed=True, seed=0),
         "GA": lambda: GA(ga_domain, fitness, population_size=6, max_iterations=3,
                          distributed=True, seed=0),

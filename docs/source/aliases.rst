@@ -25,7 +25,7 @@
 .. |metaheuristic| replace:: :class:`Metaheuristic <metagen.metaheuristics.base.Metaheuristic>`
 .. |rs| replace:: :class:`RS <metagen.metaheuristics.rs.random_search.RandomSearch>`
 .. |tpe| replace:: :class:`TPE <metagen.metaheuristics.tpe.tpe.TPE>`
-.. |canonical_tpe| replace:: :class:`CanonicalTPE <metagen.metaheuristics.tpe.canonical_tpe.CanonicalTPE>`
+.. |kernel_tpe| replace:: :class:`KernelTPE <metagen.metaheuristics.tpe.kernel_tpe.KernelTPE>`
 .. |sa| replace:: :class:`SA <metagen.metaheuristics.sa.sa.SA>`
 .. |hc| replace:: :class:`HillClimbing <metagen.metaheuristics.hc.hill_climbing.HillClimbing>`
 .. |ts| replace:: :class:`TS <metagen.metaheuristics.ts.tabu_search.TabuSearch>`
@@ -33,7 +33,7 @@
 .. |ga| replace:: :class:`GA <metagen.metaheuristics.ga.ga.GA>`
 .. |ssga| replace:: :class:`SSGA <metagen.metaheuristics.ga.ssga.SSGA>`
 .. |cvoa| replace:: :class:`CVOA <metagen.metaheuristics.cvoa.cvoa_local.CVOA>`
-.. |canonical_cvoa| replace:: :class:`CanonicalCVOA <metagen.metaheuristics.cvoa.cvoa_canonical.CanonicalCVOA>`
+.. |probabilistic_cvoa| replace:: :class:`ProbabilisticCVOA <metagen.metaheuristics.cvoa.cvoa_probabilistic.ProbabilisticCVOA>`
 .. |ga_structure| replace:: :class:`GAStructure <metagen.metaheuristics.ga.ga_tools.GAStructure>`
 .. |ga_solution| replace:: :class:`GASolution <metagen.metaheuristics.ga.ga_tools.GASolution>`
 .. |ga_connector| replace:: :class:`GAConnector <metagen.metaheuristics.ga.ga_tools.GAConnector>`

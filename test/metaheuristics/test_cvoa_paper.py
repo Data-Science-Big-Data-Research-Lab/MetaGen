@@ -6,15 +6,14 @@ The paper studies the algorithm on binary encodings with f(x) = (x - 15)^2 over
 and decays once social distancing starts (Figure 2), R0 falls linearly with
 P_ISOLATION and drops below 1 (Figure 5), and more strains explore more of the
 space, with more recovered and more deaths (Figures 3 and 4). Each test here
-states one of those results and runs it on both variants, CVOA and
-CanonicalCVOA, so what the paper says is checked on the class that implements it.
+states one of those results and runs it on both strain classes, CVOA and
+ProbabilisticCVOA.
 
 What is not asserted: the paper's numbers. Table 2 (five diseases, 10 to 50 bits)
 is a benchmark, not a threshold, and belongs in a measurement, not in the suite.
-Two departures from the paper are deliberate and explain the margins: MetaGen
-keeps the best individual of a strain in the population, so the curve decays to
-a residual level instead of to zero; and patients zero are drawn at random, not
-evenly spaced, so the paper's fourth conclusion about strains is not stated.
+Two implementation choices explain the margins the tests allow: a strain keeps its
+best individual in the population, so the curve decays to a residual level rather
+than to zero; and patients zero are drawn at random.
 """
 from typing import Dict, List
 
@@ -22,12 +21,12 @@ import pytest
 
 from metagen.framework import Domain, Solution
 from metagen.framework.rng import set_seed
-from metagen.metaheuristics import CanonicalCVOA, StrainProperties
+from metagen.metaheuristics import ProbabilisticCVOA, StrainProperties
 from metagen.metaheuristics.cvoa import CVOA
 from metagen.metaheuristics.cvoa.local_tools import LocalPandemicState
 
 BITS = 20
-VARIANTS = pytest.mark.parametrize("variant", [CVOA, CanonicalCVOA], ids=lambda c: c.__name__)
+VARIANTS = pytest.mark.parametrize("variant", [CVOA, ProbabilisticCVOA], ids=lambda c: c.__name__)
 
 
 def _paper_problem():
@@ -78,7 +77,7 @@ def test_the_pandemic_curve_rises_peaks_and_decays(variant, seed):
     reach zero because the strain keeps its best individual; it stays below a tenth
     of the peak over the last ten iterations.
 
-    A pandemic can also fail to take off: CanonicalCVOA makes patient zero a
+    A pandemic can also fail to take off: ProbabilisticCVOA makes patient zero a
     superspreader only with p_superspreader, and a strain that starts with a handful
     of carriers may never grow. That is a legitimate outcome of the paper's draws,
     not a curve to fit: such a run stays small throughout and is checked as such."""
@@ -87,7 +86,7 @@ def test_the_pandemic_curve_rises_peaks_and_decays(variant, seed):
     curve = curves["S0"]
 
     if max(curve) < 20:
-        assert variant is CanonicalCVOA, f"CVOA's patient zero always superspreads; it should take off: {curve}"
+        assert variant is ProbabilisticCVOA, f"CVOA's patient zero always superspreads; it should take off: {curve}"
         assert all(size <= 10 for size in curve), f"a pandemic that never took off should stay small: {curve}"
         return
 

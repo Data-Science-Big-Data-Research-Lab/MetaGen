@@ -1,13 +1,13 @@
 """
-CanonicalCVOA: the paper's CVOA next to MetaGen's. Each test pins one of the
-places where the two differ, and the last ones run it end to end, in threads and
+ProbabilisticCVOA next to CVOA. Each test pins one of the places where the two
+strain classes differ, and the last ones run it end to end, in threads and
 on Ray, and check that a seed reproduces it.
 """
 import pytest
 
 from metagen.framework import Domain, Solution
 from metagen.framework.rng import set_seed
-from metagen.metaheuristics import CanonicalCVOA, StrainProperties, cvoa_launcher
+from metagen.metaheuristics import ProbabilisticCVOA, StrainProperties, cvoa_launcher
 from metagen.metaheuristics.cvoa.common_tools import SolutionSet
 from metagen.metaheuristics.cvoa.local_tools import LocalPandemicState
 
@@ -27,7 +27,7 @@ def _strain(update_isolated=False, **properties):
     set_seed(0)
     domain = _domain()
     state = LocalPandemicState(Solution(domain))
-    strain = CanonicalCVOA(state, domain, _fitness, StrainProperties("S1", **properties), update_isolated)
+    strain = ProbabilisticCVOA(state, domain, _fitness, StrainProperties("S1", **properties), update_isolated)
     return strain, state
 
 
@@ -41,7 +41,7 @@ def _carriers(domain, how_many):
 
 
 def test_an_isolated_individual_joins_the_recovered():
-    """Algorithm 3, line 12. With p_isolation 1 and distancing on, a superspreader's
+    """With p_isolation 1 and distancing on, a superspreader's
     offspring, six at least, all end up recovered and counted, none in the population."""
     strain, state = _strain(pandemic_duration=3, social_distancing=1, p_isolation=1.0)
     strain.time = 1
@@ -58,7 +58,7 @@ def test_an_isolated_individual_joins_the_recovered():
 
 @pytest.mark.parametrize("p_isolation", [0.3, 0.5, 0.7])
 def test_isolation_is_drawn_once_per_carrier(p_isolation):
-    """Algorithm 3 draws R4 once and every offspring of the carrier shares it: the
+    """The isolation draw is made once and every offspring of the carrier shares it: the
     admitted population is all of them or none, never a fraction."""
     strain, state = _strain(pandemic_duration=3, social_distancing=1, p_isolation=p_isolation)
     strain.time = 1
@@ -90,7 +90,7 @@ def test_death_and_superspreading_are_drawn_per_individual(p_die, p_superspreade
 
 
 def test_the_carriers_recover_after_spreading():
-    """Algorithm 1, line 22: once they have spread, the carriers are recovered, so the
+    """Once they have spread, the carriers are recovered, so the
     next iteration cannot infect them again except by reinfection."""
     strain, state = _strain(pandemic_duration=3, p_die=0.0)
     population, _ = strain.initialize()
@@ -103,8 +103,8 @@ def test_the_carriers_recover_after_spreading():
 
 def test_it_runs_through_the_launcher_and_a_seed_reproduces_it():
     strains = [StrainProperties("S1", pandemic_duration=4, social_distancing=2)]
-    first = cvoa_launcher(strains, _domain(), _fitness, seed=3, strain_class=CanonicalCVOA)
-    second = cvoa_launcher(strains, _domain(), _fitness, seed=3, strain_class=CanonicalCVOA)
+    first = cvoa_launcher(strains, _domain(), _fitness, seed=3, strain_class=ProbabilisticCVOA)
+    second = cvoa_launcher(strains, _domain(), _fitness, seed=3, strain_class=ProbabilisticCVOA)
     assert first.get_fitness() == _fitness(first)
     assert first.get_fitness() == second.get_fitness()
 
@@ -122,7 +122,7 @@ def test_it_runs_on_ray():
 
     try:
         strains = [StrainProperties("S1", pandemic_duration=3, social_distancing=1)]
-        best = distributed_cvoa_launcher(strains, _domain(), fitness, seed=0, strain_class=CanonicalCVOA)
+        best = distributed_cvoa_launcher(strains, _domain(), fitness, seed=0, strain_class=ProbabilisticCVOA)
         assert best.get_fitness() == fitness(best)
     finally:
         if started_here and ray.is_initialized():

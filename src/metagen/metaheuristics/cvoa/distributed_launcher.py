@@ -54,7 +54,7 @@ def distributed_cvoa_launcher(strains: List[StrainProperties], domain: Domain, f
         state still depends on timing.
     :type seed: Optional[int], optional
     :param strain_class: The class every strain is built from, run with ``distributed=True``
-        (default is CVOA, MetaGen's variant).
+        (default is CVOA).
     :type strain_class: type[CVOA], optional
     :return: The best solution found across every strain.
     :rtype: Solution

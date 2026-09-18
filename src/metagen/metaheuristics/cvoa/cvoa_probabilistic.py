@@ -23,34 +23,26 @@ from metagen.metaheuristics.cvoa.common_tools import PandemicState, SolutionSet,
 from metagen.metaheuristics.cvoa.cvoa_local import CVOA
 
 
-class CanonicalCVOA(CVOA):
+class ProbabilisticCVOA(CVOA):
     """
-    The CVOA of the paper, where MetaGen's CVOA departs from it.
+    A CVOA strain in which the fate of each individual is drawn with its probability.
 
-    Martínez-Álvarez et al., *Coronavirus Optimization Algorithm: A Bioinspired
-    Metaheuristic Based on the COVID-19 Propagation Model*, Big Data 8(4), 2020.
-    Same strain, same launchers, same parameters and same pandemic state as CVOA;
-    it runs in threads and on Ray like it. What changes is what the pseudocode says
-    and CVOA does differently:
+    Same launchers, same parameters and same pandemic state as
+    :py:class:`~metagen.metaheuristics.cvoa.cvoa_local.CVOA`; it runs in threads and on
+    Ray like it, through ``strain_class=ProbabilisticCVOA``. It differs in how deaths,
+    superspreading and isolation are decided:
 
-    - **Death and superspreading are drawn per individual** (Algorithms 2 and 4): every
-      carrier dies with ``p_die`` and superspreads with ``p_superspreader``, each
-      iteration. CVOA picks them by fitness: the worst share dies and the best share
-      superspreads.
-    - **The dead are drawn before spreading and the carriers recover after it**
-      (Algorithm 1, lines 11 and 22). CVOA recovers them before.
-    - **An isolated individual joins the recovered** (Algorithm 3, line 12), and only
-      returns with ``p_re_infection``. In CVOA it is counted and the point stays
-      open: on binary domains that searched better, which is why CVOA keeps it.
-    - **Isolation and reinfection are drawn once per carrier** (Algorithm 3, lines 3
-      and 4): all of a carrier's offspring share the two draws. CVOA draws per
-      individual.
+    - **Death and superspreading are drawn per individual**: every carrier dies with
+      ``p_die`` and superspreads with ``p_superspreader``, each iteration.
+    - **The dead are drawn before spreading and the carriers recover after it.**
+    - **An isolated individual joins the recovered**, and only returns with
+      ``p_re_infection``.
+    - **Isolation and re-infection are drawn once per carrier**: all of a carrier's
+      offspring share the two draws.
 
-    What it does not inherit: the erratum of Algorithm 2, where the traveler and
-    superspreader rates are crossed; the text is implemented, as in CVOA. Social
-    distancing works as in CVOA too: isolation only applies from the
-    ``social_distancing`` iteration on, and from then on every contagion is at
-    distance one.
+    Social distancing works as in ``CVOA``: isolation only applies from the
+    ``social_distancing`` iteration on, and from then on every contagion is at distance
+    one.
 
     **Code example**
 
@@ -58,7 +50,7 @@ class CanonicalCVOA(CVOA):
 
         from metagen.framework import Domain, Solution
         from metagen.metaheuristics import cvoa_launcher
-        from metagen.metaheuristics.cvoa import CanonicalCVOA, StrainProperties
+        from metagen.metaheuristics.cvoa import ProbabilisticCVOA, StrainProperties
 
         domain = Domain()
         domain.define_integer("x", 0, 10)
@@ -67,7 +59,7 @@ class CanonicalCVOA(CVOA):
             return (solution["x"] - 3) ** 2
 
         strains = [StrainProperties("S1", pandemic_duration=10)]
-        best = cvoa_launcher(strains, domain, fitness_function, strain_class=CanonicalCVOA)
+        best = cvoa_launcher(strains, domain, fitness_function, strain_class=ProbabilisticCVOA)
     """
 
     def update_pandemic_global_state(self) -> None:
@@ -95,13 +87,13 @@ class CanonicalCVOA(CVOA):
         self.global_state.update_recovered_with_deaths()
 
     def after_spreading(self) -> None:
-        """Algorithm 1, line 22: the carriers recover once they have spread."""
+        """The carriers recover once they have spread."""
         for individual in self.infected:
             self.global_state.recover_if_not_dead(individual)
 
     @classmethod
     def isolate(cls, state: PandemicState, individual: Solution) -> None:
-        """Algorithm 3, line 12: the isolated individual joins the recovered."""
+        """The isolated individual is counted and joins the recovered."""
         state.isolate(individual)
         state.recover_if_not_dead(individual)
 
@@ -110,8 +102,8 @@ class CanonicalCVOA(CVOA):
                                 strain_properties: StrainProperties, carrier: Solution, travel_distance: int,
                                 n_infected: int, time: int) -> SolutionSet:
         """
-        Algorithm 3: the reinfection and isolation draws, R3 and R4, are made once
-        per carrier and shared by all of its offspring.
+        The re-infection and isolation draws are made once per carrier and shared by
+        all of its offspring.
         """
         reinfection_draw = get_rng().random()
         isolation_draw = get_rng().random()

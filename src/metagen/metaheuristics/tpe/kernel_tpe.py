@@ -31,38 +31,34 @@ from metagen.metaheuristics.tpe.tpe import TPE
 Path = Tuple[Union[str, int], ...]
 
 
-class CanonicalTPE(TPE):
+class KernelTPE(TPE):
     """
-    The Tree-structured Parzen Estimator as Bergstra et al. published it (*Algorithms
-    for Hyper-Parameter Optimization*, NeurIPS 2011), next to MetaGen's
-    :py:class:`~metagen.metaheuristics.TPE`, which stays as it is.
+    A Tree-structured Parzen Estimator that models each variable with a mixture of
+    kernels and evaluates one candidate per iteration, which suits a fitness function
+    that is expensive to evaluate.
 
-    Both keep a history of evaluated solutions, split it into the best fraction
-    ``gamma`` and the rest, and model each variable on its own. What differs is the
-    model and how a candidate is chosen:
+    It keeps a history of evaluated solutions, splits it into the best fraction
+    ``gamma`` and the rest, and models each variable on its own:
 
     - **The model is a mixture of kernels**, one per observation, plus a wide prior
       centered on the domain: a Parzen estimator. The width of each kernel is the
       distance to its nearest neighbor, clipped between the prior's width divided by
       the number of observations and the prior's width; integers are modeled on the
       real line and rounded to their grid; a categorical variable is modeled by its
-      counts, with the prior adding one to every category. MetaGen's TPE fits a
-      single Gaussian per variable to each side instead.
-    - **Candidates are drawn from the model of the best solutions only**, ``n_candidates``
+      counts, with the prior adding one to every category.
+    - **Candidates are drawn from the model of the best solutions**, ``n_candidates``
       of them per iteration, **and only the one that maximizes** ``l(x) / g(x)``, the
       ratio of the densities under the best and the rest, **is evaluated**: one
-      evaluation per iteration. MetaGen's TPE evaluates a whole pool per iteration,
-      drawn from both models.
+      evaluation per iteration.
 
-    The two pieces go together, which is why this is a class of its own: choosing
-    greedily by ``l(x) / g(x)`` over a single Gaussian per variable collapses the search
-    into a small region, and it is the mixture of kernels that keeps it open.
+    :py:class:`~metagen.metaheuristics.TPE` shares the history, the ``gamma`` schedules
+    and the warmup, and evaluates a pool of candidates per iteration.
 
     A run costs ``population_size * (warmup_iterations + 1) + max_iterations``
     evaluations: 220 with the defaults. The history is never trimmed, since every
     observation is a kernel. On a dynamic structure the length is not modeled: a
     candidate is born with a random length and the positions it has are drawn from
-    the observations that have them, as in MetaGen's TPE. Under the global
+    the observations that have them. Under the global
     distribution model every slice proposes and evaluates one candidate, so an
     iteration costs as many evaluations as there are slices.
 
@@ -81,7 +77,7 @@ class CanonicalTPE(TPE):
     :param prior_weight: Weight of the prior kernel against one observation, defaults to 1.0
     :type prior_weight: float, optional
     :param gamma_config: How the fraction of best solutions is scheduled, defaults to
-        the sample-based schedule MetaGen's TPE uses
+        the sample-based schedule
     :type gamma_config: GammaConfig, optional
     :param population_size: Random solutions evaluated to start with, defaults to 20
     :type population_size: int, optional
@@ -100,7 +96,7 @@ class CanonicalTPE(TPE):
     .. code-block:: python
 
         from metagen.framework import Domain
-        from metagen.metaheuristics import CanonicalTPE
+        from metagen.metaheuristics import KernelTPE
 
         domain = Domain()
         domain.define_integer("max_depth", 1, 20)
@@ -109,7 +105,7 @@ class CanonicalTPE(TPE):
 
         fitness_function = lambda solution: (solution["max_depth"] - 7) ** 2 + solution["learning_rate"]
 
-        search = CanonicalTPE(domain, fitness_function, max_iterations=100, seed=0)
+        search = KernelTPE(domain, fitness_function, max_iterations=100, seed=0)
         best_solution = search.run()
     """
     # Measured on the behavior bench: the l(x)/g(x) selection on MetaGen's single-Gaussian

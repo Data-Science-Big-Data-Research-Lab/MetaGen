@@ -24,7 +24,7 @@ Which one to use
       - Samples neighbors around the best solution and moves only when one improves.
       - at most ``population_size × (warmup_iterations + 1 + max_iterations)``
     * - |ts|
-      - A tabu search proper: it moves to the best non-tabu neighbor even when it is worse, which lets it leave a local optimum.
+      - Tabu search: it moves to the best non-tabu neighbor even when it is worse, which lets it leave a local optimum.
       - as ``HillClimbing``
     * - |sa|
       - One walking point that accepts a worse neighbor with a probability that falls as the temperature cools; the cooling schedule is tied to ``max_iterations``.
@@ -39,13 +39,13 @@ Which one to use
       - A genetic algorithm whose children are refined by a local search, which makes each iteration cost several times a genetic algorithm's.
       - grows with ``neighbor_population_size`` per child
     * - |tpe|
-      - The Tree-structured Parzen Estimator evaluated in the |metagen| paper: one Gaussian per variable and side, a pool of candidates evaluated per iteration.
+      - A Tree-structured Parzen Estimator that models each variable with one Gaussian per side and evaluates a pool of candidates per iteration.
       - ``population_size × (warmup_iterations + 1) + candidate_pool_size × max_iterations``
-    * - |canonical_tpe|
-      - The estimator as Bergstra et al. describe it: a mixture of kernels per variable and **one evaluation per iteration**, the candidate that maximizes l(x)/g(x).
+    * - |kernel_tpe|
+      - A Tree-structured Parzen Estimator that models each variable with a mixture of kernels and makes **one evaluation per iteration**, the candidate that maximizes l(x)/g(x); for fitness functions that are expensive to evaluate.
       - ``population_size × (warmup_iterations + 1) + max_iterations``
-    * - |cvoa| and |canonical_cvoa|
-      - The Coronavirus Optimization Algorithm, the variant of |metagen| and the one of its paper. Run through a launcher (see :ref:`the section below <choosing/index:Running CVOA>`).
+    * - |cvoa| and |probabilistic_cvoa|
+      - The Coronavirus Optimization Algorithm, with two strain classes that differ in how deaths, superspreaders and isolation are decided. Run through a launcher (see :ref:`the section below <choosing/index:Running CVOA>`).
       - set by the pandemic, not by a parameter
 
 
@@ -75,15 +75,15 @@ CVOA is a metaheuristic inspired by the spreading of the coronavirus: a pandemic
 
     best_solution = cvoa_launcher(strains, domain, fitness, seed=0)
 
-Two variants
-^^^^^^^^^^^^
+Two strain classes
+^^^^^^^^^^^^^^^^^^
 
-|cvoa| is the variant of |metagen|: the worst carriers die and the best ones become superspreaders, and an isolated individual is counted but its point stays open to later infections. |canonical_cvoa| follows the pseudocode of the paper: death and superspreading are drawn per individual, the isolated go to the recovered, and the isolation and re-infection draws are one per carrier. Both run with the same launchers, through ``strain_class``:
+In |cvoa| the worst carriers die and the best ones become superspreaders, and an isolated individual is counted but its point stays open to later infections. In |probabilistic_cvoa| death and superspreading are drawn per individual with their probabilities, the isolated join the recovered, and the isolation and re-infection draws are one per carrier. Both run with the same launchers, through ``strain_class``:
 
 .. code-block:: python
 
-    from metagen.metaheuristics import CanonicalCVOA
+    from metagen.metaheuristics import ProbabilisticCVOA
 
-    best_solution = cvoa_launcher(strains, domain, fitness, strain_class=CanonicalCVOA)
+    best_solution = cvoa_launcher(strains, domain, fitness, strain_class=ProbabilisticCVOA)
 
 ``cvoa_launcher`` runs each strain in a thread; ``distributed_cvoa_launcher`` runs each strain as a Ray task (see :doc:`../distributed_execution/special`). The launchers, the strain properties and the strain classes are documented in :doc:`../metaheuristics/cvoa`.

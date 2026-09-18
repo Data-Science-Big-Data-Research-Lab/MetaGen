@@ -244,9 +244,9 @@ class CVOA(Metaheuristic):
 
     def after_spreading(self) -> None:
         """
-        What happens to the carriers once they have infected. Nothing here: MetaGen's
-        CVOA settles their fate in update_pandemic_global_state, before they spread.
-        The paper's variant recovers them at this point instead.
+        What happens to the carriers once they have infected. Nothing here: their fate
+        is settled in update_pandemic_global_state, before they spread. A subclass may
+        override it.
         """
 
     def spread(self) -> SolutionSet:
@@ -280,7 +280,7 @@ class CVOA(Metaheuristic):
         """
         Everything one carrier does in one iteration: draw how many it infects and how
         far, then infect. A function of its arguments alone, so that a Ray task can run
-        it on a copy of the class; the class is what carries the variant, since
+        it on a copy of the class; the class is what carries the strain's rules, since
         a subclass may change what isolation or admission mean.
 
         :return: The individuals this carrier infected that enter the next population.
@@ -330,9 +330,8 @@ class CVOA(Metaheuristic):
     @classmethod
     def isolate(cls, state: PandemicState, individual: Solution) -> None:
         """
-        What happens to an individual that isolates. In MetaGen's CVOA it is counted
-        and the point stays open to be infected again: this departs from the paper's
-        Algorithm 3 on purpose. The paper's variant overrides it.
+        What happens to an individual that isolates: it is counted, and the point
+        stays open to be infected again. A subclass may override it.
         """
         # F-45: sending the isolated to the recovered, as the paper does, was measured
         # to search worse on binary domains; see LocalPandemicState.isolate.
@@ -383,12 +382,10 @@ class CVOA(Metaheuristic):
         the best become the superspreaders, the rest recover; and keep the strain's and
         the pandemic's best up to date.
 
-        This is MetaGen's variant: a share ``p_die`` of the carriers, the worst ones,
-        dies, and a share ``p_superspreader`` of the survivors, the best ones,
-        superspreads. Both are picked with a heap, in ``n log k``, and the
-        superspreaders are chosen anew in every iteration. A lone carrier never dies.
-        The paper draws death and superspreading per individual instead; its variant
-        overrides this method.
+        A share ``p_die`` of the carriers, the worst ones, dies, and a share
+        ``p_superspreader`` of the survivors, the best ones, superspreads. Both are
+        picked with a heap, in ``n log k``, and the superspreaders are chosen anew in
+        every iteration. A lone carrier never dies. A subclass may override this method.
         """
         # F-48: this is what the original Java did before its ``sets`` branch, which
         # replaced sorting the population with bounded sets filled in order of arrival

@@ -18,15 +18,9 @@ class HillClimbing(Metaheuristic):
     moves to the best of them, if it improves. A worse neighbor is never accepted, so
     the search only ever walks uphill.
 
-    .. note::
-        Version 0.2.0 shipped this algorithm under the name ``TabuSearch``. It is a hill
-        climber: exploring from the best solution and refusing every worsening move
-        leaves a tabu list with nothing to steer away from. The list is kept as a memory
-        of solutions already seen that are not worth evaluating again.
-
-        A tabu search proper, one that moves to the best non-tabu neighbor even when it
-        is worse, is a different algorithm:
-        :py:class:`~metagen.metaheuristics.TabuSearch`.
+    It keeps a short memory of the solutions already visited, so as not to evaluate
+    them again. :py:class:`~metagen.metaheuristics.TabuSearch` is the alternative that
+    also accepts worsening moves.
 
     :param domain: The problem's domain to explore
     :type domain: Domain

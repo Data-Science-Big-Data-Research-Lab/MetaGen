@@ -3,7 +3,7 @@
 CVOA - Coronavirus Optimization Algorithm
 ==========================================
 
-The Coronavirus Optimization Algorithm: several strains run at once over a shared pandemic state, through a launcher. How to run it, what it costs and how its two variants differ is in :ref:`choosing/index:Running CVOA`; this page is the reference.
+The Coronavirus Optimization Algorithm: several strains run at once over a shared pandemic state, through a launcher. How to run it and how its two strain classes differ is in :ref:`choosing/index:Running CVOA`; this page is the reference.
 
 Launchers
 ---------
@@ -25,7 +25,7 @@ The strain classes
     :members:
     :show-inheritance:
 
-.. autoclass:: metagen.metaheuristics.cvoa.cvoa_canonical.CanonicalCVOA
+.. autoclass:: metagen.metaheuristics.cvoa.cvoa_probabilistic.ProbabilisticCVOA
     :members:
     :show-inheritance:
 

@@ -15,15 +15,15 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 from .common_tools import StrainProperties
-from .cvoa_canonical import CanonicalCVOA
+from .cvoa_probabilistic import ProbabilisticCVOA
 from .cvoa_local import CVOA
 from .local_launcher import cvoa_launcher
 from metagen.metaheuristics.import_helper import is_package_installed
 
 if is_package_installed("ray"):
     from .distributed_launcher import distributed_cvoa_launcher
-    __all__ = ["CVOA", "CanonicalCVOA", "StrainProperties", "cvoa_launcher", "distributed_cvoa_launcher"]
+    __all__ = ["CVOA", "ProbabilisticCVOA", "StrainProperties", "cvoa_launcher", "distributed_cvoa_launcher"]
 else:
-    __all__ = ["CVOA", "CanonicalCVOA", "StrainProperties", "cvoa_launcher"]
+    __all__ = ["CVOA", "ProbabilisticCVOA", "StrainProperties", "cvoa_launcher"]
 
 

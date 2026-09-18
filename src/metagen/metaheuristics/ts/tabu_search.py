@@ -31,18 +31,11 @@ class TabuSearch(Metaheuristic):
     A single current solution walks the search space. Each iteration samples a
     neighborhood around it and moves to the best neighbor that is not tabu, **even
     when that neighbor is worse than the current solution**: that is what lets the
-    search leave a local optimum, and what separates it from hill climbing. The
+    search leave a local optimum. The
     solutions visited lately are tabu, so the walk cannot turn straight back, and a
     tabu neighbor is still taken if it improves on the best solution ever found (the
     aspiration criterion). The best solution found is tracked apart from the walker
     and is what ``run()`` returns.
-
-    .. note::
-        The class that version 0.2.0 shipped as ``TabuSearch`` is now
-        :py:class:`~metagen.metaheuristics.HillClimbing`: it never accepts a worsening
-        move, so its list of visited solutions cannot steer it. This class is the
-        algorithm the name promises. Code written against the 0.2.0 release that
-        imports ``TabuSearch`` gets this class, another optimizer.
 
     **What "tabu" means on a continuous domain.** Two real-valued solutions are
     never exactly equal, so a list of visited points would forbid nothing. A
@@ -50,8 +43,7 @@ class TabuSearch(Metaheuristic):
     every numeric variable, the radius being a small fraction of each variable's
     own range by default, and equal to it on every categorical one.
 
-    **Neighbors are drawn around the current solution, not in a chain.** Chaining is
-    right for hill climbing, which walks uphill step by step; a tabu search needs a
+    **Neighbors are drawn around the current solution**, which gives the search a
     neighborhood of the current point to choose its move from.
 
     A run costs ``population_size * (warmup_iterations + 1 + max_iterations)``

@@ -31,8 +31,8 @@ MetaGen simplifies the development of **metaheuristics** and the **optimization 
 - **Simulated Annealing**
 - **Genetic Algorithm** and **Steady-State Genetic Algorithm**
 - **Memetic Algorithm**
-- **Tree-structured Parzen Estimator**, in two variants: `TPE`, the one evaluated in the MetaGen paper, and `CanonicalTPE`, the estimator as Bergstra et al. describe it
-- **Coronavirus Optimization Algorithm (CVOA)**, in two variants: `CVOA`, MetaGen's, and `CanonicalCVOA`, the one of its paper
+- **Tree-structured Parzen Estimator**: `TPE`, which evaluates a pool of candidates per iteration, and `KernelTPE`, which evaluates a single candidate per iteration, for expensive fitness functions
+- **Coronavirus Optimization Algorithm (CVOA)**, with two strain classes, `CVOA` and `ProbabilisticCVOA`, that differ in how deaths, superspreaders and isolation are decided
 
 The documentation has a [guide to choosing one](https://pymetagen.readthedocs.io/en/latest/choosing/index.html), with what each costs in evaluations.
 
@@ -95,43 +95,44 @@ Any other metaheuristic takes the same two arguments. To follow the run in Tenso
 
 ## 🛠 Example: Developing a Metaheuristic
 
-A metaheuristic inherits from `Metaheuristic` and implements three methods. The base class brings the run loop, elitism, `seed`, `log_dir` and distributed execution:
+Creating a simple **Random Search** metaheuristic:
 
 ```python
 from copy import deepcopy
-from typing import Callable, List, Tuple
-
+from typing import Callable, List
 from metagen.framework import Domain, Solution
-from metagen.metaheuristics.base import Metaheuristic
-from metagen.metaheuristics.tools import random_exploration
 
+class RandomSearch:
 
-class MutateAll(Metaheuristic):
-    """Mutate every solution in each iteration; the base class keeps the best one seen."""
+    def __init__(self, domain: Domain, fitness: Callable[[Solution], float], search_space_size: int = 30,
+                iterations: int = 20) -> None:
 
-    def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
-                 population_size: int = 10, max_iterations: int = 20, **kwargs) -> None:
-        super().__init__(domain, fitness_function, population_size=population_size, **kwargs)
-        self.max_iterations = max_iterations
+        self.domain = domain
+        self.fitness = fitness
+        self.search_space_size = search_space_size
+        self.iterations = iterations
 
-    def initialize(self, num_solutions: int = 10) -> Tuple[List[Solution], Solution]:
-        return random_exploration(self.domain, self.fitness_function, num_solutions)
+    def run(self) -> Solution:
 
-    def iterate(self, solutions: List[Solution]) -> Tuple[List[Solution], Solution]:
-        population = [deepcopy(solution) for solution in solutions]
-        for solution in population:
-            solution.mutate()
-            solution.evaluate(self.fitness_function)
-        return population, min(population)
+        potential_solutions: List[Solution] = list()
 
-    def stopping_criterion(self) -> bool:
-        return self.current_iteration >= self.max_iterations
+        for _ in range(0, self.search_space_size):
+            potential_solutions.append(Solution(self.domain, connector=self.domain.get_connector()))
 
+        solution: Solution = deepcopy(min(potential_solutions))
 
-domain = Domain()
-domain.define_real("x", -5.0, 5.0)
-best_solution = MutateAll(domain, lambda solution: solution["x"] ** 2, seed=0).run()
+        for _ in range(0, self.iterations):
+            for ps in potential_solutions:
+                ps.mutate()
+
+                ps.evaluate(self.fitness)
+                if ps < solution:
+                    solution = deepcopy(ps)
+
+        return solution
 ```
+
+A metaheuristic can also inherit from the `Metaheuristic` base class, which adds the run loop, elitism, `seed`, `log_dir` and distributed execution in exchange for three methods; see [Extending the Metaheuristic class](https://pymetagen.readthedocs.io/en/latest/advanced_topics/interface.html).
 
 ## 📝 Citing MetaGen
 

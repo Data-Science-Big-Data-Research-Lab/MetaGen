@@ -90,7 +90,7 @@ The launcher starts Ray if it is not running, and shuts it down afterwards only 
                                               log_dir="logs/DCVOA",   # optional: TensorBoard logs
                                               seed=0)
 
-Both launchers take ``strain_class``, which defaults to |cvoa|, the variant of |metagen|. Passing ``strain_class=CanonicalCVOA`` runs the algorithm as its paper describes it (see :ref:`choosing/index:Running CVOA`).
+Both launchers take ``strain_class``, which defaults to |cvoa|. Passing ``strain_class=ProbabilisticCVOA`` runs strains whose deaths, superspreaders and isolation are drawn per individual (see :ref:`choosing/index:Running CVOA`).
 
 Key Features of Distributed CVOA
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
