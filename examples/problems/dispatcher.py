@@ -36,7 +36,6 @@ from .math_catalog import (get_x_minus_15_raised_to_2_domain,
                            x_minus_15_raised_to_2_fitness,
                            get_x_raised_to_2_domain, x_raised_to_2_fitness, equation_domain, equation_fitness)
 
-from .tensorflow_catalog import (nn_fitness, get_dynamic_nn_domain, get_static_nn_domain)
 
 
 
@@ -91,9 +90,13 @@ def problem_dispatcher(example: str, connector=BaseConnector()) -> Tuple[Domain,
         problem_definition = get_sgd_regressor_domain
         fitness_function = sgd_regressor_fitness
     elif example == "s-nn":
+        # Imported here so that the other problems run without TensorFlow installed.
+        from .tensorflow_catalog import get_static_nn_domain, nn_fitness
         problem_definition = get_static_nn_domain
         fitness_function = nn_fitness
     elif example == "d-nn":
+        # Imported here so that the other problems run without TensorFlow installed.
+        from .tensorflow_catalog import get_dynamic_nn_domain, nn_fitness
         problem_definition = get_dynamic_nn_domain
         fitness_function = nn_fitness
     else:
