@@ -1018,31 +1018,38 @@ def _raiz_del_repo() -> pathlib.Path:
     return pathlib.Path(__file__).resolve().parents[2]
 
 
+def _pyproject() -> dict:
+    """`pyproject.toml` leido del arbol, que es donde vive la metadata desde la 0.3.0
+    (antes, en `setup.cfg`). `tomllib` existe desde Python 3.11; en 3.10 lo trae pip."""
+    try:
+        import tomllib
+    except ModuleNotFoundError:  # Python 3.10
+        from pip._vendor import tomli as tomllib
+    return tomllib.loads((_raiz_del_repo() / "pyproject.toml").read_text())
+
+
 def test_p01_la_licencia_declarada_es_la_del_fichero_license():
     """P-01: `setup.cfg` clasificaba el paquete como MIT frente a un `LICENSE` GPL-3.0
     y 40 cabeceras GPLv3 en `src/`. PyPI anunciaba MIT desde la 0.2.0."""
     raiz = _raiz_del_repo()
-    setup = (raiz / "setup.cfg").read_text()
+    proyecto = _pyproject()["project"]
     licencia = (raiz / "LICENSE").read_text()
 
     assert "GNU GENERAL PUBLIC LICENSE" in licencia
-    assert "MIT" not in setup
-    assert "license = GPL-3.0-or-later" in setup
-    assert "GNU General Public License v3 or later (GPLv3+)" in setup
-    assert "license_files = LICENSE" in setup
+    assert "MIT" not in (raiz / "pyproject.toml").read_text()
+    # Una expresion SPDX: con ella el clasificador de licencia sobra, y setuptools lo rechaza.
+    assert proyecto["license"] == "GPL-3.0-or-later"
+    assert not any(c.startswith("License ::") for c in proyecto["classifiers"])
+    assert proyecto["license-files"] == ["LICENSE"]
 
 
 
 def _extra_test_de_setup_cfg() -> list[str]:
-    """Los requisitos del extra `test` tal y como los declara `setup.cfg`. Se lee el
-    fichero y no la metadata instalada: esta refleja la ultima `pip install -e .`,
-    no lo que hay en el arbol, y con ella el test aprobaba una declaracion antigua."""
-    import configparser
-
-    config = configparser.ConfigParser()
-    config.read(_raiz_del_repo() / "setup.cfg")
-    extra = config["options.extras_require"]["test"]
-    return [l.strip() for l in extra.splitlines() if l.strip() and not l.startswith("#")]
+    """Los requisitos del extra `test` tal y como los declara `pyproject.toml` (el nombre
+    viene de cuando vivian en `setup.cfg`). Se lee el fichero y no la metadata instalada:
+    esta refleja la ultima `pip install -e .`, no lo que hay en el arbol, y con ella el
+    test aprobaba una declaracion antigua."""
+    return list(_pyproject()["project"]["optional-dependencies"]["test"])
 
 def test_p08_los_extras_declaran_un_requisito_por_linea():
     """P-08: los extras se separaban con ";", que PEP 508 lee como el comienzo de un
@@ -1055,14 +1062,15 @@ def test_p08_los_extras_declaran_un_requisito_por_linea():
     hasta que los tests dirigidos por CSV se reescribieron en linea; hoy es
     `scikit-learn`, que el problema de hiperparametros del banco necesita (P-05).
     """
-    setup = (_raiz_del_repo() / "setup.cfg").read_text()
-    seccion = setup[setup.index("[options.extras_require]"):]
-    seccion = seccion.split("\n[")[0]
-    lineas = [l for l in seccion.splitlines()
-              if l.startswith("    ") and not l.strip().startswith("#")]
-    assert lineas, "no se han encontrado requisitos en los extras"
-    for linea in lineas:
-        assert ";" not in linea, f"el extra sigue usando ';': {linea!r}"
+    extras = _pyproject()["project"]["optional-dependencies"]
+    requisitos = [r for lista in extras.values() for r in lista]
+    assert requisitos, "no se han encontrado requisitos en los extras"
+    # En `pyproject.toml` es donde el ";" haria dano de verdad: cada requisito es un
+    # elemento de la lista, y ninguno lleva dos pegados.
+    for requisito in requisitos:
+        assert ";" not in requisito, f"el extra sigue usando ';': {requisito!r}"
+    assert set(extras) == {"tensorboard", "distributed", "test", "all"}
+    assert set(extras["all"]) == set(extras["tensorboard"]) | set(extras["distributed"])
 
     assert any("scikit-learn" in r for r in _extra_test_de_setup_cfg()), (
         "scikit-learn, que el banco necesita, no lo declara el extra `test`"
@@ -1074,11 +1082,10 @@ def test_p02_la_version_minima_de_python_dice_lo_mismo_en_los_tres_sitios():
     >=3.10. El minimo real es 3.10, por `itertools.pairwise`."""
     raiz = _raiz_del_repo()
     readme = (raiz / "README.md").read_text()
-    setup = (raiz / "setup.cfg").read_text()
 
     assert "python->=3.10" in readme
     assert "Python 3.10+" in readme
-    assert "python_requires = >=3.10" in setup
+    assert _pyproject()["project"]["requires-python"] == ">=3.10"
 
 
 def test_p03_nada_apunta_al_repositorio_antiguo():
@@ -1086,7 +1093,7 @@ def test_p03_nada_apunta_al_repositorio_antiguo():
     `DataLabUPO/MetaGen`; el repositorio vive en
     `Data-Science-Big-Data-Research-Lab/MetaGen`."""
     raiz = _raiz_del_repo()
-    ficheros = [raiz / "README.md", raiz / "setup.cfg"]
+    ficheros = [raiz / "README.md", raiz / "pyproject.toml"]
     ficheros += list((raiz / "docs").rglob("*.rst"))
 
     culpables = [str(f.relative_to(raiz)) for f in ficheros
@@ -1119,7 +1126,7 @@ def test_p09_el_paquete_lleva_el_marcador_py_typed():
 
     assert (raiz / "src" / "metagen" / "py.typed").is_file()
     # Y tiene que viajar en el paquete construido, no solo estar en el arbol.
-    assert "metagen = py.typed" in (raiz / "setup.cfg").read_text()
+    assert _pyproject()["tool"]["setuptools"]["package-data"]["metagen"] == ["py.typed"]
 
 
 def test_p04_la_suite_completa_se_recolecta_sin_los_extras_opcionales():
@@ -1784,7 +1791,7 @@ def test_p06_el_workflow_de_ci_ejecuta_la_suite_que_debe_estar_verde():
     for version in ("3.10", "3.11", "3.12"):
         assert f'"{version}"' in texto, (
             f"la matriz del CI no cubre Python {version}, dentro del "
-            "python_requires >=3.10 declarado en setup.cfg"
+            "requires-python >=3.10 declarado en pyproject.toml"
         )
 
 

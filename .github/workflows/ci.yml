@@ -32,7 +32,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           # The test extra, rather than naming the tools here: since P-08 the
-          # suite's dependencies are declared in setup.cfg, and this is what
+          # suite's dependencies are declared in pyproject.toml, and this is what
           # keeps that declaration honest.
           pip install -e .[test]
 

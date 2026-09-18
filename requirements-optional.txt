@@ -1,4 +1,4 @@
-# Optional extras, each also declared in setup.cfg. Prefer installing them from
+# Optional extras, each also declared in pyproject.toml. Prefer installing them from
 # there, so that the version constraints stay in one place:
 #     pip install -e .[all]
 #

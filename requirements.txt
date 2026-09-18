@@ -1,4 +1,4 @@
-# Runtime dependencies. These are the ones setup.cfg declares in install_requires;
+# Runtime dependencies. These are the ones pyproject.toml declares as dependencies;
 # installing the package brings them along, so this file is for a bare checkout.
 numpy>=1.21.0
 scipy>=1.7.0

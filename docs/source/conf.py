@@ -15,7 +15,7 @@ copyright = '2023, David Gutiérrez Avilés, José Francisco Torres, Manuel Jes�
 author = 'David Gutiérrez Avilés, José Francisco Torres, Manuel Jesús Jiménez-Navarro, and Francisco Martínez-Álvarez'
 
 # The full version, including alpha/beta/rc tags
-release = '0.2.0'
+release = '0.3.0'
 
 autosectionlabel_prefix_document = True
 # -- General configuration ---------------------------------------------------

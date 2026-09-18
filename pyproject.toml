@@ -1,6 +1,66 @@
 [build-system]
-requires = [
-    "setuptools>=42",
-    "wheel"
-]
+# packaging>=24.2 is what validates the SPDX license expression below.
+requires = ["setuptools>=77", "packaging>=24.2", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "pymetagen-datalabupo"
+version = "0.3.0"
+description = "MetaGen: A framework for metaheuristic development and hyperparameter optimization in machine and deep learning."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "GPL-3.0-or-later"
+license-files = ["LICENSE"]
+authors = [{ name = "Data Science & Big Data Research Lab", email = "datalab@upo.es" }]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "numpy>=1.21.0",
+    "scipy>=1.7.0",
+]
+
+# One requirement per list item. In the former setup.cfg they were one per line; a ";" in
+# a requirement string starts an environment marker, so two requirements never share one.
+[project.optional-dependencies]
+tensorboard = [
+    "tensorboard",
+    "tensorboardX",
+]
+distributed = [
+    "ray>=2.40.0",
+]
+# The behavioral benchmark tunes a scikit-learn model, to exercise a domain that mixes
+# integers, categoricals and reals.
+test = [
+    "pytest",
+    "scikit-learn",
+]
+all = [
+    "tensorboard",
+    "tensorboardX",
+    "ray>=2.40.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/Data-Science-Big-Data-Research-Lab/MetaGen"
+Documentation = "https://pymetagen.readthedocs.io"
+"Bug Tracker" = "https://github.com/Data-Science-Big-Data-Research-Lab/MetaGen/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+metagen = ["py.typed"]
+
+[tool.mypy]
+ignore_missing_imports = true
+# The package ships py.typed, so mypy would resolve these files both as `metagen.x`, through
+# the installed package, and as `src.metagen.x`, by walking the tree, and refuse to check
+# them twice. This pins the mapping to the first.
+mypy_path = "src"
+explicit_package_bases = true
+
+[tool.pytest.ini_options]
+filterwarnings = ["ignore::DeprecationWarning"]
