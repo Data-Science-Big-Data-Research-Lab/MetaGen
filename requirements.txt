@@ -6,7 +6,6 @@ scipy>=1.7.0
 # Running the test suite. Also available as the "test" extra:
 #     pip install -e .[test]
 pytest
-pytest-csv-params
 
 # Building the documentation.
 sphinx-rtd-theme
