@@ -11,7 +11,12 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = "GPL-3.0-or-later"
 license-files = ["LICENSE"]
-authors = [{ name = "Data Science & Big Data Research Lab", email = "datalab@upo.es" }]
+# Both groups are the authors; the address is the contact of the package.
+authors = [
+    { name = "Minerva AI Lab Group (University of Seville)" },
+    { name = "Data Science & Big Data Research Lab (Pablo de Olavide University)" },
+    { email = "datalab@upo.es" },
+]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Science/Research",
