@@ -1315,17 +1315,50 @@ def test_f49_mutar_un_entero_siempre_lo_cambia():
         assert abs(con_paso.get() - antes) <= 7
 
 
-def test_f49_un_entero_de_un_solo_valor_no_revienta_al_mutar():
-    """Una ventana de un solo punto de rejilla no tiene a que mutar: se queda como esta,
-    igual que una categorica de una categoria (F-17)."""
+def test_f49_un_entero_con_una_ventana_estrecha_no_revienta_y_se_mueve_un_paso():
+    """Una ventana mas estrecha que el paso no revienta al mutar. Hasta F-50 se quedaba
+    como estaba, porque solo contenia el valor actual; desde F-50 el vecindario tiene al
+    menos un paso de rejilla y el entero se mueve exactamente uno. Un dominio de un solo
+    punto de rejilla, el unico caso sin nada a lo que mutar, no se puede declarar: las
+    precondiciones exigen al menos tres."""
     from metagen.framework.solution.types.integer import Integer
     from metagen.framework.domain import IntegerDefinition
 
     set_seed(3)
+    vistos = set()
     entero = Integer(IntegerDefinition(0, 100, 10))
-    entero.set(50)
-    entero.mutate(alteration_limit=3)
-    assert entero.get() == 50
+    for _ in range(100):
+        entero.set(50)
+        entero.mutate(alteration_limit=3)
+        vistos.add(entero.get())
+    assert vistos == {40, 60}
+
+
+# --------------------------------------------------------------------------------
+# F-50 · La ventana de mutacion de un entero se trunca: sesgada hacia abajo y atascada
+# --------------------------------------------------------------------------------
+
+def test_f50_la_ventana_de_mutacion_de_un_entero_es_simetrica_y_se_mueve():
+    """F-50: la ventana `[v - L, v + L]` se pasaba a enteros con `int()`, que trunca
+    hacia cero: el extremo inferior llegaba un entero de mas y el superior uno de menos,
+    y con un limite menor que un paso el valor no se movia. Con `RelativeAlteration(0.2)`
+    un bit a 0 no volteaba nunca y un entero en [0, 4] desde 2 solo podia bajar. Ahora el
+    vecindario es simetrico y de al menos un paso de rejilla."""
+    from metagen.framework import RelativeAlteration
+    from metagen.framework.solution.types.integer import Integer
+    from metagen.framework.domain import IntegerDefinition
+
+    set_seed(5)
+    for dominio, inicio, esperados in [((0, 1), 0, {1}), ((0, 1), 1, {0}),
+                                       ((0, 4), 2, {1, 3}), ((0, 4), 0, {1}),
+                                       ((0, 9), 4, {3, 5}), ((-5, 5), -5, {-4, -3})]:
+        vistos = set()
+        entero = Integer(IntegerDefinition(*dominio))
+        for _ in range(300):
+            entero.set(inicio)
+            entero.mutate(alteration_limit=RelativeAlteration(0.2))
+            vistos.add(entero.get())
+        assert vistos == esperados, (dominio, inicio, vistos)
 
 
 # --------------------------------------------------------------------------------

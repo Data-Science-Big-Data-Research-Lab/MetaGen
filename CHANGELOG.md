@@ -12,6 +12,10 @@
 
 ### Changes
 
+- **Integer neighborhoods**: an integer mutated within a limit, absolute or
+  `RelativeAlteration`, now draws from the grid points on both sides of its value alike,
+  and always reaches at least one step, so a two-valued integer always flips and a narrow
+  range always moves.
 - **Modules are named after their algorithm**: `metagen.metaheuristics.random_search`,
   `hill_climbing`, `tabu_search`, `simulated_annealing`, `genetic` and `memetic`, and
   within `cvoa`, `cvoa`, `probabilistic_cvoa`, `distributed_cvoa`, `local_state` and
