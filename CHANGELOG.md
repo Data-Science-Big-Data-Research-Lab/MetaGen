@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### New
+
+- **Structures with a definition per position**: `Domain.set_structure_to_variables(name,
+  variables)` gives each position of a static or dynamic structure its own definition,
+  taken from already defined variables, one per position. Every position is drawn,
+  mutated, checked and recombined against its own definition, and a dynamic structure
+  grows and shrinks at its end. All the metaheuristics support it.
+
 ### Changes
 
 - **Modules are named after their algorithm**: `metagen.metaheuristics.random_search`,

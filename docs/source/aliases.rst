@@ -21,6 +21,7 @@
 .. |define_categorical_in_group| replace:: :class:`define_categorical_in_group <metagen.framework.Domain.define_categorical_in_group>`
 .. |define_real_in_group| replace:: :class:`define_real_in_group <metagen.framework.Domain.define_real_in_group>`
 .. |set_structure_to_variable| replace:: :class:`set_structure_to_variable <metagen.framework.Domain.set_structure_to_variable>`
+.. |set_structure_to_variables| replace:: :class:`set_structure_to_variables <metagen.framework.Domain.set_structure_to_variables>`
 
 .. |metaheuristic| replace:: :class:`Metaheuristic <metagen.metaheuristics.base.Metaheuristic>`
 .. |rs| replace:: :class:`RS <metagen.metaheuristics.random_search.random_search.RandomSearch>`

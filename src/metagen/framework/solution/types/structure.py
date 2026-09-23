@@ -57,35 +57,46 @@ class Structure(BaseType):
         return cast(DynamicStructureDefinition | StaticStructureDefinition,
                     super().get_definition())
 
-    def _new_element(self) -> BaseType | Solution:
+    def _new_element(self, index: int | None = None) -> BaseType | Solution:
         """
-        A fresh element of this structure, built from its base definition.
+        A fresh element of this structure, built from its base definition, or from
+        the definition of its position when the structure is positional.
 
         The class comes from the connector's registry, so it is a Solution when the
         base is a group and a BaseType subclass otherwise. Both are constructed the
         same way, but their declared parameter types differ and mypy cannot follow a
         runtime registry, hence the cast to the shape they share.
 
+        :param index: The position the element is for; needed by a positional structure.
+        :type index: int or None, optional
         :return: A new element, uninitialized.
         :rtype: BaseType or Solution
         """
-        base = self.get_definition().get_base()
+        base = self.get_definition().get_base(index)
         element_class = cast(Callable[..., BaseType | Solution],
                              self.get_connector().get_type(base))
         return element_class(base, connector=self.get_connector())
 
-    def check(self, value: Any) -> None:
+    def check(self, value: Any, index: int | None = None) -> None:
         """
-        Check that a single element is valid for the base definition of this Structure.
+        Check that a single element is valid for the base definition of this Structure,
+        or for the definition of the position it is for when the structure is positional.
 
         This is about one element: what the whole list may hold, and how long it may
         be, is checked by set().
 
         :param value: The element to check.
+        :param index: The position the element is for; needed by a positional structure.
+        :type index: int or None, optional
         :raises ValueError: if the value does not correspond to the base definition.
         """
 
-        if not isinstance(value, BaseType) and not self.get_definition().get_base().check_value(value):
+        definition = self.get_definition()
+        if definition.is_positional() and (index is None or index >= definition.get_capacity()):
+            # Past the last position there is no definition to check against: set()
+            # rejects the length, and checks each element against its position.
+            return
+        if not isinstance(value, BaseType) and not definition.get_base(index).check_value(value):
             raise ValueError(
                 f"The value {value} provided is not valid for definition: {self.get_definition()}")
 
@@ -133,7 +144,7 @@ class Structure(BaseType):
         # Built as a list and handed over whole: set() checks the length, so growing
         # from empty one append at a time would be rejected at the first element
         # (F-38). Each element is initialized by its own constructor.
-        self.set([self._new_element() for _ in range(size)])
+        self.set([self._new_element(i) for i in range(size)])
 
     def mutate(self, alteration_limit: Any = None) -> None:
         """
@@ -201,6 +212,16 @@ class Structure(BaseType):
         # twice, once by its constructor and once here, and each deletion picks its
         # index from the list as it shrinks.
         values = list(self.get())
+        if definition.is_positional():
+            # Each position has its own definition, so the structure grows and shrinks
+            # at its end: deleting from the middle would move every later element to
+            # a position whose definition is not its own.
+            for i in range(current_size, new_size):
+                new_value = self._new_element(i)
+                new_value.initialize()
+                values.append(new_value)
+            self.set(values[:new_size])
+            return
         if new_size > current_size:
             n_deletions = 0
             for _ in range(new_size - current_size):
@@ -235,7 +256,7 @@ class Structure(BaseType):
         for i in index_to_change:
             self.get(i).mutate(alteration_limit=alteration_limit)
 
-    def _convert(self, value: InputValue | BaseType | Solution) -> BaseType | Solution:
+    def _convert(self, value: InputValue | BaseType | Solution, index: int | None = None) -> BaseType | Solution:
         """
         This method takes an input value which usually represents a builtin type and returns an instance of the corresponding BaseType. For instance:
 
@@ -247,13 +268,23 @@ class Structure(BaseType):
         * BaseTypes are not converted and returned without change.
 
 
+        In a positional structure the element is built from the definition of its
+        position, and an element already built from another definition, such as one
+        moved to a new position by an insertion or a deletion, is rebuilt from its value.
+
         :param value: An input value to be converted to a BaseType instance.
         :type value: InputValue
+        :param index: The position the element is for; needed by a positional structure.
+        :type index: int or None, optional
         :return: A BaseType instance created from the input value.
         :raises ValueError: If the type of the input value is not supported by the Structure [int, float, str, list, dict, BaseType]. 
         """
         # Solution is not a BaseType, so both have to be named here: a structure
         # whose base is a group holds Solution instances.
+        definition = self.get_definition()
+        if definition.is_positional():
+            return self._convert_to_position(value, cast(int, index))
+
         if isinstance(value, (BaseType, Solution)):  # Compatibility with already defined types
             return value
 
@@ -282,6 +313,40 @@ class Structure(BaseType):
 
         raise ValueError(
             f"The type {type(value)} is not supported by the structure. An instance of [int, float, str, list, dict, BaseType] was expected.")
+
+    def _convert_to_position(self, value: InputValue | BaseType | Solution, index: int) -> BaseType | Solution:
+        """
+        The element of a positional structure at ``index``, built from the definition
+        of that position.
+
+        :param value: The element or its plain value.
+        :param index: The position the element is for.
+        :type index: int
+        :return: An element whose definition is the one of the position.
+        :raises ValueError: if the value is not valid for the definition of the position.
+        """
+        position = self.get_definition().get_base(index)
+        if isinstance(value, (BaseType, Solution)):
+            own = value.get_definition()
+            # Equal and not only identical: a deep copy of a solution copies the
+            # definitions of its elements too.
+            if own is position or (type(own) is type(position)
+                                   and own.get_attributes() == position.get_attributes()):
+                return value
+            value = builtin_value(value)
+
+        # From the position's definition and not from the value's type, so that an
+        # integer given for a real position becomes a real.
+        element = self._new_element(index)
+        if isinstance(element, Solution):
+            if not isinstance(value, dict):
+                raise ValueError(
+                    f"The value {value} is not valid for position {index} of: {self.get_definition()}")
+            for variable, variable_value in value.items():
+                element.set(variable, variable_value)
+        else:
+            element.set(value)
+        return element
 
     def __len__(self) -> int:
         """
@@ -327,8 +392,8 @@ class Structure(BaseType):
         :type value: int | float | str | list | dict | BaseType
         :return: None
         """
-        self.check(value)
         values = list(self.get())
+        self.check(value, range(len(values))[index])
         values[index] = value
         self.set(values)
 
@@ -343,7 +408,8 @@ class Structure(BaseType):
         :return: None
         :raises ValueError: if the Structure would be left with an invalid length.
         """
-        self.check(value)
+        # The position list.insert puts it at, which clamps the index to the list.
+        self.check(value, min(index, len(self)) if index >= 0 else max(len(self) + index, 0))
         # On a copy, so that a rejected length leaves the Structure as it was: get()
         # returns the list itself, and inserting into it before set() could refuse
         # would already have changed it (F-38). Was current_values[index].insert(...),
@@ -361,7 +427,7 @@ class Structure(BaseType):
         :return: None
         :raises ValueError: if the Structure would be left with an invalid length.
         """
-        self.check(value)
+        self.check(value, len(self))
         self.set(list(self.get()) + [value])
 
     def set(self, value: list[BaseType | Any]) -> None:
@@ -385,7 +451,7 @@ class Structure(BaseType):
         # Asking the connector for the type of the structure's own definition, as
         # this did, answered Structure and then tried to build one out of the base
         # definition, so a plain list of builtins raised (F-06).
-        self.value = [self._convert(element) for element in value]
+        self.value = [self._convert(element, i) for i, element in enumerate(value)]
 
     def __str__(self) -> str:
         """

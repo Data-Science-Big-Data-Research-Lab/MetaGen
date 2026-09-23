@@ -16,7 +16,7 @@ The ``Domain`` class describes the space of the solutions: which variables a sol
     * ``REAL``: a floating point number between a minimum and a maximum, optionally on a grid of a given step.
     * ``CATEGORICAL``: one value out of a list of categories, which must all be of the same type (``int``, ``float``, ``str`` or ``bool``) and must not repeat. A single category is allowed, to fix a hyperparameter to one value.
 
-* **Structure**: a list whose elements all share one definition, which may be basic, a group or another structure. A **static** structure has a fixed length; a **dynamic** one has a length between a minimum and a maximum, optionally on a grid of a given step, and the search changes it.
+* **Structure**: a list whose elements share one definition, which may be basic, a group or another structure, or have one definition per position (see below). A **static** structure has a fixed length; a **dynamic** one has a length between a minimum and a maximum, optionally on a grid of a given step, and the search changes it.
 * **Group**: a set of named variables that travel together, such as the settings of one layer of a neural network. A structure of groups describes, for instance, an architecture with a variable number of layers.
 
 .. code-block:: python
@@ -34,6 +34,21 @@ The ``Domain`` class describes the space of the solutions: which variables a sol
     domain.define_dynamic_structure("architecture", 1, 4)       # one to four layers
     domain.set_structure_to_variable("architecture", "layer")
 
+By default the elements of a structure share one definition. With ``set_structure_to_variables`` every **position** gets a definition of its own instead, one already defined variable per position, in order: as many as the length of a static structure or the maximum length of a dynamic one. Element ``i`` is then always drawn, mutated and checked against the ``i``-th definition, and a dynamic structure grows and shrinks at its end, so that the elements keep their positions. The definitions may differ in range and in type, and may be groups.
+
+.. code-block:: python
+
+    from metagen.framework import Domain
+
+    domain = Domain()
+    domain.define_dynamic_structure("filters", 1, 3)       # one to three convolutional layers
+    domain.define_integer("first", 8, 32)
+    domain.define_integer("second", 16, 64)
+    domain.define_integer("third", 32, 128)
+    domain.set_structure_to_variables("filters", ["first", "second", "third"])
+
+A solution of this domain holds ``[20]``, ``[12, 40]`` or ``[30, 50, 100]``, for instance: the first element is always between 8 and 32, the second between 16 and 64 and the third between 32 and 128. As with ``set_structure_to_variable``, the variables move into the structure unless ``remember=True`` is given.
+
 Internally every definition answers ``get_attributes()`` with a tuple whose first element names its type:
 
 * ``("INTEGER", minimum, maximum, step)`` and ``("REAL", minimum, maximum, step)``, with ``None`` as the step when there is no grid.
@@ -41,6 +56,7 @@ Internally every definition answers ``get_attributes()`` with a tuple whose firs
 * ``("DEFINITION", {"name": attributes, ...})`` for a group.
 * ``("STATIC", length, attributes of the element)`` for a static structure.
 * ``("DYNAMIC", minimum length, maximum length, length step, attributes of the element)`` for a dynamic one.
+* In a structure with a definition per position, the attributes of the element are a tuple with the attributes of each position.
 
 The details of the definition are described in the `Core`_.
 
@@ -65,6 +81,7 @@ Domain class
     ~Domain.set_structure_to_integer
     ~Domain.set_structure_to_real
     ~Domain.set_structure_to_variable
+    ~Domain.set_structure_to_variables
     ~Domain.get_core
 
 .. autoclass:: metagen.framework.Domain

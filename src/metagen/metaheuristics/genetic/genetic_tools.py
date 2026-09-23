@@ -180,7 +180,12 @@ class GAStructure(types.Structure):
         definition = self.get_definition()
         common = min(len(self), len(other))
 
-        if isinstance(definition, DynamicStructureDefinition):
+        if isinstance(definition, DynamicStructureDefinition) and definition.is_positional():
+            # Every position has its own definition, so the parents recombine position
+            # by position and each child keeps a parent's tail: cutting each parent at
+            # a point of its own would move elements to positions that are not theirs.
+            elements1, elements2 = prefix_and_tails(self, other, definition)
+        elif isinstance(definition, DynamicStructureDefinition):
             elements1, elements2 = cut_and_splice(self, other, definition)
         else:
             elements1, elements2 = self._recombine_prefix(other, common)

@@ -348,6 +348,41 @@ class Domain:
         base_type: Base = _check_base_type(self._core, var, remember)
         structure.set_base(base_type)
 
+    def set_structure_to_variables(self, name: str, variables: list[str], remember: bool = False):
+        """ It gives every position of a static or dynamic structure a definition of its own, taken from
+        already defined variables, one per position and in order. There must be as many variables as
+        positions: the length of a static structure, the maximum length of a dynamic one. A dynamic
+        structure then grows and shrinks at its end, so the element at position ``i`` always belongs to
+        the ``i``-th variable.
+
+        .. code-block:: python
+
+            from metagen.framework import Domain
+
+            domain = Domain()
+            domain.define_dynamic_structure("layers", 1, 3)
+            domain.define_integer("first", 1, 5)
+            domain.define_integer("second", 6, 10)
+            domain.define_integer("third", 11, 20)
+            domain.set_structure_to_variables("layers", ["first", "second", "third"])
+
+        :param name: The structure name.
+        :param variables: The names of the variables that define each position, in order.
+        :type name: str
+        :type variables: list of str
+        :param remember: Whether the variables stay defined at the top level of the domain
+            as well. False, the default, moves them; True links a copy of each.
+        :type remember: bool, optional
+        :raises ValueError: if the number of variables is not the number of positions.
+        """
+        structure: BaseStructureDefinition = _get_structure_definition(
+            name, _lookup(self._core, name))
+        if len(variables) != structure.get_capacity():
+            raise ValueError(
+                f"[STRUCTURE definition error] The structure {name} has {structure.get_capacity()} "
+                f"positions and {len(variables)} variables were given.")
+        structure.set_positions([_check_base_type(self._core, var, remember) for var in variables])
+
     def get_core(self) -> BaseDefinition:
         """ It returns the core which contains the all the defined variables.
         """
