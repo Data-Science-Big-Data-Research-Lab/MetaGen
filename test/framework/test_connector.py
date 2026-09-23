@@ -10,7 +10,7 @@ from metagen.framework.domain.core import (BaseDefinition, CategoricalDefinition
                                            RealDefinition, StaticStructureDefinition)
 from metagen.framework.rng import set_seed
 from metagen.framework.solution.types import Categorical, Integer, Real, Structure
-from metagen.metaheuristics.ga.ga_tools import GAConnector, GAInteger, GAReal, GASolution, GAStructure
+from metagen.metaheuristics.genetic.genetic_tools import GAConnector, GAInteger, GAReal, GASolution, GAStructure
 from metagen.metaheuristics.tools import solution_class
 from metagen.metaheuristics.tpe.tpe_tools import (TPECategorical, TPEConnector, TPEInteger,
                                                   TPEReal, TPESolution, TPEStructure)

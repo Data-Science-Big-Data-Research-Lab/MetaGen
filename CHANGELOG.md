@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Changes
+
+- **Modules are named after their algorithm**: `metagen.metaheuristics.random_search`,
+  `hill_climbing`, `tabu_search`, `simulated_annealing`, `genetic` and `memetic`, and
+  within `cvoa`, `cvoa`, `probabilistic_cvoa`, `distributed_cvoa`, `local_state` and
+  `ray_tools`. Imports from `metagen.metaheuristics` do not change. The earlier module
+  paths (`metagen.metaheuristics.ga`, `...rs`, `...cvoa.cvoa_local` and the rest) still
+  import, return the same modules and emit a `DeprecationWarning` with the current path.
+
 ## 1.0.0
 
 MetaGen 1.0.0 adds new algorithms, reproducible runs, a second distribution model, type

@@ -14,7 +14,7 @@ import pytest
 from metagen.framework import Domain, RelativeAlteration, Solution
 from metagen.framework.rng import set_seed
 from metagen.metaheuristics import GA, SSGA, GAConnector, Memetic
-from metagen.metaheuristics.ga.ga_tools import yield_two_children
+from metagen.metaheuristics.genetic.genetic_tools import yield_two_children
 from metagen.metaheuristics.tools import solution_class
 
 WIDTH = 1000.0
@@ -78,9 +78,9 @@ def test_the_default_is_local_for_ga_and_ssga_and_the_whole_domain_for_memetic(a
 @pytest.mark.parametrize("algorithm", [GA, SSGA, Memetic], ids=lambda a: a.__name__)
 def test_the_limit_given_to_the_algorithm_reaches_the_mutation(algorithm, monkeypatch):
     """The constructor's value is the one the children are mutated with."""
-    import metagen.metaheuristics.ga.ga as ga_module
-    import metagen.metaheuristics.ga.ssga as ssga_module
-    import metagen.metaheuristics.mm.memetic as memetic_module
+    import metagen.metaheuristics.genetic.genetic_algorithm as ga_module
+    import metagen.metaheuristics.genetic.steady_state_genetic_algorithm as ssga_module
+    import metagen.metaheuristics.memetic.memetic as memetic_module
 
     module = {GA: ga_module, SSGA: ssga_module, Memetic: memetic_module}[algorithm]
     original = module.yield_two_children

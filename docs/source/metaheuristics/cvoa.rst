@@ -21,15 +21,15 @@ Strain properties
 The strain classes
 ------------------
 
-.. autoclass:: metagen.metaheuristics.cvoa.cvoa_local.CVOA
+.. autoclass:: metagen.metaheuristics.cvoa.cvoa.CVOA
     :members:
     :show-inheritance:
 
-.. autoclass:: metagen.metaheuristics.cvoa.cvoa_probabilistic.ProbabilisticCVOA
+.. autoclass:: metagen.metaheuristics.cvoa.probabilistic_cvoa.ProbabilisticCVOA
     :members:
     :show-inheritance:
 
 ``DistributedCVOA`` is kept for backward compatibility: it is |cvoa| with ``distributed=True``.
 
-.. autoclass:: metagen.metaheuristics.cvoa.cvoa_distributed.DistributedCVOA
+.. autoclass:: metagen.metaheuristics.cvoa.distributed_cvoa.DistributedCVOA
     :show-inheritance:

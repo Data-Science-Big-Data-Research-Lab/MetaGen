@@ -26,7 +26,7 @@ def local_search_of_two_children(parents: Tuple[Solution, Solution], fitness_fun
     if distribution_level > 0:
         # Imported here, and not at the top of the module, so that a memetic run
         # that never distributes does not need Ray installed (F-24).
-        from metagen.metaheuristics.mm.mm_distributed_tools import \
+        from metagen.metaheuristics.memetic.memetic_distributed_tools import \
             distributed_population_local_search
 
         children_aux = distributed_population_local_search(list(parents), fitness_function, neighbor_population_size, alteration_limit, distribution_level)
@@ -59,7 +59,7 @@ def population_local_search(population: List[Solution], fitness_function: Callab
     if distribution_level >= 2:
         # Same reason as in local_search_of_two_children: only the distributing
         # branch may reach Ray (F-24).
-        from metagen.metaheuristics.mm.mm_distributed_tools import \
+        from metagen.metaheuristics.memetic.memetic_distributed_tools import \
             distributed_local_search
 
         neighbors = []

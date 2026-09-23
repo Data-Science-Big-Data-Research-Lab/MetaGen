@@ -17,7 +17,7 @@
 import heapq
 
 from metagen.framework import Domain, RelativeAlteration, Solution
-from .ga_tools import (GASolution, yield_two_children, require_crossover,
+from .genetic_tools import (GASolution, yield_two_children, require_crossover,
                        tournament_selection)
 from metagen.metaheuristics.base import Metaheuristic
 from typing import Any, Optional, Callable, List, Tuple, cast

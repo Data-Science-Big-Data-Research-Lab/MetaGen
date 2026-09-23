@@ -23,7 +23,7 @@ from metagen.framework import Domain, Solution
 from metagen.framework.rng import set_seed
 from metagen.metaheuristics import ProbabilisticCVOA, StrainProperties
 from metagen.metaheuristics.cvoa import CVOA
-from metagen.metaheuristics.cvoa.local_tools import LocalPandemicState
+from metagen.metaheuristics.cvoa.local_state import LocalPandemicState
 
 BITS = 20
 VARIANTS = pytest.mark.parametrize("variant", [CVOA, ProbabilisticCVOA], ids=lambda c: c.__name__)

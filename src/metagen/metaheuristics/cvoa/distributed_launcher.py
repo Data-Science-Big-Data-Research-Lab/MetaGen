@@ -13,8 +13,8 @@ from metagen.framework import Domain, Solution
 from metagen.framework.rng import set_seed, spawn_seed
 from metagen.logging.metagen_logger import metagen_logger
 from metagen.metaheuristics.cvoa.common_tools import StrainProperties
-from metagen.metaheuristics.cvoa.cvoa_local import CVOA
-from metagen.metaheuristics.cvoa.distributed_tools import PandemicStateHandle, RemotePandemicState
+from metagen.metaheuristics.cvoa.cvoa import CVOA
+from metagen.metaheuristics.cvoa.ray_tools import PandemicStateHandle, RemotePandemicState
 from metagen.metaheuristics.tools import solution_class
 
 

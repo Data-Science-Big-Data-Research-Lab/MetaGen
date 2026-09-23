@@ -5,10 +5,10 @@ from typing import Any, Optional, Callable, Tuple, List, cast
 from metagen.framework import Domain, RelativeAlteration, Solution
 from metagen.metaheuristics.tools import random_exploration
 from metagen.metaheuristics.base import Metaheuristic
-from metagen.metaheuristics.ga import GASolution
-from metagen.metaheuristics.ga.ga_tools import (yield_two_children, require_crossover,
+from metagen.metaheuristics.genetic import GASolution
+from metagen.metaheuristics.genetic.genetic_tools import (yield_two_children, require_crossover,
                                                 tournament_selection)
-from metagen.metaheuristics.mm.mm_tools import local_search_of_two_children
+from metagen.metaheuristics.memetic.memetic_tools import local_search_of_two_children
 
 
 class Memetic(Metaheuristic):

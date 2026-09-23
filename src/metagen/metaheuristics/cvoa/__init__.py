@@ -15,8 +15,8 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 from .common_tools import StrainProperties
-from .cvoa_probabilistic import ProbabilisticCVOA
-from .cvoa_local import CVOA
+from .probabilistic_cvoa import ProbabilisticCVOA
+from .cvoa import CVOA
 from .local_launcher import cvoa_launcher
 from metagen.metaheuristics.import_helper import is_package_installed
 

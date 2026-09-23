@@ -8,8 +8,8 @@ from metagen.framework.rng import set_seed
 from metagen.logging.metagen_logger import metagen_logger
 
 from metagen.metaheuristics.cvoa.common_tools import StrainProperties
-from metagen.metaheuristics.cvoa.cvoa_local import CVOA
-from metagen.metaheuristics.cvoa.local_tools import LocalPandemicState
+from metagen.metaheuristics.cvoa.cvoa import CVOA
+from metagen.metaheuristics.cvoa.local_state import LocalPandemicState
 from metagen.metaheuristics.tools import solution_class
 
 

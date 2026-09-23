@@ -75,7 +75,7 @@ For example, when defining a **Random Forest Regressor optimization domain**, th
 .. code-block:: python
 
     from metagen.framework import Domain
-    from metagen.metaheuristics.ga.ga_tools import GAConnector
+    from metagen.metaheuristics.genetic.genetic_tools import GAConnector
 
     domain = Domain(GAConnector())
     domain.define_integer("max_depth", 2, 8)

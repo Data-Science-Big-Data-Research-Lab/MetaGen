@@ -5,7 +5,7 @@ from metagen.metaheuristics.cvoa.common_tools import IndividualState, PandemicSt
 from metagen.framework.rng import set_seed, spawn_seed
 
 if TYPE_CHECKING:
-    from metagen.metaheuristics.cvoa.cvoa_local import CVOA
+    from metagen.metaheuristics.cvoa.cvoa import CVOA
 
 # A handle to the RemotePandemicState actor. Ray builds it with
 # RemotePandemicState.remote(...) and every method is called through .remote(); mypy
