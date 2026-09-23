@@ -75,6 +75,10 @@ class StrainProperties(NamedTuple):
     :param p_die: The share of the carriers that die, defaults to 0.05.
     :param max_iterations_without_improvement: Iterations the strain may spend without
         improving before it stops. None, the default, runs the whole ``pandemic_duration``.
+    :param infection_alteration_limit: How far an infection moves each variable it
+        changes: a ``RelativeAlteration`` (a fraction of each variable's own range), a
+        plain number (an absolute amount) or None, which redraws the variable over its
+        whole domain. A binary variable flips either way.
     """
     # F-28: three defaults used to differ from the paper's (pandemic_duration 10,
     # p_isolation 0.5, p_re_infection 0.001), which left three iterations under social
@@ -95,6 +99,9 @@ class StrainProperties(NamedTuple):
     # pandemic_duration. Added with F-23; last on purpose, so that any existing
     # positional construction keeps working.
     max_iterations_without_improvement: Optional[int] = None
+    # How far an infection moves each variable it changes. Last, like the field
+    # above, so that positional constructions keep working.
+    infection_alteration_limit: Any = None
 
 # Individual state in the pandemic
 IndividualState = NamedTuple("IndividualState", [("recovered", bool), ("dead", bool), ("isolated", bool)])
@@ -159,13 +166,18 @@ def compute_n_infected_travel_distance(domain: Domain, strain_properties: Strain
     return n_infected, travel_distance
 
 
-def infect(individual: Solution, fitness_function: Callable[[Solution],float],travel_distance:int) -> Solution:
+def infect(individual: Solution, fitness_function: Callable[[Solution], float], travel_distance: int,
+           alteration_limit: Any = None) -> Solution:
     """ The individual infects another one located at a specific distance from it.
+
+    :param travel_distance: How many variables the infection changes.
+    :param alteration_limit: How far each of them moves, as in
+        :py:meth:`~metagen.framework.Solution.mutate`.
 
     :returns: The newly infected individual.
     :rtype: :py:class:`~metagen.framework.Solution`
     """
     infected = copy.deepcopy(individual)
-    infected.mutate(travel_distance)
+    infected.mutate(travel_distance, alteration_limit)
     infected.evaluate(fitness_function)
     return infected

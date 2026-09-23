@@ -111,7 +111,8 @@ class ProbabilisticCVOA(CVOA):
         infected_population: SolutionSet = SolutionSet()
 
         for _ in range(0, n_infected):
-            new_infected_individual = infect(carrier, fitness_function, 1 if distancing else travel_distance)
+            new_infected_individual = infect(carrier, fitness_function, 1 if distancing else travel_distance,
+                                             strain_properties.infection_alteration_limit)
             individual_state = state.get_individual_state(new_infected_individual)
             if individual_state.dead:
                 continue

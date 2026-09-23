@@ -9,6 +9,9 @@
   taken from already defined variables, one per position. Every position is drawn,
   mutated, checked and recombined against its own definition, and a dynamic structure
   grows and shrinks at its end. All the metaheuristics support it.
+- **`infection_alteration_limit`** in `StrainProperties`: how far a CVOA infection moves
+  each variable it changes, as a `RelativeAlteration`, an absolute amount or `None` (the
+  default, which draws the variable over its whole domain).
 
 ### Changes
 

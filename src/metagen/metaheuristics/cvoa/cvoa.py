@@ -297,7 +297,8 @@ class CVOA(Metaheuristic):
             # individual infects another with a travel distance (using infect), and it is added
             # to the newly infected population.
             if time < strain_properties.social_distancing:
-                new_infected_individual = infect(carrier, fitness_function, travel_distance)
+                new_infected_individual = infect(carrier, fitness_function, travel_distance,
+                                                 strain_properties.infection_alteration_limit)
                 cls.admit(state, strain_properties, infected_population, new_infected_individual)
 
             # After social_distancing iterations (when the social_distancing policy is applied),
@@ -308,7 +309,8 @@ class CVOA(Metaheuristic):
             # published pseudocode reads that way, but the paper's text and its Figure 5 do
             # not, and more isolation made the pandemic grow (F-27).
             else:
-                new_infected_individual = infect(carrier, fitness_function, 1)
+                new_infected_individual = infect(carrier, fitness_function, 1,
+                                                 strain_properties.infection_alteration_limit)
                 if get_rng().random() < strain_properties.p_isolation:
                     cls.isolate(state, new_infected_individual)
                 else:
