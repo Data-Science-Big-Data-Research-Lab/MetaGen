@@ -455,12 +455,15 @@ class Solution:
     # ** SET VALUE METHOD
 
     def __str__(self):
-        """ String representation of the solution: its fitness and its variables.
+        """ String representation of the solution: its fitness and its variables. An
+        inactive variable shows as ``None (inactive)``, as ``solution[name]`` reads it.
         """
         res = "F = " + str(self.fitness) + "\t{"
         count = 1
         for variable in sorted(self.value):
-            if isinstance(self.value[variable], Solution):
+            if not self.is_active(variable):
+                res += str(variable) + " = None (inactive)"
+            elif isinstance(self.value[variable], Solution):
                 res += str(variable) + " = " + str(self.value[variable].value)
             else:
                 res += str(variable) + " = " + str(self.value[variable])

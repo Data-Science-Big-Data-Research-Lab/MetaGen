@@ -199,3 +199,12 @@ def test_tpe_leaves_a_variable_alone_when_no_reference_has_it_active():
     before = candidate.get("momentum").get()
     candidate.resample(solutions[:2], solutions[2:])
     assert candidate.get("momentum").get() == before
+
+
+def test_an_inactive_variable_prints_as_inactive():
+    domain = _domain()
+    solution = _solution(domain)
+    solution.set("solver", "adam")
+    assert "momentum = None (inactive)" in str(solution)
+    solution.set("solver", "sgd")
+    assert "momentum = None" not in str(solution)
