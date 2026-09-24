@@ -63,6 +63,12 @@ class SSGA(Metaheuristic):
         the slices, ``"global"`` (the default: shuffled, selected among all workers) or
         ``"islands"``; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
     :type distribution_model: str, optional
+    :param checkpoint: File the run saves its state to every ``checkpoint_every``
+        iterations, and continues from if it exists when ``run()`` starts; None, the
+        default, saves nothing. See :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type checkpoint: str or None, optional
+    :param checkpoint_every: Iterations between two saves (default is 1).
+    :type checkpoint_every: int, optional
 
     :ivar population_size: The size of the population.
     :vartype population_size: int
@@ -105,9 +111,11 @@ class SSGA(Metaheuristic):
                  tournament_size: int = 2,
                  distributed: bool = False, log_dir: Optional[str] = None,
                  seed: Optional[int] = None, distribution_model: str = "global",
+                 checkpoint: Optional[str] = None, checkpoint_every: int = 1,
                  mutation_alteration_limit: Any = RelativeAlteration(0.2)):
         super().__init__(domain, fitness_function, population_size=population_size, distributed=distributed, log_dir=log_dir, seed=seed,
-                         distribution_model=distribution_model)
+                         distribution_model=distribution_model,
+                         checkpoint=checkpoint, checkpoint_every=checkpoint_every)
 
         # Fails here, with a message that says what to do, instead of dying on
         # the first iteration with AttributeError: no attribute 'crossover' (A-07).

@@ -9,6 +9,11 @@
   taken from already defined variables, one per position. Every position is drawn,
   mutated, checked and recombined against its own definition, and a dynamic structure
   grows and shrinks at its end. All the metaheuristics support it.
+- **Pausing and resuming a run**: every metaheuristic but CVOA takes `checkpoint` and
+  `checkpoint_every`, saves its state to that file every so many iterations, and
+  continues from it when `run()` starts; `resume(path, fitness_function)` rebuilds it in
+  another process, and `request_stop()` ends a run after the iteration in progress,
+  saving it. A continued run reaches the result of an uninterrupted one.
 - **Permutations**: `Domain.define_permutation(name, elements)` defines an ordering of
   distinct elements, each exactly once, read as a list. Mutations swap positions (a
   limit counts swaps), the genetic algorithms use the order crossover, and TPE and

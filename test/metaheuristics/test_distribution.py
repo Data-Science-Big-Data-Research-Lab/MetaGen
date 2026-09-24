@@ -200,3 +200,27 @@ def test_the_memetic_algorithm_runs_at_every_distribution_level(ray_runtime, lev
     best = algorithm.run()
     assert best.get_fitness() == min(algorithm.best_solution_fitnesses)
     assert best.get_fitness() == pytest.approx(_sphere(best))
+
+
+def test_a_distributed_run_resumes_from_its_checkpoint(ray_runtime, tmp_path, monkeypatch):
+    """The state of a distributed run lives on the driver, workers included through the
+    seeds they are given, so a checkpoint continues it exactly."""
+    path = str(tmp_path / "run.ckpt")
+    sphere = _sphere_for_the_workers()
+    build = lambda **kw: GA(_sphere_domain(GAConnector()), sphere, population_size=8, max_iterations=6,
+                           distributed=True, seed=4, **kw)
+    whole = build()
+    reference = whole.run().get_fitness(), list(whole.best_solution_fitnesses)
+
+    original = GA.post_iteration
+
+    def stop_after_two(self):
+        original(self)
+        if self.current_iteration >= 2:
+            self.request_stop()
+
+    monkeypatch.setattr(GA, "post_iteration", stop_after_two)
+    build(checkpoint=path).run()
+    monkeypatch.undo()
+    resumed = GA.resume(path, sphere)
+    assert (resumed.run().get_fitness(), resumed.best_solution_fitnesses) == reference

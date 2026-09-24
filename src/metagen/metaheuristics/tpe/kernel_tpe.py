@@ -90,6 +90,12 @@ class KernelTPE(TPE):
     :param distribution_model: ``"global"`` or ``"islands"``; see
         :py:class:`~metagen.metaheuristics.base.Metaheuristic`
     :type distribution_model: str, optional
+    :param checkpoint: File the run saves its state to every ``checkpoint_every``
+        iterations, and continues from if it exists when ``run()`` starts; None, the
+        default, saves nothing. See :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type checkpoint: str or None, optional
+    :param checkpoint_every: Iterations between two saves (default is 1).
+    :type checkpoint_every: int, optional
 
     **Code example**
 
@@ -117,11 +123,13 @@ class KernelTPE(TPE):
                  max_iterations: int = 100, warmup_iterations: int = 5, n_candidates: int = 24,
                  prior_weight: float = 1.0, gamma_config: Optional[GammaConfig] = None,
                  population_size: int = 20, distributed: bool = False, log_dir: Optional[str] = None,
-                 seed: Optional[int] = None, distribution_model: str = "global") -> None:
+                 seed: Optional[int] = None, distribution_model: str = "global",
+                 checkpoint: Optional[str] = None, checkpoint_every: int = 1) -> None:
         super().__init__(domain, fitness_function, max_iterations=max_iterations,
                          warmup_iterations=warmup_iterations, candidate_pool_size=1, gamma_config=gamma_config,
                          distributed=distributed, log_dir=log_dir, seed=seed, population_size=population_size,
-                         distribution_model=distribution_model)
+                         distribution_model=distribution_model,
+                         checkpoint=checkpoint, checkpoint_every=checkpoint_every)
         self.n_candidates = n_candidates
         self.prior_weight = prior_weight
 

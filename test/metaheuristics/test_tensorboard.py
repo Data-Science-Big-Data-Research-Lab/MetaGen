@@ -76,3 +76,25 @@ def test_two_runs_share_a_directory_without_mixing(tmp_path):
         RandomSearch(_rich_domain(), _fitness, population_size=4, max_iterations=2, seed=seed,
                      log_dir=str(tmp_path)).run()
     assert len([path for path in tmp_path.iterdir() if path.is_dir()]) == 2
+
+
+def test_a_resumed_run_continues_its_curves_in_the_same_run(tmp_path):
+    log_dir = tmp_path / "logs"
+    checkpoint = str(tmp_path / "run.ckpt")
+    algorithm = RandomSearch(_rich_domain(), _fitness, max_iterations=6, seed=0,
+                             log_dir=str(log_dir), checkpoint=checkpoint)
+
+    def stop_after_three(solution):
+        if algorithm.current_iteration >= 3:
+            algorithm.request_stop()
+        return _fitness(solution)
+
+    algorithm.fitness_function = stop_after_three
+    algorithm.run()
+    resumed = RandomSearch.resume(checkpoint, _fitness)
+    resumed.run()
+
+    runs = [path for path in log_dir.iterdir() if path.is_dir()]
+    assert len(runs) == 1
+    steps = sorted({event.step for event in _read(log_dir).Scalars("Fitness/Best")})
+    assert steps == list(range(6))

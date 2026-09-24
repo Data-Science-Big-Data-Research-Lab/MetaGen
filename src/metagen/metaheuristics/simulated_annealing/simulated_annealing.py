@@ -89,6 +89,12 @@ class SA(Metaheuristic):
         the slices, ``"global"`` (the default: shuffled, selected among all workers) or
         ``"islands"``; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
     :type distribution_model: str, optional
+    :param checkpoint: File the run saves its state to every ``checkpoint_every``
+        iterations, and continues from if it exists when ``run()`` starts; None, the
+        default, saves nothing. See :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type checkpoint: str or None, optional
+    :param checkpoint_every: Iterations between two saves (default is 1).
+    :type checkpoint_every: int, optional
 
     :ivar max_iterations: Maximum number of iterations
     :vartype max_iterations: int
@@ -125,7 +131,8 @@ class SA(Metaheuristic):
                  alteration_limit: Any = RelativeAlteration(0.2), initial_temp: float = 50.0,
                  cooling_rate: Optional[float] = None, neighbor_population_size: int = 5,
                  distributed=False, log_dir: Optional[str] = None,
-                 seed: Optional[int] = None, distribution_model: str = "global") -> None:
+                 seed: Optional[int] = None, distribution_model: str = "global",
+                 checkpoint: Optional[str] = None, checkpoint_every: int = 1) -> None:
         """
         Initialize the Simulated Annealing algorithm.
 
@@ -162,7 +169,8 @@ class SA(Metaheuristic):
         super().__init__(domain, fitness_function, population_size=1,
                          warmup_iterations=warmup_iterations, distributed=distributed,
                          log_dir=log_dir, seed=seed,
-                         distribution_model=distribution_model)
+                         distribution_model=distribution_model,
+                         checkpoint=checkpoint, checkpoint_every=checkpoint_every)
         self.max_iterations = max_iterations
         self.alteration_limit = alteration_limit
         self.initial_temp = initial_temp

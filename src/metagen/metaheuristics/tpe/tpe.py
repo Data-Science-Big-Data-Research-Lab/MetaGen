@@ -50,6 +50,12 @@ class TPE(Metaheuristic):
         the slices, ``"global"`` (the default: shuffled, selected among all workers) or
         ``"islands"``; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
     :type distribution_model: str, optional
+    :param checkpoint: File the run saves its state to every ``checkpoint_every``
+        iterations, and continues from if it exists when ``run()`` starts; None, the
+        default, saves nothing. See :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type checkpoint: str or None, optional
+    :param checkpoint_every: Iterations between two saves (default is 1).
+    :type checkpoint_every: int, optional
 
     :ivar max_iterations: Maximum number of iterations
     :vartype max_iterations: int
@@ -77,7 +83,8 @@ class TPE(Metaheuristic):
                  max_iterations: int = 50, warmup_iterations:int = 10, candidate_pool_size: int = 24,
                  gamma_config: Optional[GammaConfig] = None, distributed=False, log_dir: Optional[str] = None,
                  seed: Optional[int] = None, population_size: int = 20,
-                 distribution_model: str = "global") -> None:
+                 distribution_model: str = "global",
+                 checkpoint: Optional[str] = None, checkpoint_every: int = 1) -> None:
         """
         Initialize the TPE algorithm.
 
@@ -122,7 +129,8 @@ class TPE(Metaheuristic):
 
         super().__init__(domain, fitness_function, population_size=population_size,
                          warmup_iterations=warmup_iterations, distributed=distributed, log_dir=log_dir, seed=seed,
-                         distribution_model=distribution_model)
+                         distribution_model=distribution_model,
+                         checkpoint=checkpoint, checkpoint_every=checkpoint_every)
 
         self.max_iterations = max_iterations
         self.candidate_pool_size = candidate_pool_size
