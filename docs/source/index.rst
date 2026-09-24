@@ -117,6 +117,7 @@ Index
     metagen_in_action/index
     choosing/index
     performance_tracking/index
+    pausing_and_resuming/index
     distributed_execution/index
     advanced_topics/index
     api

@@ -18,13 +18,13 @@ from __future__ import annotations
 
 import numbers
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Sized, cast
+from typing import Any, Dict, Sized, Tuple, cast
 
 from metagen.framework.domain.literals import (DF, METAGEN_TYPE, Attributes, C,
                                                CatAttr, CatVal, D, DefAttr,
                                                DefType, DymAttr, I, IntAttr,
-                                               List, MetaVal, R, RealAttr, S,
-                                               StaAttr, StrVal)
+                                               List, MetaVal, P, PermAttr, R, RealAttr, S,
+                                               StaAttr, StrBaseAttr, StrVal)
 from metagen.framework.domain.preconditions import Messages, Preconditions
 
 
@@ -295,6 +295,53 @@ class CategoricalDefinition(Base):
         return "[" + super().get_type() + "] " + "{Values = " + str(self.__categories) + "}"
 
 
+class PermutationDefinition(Base):
+    """
+    An ordering of a fixed set of distinct elements: every value holds each of them
+    exactly once, in some order, such as a route through eight cities.
+
+    :param elements: The elements to order, distinct and of one type.
+    :type elements: CatVal
+    :raises ValueError: if the elements are fewer than two, repeat, or mix types.
+    """
+
+    def __init__(self, elements: CatVal):
+        Preconditions.Categorical.categories(elements)
+        if len(elements) < 2:
+            raise ValueError("[PERMUTATION definition error] A permutation needs at least two elements.")
+        Base.__init__(self, P)
+        self.__elements: CatVal = cast(CatVal, list(elements))
+
+    def get_attributes(self) -> PermAttr:
+        """
+        The permutation type ``P`` and the elements, in the order they were given.
+
+        :return: A tuple with the type and the elements.
+        :rtype: PermAttr
+        """
+        return P, self.__elements
+
+    def check_value(self, value: Any) -> bool:
+        """
+        Whether a value is an ordering of the elements: a list or a tuple holding each
+        of them exactly once.
+
+        :param value: The value to check.
+        :type value: Any
+        :return: True if the value is a valid ordering, otherwise False.
+        :rtype: bool
+        """
+        if not isinstance(value, (list, tuple)) or len(value) != len(self.__elements):
+            return False
+        try:
+            return set(value) == set(self.__elements) and len(set(value)) == len(value)
+        except TypeError:
+            return False
+
+    def __str__(self):
+        return "[" + super().get_type() + "] " + "{Elements = " + str(self.__elements) + "}"
+
+
 class BaseDefinition(Base):
     """
     The BaseDefinition class represents a definition of a set of variables.
@@ -310,6 +357,9 @@ class BaseDefinition(Base):
         super().__init__(DF)
         self.__var_list: List[str] = []
         self.__value: Dict[str, Base] = {}
+        # A conditional variable's name -> (the variable it depends on, the values of
+        # that variable that make it active).
+        self.__conditions: Dict[str, Tuple[str, List[Any]]] = {}
 
     def __is_not_defined(self, name: str):
         """
@@ -367,7 +417,11 @@ class BaseDefinition(Base):
         Deletes a variable from the current definition.
 
         :param name: A string representing the name of the variable.
+        :raises ValueError: if the variable takes part in a condition.
         """
+        if name in self.__conditions or any(variable == name for variable, _ in self.__conditions.values()):
+            raise ValueError(f"[DEFINITION error] The variable {name} takes part in a condition "
+                             f"and cannot be moved or deleted.")
         self.__var_list.remove(name)
         del self.__value[name]
 
@@ -401,6 +455,54 @@ class BaseDefinition(Base):
         :return: A boolean indicating whether the given value is valid for the variable.
         """
         return self.__value[name].check_value(value)
+
+    def set_condition(self, name: str, variable: str, values: List[Any]) -> None:
+        """
+        Make a variable active only when another one takes one of the given values.
+
+        :param name: The conditional variable.
+        :type name: str
+        :param variable: The variable it depends on, an integer or a categorical one.
+        :type variable: str
+        :param values: The values of ``variable`` that make ``name`` active.
+        :type values: list
+        :raises ValueError: if either variable is not defined, if ``variable`` is not an
+            integer or a categorical one, if a value is not valid for it, or if the
+            condition would chain with another one.
+        """
+        for defined in (name, variable):
+            if not self.is_variable(defined):
+                raise ValueError(Messages.definition(defined, "d_n"))
+        if name == variable:
+            raise ValueError(f"[DEFINITION error] The variable {name} cannot depend on itself.")
+        controller = self.__value[variable]
+        if not isinstance(controller, (IntegerDefinition, CategoricalDefinition)):
+            raise ValueError(f"[DEFINITION error] The variable {variable} must be an integer or a "
+                             f"categorical variable for {name} to depend on it.")
+        if not isinstance(values, list) or not values:
+            raise ValueError(f"[DEFINITION error] The values that make {name} active must be a "
+                             f"non-empty list.")
+        invalid = [value for value in values if not controller.check_value(value)]
+        if invalid:
+            raise ValueError(f"[DEFINITION error] The values {invalid} are not valid for the "
+                             f"variable {variable}.")
+        if name in self.__conditions:
+            raise ValueError(f"[DEFINITION error] The variable {name} already has a condition.")
+        if variable in self.__conditions or any(other == name for other, _ in self.__conditions.values()):
+            raise ValueError(f"[DEFINITION error] A condition cannot depend on a conditional "
+                             f"variable: {name} and {variable} would chain.")
+        self.__conditions[name] = (variable, list(values))
+
+    def get_condition(self, name: str) -> Tuple[str, List[Any]] | None:
+        """
+        The condition of a variable, if it has one.
+
+        :param name: The name of the variable.
+        :type name: str
+        :return: The variable it depends on and the values that make it active, or None.
+        :rtype: tuple or None
+        """
+        return self.__conditions.get(name)
 
     def is_variable(self, name: str) -> bool:
         """
@@ -453,6 +555,9 @@ class BaseDefinition(Base):
                 res += ": [DEF]\n" + v.to_string(level + 1)
             else:
                 res += ": " + v.__str__()
+            if k in self.__conditions:
+                variable, values = self.__conditions[k]
+                res += " {Active if " + variable + " in " + str(values) + "}"
             if cnt != len(self.__value.items()):
                 res += "\n"
             cnt += 1
@@ -507,17 +612,23 @@ class BaseStructureDefinition(ABC):
     A base abstract class that defines the structure of a definition
     with a base type.
 
+    The elements of a structure share one definition, its base, unless the
+    structure is positional: then every position has a definition of its own, set
+    with :py:meth:`set_positions`, and element ``i`` is always checked, built and
+    mutated against the definition of position ``i``.
+
     :param base: An instance of a base type.
     """
 
     def __init__(self, base: Base | None):
         self.__base: Base | None = base
+        self.__positions: list[Base] | None = None
 
     def __base_type_defined(self):
         """
         Private method to check if the base type is defined.
         """
-        if self.__base is None:
+        if self.__base is None and self.__positions is None:
             raise ValueError(Messages.BASE_TYPE_NOT_DEFINED)
 
     @abstractmethod
@@ -527,6 +638,17 @@ class BaseStructureDefinition(ABC):
 
         :param value: The value to check the length for.
         :return: True if the length is correct, otherwise False.
+        """
+        pass
+
+    @abstractmethod
+    def get_capacity(self) -> int:
+        """
+        The largest number of elements the structure can hold: its length when it is
+        static, its maximum length when it is dynamic.
+
+        :return: The number of positions of the structure.
+        :rtype: int
         """
         pass
 
@@ -545,44 +667,105 @@ class BaseStructureDefinition(ABC):
             i: int = 0
             while res and i < len(value):
                 value_to_check = value[i]
-                res = cast(Base, self.__base).check_value(value_to_check)
+                res = self.get_base(i).check_value(value_to_check)
                 i += 1
         return res
 
-    def get_base(self) -> Base:
+    def get_base(self, index: int | None = None) -> Base:
         """
-        Get the base type for the definition.
+        Get the definition of the elements, or of the element at a position.
 
-        :return: The base type.
+        :param index: The position whose definition is wanted. A positional structure
+            needs it; for any other, every position has the base as its definition
+            and the index can be left out.
+        :type index: int or None, optional
+        :return: The base type, or the definition of the position.
+        :raises ValueError: if the structure is positional and no index is given.
         """
         self.__base_type_defined()
+        if self.__positions is not None:
+            if index is None:
+                raise ValueError("A positional structure has a definition per position: "
+                                 "pass the index of the position.")
+            return self.__positions[index]
         return cast(Base, self.__base)
 
     def set_base(self, base: Base) -> None:
         """
-        Set the base type.
+        Set the base type, the definition every element shares. It replaces the
+        definitions per position, if the structure had them.
 
         :param base: The base type to set.
         """
         self.__base = base
+        self.__positions = None
+
+    def set_positions(self, positions: list[Base]) -> None:
+        """
+        Give every position of the structure a definition of its own. There must be
+        one per position the structure can hold: its length when static, its maximum
+        length when dynamic. A dynamic structure then grows and shrinks at its end,
+        so the element at position ``i`` always belongs to definition ``i``.
+
+        :param positions: The definition of each position, in order.
+        :type positions: list of Base
+        :raises ValueError: if the number of definitions is not the number of positions.
+        """
+        if len(positions) != self.get_capacity():
+            raise ValueError(
+                f"[STRUCTURE definition error] The structure has {self.get_capacity()} "
+                f"positions and {len(positions)} definitions were given.")
+        self.__positions = list(positions)
+        self.__base = None
+
+    def is_positional(self) -> bool:
+        """
+        Check whether every position has a definition of its own.
+
+        :return: True if the structure is positional, otherwise False.
+        """
+        return self.__positions is not None
 
     def is_base(self):
         """
-        Check if the base type is defined.
+        Check if the base type is defined, as a shared base or per position.
 
         :return: True if the base type is defined, otherwise False.
         """
-        return self.__base is not None
+        return self.__base is not None or self.__positions is not None
 
-    def check_base_value(self, val: MetaVal) -> bool:
+    def check_base_value(self, val: MetaVal, index: int | None = None) -> bool:
         """
         Check if the base type value is valid.
 
         :param val: The value to check.
+        :param index: The position the value is for; needed by a positional structure.
+        :type index: int or None, optional
         :return: True if the value is valid, otherwise False.
         """
+        return self.get_base(index).check_value(val)
+
+    def _base_attributes(self) -> StrBaseAttr:
+        """
+        The attributes of the base, or a tuple with those of each position.
+        """
         self.__base_type_defined()
-        return cast(Base, self.__base).check_value(val)
+        if self.__positions is not None:
+            return tuple(position.get_attributes() for position in self.__positions)
+        return cast(Base, self.__base).get_attributes()
+
+    def _base_description(self) -> str:
+        """
+        The base as text for the definition's own description, one line per
+        position when the structure is positional.
+        """
+        self.__base_type_defined()
+        if self.__positions is not None:
+            return "\n" + "\n".join(f"  [{i}] {position}"
+                                    for i, position in enumerate(self.__positions))
+        base_type = cast(Base, self.__base)
+        ext: str = "\n" if isinstance(base_type, BaseDefinition) else ""
+        return ext + str(base_type)
 
 
 class DynamicStructureDefinition(Base, BaseStructureDefinition):
@@ -648,7 +831,16 @@ class DynamicStructureDefinition(Base, BaseStructureDefinition):
         :rtype: DymAttr
         """
         return D, self.__min_length, self.__max_length, \
-            self.__step_length, super().get_base().get_attributes()
+            self.__step_length, self._base_attributes()
+
+    def get_capacity(self) -> int:
+        """
+        The maximum length of the dynamic structure.
+
+        :return: The maximum length.
+        :rtype: int
+        """
+        return self.__max_length
 
     def check_length(self, value: Sized) -> bool:
         """
@@ -675,13 +867,9 @@ class DynamicStructureDefinition(Base, BaseStructureDefinition):
         :return: A string representing the dynamic structure definition.
         :rtype: str
         """
-        base_type: Base = super().get_base()
-        ext: str = ""
-        if isinstance(base_type, BaseDefinition):
-            ext = "\n"
         return self.__name + ": [" + super().get_type() + "] " + "{Min Length = " + str(self.__min_length) + \
             ", Max Length = " + str(self.__max_length) + ", Step = " + str(self.__step_length) + \
-            ", Base Type = " + ext + str(base_type) + "}"
+            ", Base Type = " + self._base_description() + "}"
 
 
 class StaticStructureDefinition(Base, BaseStructureDefinition):
@@ -733,7 +921,16 @@ class StaticStructureDefinition(Base, BaseStructureDefinition):
         :return: The attributes of this StaticStructureDefinition.
         :rtype: Tuple[str, int, Dict[str, Any]]
         """
-        return S, self.__length, super().get_base().get_attributes()
+        return S, self.__length, self._base_attributes()
+
+    def get_capacity(self) -> int:
+        """
+        The length of the static structure.
+
+        :return: The length.
+        :rtype: int
+        """
+        return self.__length
 
     def check_length(self, value: Sized) -> bool:
         """
@@ -755,4 +952,4 @@ class StaticStructureDefinition(Base, BaseStructureDefinition):
         """
         return self.__name + ": [" + super().get_type() + "] " \
             + "{Length = " + str(self.__length) + \
-            ", Base Type =" + str(super().get_base()) + "}"
+            ", Base Type =" + self._base_description() + "}"

@@ -14,8 +14,8 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-from .ga import GA
-from .ssga import SSGA
-from .ga_tools import GAConnector, GASolution, GAStructure
+from .genetic_algorithm import GA
+from .steady_state_genetic_algorithm import SSGA
+from .genetic_tools import GAConnector, GASolution, GAStructure
 
 __all__ = ["GA", "SSGA", "GASolution", "GAStructure", "GAConnector"]

@@ -15,7 +15,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 import random
-from typing import Optional
+from typing import Any, Dict, Optional
 
 import numpy as np
 
@@ -91,3 +91,28 @@ def set_seed(seed: Optional[int]) -> None:
     global _numpy_rng
     _python_rng.seed(seed)
     _numpy_rng = np.random.default_rng(seed)
+
+
+def get_state() -> Dict[str, Any]:
+    """
+    The state of both MetaGen generators, to save a run and continue it later.
+
+    :return: The state of the standard-library and the NumPy generators.
+    :rtype: dict
+    """
+    return {"random": _python_rng.getstate(), "numpy": _numpy_rng.bit_generator.state}
+
+
+def set_state(state: Dict[str, Any]) -> None:
+    """
+    Put both MetaGen generators back in a state returned by :func:`get_state`.
+
+    :param state: The state to restore.
+    :type state: dict
+    :return: Nothing.
+    :rtype: None
+    """
+    global _numpy_rng
+    _python_rng.setstate(state["random"])
+    _numpy_rng = np.random.default_rng()
+    _numpy_rng.bit_generator.state = state["numpy"]

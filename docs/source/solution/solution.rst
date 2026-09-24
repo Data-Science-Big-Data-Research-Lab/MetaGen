@@ -61,6 +61,12 @@ Categorical
     :members:
     :show-inheritance:
 
+Permutation
+------------
+.. autoclass:: metagen.framework.solution.types.Permutation
+    :members:
+    :show-inheritance:
+
 Structure
 ------------
 .. autoclass:: metagen.framework.solution.types.Structure

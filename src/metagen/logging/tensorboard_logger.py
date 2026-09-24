@@ -18,7 +18,7 @@ from tensorboardX import SummaryWriter
 from datetime import datetime
 import uuid
 import os
-from typing import List, cast
+from typing import List, Optional, cast
 import numpy as np
 from metagen.framework import Solution
 
@@ -54,17 +54,27 @@ class TensorBoardLogger:
         logger.log_final_results(best_solution=best_solution)
     """
 
-    def __init__(self, log_dir: str = "logs"):
+    def __init__(self, log_dir: str = "logs", run_id: Optional[str] = None):
         """
         Initialize the TensorBoard Logger.
 
         :param log_dir: Directory to store TensorBoard log files, defaults to "logs"
         :type log_dir: str, optional
+        :param run_id: The run to write to, to continue the curves of a resumed run.
+            None, the default, starts a new run named after the current time.
+        :type run_id: str or None, optional
         """
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
-        self.run_id = f"{timestamp}_{uuid.uuid4().hex[:6]}"
+        suffix = ""
+        if run_id is None:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
+            run_id = f"{timestamp}_{uuid.uuid4().hex[:6]}"
+        else:
+            # The event file is named after the second and the host, so a run resumed
+            # within the same second would overwrite the one it continues.
+            suffix = f".{uuid.uuid4().hex[:6]}"
+        self.run_id = run_id
         self.log_dir = os.path.join(log_dir, self.run_id)
-        self.writer = SummaryWriter(self.log_dir)
+        self.writer = SummaryWriter(self.log_dir, filename_suffix=suffix)
 
     def _log_solution_components(self, solutions: List[Solution], iteration: int, prefix: str = '') -> None:
         """

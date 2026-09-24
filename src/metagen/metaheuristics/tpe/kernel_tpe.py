@@ -16,14 +16,14 @@
 """
 import heapq
 import math
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union, cast
 
 import numpy as np
 from scipy.stats import norm
 
 from metagen.framework import Domain, Solution
 from metagen.framework.rng import get_numpy_rng
-from metagen.framework.solution.types import Categorical, Integer, Real, Structure
+from metagen.framework.solution.types import Categorical, Integer, Permutation, Real, Structure
 from metagen.metaheuristics.gamma_schedules import GammaConfig, compute_gamma
 from metagen.metaheuristics.tools import solution_class
 from metagen.metaheuristics.tpe.tpe import TPE
@@ -90,6 +90,15 @@ class KernelTPE(TPE):
     :param distribution_model: ``"global"`` or ``"islands"``; see
         :py:class:`~metagen.metaheuristics.base.Metaheuristic`
     :type distribution_model: str, optional
+    :param checkpoint: File the run saves its state to every ``checkpoint_every``
+        iterations, and continues from if it exists when ``run()`` starts; None, the
+        default, saves nothing. See :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type checkpoint: str or None, optional
+    :param checkpoint_every: Iterations between two saves (default is 1).
+    :type checkpoint_every: int, optional
+    :param history: File the run writes its history to, one JSON line per iteration;
+        None, the default, writes nothing. See :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type history: str or None, optional
 
     **Code example**
 
@@ -117,11 +126,14 @@ class KernelTPE(TPE):
                  max_iterations: int = 100, warmup_iterations: int = 5, n_candidates: int = 24,
                  prior_weight: float = 1.0, gamma_config: Optional[GammaConfig] = None,
                  population_size: int = 20, distributed: bool = False, log_dir: Optional[str] = None,
-                 seed: Optional[int] = None, distribution_model: str = "global") -> None:
+                 seed: Optional[int] = None, distribution_model: str = "global",
+                 checkpoint: Optional[str] = None, checkpoint_every: int = 1, history: Optional[str] = None) -> None:
         super().__init__(domain, fitness_function, max_iterations=max_iterations,
                          warmup_iterations=warmup_iterations, candidate_pool_size=1, gamma_config=gamma_config,
                          distributed=distributed, log_dir=log_dir, seed=seed, population_size=population_size,
-                         distribution_model=distribution_model)
+                         distribution_model=distribution_model,
+                         checkpoint=checkpoint, checkpoint_every=checkpoint_every,
+                         history=history)
         self.n_candidates = n_candidates
         self.prior_weight = prior_weight
 
@@ -172,9 +184,16 @@ class KernelTPE(TPE):
         best_score = -math.inf
         for _ in range(self.n_candidates):
             candidate = solution_type(self.domain, connector=self.domain.get_connector())
-            score = 0.0
+            drawn = []
             for path, leaf in _leaves(candidate):
                 if path not in good:
+                    continue
+                if isinstance(leaf, Permutation):
+                    # An ordering has no density: take the one of a good solution,
+                    # drawn at random, moved by one swap. It does not enter the score.
+                    chosen = good[path][int(get_numpy_rng().integers(len(good[path])))]
+                    leaf.set(list(chosen))
+                    leaf.mutate(alteration_limit=1)
                     continue
                 if path not in models:
                     models[path] = (_model(leaf, good[path], self.prior_weight),
@@ -182,14 +201,20 @@ class KernelTPE(TPE):
                 model_good, model_bad = models[path]
                 value = model_good.draw(leaf)
                 leaf.set(value)
-                score += model_good.log_density(value) - model_bad.log_density(value)
+                drawn.append((path, value, model_good, model_bad))
+            # Scored once every variable is drawn, so that a conditional variable counts
+            # only when the value drawn for the one it depends on makes it active.
+            score = 0.0
+            for path, value, model_good, model_bad in drawn:
+                if candidate.is_active(cast(str, path[0])):
+                    score += model_good.log_density(value) - model_bad.log_density(value)
             if score > best_score:
                 best_candidate, best_score = candidate, score
         assert best_candidate is not None
         return best_candidate
 
 
-Leaf = Union[Integer, Real, Categorical]
+Leaf = Union[Integer, Real, Categorical, Permutation]
 
 
 def _leaves(solution: Solution, prefix: Path = ()) -> List[Tuple[Path, Leaf]]:
@@ -209,7 +234,7 @@ def _leaves_of(value: Any, path: Path) -> List[Tuple[Path, Leaf]]:
         for index in range(len(value)):
             found.extend(_leaves_of(value.get(index), path + (index,)))
         return found
-    if isinstance(value, (Integer, Real, Categorical)):
+    if isinstance(value, (Integer, Real, Categorical, Permutation)):
         return [(path, value)]
     return []
 
@@ -219,7 +244,9 @@ def _observations(solutions: Sequence[Solution]) -> Dict[Path, List[Any]]:
     observed: Dict[Path, List[Any]] = {}
     for solution in solutions:
         for path, leaf in _leaves(solution):
-            observed.setdefault(path, []).append(leaf.get())
+            # A conditional variable's values count only where it was active.
+            if solution.is_active(cast(str, path[0])):
+                observed.setdefault(path, []).append(leaf.get())
     return observed
 
 
@@ -312,7 +339,10 @@ class _NumericModel:
 _Model = Union[_CategoricalModel, _NumericModel]
 
 
-def _model(leaf: Leaf, values: Sequence[Any], prior_weight: float) -> _Model:
+ModeledLeaf = Union[Integer, Real, Categorical]
+
+
+def _model(leaf: ModeledLeaf, values: Sequence[Any], prior_weight: float) -> _Model:
     """The Parzen estimator of a variable given the observed values."""
     if isinstance(leaf, Categorical):
         _, categories = leaf.get_definition().get_attributes()
@@ -321,11 +351,11 @@ def _model(leaf: Leaf, values: Sequence[Any], prior_weight: float) -> _Model:
     return _NumericModel(low, high, step, isinstance(leaf, Integer), values, prior_weight)
 
 
-def _draw(leaf: Leaf, values: Sequence[Any], prior_weight: float) -> Any:
+def _draw(leaf: ModeledLeaf, values: Sequence[Any], prior_weight: float) -> Any:
     """One value of the variable drawn from the Parzen estimator of the given observations."""
     return _model(leaf, values, prior_weight).draw(leaf)
 
 
-def _log_density(leaf: Leaf, value: Any, values: Sequence[Any], prior_weight: float) -> float:
+def _log_density(leaf: ModeledLeaf, value: Any, values: Sequence[Any], prior_weight: float) -> float:
     """Log density of a value under the Parzen estimator of the given observations."""
     return _model(leaf, values, prior_weight).log_density(value)

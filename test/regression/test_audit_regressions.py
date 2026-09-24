@@ -524,7 +524,7 @@ def test_f04_el_segundo_hijo_hereda_del_segundo_padre():
     cosa: que el operador nuevo no invente valores fuera de el.
     """
     from metagen.metaheuristics import GAConnector
-    from metagen.metaheuristics.ga.ga_tools import GASolution, blend_interval
+    from metagen.metaheuristics.genetic.genetic_tools import GASolution, blend_interval
 
     nombres = ("a", "b", "c", "d")
     dom = Domain(connector=GAConnector())
@@ -780,7 +780,7 @@ def test_a07_un_conector_propio_con_crossover_vale(nombre):
     from metagen.framework.domain import (BaseDefinition, CategoricalDefinition,
                                           IntegerDefinition, RealDefinition,
                                           StaticStructureDefinition)
-    from metagen.metaheuristics.ga.ga_tools import GASolution, GAStructure
+    from metagen.metaheuristics.genetic.genetic_tools import GASolution, GAStructure
     import metagen.framework.solution as tipos
 
     class CruceMio(GASolution):
@@ -958,7 +958,7 @@ def test_f11_la_busqueda_local_distribuida_reparte_la_poblacion():
     Necesita Ray de verdad, asi que se salta en el CI.
     """
     ray = pytest.importorskip("ray")
-    from metagen.metaheuristics.mm.mm_distributed_tools import \
+    from metagen.metaheuristics.memetic.memetic_distributed_tools import \
         distributed_population_local_search
 
     arrancado_aqui = not ray.is_initialized()
@@ -1260,7 +1260,7 @@ def test_f08_aislar_un_individuo_no_bloquea_la_hebra():
     Se ejecuta en una hebra demonio con espera limitada: si el fallo vuelve, el
     test falla en vez de colgar la suite entera.
     """
-    from metagen.metaheuristics.cvoa.local_tools import LocalPandemicState
+    from metagen.metaheuristics.cvoa.local_state import LocalPandemicState
 
     dominio, _ = _dominio_y_fitness_de_prueba()
     estado = LocalPandemicState(Solution(dominio))
@@ -1315,17 +1315,78 @@ def test_f49_mutar_un_entero_siempre_lo_cambia():
         assert abs(con_paso.get() - antes) <= 7
 
 
-def test_f49_un_entero_de_un_solo_valor_no_revienta_al_mutar():
-    """Una ventana de un solo punto de rejilla no tiene a que mutar: se queda como esta,
-    igual que una categorica de una categoria (F-17)."""
+def test_f49_un_entero_con_una_ventana_estrecha_no_revienta_y_se_mueve_un_paso():
+    """Una ventana mas estrecha que el paso no revienta al mutar. Hasta F-50 se quedaba
+    como estaba, porque solo contenia el valor actual; desde F-50 el vecindario tiene al
+    menos un paso de rejilla y el entero se mueve exactamente uno. Un dominio de un solo
+    punto de rejilla, el unico caso sin nada a lo que mutar, no se puede declarar: las
+    precondiciones exigen al menos tres."""
     from metagen.framework.solution.types.integer import Integer
     from metagen.framework.domain import IntegerDefinition
 
     set_seed(3)
+    vistos = set()
     entero = Integer(IntegerDefinition(0, 100, 10))
-    entero.set(50)
-    entero.mutate(alteration_limit=3)
-    assert entero.get() == 50
+    for _ in range(100):
+        entero.set(50)
+        entero.mutate(alteration_limit=3)
+        vistos.add(entero.get())
+    assert vistos == {40, 60}
+
+
+# --------------------------------------------------------------------------------
+# F-50 · La ventana de mutacion de un entero se trunca: sesgada hacia abajo y atascada
+# --------------------------------------------------------------------------------
+
+def test_f50_la_ventana_de_mutacion_de_un_entero_es_simetrica_y_se_mueve():
+    """F-50: la ventana `[v - L, v + L]` se pasaba a enteros con `int()`, que trunca
+    hacia cero: el extremo inferior llegaba un entero de mas y el superior uno de menos,
+    y con un limite menor que un paso el valor no se movia. Con `RelativeAlteration(0.2)`
+    un bit a 0 no volteaba nunca y un entero en [0, 4] desde 2 solo podia bajar. Ahora el
+    vecindario es simetrico y de al menos un paso de rejilla."""
+    from metagen.framework import RelativeAlteration
+    from metagen.framework.solution.types.integer import Integer
+    from metagen.framework.domain import IntegerDefinition
+
+    set_seed(5)
+    for dominio, inicio, esperados in [((0, 1), 0, {1}), ((0, 1), 1, {0}),
+                                       ((0, 4), 2, {1, 3}), ((0, 4), 0, {1}),
+                                       ((0, 9), 4, {3, 5}), ((-5, 5), -5, {-4, -3})]:
+        vistos = set()
+        entero = Integer(IntegerDefinition(*dominio))
+        for _ in range(300):
+            entero.set(inicio)
+            entero.mutate(alteration_limit=RelativeAlteration(0.2))
+            vistos.add(entero.get())
+        assert vistos == esperados, (dominio, inicio, vistos)
+
+
+# --------------------------------------------------------------------------------
+# F-51 · Pedir el logger de MetaGen por su nombre antes de importar el paquete deja a CVOA sin detailed_info
+# --------------------------------------------------------------------------------
+
+_GUION_F51 = """
+import logging
+logging.getLogger("metagen_logger")          # pedido por su nombre antes que MetaGen
+from metagen.framework import Domain
+from metagen.metaheuristics import StrainProperties, cvoa_launcher
+from metagen.logging.metagen_logger import metagen_logger
+domain = Domain()
+domain.define_real("x", -1.0, 1.0)
+cepas = [StrainProperties("S1", pandemic_duration=3, social_distancing=1)]
+cvoa_launcher(cepas, domain, lambda s: s["x"] ** 2, seed=0)
+metagen_logger.detailed_info("ok")
+print(type(metagen_logger).__name__)
+"""
+
+
+def test_f51_el_logger_de_metagen_funciona_aunque_se_pida_antes_por_su_nombre():
+    """F-51: MetaGen construye su logger cambiando la clase de logger solo durante la
+    llamada; si alguien lo habia pedido antes por el nombre, logging devolvia el que ya
+    existia, un Logger normal sin detailed_info, y CVOA reventaba al informar."""
+    resultado = subprocess.run([sys.executable, "-c", _GUION_F51], capture_output=True, text=True)
+    assert resultado.returncode == 0, resultado.stderr[-800:]
+    assert resultado.stdout.strip().endswith("MetaGenLogger")
 
 
 # --------------------------------------------------------------------------------
@@ -1335,9 +1396,9 @@ def test_f49_un_entero_de_un_solo_valor_no_revienta_al_mutar():
 def _cepa_con_portadores(fitness_values, **propiedades):
     """Una cepa con tantos portadores como valores, en ese orden de llegada, cada uno
     con el fitness dado a mano."""
-    from metagen.metaheuristics.cvoa.cvoa_local import CVOA
+    from metagen.metaheuristics.cvoa.cvoa import CVOA
     from metagen.metaheuristics.cvoa.common_tools import StrainProperties
-    from metagen.metaheuristics.cvoa.local_tools import LocalPandemicState
+    from metagen.metaheuristics.cvoa.local_state import LocalPandemicState
 
     set_seed(1)
     dominio, fitness = _dominio_y_fitness_de_prueba()
@@ -1387,7 +1448,7 @@ def test_f23_una_cepa_no_muere_al_encontrar_la_primera_mejora():
     primera mejora: se paraba justamente porque estaba funcionando.
     """
     from metagen.metaheuristics import cvoa_launcher
-    from metagen.metaheuristics.cvoa import cvoa_local
+    from metagen.metaheuristics.cvoa import cvoa as cvoa_local
     from metagen.metaheuristics.cvoa.common_tools import StrainProperties
 
     iteraciones = {}
@@ -1455,7 +1516,7 @@ def test_a09_hay_una_sola_implementacion_de_local_search():
     byte a byte. La de `tools.py` no la usaba nadie y la de `mm_tools.py` si, asi
     que la copia viva estaba en el modulo especifico del memetico."""
     from metagen.metaheuristics import tools
-    from metagen.metaheuristics.mm import mm_tools
+    from metagen.metaheuristics.memetic import memetic_tools as mm_tools
 
     assert mm_tools.local_search is tools.local_search
 
@@ -1474,13 +1535,13 @@ def test_a09_los_dos_cvoa_exponen_los_mismos_metodos():
                 return {m.name for m in nodo.body if isinstance(m, ast.FunctionDef)}
         raise AssertionError(f"no se encontro la clase {clase} en {modulo}")
 
-    distribuido = metodos("metagen.metaheuristics.cvoa.cvoa_distributed", "DistributedCVOA")
+    distribuido = metodos("metagen.metaheuristics.cvoa.distributed_cvoa", "DistributedCVOA")
 
     # Desde A-09 DistributedCVOA es CVOA con distributed=True: solo puede tener un
     # constructor. Cualquier otro metodo seria la duplicacion volviendo.
     assert distribuido <= {"__init__"}, (
         f"DistributedCVOA reimplementa {sorted(distribuido - {'__init__'})}: hay una sola cepa")
-    arbol = ast.parse(_fuente("metagen.metaheuristics.cvoa.cvoa_distributed"))
+    arbol = ast.parse(_fuente("metagen.metaheuristics.cvoa.distributed_cvoa"))
     bases = [b.id for n in ast.walk(arbol) if isinstance(n, ast.ClassDef) and n.name == "DistributedCVOA"
              for b in n.bases if isinstance(b, ast.Name)]
     assert bases == ["CVOA"], f"DistributedCVOA hereda de {bases}, no de CVOA"
@@ -1492,9 +1553,9 @@ def test_a09_hay_una_sola_implementacion_de_la_cepa():
     entre procesos, y la f-string se evalua aunque el nivel de log lo descarte. Desde
     A-09 el informe y el paso de contagio se escriben una sola vez, en cvoa_local: ni
     cvoa_distributed ni las herramientas de Ray los repiten."""
-    local = _fuente("metagen.metaheuristics.cvoa.cvoa_local")
-    distribuido = _fuente("metagen.metaheuristics.cvoa.cvoa_distributed")
-    herramientas_ray = _fuente("metagen.metaheuristics.cvoa.distributed_tools")
+    local = _fuente("metagen.metaheuristics.cvoa.cvoa")
+    distribuido = _fuente("metagen.metaheuristics.cvoa.distributed_cvoa")
+    herramientas_ray = _fuente("metagen.metaheuristics.cvoa.ray_tools")
 
     assert local.count("Iteration #") == 1, "el informe de iteracion se escribe una vez"
     assert "Iteration #" not in distribuido and "Iteration #" not in herramientas_ray
@@ -1521,17 +1582,17 @@ def _bloque_de_codigo(modulo: str) -> str:
 
 
 @pytest.mark.parametrize("modulo", [
-    "metagen.metaheuristics.rs.random_search",
+    "metagen.metaheuristics.random_search.random_search",
     "metagen.metaheuristics.tpe.tpe",
-    "metagen.metaheuristics.mm.memetic",
-    "metagen.metaheuristics.cvoa.cvoa_local",
-    "metagen.metaheuristics.cvoa.cvoa_probabilistic",
-    "metagen.metaheuristics.ts.tabu_search",
+    "metagen.metaheuristics.memetic.memetic",
+    "metagen.metaheuristics.cvoa.cvoa",
+    "metagen.metaheuristics.cvoa.probabilistic_cvoa",
+    "metagen.metaheuristics.tabu_search.tabu_search",
     "metagen.metaheuristics.tpe.kernel_tpe",
-    "metagen.metaheuristics.ga.ga",
-    "metagen.metaheuristics.ga.ssga",
-    "metagen.metaheuristics.sa.sa",
-    "metagen.metaheuristics.hc.hill_climbing",
+    "metagen.metaheuristics.genetic.genetic_algorithm",
+    "metagen.metaheuristics.genetic.steady_state_genetic_algorithm",
+    "metagen.metaheuristics.simulated_annealing.simulated_annealing",
+    "metagen.metaheuristics.hill_climbing.hill_climbing",
 ])
 def test_p10_los_ejemplos_de_las_docstrings_usan_la_api_de_verdad(modulo, monkeypatch):
     """P-10: los ejemplos publicados llamaban a `domain.defineInteger(0, 1)`, que no
@@ -1813,7 +1874,7 @@ def test_a01_el_torneo_no_es_seleccion_por_truncamiento():
     """A-01: coger siempre a los dos mejores es truncamiento con el corte mas
     agresivo posible. El torneo tiene que poder devolver a otro."""
     from metagen.framework.rng import set_seed
-    from metagen.metaheuristics.ga.ga_tools import tournament_selection
+    from metagen.metaheuristics.genetic.genetic_tools import tournament_selection
 
     dominio, _ = _dominio_ga()
     poblacion = []
@@ -1840,8 +1901,8 @@ def test_a01_los_cruces_de_una_generacion_no_usan_la_misma_pareja(nombre, monkey
     arreglo: una sola pareja en las cinco, la poblacion pasaba de 10 puntos distintos
     a 2, y desde la segunda generacion los dos padres eran el mismo punto, con lo que
     el cruce devolvia al padre y dejaba de recombinar."""
-    import metagen.metaheuristics.ga.ga as modulo_ga
-    import metagen.metaheuristics.mm.memetic as modulo_mm
+    import metagen.metaheuristics.genetic.genetic_algorithm as modulo_ga
+    import metagen.metaheuristics.memetic.memetic as modulo_mm
     from metagen.metaheuristics import GA, GAConnector, Memetic
 
     modulo = {"GA": modulo_ga, "Memetic": modulo_mm}[nombre]
@@ -1881,7 +1942,7 @@ def test_a01_ssga_no_cruza_un_punto_consigo_mismo_casi_siempre(monkeypatch):
     El reemplazo steady state no se toca: lo que hace steady state a este algoritmo es
     que solo se sustituyan los dos peores, no como se eligen los padres.
     """
-    import metagen.metaheuristics.ga.ssga as modulo
+    import metagen.metaheuristics.genetic.steady_state_genetic_algorithm as modulo
     from metagen.metaheuristics import SSGA
 
     original = modulo.yield_two_children
@@ -2054,7 +2115,7 @@ def test_f30_cada_run_arranca_a_la_misma_temperatura():
 def _padres_de_todos_los_tipos():
     """Un dominio con cada tipo del framework, y dos padres inicializados."""
     from metagen.metaheuristics import GAConnector
-    from metagen.metaheuristics.ga.ga_tools import GASolution
+    from metagen.metaheuristics.genetic.genetic_tools import GASolution
 
     dominio = Domain(connector=GAConnector())
     dominio.define_integer("n", 0, 1000)
@@ -2116,7 +2177,7 @@ def test_f33_el_cruce_no_se_sale_del_dominio():
     dominio; tiene que recortarse. Con los padres pegados a los extremos es cuando mas
     se nota."""
     from metagen.metaheuristics import GAConnector
-    from metagen.metaheuristics.ga.ga_tools import GASolution
+    from metagen.metaheuristics.genetic.genetic_tools import GASolution
 
     dominio = Domain(connector=GAConnector())
     dominio.define_real("x", -5.0, 5.0)
@@ -2228,7 +2289,7 @@ def test_f31_el_cruce_de_longitud_variable_crea_longitudes_nuevas_y_validas():
     recombina las longitudes ademas de los valores. De dos padres de longitudes 2 y 7
     tienen que salir hijos de longitudes intermedias, y nunca fuera de [2, 7]."""
     from metagen.metaheuristics import GAConnector
-    from metagen.metaheuristics.ga.ga_tools import GASolution
+    from metagen.metaheuristics.genetic.genetic_tools import GASolution
 
     dominio = Domain(connector=GAConnector())
     dominio.define_dynamic_structure("v", 2, 7)
@@ -2519,8 +2580,8 @@ print(repr(mejor.get_fitness()))
 
 def _cepa_con(p_isolation: float):
     from metagen.metaheuristics.cvoa.common_tools import StrainProperties
-    from metagen.metaheuristics.cvoa.cvoa_local import CVOA
-    from metagen.metaheuristics.cvoa.local_tools import LocalPandemicState
+    from metagen.metaheuristics.cvoa.cvoa import CVOA
+    from metagen.metaheuristics.cvoa.local_state import LocalPandemicState
 
     set_seed(0)
     dominio, fitness = _dominio_y_fitness_de_prueba()
@@ -2783,8 +2844,8 @@ def _portador_y_cepa_local(update_isolated: bool):
     """Una cepa de hilos ya en fase de distanciamiento, con aislamiento seguro, y un
     portador evaluado para contagiar desde el."""
     from metagen.metaheuristics.cvoa.common_tools import StrainProperties
-    from metagen.metaheuristics.cvoa.cvoa_local import CVOA
-    from metagen.metaheuristics.cvoa.local_tools import LocalPandemicState
+    from metagen.metaheuristics.cvoa.cvoa import CVOA
+    from metagen.metaheuristics.cvoa.local_state import LocalPandemicState
 
     set_seed(0)
     dominio, fitness = _dominio_y_fitness_de_prueba()
@@ -2821,8 +2882,8 @@ def test_f45_el_aislado_se_cuenta_en_distribuido():
     verdad: se salta donde no este."""
     ray = pytest.importorskip("ray")
     from metagen.metaheuristics.cvoa.common_tools import SolutionSet, StrainProperties
-    from metagen.metaheuristics.cvoa.cvoa_distributed import DistributedCVOA
-    from metagen.metaheuristics.cvoa.distributed_tools import (RemotePandemicState, RemotePandemicStateProxy,
+    from metagen.metaheuristics.cvoa.distributed_cvoa import DistributedCVOA
+    from metagen.metaheuristics.cvoa.ray_tools import (RemotePandemicState, RemotePandemicStateProxy,
                                                                 spread_on_ray)
 
     arrancado_aqui = not ray.is_initialized()

@@ -16,11 +16,19 @@
 """
 
 import heapq
+import json
+import math
+import os
+import pickle
+import statistics
+import time
 from abc import ABC, abstractmethod
+from importlib import metadata
 
 from .import_helper import is_package_installed
-from typing import List, Tuple, Optional, Callable
+from typing import Any, Dict, List, Tuple, Optional, Callable, cast
 from metagen.framework import Domain, Solution
+from metagen.framework import rng as rng_state
 from metagen.framework.rng import get_rng, set_seed, spawn_seed
 from copy import deepcopy
 
@@ -35,6 +43,32 @@ if is_package_installed("tensorboard"):
 if IS_RAY_INSTALLED:
     import ray
     from .distributed_tools import assign_load_equally, call_distributed, distributed_random_exploration
+
+
+#: What a checkpoint does not keep: the fitness function, which may be a lambda or a
+#: nested function and cannot be pickled, the TensorBoard writer, and where and how
+#: often to save, which the resumed run is given again.
+_NOT_CHECKPOINTED = frozenset({"fitness_function", "logger", "checkpoint", "checkpoint_every",
+                               "_stop_requested"})
+
+
+class _CountingFitness:
+    """The fitness function of a run, counting its calls on the driver for the history."""
+
+    def __init__(self, function: Callable[[Solution], float]) -> None:
+        self.function = function
+        self.calls = 0
+
+    def __call__(self, solution: Solution) -> float:
+        self.calls += 1
+        return self.function(solution)
+
+
+def _package_version() -> str:
+    try:
+        return metadata.version("pymetagen-datalabupo")
+    except metadata.PackageNotFoundError:
+        return "unknown"
 
 
 #: The two ways the slices of a distributed run make up the next population.
@@ -96,6 +130,19 @@ class Metaheuristic(ABC):
         run every time). It seeds MetaGen's own generators, so it does not
         disturb the random state of the calling application.
     :type seed: Optional[int], optional
+    :param checkpoint: File the run saves its state to every ``checkpoint_every``
+        iterations, and continues from if it exists when ``run()`` starts: a run cut
+        short by a power failure or a job scheduler goes on where it was saved, with
+        the same result it would have reached uninterrupted. The file is removed when
+        the run ends. None, the default, saves nothing. See :py:meth:`resume` and
+        :py:meth:`request_stop`.
+    :type checkpoint: str or None, optional
+    :param checkpoint_every: Iterations between two saves (default is 1).
+    :type checkpoint_every: int, optional
+    :param history: File the run writes its history to, one JSON line per iteration,
+        which ``pandas.read_json(history, lines=True)`` reads as a table. None, the
+        default, writes nothing; the records are in ``history`` either way.
+    :type history: str or None, optional
 
     :ivar domain: The problem domain.
     :vartype domain: Domain
@@ -115,6 +162,13 @@ class Metaheuristic(ABC):
     :vartype current_solutions: List[Solution]
     :ivar best_solution_fitnesses: List of fitness values of the best solutions per iteration.
     :vartype best_solution_fitnesses: List[float]
+    :ivar history: One record per iteration: ``iteration``; ``evaluations``, counted from
+        the start of the run, warmup included, or None in a distributed run, whose
+        evaluations happen in the workers; ``seconds`` since the start; ``best``, the
+        best fitness so far; the ``iteration_best``, ``mean``, ``std`` and ``worst``
+        fitness of the population and its ``population_size``; and ``best_solution``,
+        the values of the best solution so far.
+    :vartype history: List[dict]
     """
 
     # minimum_slice exists since F-46: islands of one individual crashed GA and Memetic.
@@ -124,7 +178,8 @@ class Metaheuristic(ABC):
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float], population_size=20,
                  warmup_iterations: int = 0, distributed=False,
                  log_dir: Optional[str] = None, seed: Optional[int] = None,
-                 distribution_model: str = "global") -> None:
+                 distribution_model: str = "global", checkpoint: Optional[str] = None,
+                 checkpoint_every: int = 1, history: Optional[str] = None) -> None:
         super().__init__()
 
         if distribution_model not in DISTRIBUTION_MODELS:
@@ -148,9 +203,19 @@ class Metaheuristic(ABC):
         # installed, with no way to turn it off, so a sweep of hundreds of
         # configurations left hundreds of directories behind (A-12). It is opt-in
         # now: log_dir is where to write, and None means do not write.
+        self.log_dir = log_dir
         self.logger = (TensorBoardLogger(log_dir=log_dir)
                        if log_dir is not None and is_package_installed("tensorboard")
                        else None)
+        if checkpoint_every < 1:
+            raise ValueError(f"checkpoint_every must be at least 1, not {checkpoint_every}")
+        self.checkpoint = checkpoint
+        self.checkpoint_every = checkpoint_every
+        self._stop_requested = False
+        self.history_file = history
+        self.history: List[Dict[str, Any]] = []
+        self._evaluations = 0
+        self._seconds = 0.0
 
         self.current_iteration = -1
         self.best_solution: Optional[Solution] = None
@@ -437,14 +502,35 @@ class Metaheuristic(ABC):
         """
         Execute the metaheuristic algorithm.
 
-        :return: The best solution found.
+        With a ``checkpoint`` file that exists, the run continues from the state saved
+        in it instead of starting over.
+
+        :return: The best solution found, or the best found so far when
+            :py:meth:`request_stop` stopped the run.
         :rtype: Solution
         """
+        resuming = self.checkpoint is not None and os.path.exists(self.checkpoint)
+        if resuming:
+            self._restore(self._read_checkpoint(cast(str, self.checkpoint)))
         # Seeded here rather than in __init__ so that every run() starts from
         # the same state: building two metaheuristics and running them later
         # would otherwise make the second one depend on the first.
-        if self.seed is not None:
+        elif self.seed is not None:
             set_seed(self.seed)
+        self._stop_requested = False
+        if resuming:
+            self._trim_history_file()
+        else:
+            self.history = []
+            self._evaluations = 0
+            self._seconds = 0.0
+            if self.history_file is not None and os.path.exists(self.history_file):
+                os.remove(self.history_file)
+        # Counted on the driver: the history's evaluations, from where a resumed run
+        # left them.
+        counted = _CountingFitness(self.fitness_function)
+        self.fitness_function = counted
+        evaluations_before, seconds_before, started = self._evaluations, self._seconds, time.perf_counter()
 
         # Remembered so that only the run() that started Ray stops it. Shutting it
         # down unconditionally took the runtime away from a cluster the user had
@@ -455,13 +541,14 @@ class Metaheuristic(ABC):
             started_ray = True
 
         try:
-            self.pre_execution()
+            if not resuming:
+                self.pre_execution()
 
-            self._warmup()
+                self._warmup()
 
-            self._initialize()
+                self._initialize()
 
-            self.current_iteration = 0
+                self.current_iteration = 0
 
             while not self.stopping_criterion():
                 self.pre_iteration()
@@ -469,11 +556,29 @@ class Metaheuristic(ABC):
                 self._iterate()
 
                 self.post_iteration()
-                    
+
+                self._evaluations = evaluations_before + counted.calls
+                self._seconds = seconds_before + time.perf_counter() - started
+                self._record_history()
+
                 self.current_iteration += 1
 
+                # Saved here, on the driver, once the iteration is complete: the only
+                # point at which the state is consistent. A cut during an iteration
+                # loses that iteration and never corrupts the file.
+                if self.checkpoint is not None and (
+                        self._stop_requested or self.current_iteration % self.checkpoint_every == 0):
+                    self._write_checkpoint()
+                if self._stop_requested:
+                    if self.logger:
+                        self.logger.writer.flush()
+                    return deepcopy(self._best_so_far())
+
             self.post_execution()
+            if self.checkpoint is not None and os.path.exists(self.checkpoint):
+                os.remove(self.checkpoint)
         finally:
+            self.fitness_function = counted.function
             # Also on the way out of an exception: a runtime this run() started must
             # not outlive it, or the workers and their memory stay alive until the
             # interpreter exits (F-44).
@@ -481,3 +586,156 @@ class Metaheuristic(ABC):
                 ray.shutdown()
 
         return deepcopy(self._best_so_far())
+
+    def _record_history(self) -> None:
+        """
+        Add the record of the iteration just completed to ``history``, and to the
+        ``history`` file if the run has one.
+        """
+        fitnesses = [solution.get_fitness() for solution in self.current_solutions]
+        finite = [value for value in fitnesses if math.isfinite(value)]
+        best = self._best_so_far()
+        record = {
+            "iteration": self.current_iteration,
+            "evaluations": None if self.distributed else self._evaluations,
+            "seconds": self._seconds,
+            "best": best.get_fitness(),
+            "iteration_best": min(finite) if finite else None,
+            "mean": statistics.fmean(finite) if finite else None,
+            "std": statistics.pstdev(finite) if finite else None,
+            "worst": max(finite) if finite else None,
+            "population_size": len(self.current_solutions),
+            "best_solution": {name: best[name] for name in best},
+        }
+        self.history.append(record)
+        if self.history_file is not None:
+            directory = os.path.dirname(os.path.abspath(self.history_file))
+            os.makedirs(directory, exist_ok=True)
+            with open(self.history_file, "a") as handle:
+                handle.write(json.dumps(record) + "\n")
+
+    def _trim_history_file(self) -> None:
+        """
+        On resuming, drop the lines a run wrote after its last checkpoint: they are
+        written again as the run repeats those iterations.
+        """
+        if self.history_file is None or not os.path.exists(self.history_file):
+            return
+        with open(self.history_file) as handle:
+            kept = [line for line in handle
+                    if line.strip() and json.loads(line)["iteration"] < self.current_iteration]
+        with open(self.history_file, "w") as handle:
+            handle.writelines(kept)
+
+    def request_stop(self) -> None:
+        """
+        Ask a running ``run()`` to stop after the iteration in progress. It saves the
+        state if the run has a ``checkpoint`` file, and returns the best solution found
+        so far; calling ``run()`` again, or :py:meth:`resume` in another process,
+        continues from there. It only sets a flag, so it can be called from a callback,
+        another thread or a signal handler, for instance the signal a job scheduler
+        sends before stopping a job:
+
+        .. code-block:: python
+
+            import signal
+
+            signal.signal(signal.SIGTERM, lambda signum, frame: algorithm.request_stop())
+
+        :return: Nothing.
+        :rtype: None
+        """
+        self._stop_requested = True
+
+    @classmethod
+    def resume(cls, checkpoint: str, fitness_function: Callable[[Solution], float]) -> "Metaheuristic":
+        """
+        Rebuild a metaheuristic from its checkpoint file, to continue it with ``run()``,
+        for instance in a new process after the one that started it was stopped. The
+        fitness function is not saved in the file and is given again here.
+
+        .. code-block:: python
+
+            algorithm = GA.resume("runs/ga.ckpt", fitness)
+            best = algorithm.run()
+
+        The file is a pickle: load only checkpoints you wrote or trust.
+
+        :param checkpoint: The checkpoint file.
+        :type checkpoint: str
+        :param fitness_function: The fitness function of the run.
+        :type fitness_function: Callable[[Solution], float]
+        :return: The metaheuristic, ready to continue.
+        :rtype: Metaheuristic
+        :raises ValueError: if the file belongs to another class or version of the package.
+        """
+        state = cls._read_checkpoint(checkpoint)
+        algorithm_class = state["class"]
+        if not issubclass(algorithm_class, cls):
+            raise ValueError(f"The checkpoint {checkpoint} is of {algorithm_class.__name__}, "
+                             f"not of {cls.__name__}.")
+        algorithm = algorithm_class.__new__(algorithm_class)
+        algorithm.__dict__.update(state["algorithm"])
+        algorithm.fitness_function = fitness_function
+        algorithm.checkpoint = checkpoint
+        algorithm.checkpoint_every = state["checkpoint_every"]
+        algorithm._stop_requested = False
+        algorithm.logger = None
+        return algorithm
+
+    def _checkpoint_state(self) -> Dict[str, Any]:
+        """
+        What a checkpoint holds: the algorithm's attributes but the ones in
+        ``_NOT_CHECKPOINTED``, the state of both generators, the class, the version of
+        the package and the TensorBoard run, so that its curves continue in the same
+        directory. A subclass whose state is not all in its attributes extends it.
+        """
+        return {
+            "version": _package_version(),
+            "class": type(self),
+            "algorithm": {name: value for name, value in self.__dict__.items()
+                          if name not in _NOT_CHECKPOINTED},
+            "rng": rng_state.get_state(),
+            "checkpoint_every": self.checkpoint_every,
+            "tensorboard_run": self.logger.run_id if self.logger else None,
+        }
+
+    def _restore(self, state: Dict[str, Any]) -> None:
+        """
+        Put the algorithm back in the state of a checkpoint: the inverse of
+        :py:meth:`_checkpoint_state`.
+        """
+        if state["class"] is not type(self):
+            raise ValueError(f"The checkpoint {self.checkpoint} is of {state['class'].__name__}, "
+                             f"not of {type(self).__name__}.")
+        self.__dict__.update(state["algorithm"])
+        rng_state.set_state(state["rng"])
+        if self.log_dir is not None and is_package_installed("tensorboard"):
+            if self.logger:
+                self.logger.close()
+            self.logger = TensorBoardLogger(log_dir=self.log_dir, run_id=state["tensorboard_run"])
+
+    def _write_checkpoint(self) -> None:
+        """
+        Write the checkpoint atomically: to a temporary file in the same directory,
+        synced to disk, then renamed over the previous one, so that a cut while
+        writing leaves the previous checkpoint whole.
+        """
+        path = cast(str, self.checkpoint)
+        directory = os.path.dirname(os.path.abspath(path))
+        os.makedirs(directory, exist_ok=True)
+        temporary = path + ".tmp"
+        with open(temporary, "wb") as handle:
+            pickle.dump(self._checkpoint_state(), handle)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, path)
+
+    @staticmethod
+    def _read_checkpoint(path: str) -> Dict[str, Any]:
+        with open(path, "rb") as handle:
+            state: Dict[str, Any] = pickle.load(handle)
+        if state.get("version") != _package_version():
+            raise ValueError(f"The checkpoint {path} was written by version {state.get('version')} "
+                             f"of the package and this is version {_package_version()}.")
+        return state

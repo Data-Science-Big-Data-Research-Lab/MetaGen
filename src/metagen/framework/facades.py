@@ -22,8 +22,8 @@ from metagen.framework.domain import (Base, BaseDefinition,
                                       BaseStructureDefinition,
                                       CategoricalDefinition,
                                       DynamicStructureDefinition,
-                                      IntegerDefinition, RealDefinition,
-                                      StaticStructureDefinition)
+                                      IntegerDefinition, PermutationDefinition,
+                                      RealDefinition, StaticStructureDefinition)
 from metagen.framework.domain.literals import CatVal
 from metagen.framework.domain.preconditions import Messages
 
@@ -141,6 +141,27 @@ class Domain:
         categorical_definition = cast(type[CategoricalDefinition], self._connector.get_definition(
             self._connector.get_type(str)))
         self._core.define(name, categorical_definition(categories))
+
+    def define_permutation(self, name: str, elements: CatVal):
+        """ It defines a **PERMUTATION** variable: an ordering of the given elements, each of them exactly once,
+        such as the order in which to visit eight cities. It reads as a list.
+
+        .. code-block:: python
+
+            from metagen.framework import Domain
+
+            domain = Domain()
+            domain.define_permutation("route", [1, 2, 3, 4, 5, 6, 7, 8])
+
+        :param name: The variable name.
+        :param elements: The elements to order: at least two, distinct and of one type.
+        :type name: str
+        :type elements: list of int, float or str
+        :raises ValueError: if the elements are not valid.
+        """
+        permutation_definition = cast(type[PermutationDefinition], self._connector.get_definition(
+            self._connector.get_type(tuple)))
+        self._core.define(name, permutation_definition(elements))
 
     def define_group(self, name: str):
         """ It defines a **GROUP** variable receiving a name as its identifier, and a list with the categories that it will be able to have.
@@ -347,6 +368,68 @@ class Domain:
             name, _lookup(self._core, name))
         base_type: Base = _check_base_type(self._core, var, remember)
         structure.set_base(base_type)
+
+    def set_structure_to_variables(self, name: str, variables: list[str], remember: bool = False):
+        """ It gives every position of a static or dynamic structure a definition of its own, taken from
+        already defined variables, one per position and in order. There must be as many variables as
+        positions: the length of a static structure, the maximum length of a dynamic one. A dynamic
+        structure then grows and shrinks at its end, so the element at position ``i`` always belongs to
+        the ``i``-th variable.
+
+        .. code-block:: python
+
+            from metagen.framework import Domain
+
+            domain = Domain()
+            domain.define_dynamic_structure("layers", 1, 3)
+            domain.define_integer("first", 1, 5)
+            domain.define_integer("second", 6, 10)
+            domain.define_integer("third", 11, 20)
+            domain.set_structure_to_variables("layers", ["first", "second", "third"])
+
+        :param name: The structure name.
+        :param variables: The names of the variables that define each position, in order.
+        :type name: str
+        :type variables: list of str
+        :param remember: Whether the variables stay defined at the top level of the domain
+            as well. False, the default, moves them; True links a copy of each.
+        :type remember: bool, optional
+        :raises ValueError: if the number of variables is not the number of positions.
+        """
+        structure: BaseStructureDefinition = _get_structure_definition(
+            name, _lookup(self._core, name))
+        if len(variables) != structure.get_capacity():
+            raise ValueError(
+                f"[STRUCTURE definition error] The structure {name} has {structure.get_capacity()} "
+                f"positions and {len(variables)} variables were given.")
+        structure.set_positions([_check_base_type(self._core, var, remember) for var in variables])
+
+    def set_condition(self, name: str, variable: str, values: list):
+        """ It makes a variable active only when another one takes one of the given values, for a
+        hyperparameter that only means something for some settings of another. While it is inactive,
+        ``solution[name]`` returns None, the searches do not spend mutations on it and two solutions
+        that differ only in it are the same solution. Its value is kept, so it comes back with a
+        valid one when the variable becomes active again.
+
+        .. code-block:: python
+
+            from metagen.framework import Domain
+
+            domain = Domain()
+            domain.define_categorical("solver", ["adam", "sgd"])
+            domain.define_real("momentum", 0.5, 0.99)
+            domain.set_condition("momentum", "solver", ["sgd"])
+
+        :param name: The conditional variable, defined at the top level of the domain.
+        :param variable: The variable it depends on: an integer or a categorical one, at the top
+            level, and not conditional itself.
+        :param values: The values of ``variable`` that make ``name`` active.
+        :type name: str
+        :type variable: str
+        :type values: list
+        :raises ValueError: if the condition is not valid.
+        """
+        self._core.set_condition(name, variable, values)
 
     def get_core(self) -> BaseDefinition:
         """ It returns the core which contains the all the defined variables.

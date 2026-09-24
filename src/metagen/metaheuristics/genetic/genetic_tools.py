@@ -24,8 +24,8 @@ import metagen.framework.solution as types
 from metagen.framework import BaseConnector, Solution, Domain
 from metagen.framework.domain import (BaseDefinition, CategoricalDefinition,
                                       DynamicStructureDefinition,
-                                      IntegerDefinition, RealDefinition,
-                                      StaticStructureDefinition)
+                                      IntegerDefinition, PermutationDefinition,
+                                      RealDefinition, StaticStructureDefinition)
 from metagen.framework.rng import get_rng
 
 class Crossable(Protocol):
@@ -151,6 +151,41 @@ class GAInteger(types.Integer):
         return children[0], children[1]
 
 
+class GAPermutation(types.Permutation):
+    """
+    A permutation that crosses over with the order crossover (OX): each child keeps a
+    segment of one parent in place and takes the remaining elements in the order they
+    have in the other parent, so both children are orderings of the same elements.
+
+    :ivar connector: The connector used to link different types
+    :vartype connector: BaseConnector
+    """
+
+    def crossover(self, other: GAPermutation) -> Tuple[GAPermutation, GAPermutation]:
+        """
+        Order crossover between this permutation and another.
+
+        :param other: The other parent's value for this variable.
+        :type other: GAPermutation
+        :return: Two new permutations.
+        :rtype: Tuple[GAPermutation, GAPermutation]
+        """
+        first, second = list(self.get()), list(other.get())
+        start, end = sorted(get_rng().sample(range(len(first) + 1), 2))
+        children = []
+        for kept, donor in ((first, second), (second, first)):
+            segment = kept[start:end]
+            # The donor's elements not in the segment, read from the second cut onwards,
+            # fill the child from the second cut onwards, wrapping round to the start.
+            rest = [element for element in donor[end:] + donor[:end] if element not in segment]
+            tail = len(first) - end
+            child_values = rest[tail:] + segment + rest[:tail]
+            child = GAPermutation(self.get_definition(), connector=self.connector)
+            child.set(child_values)
+            children.append(child)
+        return children[0], children[1]
+
+
 class GAStructure(types.Structure):
     """
     Represents the custom Structure type for the Genetic Algorithm (GA).
@@ -180,7 +215,12 @@ class GAStructure(types.Structure):
         definition = self.get_definition()
         common = min(len(self), len(other))
 
-        if isinstance(definition, DynamicStructureDefinition):
+        if isinstance(definition, DynamicStructureDefinition) and definition.is_positional():
+            # Every position has its own definition, so the parents recombine position
+            # by position and each child keeps a parent's tail: cutting each parent at
+            # a point of its own would move elements to positions that are not theirs.
+            elements1, elements2 = prefix_and_tails(self, other, definition)
+        elif isinstance(definition, DynamicStructureDefinition):
             elements1, elements2 = cut_and_splice(self, other, definition)
         else:
             elements1, elements2 = self._recombine_prefix(other, common)
@@ -437,6 +477,7 @@ class GAConnector(BaseConnector):
         self.register(CategoricalDefinition, types.Categorical, str)
         self.register(StaticStructureDefinition, (GAStructure, "static"), list)
         self.register(DynamicStructureDefinition, (GAStructure, "dynamic"), list)
+        self.register(PermutationDefinition, GAPermutation, tuple)
 
 
 def tournament_selection(solutions: Sequence[Solution], tournament_size: int = 2) -> Solution:

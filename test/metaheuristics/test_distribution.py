@@ -200,3 +200,85 @@ def test_the_memetic_algorithm_runs_at_every_distribution_level(ray_runtime, lev
     best = algorithm.run()
     assert best.get_fitness() == min(algorithm.best_solution_fitnesses)
     assert best.get_fitness() == pytest.approx(_sphere(best))
+
+
+def test_a_distributed_run_resumes_from_its_checkpoint(ray_runtime, tmp_path, monkeypatch):
+    """The state of a distributed run lives on the driver, workers included through the
+    seeds they are given, so a checkpoint continues it exactly."""
+    path = str(tmp_path / "run.ckpt")
+    sphere = _sphere_for_the_workers()
+    build = lambda **kw: GA(_sphere_domain(GAConnector()), sphere, population_size=8, max_iterations=6,
+                           distributed=True, seed=4, **kw)
+    whole = build()
+    reference = whole.run().get_fitness(), list(whole.best_solution_fitnesses)
+
+    original = GA.post_iteration
+
+    def stop_after_two(self):
+        original(self)
+        if self.current_iteration >= 2:
+            self.request_stop()
+
+    monkeypatch.setattr(GA, "post_iteration", stop_after_two)
+    build(checkpoint=path).run()
+    monkeypatch.undo()
+    resumed = GA.resume(path, sphere)
+    assert (resumed.run().get_fitness(), resumed.best_solution_fitnesses) == reference
+
+
+def test_a_distributed_history_does_not_count_the_evaluations_of_the_workers(ray_runtime):
+    algorithm = GA(_sphere_domain(GAConnector()), _sphere_for_the_workers(), population_size=8,
+                   max_iterations=3, distributed=True, seed=4)
+    algorithm.run()
+    assert [record["iteration"] for record in algorithm.history] == [0, 1, 2]
+    assert all(record["evaluations"] is None for record in algorithm.history)
+
+
+def _new_features_objective_for_the_workers():
+    def objective(solution) -> float:
+        momentum = solution["momentum"]
+        return (sum(abs(city - position - 1) for position, city in enumerate(solution["route"]))
+                + (0.0 if momentum is None else (momentum - 0.9) ** 2) + sum(solution["layers"]) / 10)
+    return objective
+
+
+def _new_features_domain(connector=None) -> Domain:
+    domain = Domain(connector=connector)
+    domain.define_permutation("route", [1, 2, 3, 4, 5])
+    domain.define_categorical("solver", ["adam", "sgd"])
+    domain.define_real("momentum", 0.5, 0.99)
+    domain.set_condition("momentum", "solver", ["sgd"])
+    domain.define_dynamic_structure("layers", 1, 3)
+    domain.define_integer("first", 1, 5)
+    domain.define_integer("second", 6, 10)
+    domain.define_integer("third", 11, 20)
+    domain.set_structure_to_variables("layers", ["first", "second", "third"])
+    return domain
+
+
+@pytest.mark.parametrize("algorithm_class", [GA, TPE, KernelTPE, HillClimbing], ids=lambda c: c.__name__)
+def test_the_new_variable_kinds_run_distributed_and_resume(ray_runtime, algorithm_class, tmp_path, monkeypatch):
+    connector = GAConnector() if algorithm_class is GA else None
+    objective = _new_features_objective_for_the_workers()
+    build = lambda **kw: algorithm_class(_new_features_domain(connector), objective, population_size=8,
+                                        max_iterations=5, distributed=True, seed=3, **kw)
+    whole = build()
+    best = whole.run()
+    assert sorted(best["route"]) == [1, 2, 3, 4, 5]
+    assert all(low <= value <= high for value, (low, high) in zip(best["layers"], [(1, 5), (6, 10), (11, 20)]))
+    assert (best["momentum"] is None) == (best["solver"] == "adam")
+    reference = best.get_fitness(), list(whole.best_solution_fitnesses)
+
+    original = algorithm_class.post_iteration
+
+    def stop_after_two(self):
+        original(self)
+        if self.current_iteration >= 2:
+            self.request_stop()
+
+    path = str(tmp_path / "run.ckpt")
+    monkeypatch.setattr(algorithm_class, "post_iteration", stop_after_two)
+    build(checkpoint=path).run()
+    monkeypatch.undo()
+    resumed = algorithm_class.resume(path, objective)
+    assert (resumed.run().get_fitness(), resumed.best_solution_fitnesses) == reference

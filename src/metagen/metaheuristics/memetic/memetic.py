@@ -5,10 +5,10 @@ from typing import Any, Optional, Callable, Tuple, List, cast
 from metagen.framework import Domain, RelativeAlteration, Solution
 from metagen.metaheuristics.tools import random_exploration
 from metagen.metaheuristics.base import Metaheuristic
-from metagen.metaheuristics.ga import GASolution
-from metagen.metaheuristics.ga.ga_tools import (yield_two_children, require_crossover,
+from metagen.metaheuristics.genetic import GASolution
+from metagen.metaheuristics.genetic.genetic_tools import (yield_two_children, require_crossover,
                                                 tournament_selection)
-from metagen.metaheuristics.mm.mm_tools import local_search_of_two_children
+from metagen.metaheuristics.memetic.memetic_tools import local_search_of_two_children
 
 
 class Memetic(Metaheuristic):
@@ -61,6 +61,15 @@ class Memetic(Metaheuristic):
         the slices, ``"global"`` (the default: shuffled, selected among all workers) or
         ``"islands"``; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
     :type distribution_model: str, optional
+    :param checkpoint: File the run saves its state to every ``checkpoint_every``
+        iterations, and continues from if it exists when ``run()`` starts; None, the
+        default, saves nothing. See :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type checkpoint: str or None, optional
+    :param checkpoint_every: Iterations between two saves (default is 1).
+    :type checkpoint_every: int, optional
+    :param history: File the run writes its history to, one JSON line per iteration;
+        None, the default, writes nothing. See :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type history: str or None, optional
     :type distribution_level: int
 
     **Code example**
@@ -98,10 +107,13 @@ class Memetic(Metaheuristic):
                  distributed: bool = False, log_dir: Optional[str] = None,
                  distribution_level: int = 0, seed: Optional[int] = None,
                  distribution_model: str = "global",
+                 checkpoint: Optional[str] = None, checkpoint_every: int = 1, history: Optional[str] = None,
                  mutation_alteration_limit: Any = None) -> None:
         """Initialize the Memetic Algorithm with the given parameters."""
         super().__init__(domain, fitness_function, population_size=population_size, distributed=distributed, log_dir=log_dir, seed=seed,
-                         distribution_model=distribution_model)
+                         distribution_model=distribution_model,
+                         checkpoint=checkpoint, checkpoint_every=checkpoint_every,
+                         history=history)
 
         # Fails here, with a message that says what to do, instead of dying on
         # the first iteration with AttributeError: no attribute 'crossover' (A-07).

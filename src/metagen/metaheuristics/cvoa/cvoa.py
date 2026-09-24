@@ -39,7 +39,7 @@ class CVOA(Metaheuristic):
     It solves an optimization problem defined by a :py:class:`~metagen.framework.Domain` object and an
     implementation of a fitness function.
 
-    A :py:class:`~metagen.metaheuristics.cvoa.cvoa_local.CVOA` object is one strain, configured by the
+    A :py:class:`~metagen.metaheuristics.cvoa.cvoa.CVOA` object is one strain, configured by the
     :py:class:`~metagen.metaheuristics.cvoa.common_tools.StrainProperties` it receives.
 
     Several strains run at once over a shared pandemic state and the best
@@ -107,7 +107,7 @@ class CVOA(Metaheuristic):
         # holds a proxy of the actor with the same methods as the local state (A-09).
         self.spread_on_ray: bool = distributed
         if distributed:
-            from metagen.metaheuristics.cvoa.distributed_tools import RemotePandemicStateProxy
+            from metagen.metaheuristics.cvoa.ray_tools import RemotePandemicStateProxy
             if not isinstance(global_state, RemotePandemicStateProxy):
                 global_state = RemotePandemicStateProxy(global_state)
             self._logger: MetaGenLogger = (get_remote_metagen_logger(DETAILED_INFO) if detailed_info
@@ -250,7 +250,7 @@ class CVOA(Metaheuristic):
         """
         # A-09: there used to be three copies of this step, one per way of dispatching it.
         if self.spread_on_ray:
-            from metagen.metaheuristics.cvoa.distributed_tools import spread_on_ray
+            from metagen.metaheuristics.cvoa.ray_tools import spread_on_ray
             return spread_on_ray(type(self), self.global_state, self.domain, self.fitness_function,
                                  self.strain_properties, self.infected, self.superspreaders, self.time)
 
@@ -297,7 +297,8 @@ class CVOA(Metaheuristic):
             # individual infects another with a travel distance (using infect), and it is added
             # to the newly infected population.
             if time < strain_properties.social_distancing:
-                new_infected_individual = infect(carrier, fitness_function, travel_distance)
+                new_infected_individual = infect(carrier, fitness_function, travel_distance,
+                                                 strain_properties.infection_alteration_limit)
                 cls.admit(state, strain_properties, infected_population, new_infected_individual)
 
             # After social_distancing iterations (when the social_distancing policy is applied),
@@ -308,7 +309,8 @@ class CVOA(Metaheuristic):
             # published pseudocode reads that way, but the paper's text and its Figure 5 do
             # not, and more isolation made the pandemic grow (F-27).
             else:
-                new_infected_individual = infect(carrier, fitness_function, 1)
+                new_infected_individual = infect(carrier, fitness_function, 1,
+                                                 strain_properties.infection_alteration_limit)
                 if get_rng().random() < strain_properties.p_isolation:
                     cls.isolate(state, new_infected_individual)
                 else:
@@ -438,7 +440,7 @@ class CVOA(Metaheuristic):
         return report
 
     def __str__(self):
-        """ String representation of a :py:class:`~metagen.metaheuristics.cvoa.cvoa_local.CVOA` object (a strain).
+        """ String representation of a :py:class:`~metagen.metaheuristics.cvoa.cvoa.CVOA` object (a strain).
         """
         res = ""
         res += self.strain_properties.strain_id + "\n"

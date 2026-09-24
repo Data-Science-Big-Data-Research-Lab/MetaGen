@@ -30,9 +30,11 @@ D_META = Literal["DYNAMIC"]
 D: Final = "DYNAMIC"
 S_META = Literal["STATIC"]
 S: Final = "STATIC"
+P_META = Literal["PERMUTATION"]
+P: Final = "PERMUTATION"
 
 METAGEN_TYPE = Literal["DEFINITION", "INTEGER",
-                       "REAL", "CATEGORICAL", "DYNAMIC", "STATIC"]
+                       "REAL", "CATEGORICAL", "DYNAMIC", "STATIC", "PERMUTATION"]
 
 BacicVal: TypeAlias = Union[int, float, str, List[int], List[float], List[str]]
 DefVal: TypeAlias = Mapping[str, Union[BacicVal, "DefVal"]]
@@ -51,8 +53,12 @@ DefAttr: TypeAlias = Tuple[DF_META, Mapping[str, Union[BaseAttr, "DefAttr"]]]
 # accepts any variable already defined, and a structure of structures initializes and
 # mutates. These used to leave that out, as Union[BaseAttr, DefAttr, None], which was
 # the one thing here narrower than the code (P-11). Recursive, like DefAttr above.
-DymAttr: TypeAlias = Tuple[D_META, int, int, Optional[int], Optional["Attributes"]]
-StaAttr: TypeAlias = Tuple[S_META, int, Optional["Attributes"]]
-Attributes: TypeAlias = Union[BaseAttr, DefAttr, DymAttr, StaAttr]
+# A positional structure has a definition per position, and reports a tuple with the
+# attributes of each one in that slot instead.
+StrBaseAttr: TypeAlias = Union["Attributes", Tuple["Attributes", ...]]
+DymAttr: TypeAlias = Tuple[D_META, int, int, Optional[int], Optional[StrBaseAttr]]
+StaAttr: TypeAlias = Tuple[S_META, int, Optional[StrBaseAttr]]
+PermAttr: TypeAlias = Tuple[P_META, CatVal]
+Attributes: TypeAlias = Union[BaseAttr, DefAttr, DymAttr, StaAttr, PermAttr]
 
 DefType: TypeAlias = Mapping[str, Attributes]

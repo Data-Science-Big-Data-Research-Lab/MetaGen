@@ -20,7 +20,7 @@ from metagen.framework import Domain
 from metagen.framework.rng import get_rng
 from metagen.framework.solution import Solution
 from metagen.metaheuristics.cvoa.common_tools import PandemicState, SolutionSet, StrainProperties, infect
-from metagen.metaheuristics.cvoa.cvoa_local import CVOA
+from metagen.metaheuristics.cvoa.cvoa import CVOA
 
 
 class ProbabilisticCVOA(CVOA):
@@ -28,7 +28,7 @@ class ProbabilisticCVOA(CVOA):
     A CVOA strain in which the fate of each individual is drawn with its probability.
 
     Same launchers, same parameters and same pandemic state as
-    :py:class:`~metagen.metaheuristics.cvoa.cvoa_local.CVOA`; it runs in threads and on
+    :py:class:`~metagen.metaheuristics.cvoa.cvoa.CVOA`; it runs in threads and on
     Ray like it, through ``strain_class=ProbabilisticCVOA``. It differs in how deaths,
     superspreading and isolation are decided:
 
@@ -111,7 +111,8 @@ class ProbabilisticCVOA(CVOA):
         infected_population: SolutionSet = SolutionSet()
 
         for _ in range(0, n_infected):
-            new_infected_individual = infect(carrier, fitness_function, 1 if distancing else travel_distance)
+            new_infected_individual = infect(carrier, fitness_function, 1 if distancing else travel_distance,
+                                             strain_properties.infection_alteration_limit)
             individual_state = state.get_individual_state(new_infected_individual)
             if individual_state.dead:
                 continue

@@ -72,8 +72,10 @@ CVOA is a metaheuristic inspired by the spreading of the coronavirus: a pandemic
     def fitness(solution: Solution) -> float:
         return solution["x"] ** 2 + solution["y"] ** 2
 
-    strains = [StrainProperties("Strain#1", pandemic_duration=10),
-               StrainProperties("Strain#2", pandemic_duration=10, p_travel=0.2)]
+    # Social distancing from the third iteration keeps a pandemic over a continuous
+    # domain short: the suggested setup, from the seventh, suits binary encodings.
+    strains = [StrainProperties("Strain#1", pandemic_duration=10, social_distancing=3),
+               StrainProperties("Strain#2", pandemic_duration=10, social_distancing=3, p_travel=0.2)]
 
     best_solution = cvoa_launcher(strains, domain, fitness, seed=0)
 
@@ -87,5 +89,19 @@ In |cvoa| the worst carriers die and the best ones become superspreaders, and an
     from metagen.metaheuristics import ProbabilisticCVOA
 
     best_solution = cvoa_launcher(strains, domain, fitness, strain_class=ProbabilisticCVOA)
+
+How far an infection moves
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+An infection copies its carrier and changes some of its variables: one, or more when the carrier travels. By default each changed variable is drawn again over its whole domain. ``infection_alteration_limit`` keeps it near the carrier's value instead, as the local searches do: a ``RelativeAlteration`` is a fraction of each variable's own range, and a plain number an absolute amount. A binary variable flips either way. A neighborhood needs iterations to travel from the patients zero, so it suits pandemics that run for a while:
+
+.. code-block:: python
+
+    from metagen.framework import RelativeAlteration
+
+    strains = [StrainProperties("Strain#1", pandemic_duration=15, social_distancing=3,
+                                infection_alteration_limit=RelativeAlteration(0.2))]
+
+    best_solution = cvoa_launcher(strains, domain, fitness, seed=0)
 
 ``cvoa_launcher`` runs each strain in a thread; ``distributed_cvoa_launcher`` runs each strain as a Ray task (see :doc:`../distributed_execution/special`). The launchers, the strain properties and the strain classes are documented in :doc:`../metaheuristics/cvoa`.

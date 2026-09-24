@@ -14,6 +14,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
+import math
 from typing import Any, cast
 
 from metagen.framework.domain.core import IntegerDefinition
@@ -87,7 +88,11 @@ class Integer(BaseType):
         :type alteration_limit: int or RelativeAlteration or None
         """
         # F-49: the draw included the current value, so on a two-valued domain half
-        # the mutations changed nothing. F-32 brought the relative limit.
+        # the mutations changed nothing. F-32 brought the relative limit. F-50: the
+        # window was truncated with int(), which rounds towards zero, so its lower end
+        # reached one integer too far and its upper end one too short, and a limit
+        # narrower than a step left the value alone: with RelativeAlteration(0.2) a
+        # bit at 0 never flipped and an integer in [0, 4] could only go down.
         _, min_value, max_value, step = self.get_definition().get_attributes()
         step = step or 1
         # The grid is anchored on the domain's minimum, captured before the window
@@ -100,16 +105,17 @@ class Integer(BaseType):
         if isinstance(alteration_limit, RelativeAlteration):
             alteration_limit = alteration_limit.of(min_value, max_value)
 
+        low, high = origin, domain_max
         if alteration_limit is not None:
-            limited_min_value = self.get() - alteration_limit
-            limited_max_value = self.get() + alteration_limit
+            # At least one grid step, so that a neighborhood narrower than the grid
+            # still moves: a bit flips, and an integer in [1, 5] moves by one.
+            reach = max(alteration_limit, step)
+            low = max(origin, self.get() - reach)
+            high = min(domain_max, self.get() + reach)
 
-            min_value = limited_min_value if max_value > limited_min_value > min_value else min_value
-            max_value = limited_max_value if max_value > limited_max_value > min_value else max_value
-
-        low, high = int(min_value), int(max_value)
-        first = low + (origin - low) % step
-        last = high - (high - origin) % step
+        # The grid points inside [low, high], rounding inwards on both sides alike.
+        first = origin + math.ceil((low - origin) / step) * step
+        last = origin + math.floor((high - origin) / step) * step
         if first > last:
             # A hand-set value off the grid with a window too narrow to hold a grid
             # point: draw over the whole domain instead.
@@ -119,7 +125,9 @@ class Integer(BaseType):
         # Mutating means changing: draw from the grid without the current value, as
         # Categorical does. Drawing over the whole window left a two-valued integer,
         # a bit, unchanged half of the time (F-49). A value off the grid, set by hand,
-        # is simply redrawn; a window with a single grid point has nothing to move to.
+        # is simply redrawn. A window always holds a neighbor now, since it reaches at
+        # least one step and a domain has at least three grid points; the check stays
+        # for a definition built around those preconditions.
         current = self.get()
         on_grid = first <= current <= last and (current - first) % step == 0
         if on_grid:

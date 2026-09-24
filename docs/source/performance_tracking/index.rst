@@ -26,6 +26,32 @@ Logging is **off by default**: ``log_dir=None`` writes nothing, whether or not T
 
 Each run writes to its own timestamped subdirectory of ``log_dir``, so several runs can share one directory and be compared in the dashboard. The CVOA launchers take the same parameter.
 
+The run history
+---------------
+
+Every metaheuristic also keeps a record of each iteration in its ``history`` attribute, with no extra package: the iteration, the evaluations and seconds spent since the start, the best fitness so far, the best, mean, standard deviation and worst fitness of the population, its size, and the values of the best solution so far. The ``history`` parameter writes the same records to a file, one JSON line per iteration, which pandas reads as a table:
+
+.. code-block:: python
+
+    import pandas as pd
+
+    from metagen.framework import Domain, Solution
+    from metagen.metaheuristics import RandomSearch
+
+    domain = Domain()
+    domain.define_real("x", -5.0, 5.0)
+
+    def fitness_function(solution: Solution) -> float:
+        return solution["x"] ** 2
+
+    algorithm = RandomSearch(domain, fitness_function, history="runs/random_search.jsonl")
+    best_solution = algorithm.run()
+
+    table = pd.read_json("runs/random_search.jsonl", lines=True)
+    table[["iteration", "evaluations", "best", "mean"]]
+
+The file is written as the run goes, so it can be read while the run is in progress. A new run starts it again, and a run continued from a checkpoint (see :doc:`../pausing_and_resuming/index`) continues it. In a distributed run the evaluations happen in the workers and are recorded as ``None``.
+
 Installing TensorBoard
 ----------------------
 

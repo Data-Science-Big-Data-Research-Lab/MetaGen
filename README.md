@@ -14,13 +14,14 @@ MetaGen simplifies the development of **metaheuristics** and the **optimization 
 ### 🔹 Key Features
 
 ✔ **Metaheuristic Development Framework** – A base class with the run loop, elitism and callbacks; you write three methods.  
-✔ **Hyperparameter Optimization Tools** – Search spaces with integers, reals, categoricals, groups and variable-length structures, for layer and architecture-level tuning.  
+✔ **Hyperparameter Optimization Tools** – Search spaces with integers, reals, categoricals, permutations, groups and variable-length structures, conditional variables that apply only for some values of another, and a range per position of a structure, for layer and architecture-level tuning.  
 ✔ **Standardized Interface** – Ensures compatibility between metaheuristic developers and end users.  
 ✔ **Dynamic Architecture Optimization** – Structures whose length the search itself changes.  
 ✔ **Seamless Integration** – Compatible with `scikit-learn`, `tensorflow`, `pytorch`, and other ML libraries.  
 ✔ **Built-in Metaheuristics** – Pre-implemented algorithms ready to use.  
 ✔ **Reproducible Runs** – A `seed` parameter controls every random draw, also across Ray workers.  
-✔ **TensorBoard Integration** – Give a run a `log_dir` and follow how the algorithm evolves, graphically, in TensorBoard.  
+✔ **Pause and Resume** – Give a run a `checkpoint` file and it continues where it stopped after a power failure or a job scheduler's time limit, with the same result as an uninterrupted run.  
+✔ **Run History and TensorBoard** – Every run keeps a record of each iteration, which it can write as a JSON Lines file for pandas; give it a `log_dir` and follow it graphically in TensorBoard.  
 ✔ **Scalable and Distributed Execution** – With `distributed=True`, metaheuristics run across the CPUs of a [Ray](https://www.ray.io) cluster.  
 
 ### 📌 Built-in Metaheuristics

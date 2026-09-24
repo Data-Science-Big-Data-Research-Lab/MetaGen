@@ -3,7 +3,7 @@ from __future__ import annotations
 import metagen.framework.solution as types
 from metagen.framework import BaseConnector, Solution
 from metagen.framework.domain import (BaseDefinition, CategoricalDefinition,
-                                      IntegerDefinition, RealDefinition,
+                                      IntegerDefinition, PermutationDefinition, RealDefinition,
                                       StaticStructureDefinition, DynamicStructureDefinition)
 from scipy.stats import norm
 import numpy as np
@@ -103,6 +103,25 @@ class TPECategorical(types.Categorical):
         # .item(), so the user gets a str and not a numpy.str_ (F-22).
         self.set(elegida.item() if hasattr(elegida, "item") else elegida)
 
+class TPEPermutation(types.Permutation):
+    """
+    The permutation type TPE resamples. An ordering has no density to fit, so a new one
+    is the ordering of one of the best reference solutions, drawn at random, moved by
+    one swap.
+    """
+
+    def resample(self, best_values, worst_values):
+        """
+        Take the ordering of one of the best references and swap two of its positions.
+
+        :param best_values: The permutations of the best reference solutions.
+        :param worst_values: The permutations of the worst ones, not used.
+        """
+        chosen = best_values[int(get_numpy_rng().integers(len(best_values)))]
+        self.set(list(chosen.get()))
+        self.mutate(alteration_limit=1)
+
+
 class TPEStructure(types.Structure):
     """
     The Structure type TPE resamples position by position.
@@ -159,8 +178,12 @@ class TPESolution(Solution):
         """
 
         for variable_name, variable_value in self.get_variables().items():
-            best_values = [sol.get(variable_name) for sol in best_solutions]
-            worst_values = [sol.get(variable_name) for sol in worst_solutions]
+            # A conditional variable is modeled only from the solutions in which it was
+            # active; its values elsewhere meant nothing.
+            best_values = [sol.get(variable_name) for sol in best_solutions if sol.is_active(variable_name)]
+            worst_values = [sol.get(variable_name) for sol in worst_solutions if sol.is_active(variable_name)]
+            if not best_values or not worst_values:
+                continue
 
             variable_value.resample(best_values, worst_values)
 
@@ -192,3 +215,4 @@ class TPEConnector(BaseConnector):
         self.register(CategoricalDefinition, TPECategorical, str)
         self.register(StaticStructureDefinition, (TPEStructure, "static"), list)
         self.register(DynamicStructureDefinition, (TPEStructure, "dynamic"), list)
+        self.register(PermutationDefinition, TPEPermutation, tuple)

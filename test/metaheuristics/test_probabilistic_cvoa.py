@@ -9,7 +9,7 @@ from metagen.framework import Domain, Solution
 from metagen.framework.rng import set_seed
 from metagen.metaheuristics import ProbabilisticCVOA, StrainProperties, cvoa_launcher
 from metagen.metaheuristics.cvoa.common_tools import SolutionSet
-from metagen.metaheuristics.cvoa.local_tools import LocalPandemicState
+from metagen.metaheuristics.cvoa.local_state import LocalPandemicState
 
 
 def _domain():

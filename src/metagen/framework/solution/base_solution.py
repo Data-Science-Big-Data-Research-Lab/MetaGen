@@ -296,6 +296,24 @@ class Solution:
 
         return variable in self.get_variables()
 
+    def is_active(self, variable: str) -> bool:
+        """
+        Whether a variable is active: a variable with a condition, set with
+        :py:meth:`~metagen.framework.Domain.set_condition`, is active only when the
+        variable it depends on takes one of the values of the condition. A variable
+        without a condition is always active.
+
+        :param variable: The name of the variable.
+        :type variable: str
+        :return: True if the variable is active, otherwise False.
+        :rtype: bool
+        """
+        condition = self.get_definition().get_condition(variable)
+        if condition is None:
+            return True
+        controller, values = condition
+        return builtin_value(self.value[controller]) in values
+
     def keys(self) -> KeysView:
         """
         Get the keys of the solution value dict.
@@ -346,9 +364,11 @@ class Solution:
             :func:`get_variables`
             :func:`initialize`
         """
-        variables = self.get_variables().keys()
-        alterations_number = alterations_number or get_rng().randint(
-            1, len(variables))
+        # Only the active variables: mutating an inactive one would spend an
+        # evaluation on a solution the model sees as the same.
+        variables = [name for name in self.get_variables() if self.is_active(name)]
+        alterations_number = min(alterations_number or get_rng().randint(
+            1, len(variables)), len(variables))
         # Kept as the list sample() returns, not turned into a set: set iteration
         # over strings follows their hashes, which Python randomizes per process,
         # and the order decides which draw each variable gets (F-26).
@@ -435,12 +455,15 @@ class Solution:
     # ** SET VALUE METHOD
 
     def __str__(self):
-        """ String representation of the solution: its fitness and its variables.
+        """ String representation of the solution: its fitness and its variables. An
+        inactive variable shows as ``None (inactive)``, as ``solution[name]`` reads it.
         """
         res = "F = " + str(self.fitness) + "\t{"
         count = 1
         for variable in sorted(self.value):
-            if isinstance(self.value[variable], Solution):
+            if not self.is_active(variable):
+                res += str(variable) + " = None (inactive)"
+            elif isinstance(self.value[variable], Solution):
                 res += str(variable) + " = " + str(self.value[variable].value)
             else:
                 res += str(variable) + " = " + str(self.value[variable])
@@ -473,9 +496,12 @@ class Solution:
         down. Use get() for the underlying type object instead.
         :param variable: The name of the variable.
         :type variable: str
-        :return: The value of the variable.
+        :return: The value of the variable, or None while it is inactive (see
+            :py:meth:`is_active`).
         :rtype: InputValue
         """
+        if not self.is_active(variable):
+            return None
         return builtin_value(self.value[variable])
 
     def __iter__(self):
@@ -488,7 +514,7 @@ class Solution:
 
     def __eq__(self, other):
         """ Two solutions are equal when they have the same variables with the same values,
-        whatever their fitness.
+        whatever their fitness. An inactive variable does not count.
         """
         res = True
 
@@ -501,9 +527,10 @@ class Solution:
             else:
                 keys = list(self.get_variables().keys())
                 while i < len(keys) and res:
-                    vf = self.get(keys[i])
-                    vo = other.get(keys[i])
-                    res = vf == vo
+                    # Inactive in one means inactive in both, or their controllers differ
+                    # and that comparison fails on its own.
+                    if self.is_active(keys[i]):
+                        res = self.get(keys[i]) == other.get(keys[i])
                     i += 1
         return res
 
@@ -523,7 +550,8 @@ class Solution:
         # only ingredient: two equal solutions with different fitness broke the
         # invariant, and every solution sharing a fitness value landed in one bucket.
         return hash(tuple(sorted((name, _hashable(value))
-                                 for name, value in self.get_variables().items())))
+                                 for name, value in self.get_variables().items()
+                                 if self.is_active(name))))
 
     def __lt__(self, other):
         """ A solution is less than another when its fitness is strictly lower, that is, better:

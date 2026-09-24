@@ -20,13 +20,13 @@ The genetic algorithms cross solutions over, so their domain is built with
 ``Domain(connector=GAConnector())``. The connector maps the definitions to the types below,
 which add a ``crossover`` method to the standard ones.
 
-.. autoclass:: metagen.metaheuristics.ga.ga_tools.GAConnector
+.. autoclass:: metagen.metaheuristics.genetic.genetic_tools.GAConnector
     :show-inheritance:
 
-.. autoclass:: metagen.metaheuristics.ga.ga_tools.GASolution
+.. autoclass:: metagen.metaheuristics.genetic.genetic_tools.GASolution
     :members: crossover
     :show-inheritance:
 
-.. autoclass:: metagen.metaheuristics.ga.ga_tools.GAStructure
+.. autoclass:: metagen.metaheuristics.genetic.genetic_tools.GAStructure
     :members: crossover
     :show-inheritance:

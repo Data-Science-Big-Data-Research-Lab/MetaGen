@@ -58,6 +58,15 @@ class HillClimbing(Metaheuristic):
         the slices, ``"global"`` (the default: shuffled, selected among all workers) or
         ``"islands"``; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
     :type distribution_model: str, optional
+    :param checkpoint: File the run saves its state to every ``checkpoint_every``
+        iterations, and continues from if it exists when ``run()`` starts; None, the
+        default, saves nothing. See :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type checkpoint: str or None, optional
+    :param checkpoint_every: Iterations between two saves (default is 1).
+    :type checkpoint_every: int, optional
+    :param history: File the run writes its history to, one JSON line per iteration;
+        None, the default, writes nothing. See :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type history: str or None, optional
 
     :ivar max_iterations: Maximum number of iterations to run
     :vartype max_iterations: int
@@ -94,7 +103,8 @@ class HillClimbing(Metaheuristic):
                  max_iterations: int = 20, tabu_size: int = 5,
                  alteration_limit: Any = RelativeAlteration(0.2),
                  gamma_config: Optional[GammaConfig] = None, distributed=False, log_dir: Optional[str] = None,
-                 seed: Optional[int] = None, distribution_model: str = "global"):
+                 seed: Optional[int] = None, distribution_model: str = "global",
+                 checkpoint: Optional[str] = None, checkpoint_every: int = 1, history: Optional[str] = None):
         """
         Initialize the hill climbing algorithm.
 
@@ -117,7 +127,9 @@ class HillClimbing(Metaheuristic):
         :type log_dir: str or None, optional
         """
         super().__init__(domain, fitness_function, population_size, warmup_iterations, distributed, log_dir, seed=seed,
-                         distribution_model=distribution_model)
+                         distribution_model=distribution_model,
+                         checkpoint=checkpoint, checkpoint_every=checkpoint_every,
+                         history=history)
         self.max_iterations = max_iterations
         self.tabu_size = tabu_size
         self.tabu_list:Deque[Solution] = deque(maxlen=tabu_size)
