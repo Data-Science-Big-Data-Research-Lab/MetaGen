@@ -224,3 +224,11 @@ def test_a_distributed_run_resumes_from_its_checkpoint(ray_runtime, tmp_path, mo
     monkeypatch.undo()
     resumed = GA.resume(path, sphere)
     assert (resumed.run().get_fitness(), resumed.best_solution_fitnesses) == reference
+
+
+def test_a_distributed_history_does_not_count_the_evaluations_of_the_workers(ray_runtime):
+    algorithm = GA(_sphere_domain(GAConnector()), _sphere_for_the_workers(), population_size=8,
+                   max_iterations=3, distributed=True, seed=4)
+    algorithm.run()
+    assert [record["iteration"] for record in algorithm.history] == [0, 1, 2]
+    assert all(record["evaluations"] is None for record in algorithm.history)

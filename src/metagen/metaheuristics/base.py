@@ -16,8 +16,12 @@
 """
 
 import heapq
+import json
+import math
 import os
 import pickle
+import statistics
+import time
 from abc import ABC, abstractmethod
 from importlib import metadata
 
@@ -46,6 +50,18 @@ if IS_RAY_INSTALLED:
 #: often to save, which the resumed run is given again.
 _NOT_CHECKPOINTED = frozenset({"fitness_function", "logger", "checkpoint", "checkpoint_every",
                                "_stop_requested"})
+
+
+class _CountingFitness:
+    """The fitness function of a run, counting its calls on the driver for the history."""
+
+    def __init__(self, function: Callable[[Solution], float]) -> None:
+        self.function = function
+        self.calls = 0
+
+    def __call__(self, solution: Solution) -> float:
+        self.calls += 1
+        return self.function(solution)
 
 
 def _package_version() -> str:
@@ -123,6 +139,10 @@ class Metaheuristic(ABC):
     :type checkpoint: str or None, optional
     :param checkpoint_every: Iterations between two saves (default is 1).
     :type checkpoint_every: int, optional
+    :param history: File the run writes its history to, one JSON line per iteration,
+        which ``pandas.read_json(history, lines=True)`` reads as a table. None, the
+        default, writes nothing; the records are in ``history`` either way.
+    :type history: str or None, optional
 
     :ivar domain: The problem domain.
     :vartype domain: Domain
@@ -142,6 +162,13 @@ class Metaheuristic(ABC):
     :vartype current_solutions: List[Solution]
     :ivar best_solution_fitnesses: List of fitness values of the best solutions per iteration.
     :vartype best_solution_fitnesses: List[float]
+    :ivar history: One record per iteration: ``iteration``; ``evaluations``, counted from
+        the start of the run, warmup included, or None in a distributed run, whose
+        evaluations happen in the workers; ``seconds`` since the start; ``best``, the
+        best fitness so far; the ``iteration_best``, ``mean``, ``std`` and ``worst``
+        fitness of the population and its ``population_size``; and ``best_solution``,
+        the values of the best solution so far.
+    :vartype history: List[dict]
     """
 
     # minimum_slice exists since F-46: islands of one individual crashed GA and Memetic.
@@ -152,7 +179,7 @@ class Metaheuristic(ABC):
                  warmup_iterations: int = 0, distributed=False,
                  log_dir: Optional[str] = None, seed: Optional[int] = None,
                  distribution_model: str = "global", checkpoint: Optional[str] = None,
-                 checkpoint_every: int = 1) -> None:
+                 checkpoint_every: int = 1, history: Optional[str] = None) -> None:
         super().__init__()
 
         if distribution_model not in DISTRIBUTION_MODELS:
@@ -185,6 +212,10 @@ class Metaheuristic(ABC):
         self.checkpoint = checkpoint
         self.checkpoint_every = checkpoint_every
         self._stop_requested = False
+        self.history_file = history
+        self.history: List[Dict[str, Any]] = []
+        self._evaluations = 0
+        self._seconds = 0.0
 
         self.current_iteration = -1
         self.best_solution: Optional[Solution] = None
@@ -487,6 +518,19 @@ class Metaheuristic(ABC):
         elif self.seed is not None:
             set_seed(self.seed)
         self._stop_requested = False
+        if resuming:
+            self._trim_history_file()
+        else:
+            self.history = []
+            self._evaluations = 0
+            self._seconds = 0.0
+            if self.history_file is not None and os.path.exists(self.history_file):
+                os.remove(self.history_file)
+        # Counted on the driver: the history's evaluations, from where a resumed run
+        # left them.
+        counted = _CountingFitness(self.fitness_function)
+        self.fitness_function = counted
+        evaluations_before, seconds_before, started = self._evaluations, self._seconds, time.perf_counter()
 
         # Remembered so that only the run() that started Ray stops it. Shutting it
         # down unconditionally took the runtime away from a cluster the user had
@@ -513,6 +557,10 @@ class Metaheuristic(ABC):
 
                 self.post_iteration()
 
+                self._evaluations = evaluations_before + counted.calls
+                self._seconds = seconds_before + time.perf_counter() - started
+                self._record_history()
+
                 self.current_iteration += 1
 
                 # Saved here, on the driver, once the iteration is complete: the only
@@ -530,6 +578,7 @@ class Metaheuristic(ABC):
             if self.checkpoint is not None and os.path.exists(self.checkpoint):
                 os.remove(self.checkpoint)
         finally:
+            self.fitness_function = counted.function
             # Also on the way out of an exception: a runtime this run() started must
             # not outlive it, or the workers and their memory stay alive until the
             # interpreter exits (F-44).
@@ -537,6 +586,46 @@ class Metaheuristic(ABC):
                 ray.shutdown()
 
         return deepcopy(self._best_so_far())
+
+    def _record_history(self) -> None:
+        """
+        Add the record of the iteration just completed to ``history``, and to the
+        ``history`` file if the run has one.
+        """
+        fitnesses = [solution.get_fitness() for solution in self.current_solutions]
+        finite = [value for value in fitnesses if math.isfinite(value)]
+        best = self._best_so_far()
+        record = {
+            "iteration": self.current_iteration,
+            "evaluations": None if self.distributed else self._evaluations,
+            "seconds": self._seconds,
+            "best": best.get_fitness(),
+            "iteration_best": min(finite) if finite else None,
+            "mean": statistics.fmean(finite) if finite else None,
+            "std": statistics.pstdev(finite) if finite else None,
+            "worst": max(finite) if finite else None,
+            "population_size": len(self.current_solutions),
+            "best_solution": {name: best[name] for name in best},
+        }
+        self.history.append(record)
+        if self.history_file is not None:
+            directory = os.path.dirname(os.path.abspath(self.history_file))
+            os.makedirs(directory, exist_ok=True)
+            with open(self.history_file, "a") as handle:
+                handle.write(json.dumps(record) + "\n")
+
+    def _trim_history_file(self) -> None:
+        """
+        On resuming, drop the lines a run wrote after its last checkpoint: they are
+        written again as the run repeats those iterations.
+        """
+        if self.history_file is None or not os.path.exists(self.history_file):
+            return
+        with open(self.history_file) as handle:
+            kept = [line for line in handle
+                    if line.strip() and json.loads(line)["iteration"] < self.current_iteration]
+        with open(self.history_file, "w") as handle:
+            handle.writelines(kept)
 
     def request_stop(self) -> None:
         """

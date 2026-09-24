@@ -91,6 +91,9 @@ class TabuSearch(Metaheuristic):
     :type checkpoint: str or None, optional
     :param checkpoint_every: Iterations between two saves (default is 1).
     :type checkpoint_every: int, optional
+    :param history: File the run writes its history to, one JSON line per iteration;
+        None, the default, writes nothing. See :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type history: str or None, optional
     :param seed: Seed for MetaGen's generators, defaults to None
     :type seed: int or None, optional
 
@@ -128,10 +131,11 @@ class TabuSearch(Metaheuristic):
                  alteration_limit: Any = RelativeAlteration(0.2), distributed: bool = False,
                  log_dir: Optional[str] = None, seed: Optional[int] = None,
                  distribution_model: str = "global",
-                 checkpoint: Optional[str] = None, checkpoint_every: int = 1):
+                 checkpoint: Optional[str] = None, checkpoint_every: int = 1, history: Optional[str] = None):
         super().__init__(domain, fitness_function, population_size, warmup_iterations, distributed, log_dir,
                          seed=seed, distribution_model=distribution_model,
-                         checkpoint=checkpoint, checkpoint_every=checkpoint_every)
+                         checkpoint=checkpoint, checkpoint_every=checkpoint_every,
+                         history=history)
         self.max_iterations = max_iterations
         self.tabu_size = tabu_size
         self.tabu_radius: Any = tabu_radius

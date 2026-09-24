@@ -9,6 +9,10 @@
   taken from already defined variables, one per position. Every position is drawn,
   mutated, checked and recombined against its own definition, and a dynamic structure
   grows and shrinks at its end. All the metaheuristics support it.
+- **Run history**: every metaheuristic keeps one record per iteration in `history`
+  (evaluations, seconds, best so far, best, mean, standard deviation and worst of the
+  population, its size and the best solution), and the `history` parameter writes them
+  to a JSON Lines file as the run goes.
 - **Pausing and resuming a run**: every metaheuristic but CVOA takes `checkpoint` and
   `checkpoint_every`, saves its state to that file every so many iterations, and
   continues from it when `run()` starts; `resume(path, fitness_function)` rebuilds it in

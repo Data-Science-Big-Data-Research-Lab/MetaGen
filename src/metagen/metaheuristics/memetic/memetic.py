@@ -67,6 +67,9 @@ class Memetic(Metaheuristic):
     :type checkpoint: str or None, optional
     :param checkpoint_every: Iterations between two saves (default is 1).
     :type checkpoint_every: int, optional
+    :param history: File the run writes its history to, one JSON line per iteration;
+        None, the default, writes nothing. See :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type history: str or None, optional
     :type distribution_level: int
 
     **Code example**
@@ -104,12 +107,13 @@ class Memetic(Metaheuristic):
                  distributed: bool = False, log_dir: Optional[str] = None,
                  distribution_level: int = 0, seed: Optional[int] = None,
                  distribution_model: str = "global",
-                 checkpoint: Optional[str] = None, checkpoint_every: int = 1,
+                 checkpoint: Optional[str] = None, checkpoint_every: int = 1, history: Optional[str] = None,
                  mutation_alteration_limit: Any = None) -> None:
         """Initialize the Memetic Algorithm with the given parameters."""
         super().__init__(domain, fitness_function, population_size=population_size, distributed=distributed, log_dir=log_dir, seed=seed,
                          distribution_model=distribution_model,
-                         checkpoint=checkpoint, checkpoint_every=checkpoint_every)
+                         checkpoint=checkpoint, checkpoint_every=checkpoint_every,
+                         history=history)
 
         # Fails here, with a message that says what to do, instead of dying on
         # the first iteration with AttributeError: no attribute 'crossover' (A-07).
