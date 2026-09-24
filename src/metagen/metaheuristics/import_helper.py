@@ -16,8 +16,24 @@
 """
 import importlib.util
 
+
 def is_package_installed(package_name: str) -> bool:
+    """
+    Whether an optional package, such as Ray or TensorBoard, can be imported.
+
+    A directory with the package's name and no ``__init__.py``, such as the ``ray``
+    folder Ray leaves in the temporary directory, is found as a namespace package with
+    nothing in it, and does not count: the package has to have a file to import from.
+
+    :param package_name: The name the package is imported by.
+    :type package_name: str
+    :return: True if the package is installed, otherwise False.
+    :rtype: bool
+    """
+    # F-52: find_spec alone took such a folder in the current directory for Ray, and
+    # importing metagen.metaheuristics then failed on ray.remote.
     try:
-        return importlib.util.find_spec(package_name) is not None
+        spec = importlib.util.find_spec(package_name)
     except ImportError:
         return False
+    return spec is not None and spec.origin is not None

@@ -1390,6 +1390,40 @@ def test_f51_el_logger_de_metagen_funciona_aunque_se_pida_antes_por_su_nombre():
 
 
 # --------------------------------------------------------------------------------
+# F-52 · Una carpeta con el nombre de un extra opcional se toma por el paquete instalado
+# --------------------------------------------------------------------------------
+
+def test_f52_una_carpeta_con_el_nombre_de_un_extra_no_cuenta_como_instalado(tmp_path, monkeypatch):
+    """F-52: ``is_package_installed`` preguntaba a ``find_spec``, que da por bueno un
+    directorio sin ``__init__.py`` como paquete de espacio de nombres. Una carpeta ``ray``
+    en el directorio actual -la que deja el propio Ray en ``/tmp``- hacia creer que Ray
+    estaba instalado, y ``import metagen.metaheuristics`` reventaba con
+    ``module 'ray' has no attribute 'remote'``. Un paquete de verdad si cuenta."""
+    from metagen.metaheuristics.import_helper import is_package_installed
+
+    (tmp_path / "metagen_extra_de_prueba").mkdir()
+    monkeypatch.syspath_prepend(str(tmp_path))
+    assert not is_package_installed("metagen_extra_de_prueba")
+
+    (tmp_path / "metagen_extra_de_prueba" / "__init__.py").write_text("")
+    import importlib
+    importlib.invalidate_caches()
+    assert is_package_installed("metagen_extra_de_prueba")
+
+
+def test_f52_metagen_importa_desde_una_carpeta_con_un_directorio_ray(tmp_path):
+    """El caso de verdad, donde Ray no esta instalado: importar desde un directorio que
+    contiene una carpeta ``ray``."""
+    import importlib.util
+    if importlib.util.find_spec("ray") is not None and importlib.util.find_spec("ray").origin:
+        pytest.skip("Ray esta instalado: el paquete de verdad tapa la carpeta")
+    (tmp_path / "ray").mkdir()
+    resultado = subprocess.run([sys.executable, "-c", "import metagen.metaheuristics"],
+                               cwd=tmp_path, capture_output=True, text=True)
+    assert resultado.returncode == 0, resultado.stderr[-600:]
+
+
+# --------------------------------------------------------------------------------
 # F-48 · Los conjuntos acotados de CVOA eligen al reves: muere el mejor y contagia mas el peor
 # --------------------------------------------------------------------------------
 
