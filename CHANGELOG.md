@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 1.1.1
+
+MetaGen 1.1.1 imports from any working directory.
 
 ### Changes
 
