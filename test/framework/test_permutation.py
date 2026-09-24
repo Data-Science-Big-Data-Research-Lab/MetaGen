@@ -175,3 +175,32 @@ def test_the_searches_improve_on_a_permutation_problem():
         best = algorithm.run()
         wins[best.get_fitness() < algorithm.best_solution_fitnesses[0]] += 1
     assert wins[True] == 5
+
+
+def _one_swap_apart(first, second):
+    return sum(a != b for a, b in zip(first, second)) == 2 and sorted(first) == sorted(second)
+
+
+def test_tpe_resamples_a_permutation_from_one_of_the_best_orderings():
+    from metagen.metaheuristics.tpe.tpe_tools import TPEConnector
+    set_seed(6)
+    domain = _domain(TPEConnector())
+    best = [_solution(domain) for _ in range(3)]
+    worst = [_solution(domain) for _ in range(3)]
+    for _ in range(100):
+        candidate = _solution(domain)
+        candidate.resample(best, worst)
+        assert any(_one_swap_apart(candidate["route"], reference["route"]) for reference in best)
+
+
+def test_kernel_tpe_proposes_a_permutation_one_swap_from_a_good_ordering():
+    set_seed(7)
+    domain = _mixed_domain()
+    algorithm = KernelTPE(domain, _fitness_and_log()[0], seed=7)
+    good = [_solution(domain) for _ in range(4)]
+    bad = [_solution(domain) for _ in range(4)]
+    for solution in good + bad:
+        solution.evaluate(algorithm.fitness_function)
+    for _ in range(30):
+        candidate = algorithm.propose(good, bad)
+        assert any(_one_swap_apart(candidate["route"], reference["route"]) for reference in good)

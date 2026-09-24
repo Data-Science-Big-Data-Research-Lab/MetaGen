@@ -72,8 +72,10 @@ CVOA is a metaheuristic inspired by the spreading of the coronavirus: a pandemic
     def fitness(solution: Solution) -> float:
         return solution["x"] ** 2 + solution["y"] ** 2
 
-    strains = [StrainProperties("Strain#1", pandemic_duration=10),
-               StrainProperties("Strain#2", pandemic_duration=10, p_travel=0.2)]
+    # Social distancing from the third iteration keeps a pandemic over a continuous
+    # domain short: the suggested setup, from the seventh, suits binary encodings.
+    strains = [StrainProperties("Strain#1", pandemic_duration=10, social_distancing=3),
+               StrainProperties("Strain#2", pandemic_duration=10, social_distancing=3, p_travel=0.2)]
 
     best_solution = cvoa_launcher(strains, domain, fitness, seed=0)
 

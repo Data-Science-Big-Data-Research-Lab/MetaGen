@@ -159,3 +159,43 @@ def test_cvoa_runs_with_a_conditional_variable(strain_class):
     strains = [StrainProperties("S1", pandemic_duration=4, social_distancing=2)]
     best = cvoa_launcher(strains, _domain(), fitness, seed=0, strain_class=strain_class)
     assert best.get_fitness() == fitness(best)
+
+
+def _tpe_solutions(pairs):
+    from metagen.metaheuristics.tpe.tpe_tools import TPEConnector
+    domain = _domain(TPEConnector())
+    solutions = []
+    for solver, momentum in pairs:
+        solution = _solution(domain)
+        solution.set("solver", solver)
+        solution.set("momentum", momentum)
+        solutions.append(solution)
+    return domain, solutions
+
+
+def test_tpe_models_a_variable_only_from_the_references_where_it_is_active(monkeypatch):
+    from metagen.metaheuristics.tpe.tpe_tools import TPEReal
+    seen = {}
+    original = TPEReal.resample
+
+    def spy(self, best_values, worst_values):
+        if self.get_definition().get_attributes()[1] == 0.5:      # momentum's minimum
+            seen["best"] = sorted(value.get() for value in best_values)
+            seen["worst"] = sorted(value.get() for value in worst_values)
+        return original(self, best_values, worst_values)
+
+    monkeypatch.setattr(TPEReal, "resample", spy)
+    domain, solutions = _tpe_solutions([("sgd", 0.9), ("adam", 0.51), ("sgd", 0.8),
+                                        ("adam", 0.52), ("sgd", 0.6), ("adam", 0.53)])
+    candidate = _solution(domain)
+    candidate.resample(solutions[:4], solutions[4:])
+    assert seen == {"best": [0.8, 0.9], "worst": [0.6]}
+
+
+def test_tpe_leaves_a_variable_alone_when_no_reference_has_it_active():
+    domain, solutions = _tpe_solutions([("adam", 0.51), ("adam", 0.52), ("adam", 0.53)])
+    set_seed(0)
+    candidate = _solution(domain)
+    before = candidate.get("momentum").get()
+    candidate.resample(solutions[:2], solutions[2:])
+    assert candidate.get("momentum").get() == before

@@ -201,3 +201,58 @@ def test_a_run_resumes_in_another_process(tmp_path):
     run("start")
     assert os.path.exists(path)
     assert run("resume") == run("whole")
+
+
+def _new_features_domain(connector=None):
+    """A permutation, a conditional variable and a structure with a range per position."""
+    domain = Domain(connector) if connector is not None else Domain()
+    domain.define_permutation("route", [1, 2, 3, 4, 5])
+    domain.define_categorical("solver", ["adam", "sgd"])
+    domain.define_real("momentum", 0.5, 0.99)
+    domain.set_condition("momentum", "solver", ["sgd"])
+    domain.define_dynamic_structure("layers", 1, 3)
+    domain.define_integer("first", 1, 5)
+    domain.define_integer("second", 6, 10)
+    domain.define_integer("third", 11, 20)
+    domain.set_structure_to_variables("layers", ["first", "second", "third"])
+    return domain
+
+
+def _new_features_objective(solution):
+    route = solution["route"]
+    momentum = solution["momentum"]
+    return (sum(abs(city - position - 1) for position, city in enumerate(route))
+            + (0.0 if momentum is None else (momentum - 0.9) ** 2)
+            + sum(solution["layers"]) / 10)
+
+
+NEW_FEATURES = {
+    "HillClimbing": lambda **kw: HillClimbing(_new_features_domain(), kw.pop("fitness"), max_iterations=8, **kw),
+    "TabuSearch": lambda **kw: TabuSearch(_new_features_domain(), kw.pop("fitness"), max_iterations=8, **kw),
+    "SA": lambda **kw: SA(_new_features_domain(), kw.pop("fitness"), max_iterations=8, **kw),
+    "GA": lambda **kw: GA(_new_features_domain(GAConnector()), kw.pop("fitness"), max_iterations=8, **kw),
+    "Memetic": lambda **kw: Memetic(_new_features_domain(GAConnector()), kw.pop("fitness"), max_iterations=8, **kw),
+    "TPE": lambda **kw: TPE(_new_features_domain(), kw.pop("fitness"), max_iterations=8, **kw),
+    "KernelTPE": lambda **kw: KernelTPE(_new_features_domain(), kw.pop("fitness"), max_iterations=8, **kw),
+}
+
+
+@pytest.mark.parametrize("name", NEW_FEATURES)
+def test_permutations_conditions_and_positional_structures_resume_exactly(name, tmp_path):
+    whole = NEW_FEATURES[name](fitness=_new_features_objective, seed=6)
+    reference = whole.run().get_fitness(), list(whole.best_solution_fitnesses)
+
+    path = str(tmp_path / "run.ckpt")
+    algorithm = NEW_FEATURES[name](fitness=_new_features_objective, seed=6, checkpoint=path)
+
+    def stops_after_three_iterations(solution):
+        if algorithm.current_iteration >= 3:
+            algorithm.request_stop()
+        return _new_features_objective(solution)
+
+    algorithm.fitness_function = stops_after_three_iterations
+    algorithm.run()
+    resumed = type(algorithm).resume(path, _new_features_objective)
+    best = resumed.run()
+    assert (best.get_fitness(), resumed.best_solution_fitnesses) == reference
+    assert sorted(best["route"]) == [1, 2, 3, 4, 5]
