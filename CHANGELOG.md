@@ -1,33 +1,37 @@
 # Changelog
 
-## Unreleased
+## 1.1.0
+
+MetaGen 1.1.0 adds permutations, conditional variables and structures with a range per
+position to the search spaces, lets a run be paused and resumed from a checkpoint, and keeps
+a history of every run.
 
 ### New
 
-- **Structures with a definition per position**: `Domain.set_structure_to_variables(name,
-  variables)` gives each position of a static or dynamic structure its own definition,
-  taken from already defined variables, one per position. Every position is drawn,
-  mutated, checked and recombined against its own definition, and a dynamic structure
-  grows and shrinks at its end. All the metaheuristics support it.
-- **Run history**: every metaheuristic keeps one record per iteration in `history`
-  (evaluations, seconds, best so far, best, mean, standard deviation and worst of the
-  population, its size and the best solution), and the `history` parameter writes them
-  to a JSON Lines file as the run goes.
-- **Pausing and resuming a run**: every metaheuristic but CVOA takes `checkpoint` and
-  `checkpoint_every`, saves its state to that file every so many iterations, and
-  continues from it when `run()` starts; `resume(path, fitness_function)` rebuilds it in
-  another process, and `request_stop()` ends a run after the iteration in progress,
-  saving it. A continued run reaches the result of an uninterrupted one.
 - **Permutations**: `Domain.define_permutation(name, elements)` defines an ordering of
   distinct elements, each exactly once, read as a list. Mutations swap positions (a
   limit counts swaps), the genetic algorithms use the order crossover, and TPE and
   KernelTPE resample it from the orderings of the best solutions.
 - **Conditional variables**: `Domain.set_condition(name, variable, values)` makes a
   variable active only when another one, an integer or a categorical one, takes one of
-  the given values. While inactive, `solution[name]` is `None` and
-  `Solution.is_active(name)` is `False`; the metaheuristics do not mutate it, two
-  solutions that differ only in it are equal, and TPE and KernelTPE model it only from
-  the solutions in which it was active.
+  the given values. While inactive, `solution[name]` is `None`, a printed solution shows
+  it as `None (inactive)` and `Solution.is_active(name)` is `False`; the metaheuristics
+  do not mutate it, two solutions that differ only in it are equal, and TPE and
+  KernelTPE model it only from the solutions in which it was active.
+- **Structures with a definition per position**: `Domain.set_structure_to_variables(name,
+  variables)` gives each position of a static or dynamic structure its own definition,
+  taken from already defined variables, one per position. Every position is drawn,
+  mutated, checked and recombined against its own definition, and a dynamic structure
+  grows and shrinks at its end. All the metaheuristics support it.
+- **Pausing and resuming a run**: every metaheuristic but CVOA takes `checkpoint` and
+  `checkpoint_every`, saves its state to that file every so many iterations, and
+  continues from it when `run()` starts; `resume(path, fitness_function)` rebuilds it in
+  another process, and `request_stop()` ends a run after the iteration in progress,
+  saving it. A continued run reaches the result of an uninterrupted one.
+- **Run history**: every metaheuristic keeps one record per iteration in `history`
+  (evaluations, seconds, best so far, best, mean, standard deviation and worst of the
+  population, its size and the best solution), and the `history` parameter writes them
+  to a JSON Lines file as the run goes.
 - **`infection_alteration_limit`** in `StrainProperties`: how far a CVOA infection moves
   each variable it changes, as a `RelativeAlteration`, an absolute amount or `None` (the
   default, which draws the variable over its whole domain).
@@ -35,8 +39,8 @@
 ### Changes
 
 - **Integer neighborhoods**: an integer mutated within a limit, absolute or
-  `RelativeAlteration`, now draws from the grid points on both sides of its value alike,
-  and always reaches at least one step, so a two-valued integer always flips and a narrow
+  `RelativeAlteration`, draws from the grid points on both sides of its value alike,
+  and reaches at least one step, so a two-valued integer always flips and a narrow
   range always moves.
 - **Modules are named after their algorithm**: `metagen.metaheuristics.random_search`,
   `hill_climbing`, `tabu_search`, `simulated_annealing`, `genetic` and `memetic`, and
