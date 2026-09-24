@@ -15,6 +15,6 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 from .base_solution import Solution
-from .types import BaseType, Categorical, Integer, Real, Structure
+from .types import BaseType, Categorical, Integer, Permutation, Real, Structure
 
-__all__ = ["Solution", "Structure", "Categorical", "Integer", "Real", "BaseType"]
+__all__ = ["Solution", "Structure", "Categorical", "Integer", "Permutation", "Real", "BaseType"]

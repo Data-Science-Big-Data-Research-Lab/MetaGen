@@ -18,6 +18,7 @@ from typing import Any, Callable, cast
 
 from metagen.framework.domain.core import (BaseStructureDefinition,
                                            DynamicStructureDefinition,
+                                           PermutationDefinition,
                                            StaticStructureDefinition)
 from metagen.framework.solution.literals import InputValue, SolVector
 from metagen.framework.solution import Solution
@@ -292,10 +293,13 @@ class Structure(BaseType):
             # From the value's own type rather than from the base, so a dict becomes
             # a group; built with the base definition all the same. Same registry mypy
             # cannot follow as in _new_element.
+            base = self.get_definition().get_base()
+            # A list is also the value of a permutation, whose type the list alone
+            # does not name: the connector maps list to the structures.
+            key: Any = base if isinstance(base, PermutationDefinition) else value
             element_class = cast(Callable[..., BaseType | Solution],
-                                 self.get_connector().get_type(value))
-            converted = element_class(self.get_definition().get_base(),
-                                      connector=self.get_connector())
+                                 self.get_connector().get_type(key))
+            converted = element_class(base, connector=self.get_connector())
 
             # The constructor initializes the instance at random, so the input
             # value has to be applied on top of it. Without this the structure

@@ -9,6 +9,10 @@
   taken from already defined variables, one per position. Every position is drawn,
   mutated, checked and recombined against its own definition, and a dynamic structure
   grows and shrinks at its end. All the metaheuristics support it.
+- **Permutations**: `Domain.define_permutation(name, elements)` defines an ordering of
+  distinct elements, each exactly once, read as a list. Mutations swap positions (a
+  limit counts swaps), the genetic algorithms use the order crossover, and TPE and
+  KernelTPE resample it from the orderings of the best solutions.
 - **Conditional variables**: `Domain.set_condition(name, variable, values)` makes a
   variable active only when another one, an integer or a categorical one, takes one of
   the given values. While inactive, `solution[name]` is `None` and

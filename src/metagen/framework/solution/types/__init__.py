@@ -17,7 +17,8 @@
 from .base import BaseType
 from .categorical import Categorical
 from .integer import Integer
+from .permutation import Permutation
 from .real import Real
 from .structure import Structure
 
-__all__ = ["Structure", "Categorical", "Integer", "Real", "BaseType"]
+__all__ = ["Structure", "Categorical", "Integer", "Permutation", "Real", "BaseType"]

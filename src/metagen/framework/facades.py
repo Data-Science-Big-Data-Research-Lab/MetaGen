@@ -22,8 +22,8 @@ from metagen.framework.domain import (Base, BaseDefinition,
                                       BaseStructureDefinition,
                                       CategoricalDefinition,
                                       DynamicStructureDefinition,
-                                      IntegerDefinition, RealDefinition,
-                                      StaticStructureDefinition)
+                                      IntegerDefinition, PermutationDefinition,
+                                      RealDefinition, StaticStructureDefinition)
 from metagen.framework.domain.literals import CatVal
 from metagen.framework.domain.preconditions import Messages
 
@@ -141,6 +141,27 @@ class Domain:
         categorical_definition = cast(type[CategoricalDefinition], self._connector.get_definition(
             self._connector.get_type(str)))
         self._core.define(name, categorical_definition(categories))
+
+    def define_permutation(self, name: str, elements: CatVal):
+        """ It defines a **PERMUTATION** variable: an ordering of the given elements, each of them exactly once,
+        such as the order in which to visit eight cities. It reads as a list.
+
+        .. code-block:: python
+
+            from metagen.framework import Domain
+
+            domain = Domain()
+            domain.define_permutation("route", [1, 2, 3, 4, 5, 6, 7, 8])
+
+        :param name: The variable name.
+        :param elements: The elements to order: at least two, distinct and of one type.
+        :type name: str
+        :type elements: list of int, float or str
+        :raises ValueError: if the elements are not valid.
+        """
+        permutation_definition = cast(type[PermutationDefinition], self._connector.get_definition(
+            self._connector.get_type(tuple)))
+        self._core.define(name, permutation_definition(elements))
 
     def define_group(self, name: str):
         """ It defines a **GROUP** variable receiving a name as its identifier, and a list with the categories that it will be able to have.

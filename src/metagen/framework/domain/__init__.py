@@ -16,7 +16,7 @@
 """
 from .core import (Base, BaseDefinition, BaseStructureDefinition,
                    CategoricalDefinition, DynamicStructureDefinition,
-                   IntegerDefinition, RealDefinition,
+                   IntegerDefinition, PermutationDefinition, RealDefinition,
                    StaticStructureDefinition)
 
-__all__ = ["Base", "BaseDefinition", "BaseStructureDefinition", "CategoricalDefinition", "RealDefinition", "IntegerDefinition", "DynamicStructureDefinition", "StaticStructureDefinition"]
+__all__ = ["Base", "BaseDefinition", "BaseStructureDefinition", "CategoricalDefinition", "RealDefinition", "IntegerDefinition", "DynamicStructureDefinition", "StaticStructureDefinition", "PermutationDefinition"]

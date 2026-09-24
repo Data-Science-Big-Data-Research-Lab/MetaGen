@@ -17,6 +17,7 @@ The ``Domain`` class describes the space of the solutions: which variables a sol
     * ``CATEGORICAL``: one value out of a list of categories, which must all be of the same type (``int``, ``float``, ``str`` or ``bool``) and must not repeat. A single category is allowed, to fix a hyperparameter to one value.
 
 * **Structure**: a list whose elements share one definition, which may be basic, a group or another structure, or have one definition per position (see below). A **static** structure has a fixed length; a **dynamic** one has a length between a minimum and a maximum, optionally on a grid of a given step, and the search changes it.
+* **Permutation**: an ordering of a fixed set of distinct elements, each of them exactly once, such as the order in which to visit some cities. It reads as a list, and every metaheuristic keeps it a valid ordering: mutations swap positions and the genetic algorithms cross orderings over with the order crossover.
 * **Group**: a set of named variables that travel together, such as the settings of one layer of a neural network. A structure of groups describes, for instance, an architecture with a variable number of layers.
 
 .. code-block:: python
@@ -49,6 +50,31 @@ By default the elements of a structure share one definition. With ``set_structur
 
 A solution of this domain holds ``[20]``, ``[12, 40]`` or ``[30, 50, 100]``, for instance: the first element is always between 8 and 32, the second between 16 and 64 and the third between 32 and 128. As with ``set_structure_to_variable``, the variables move into the structure unless ``remember=True`` is given.
 
+A **grid** covers values such as the multiples of a number, and a **permutation** an ordering without repetitions:
+
+.. code-block:: python
+
+    from metagen.framework import Domain
+
+    domain = Domain()
+    domain.define_integer("even", 2, 20, 2)                  # 2, 4, 6 ... 20
+    domain.define_permutation("route", [1, 2, 3, 4, 5, 6, 7, 8])
+
+Other constraints between variables, such as one having to be smaller than another, are expressed in the fitness function: return a penalty, a value worse than any feasible solution can reach, for the solutions that break them.
+
+.. code-block:: python
+
+    from metagen.framework import Domain, Solution
+
+    domain = Domain()
+    domain.define_integer("min_samples_split", 2, 20)
+    domain.define_integer("min_samples_leaf", 1, 20)
+
+    def fitness(solution: Solution) -> float:
+        if solution["min_samples_leaf"] >= solution["min_samples_split"]:
+            return 1e6                                        # infeasible
+        return solution["min_samples_split"] + solution["min_samples_leaf"]
+
 A variable can be **conditional**: active only when another one takes some values, like a momentum that only means something for one of the solvers. ``set_condition`` declares it, over a variable at the top level of the domain that depends on an integer or a categorical one, also at the top level and not conditional itself:
 
 .. code-block:: python
@@ -69,6 +95,7 @@ Internally every definition answers ``get_attributes()`` with a tuple whose firs
 * ``("DEFINITION", {"name": attributes, ...})`` for a group.
 * ``("STATIC", length, attributes of the element)`` for a static structure.
 * ``("DYNAMIC", minimum length, maximum length, length step, attributes of the element)`` for a dynamic one.
+* ``("PERMUTATION", [elements])`` for a permutation.
 * In a structure with a definition per position, the attributes of the element are a tuple with the attributes of each position.
 
 The details of the definition are described in the `Core`_.
@@ -84,6 +111,7 @@ Domain class
     ~Domain.define_integer
     ~Domain.define_real
     ~Domain.define_categorical
+    ~Domain.define_permutation
     ~Domain.define_group
     ~Domain.define_integer_in_group
     ~Domain.define_real_in_group
@@ -140,6 +168,12 @@ RealDefinition
 CategoricalDefinition
 ----------------------------
 .. autoclass:: metagen.framework.domain.core.CategoricalDefinition
+    :members:
+    :show-inheritance:
+
+PermutationDefinition
+----------------------------
+.. autoclass:: metagen.framework.domain.core.PermutationDefinition
     :members:
     :show-inheritance:
 

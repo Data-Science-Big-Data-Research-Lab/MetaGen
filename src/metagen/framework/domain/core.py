@@ -23,7 +23,7 @@ from typing import Any, Dict, Sized, Tuple, cast
 from metagen.framework.domain.literals import (DF, METAGEN_TYPE, Attributes, C,
                                                CatAttr, CatVal, D, DefAttr,
                                                DefType, DymAttr, I, IntAttr,
-                                               List, MetaVal, R, RealAttr, S,
+                                               List, MetaVal, P, PermAttr, R, RealAttr, S,
                                                StaAttr, StrBaseAttr, StrVal)
 from metagen.framework.domain.preconditions import Messages, Preconditions
 
@@ -293,6 +293,53 @@ class CategoricalDefinition(Base):
 
     def __str__(self):
         return "[" + super().get_type() + "] " + "{Values = " + str(self.__categories) + "}"
+
+
+class PermutationDefinition(Base):
+    """
+    An ordering of a fixed set of distinct elements: every value holds each of them
+    exactly once, in some order, such as a route through eight cities.
+
+    :param elements: The elements to order, distinct and of one type.
+    :type elements: CatVal
+    :raises ValueError: if the elements are fewer than two, repeat, or mix types.
+    """
+
+    def __init__(self, elements: CatVal):
+        Preconditions.Categorical.categories(elements)
+        if len(elements) < 2:
+            raise ValueError("[PERMUTATION definition error] A permutation needs at least two elements.")
+        Base.__init__(self, P)
+        self.__elements: CatVal = cast(CatVal, list(elements))
+
+    def get_attributes(self) -> PermAttr:
+        """
+        The permutation type ``P`` and the elements, in the order they were given.
+
+        :return: A tuple with the type and the elements.
+        :rtype: PermAttr
+        """
+        return P, self.__elements
+
+    def check_value(self, value: Any) -> bool:
+        """
+        Whether a value is an ordering of the elements: a list or a tuple holding each
+        of them exactly once.
+
+        :param value: The value to check.
+        :type value: Any
+        :return: True if the value is a valid ordering, otherwise False.
+        :rtype: bool
+        """
+        if not isinstance(value, (list, tuple)) or len(value) != len(self.__elements):
+            return False
+        try:
+            return set(value) == set(self.__elements) and len(set(value)) == len(value)
+        except TypeError:
+            return False
+
+    def __str__(self):
+        return "[" + super().get_type() + "] " + "{Elements = " + str(self.__elements) + "}"
 
 
 class BaseDefinition(Base):
