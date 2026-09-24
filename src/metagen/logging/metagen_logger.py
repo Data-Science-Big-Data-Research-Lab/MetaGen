@@ -54,7 +54,8 @@ def _get_metagen_logger(name: str) -> MetaGenLogger:
 
     :param name: The name of the logger.
     :type name: str
-    :return: The logger, created on the first call and reused afterwards.
+    :return: The logger, created on the first call and reused afterwards, also when it
+        was first asked for by its name elsewhere.
     :rtype: MetaGenLogger
     """
     previous_class = logging.getLoggerClass()
@@ -63,6 +64,12 @@ def _get_metagen_logger(name: str) -> MetaGenLogger:
         logger = logging.getLogger(name)
     finally:
         logging.setLoggerClass(previous_class)
+    # A logger asked for by this name before MetaGen was imported already exists, as a
+    # plain Logger, and logging hands that one back. MetaGenLogger only adds a method
+    # and no state, so the existing logger becomes one and keeps its handlers and level
+    # (F-51).
+    if not isinstance(logger, MetaGenLogger):
+        logger.__class__ = MetaGenLogger
     return cast(MetaGenLogger, logger)
 
 

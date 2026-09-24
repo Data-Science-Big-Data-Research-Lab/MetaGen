@@ -1362,6 +1362,34 @@ def test_f50_la_ventana_de_mutacion_de_un_entero_es_simetrica_y_se_mueve():
 
 
 # --------------------------------------------------------------------------------
+# F-51 · Pedir el logger de MetaGen por su nombre antes de importar el paquete deja a CVOA sin detailed_info
+# --------------------------------------------------------------------------------
+
+_GUION_F51 = """
+import logging
+logging.getLogger("metagen_logger")          # pedido por su nombre antes que MetaGen
+from metagen.framework import Domain
+from metagen.metaheuristics import StrainProperties, cvoa_launcher
+from metagen.logging.metagen_logger import metagen_logger
+domain = Domain()
+domain.define_real("x", -1.0, 1.0)
+cepas = [StrainProperties("S1", pandemic_duration=3, social_distancing=1)]
+cvoa_launcher(cepas, domain, lambda s: s["x"] ** 2, seed=0)
+metagen_logger.detailed_info("ok")
+print(type(metagen_logger).__name__)
+"""
+
+
+def test_f51_el_logger_de_metagen_funciona_aunque_se_pida_antes_por_su_nombre():
+    """F-51: MetaGen construye su logger cambiando la clase de logger solo durante la
+    llamada; si alguien lo habia pedido antes por el nombre, logging devolvia el que ya
+    existia, un Logger normal sin detailed_info, y CVOA reventaba al informar."""
+    resultado = subprocess.run([sys.executable, "-c", _GUION_F51], capture_output=True, text=True)
+    assert resultado.returncode == 0, resultado.stderr[-800:]
+    assert resultado.stdout.strip().endswith("MetaGenLogger")
+
+
+# --------------------------------------------------------------------------------
 # F-48 · Los conjuntos acotados de CVOA eligen al reves: muere el mejor y contagia mas el peor
 # --------------------------------------------------------------------------------
 
