@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.1.1
+
+MetaGen 1.1.1 imports from any working directory.
+
+### Changes
+
+- **Optional packages are detected by their files**: a directory with the name of an
+  optional package and nothing to import, such as the `ray` folder Ray leaves in the
+  temporary directory, does not count as the package being installed, so
+  `metagen.metaheuristics` imports from any working directory.
+
 ## 1.1.0
 
 MetaGen 1.1.0 adds permutations, conditional variables and structures with a range per

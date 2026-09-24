@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pymetagen-datalabupo"
-version = "1.1.0"
+version = "1.1.1"
 description = "MetaGen: A framework for metaheuristic development and hyperparameter optimization in machine and deep learning."
 readme = "README.md"
 requires-python = ">=3.10"
