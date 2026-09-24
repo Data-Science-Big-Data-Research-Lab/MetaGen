@@ -41,6 +41,20 @@ Reading
     first_layer = solution["architecture"][0]
     first_layer["neurons"], first_layer["dropout"]
 
+A conditional variable (see :doc:`../domain/domain`) reads as ``None`` while it is inactive; ``solution.is_active("name")`` says whether it is.
+
+.. code-block:: python
+
+    conditional = Domain()
+    conditional.define_categorical("solver", ["adam", "sgd"])
+    conditional.define_real("momentum", 0.5, 0.99)
+    conditional.set_condition("momentum", "solver", ["sgd"])
+
+    tuned = Solution(conditional)
+    tuned.set("solver", "adam")
+    tuned["momentum"]                     # None
+    tuned.is_active("momentum")           # False
+
 ``solution.get("name")`` returns the **object** that holds the value instead, which is what code that modifies a solution in place works with: a structure object has a length, and its ``get(i)`` returns the object at a position.
 
 .. code-block:: python

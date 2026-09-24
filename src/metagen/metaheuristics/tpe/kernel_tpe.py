@@ -16,7 +16,7 @@
 """
 import heapq
 import math
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union, cast
 
 import numpy as np
 from scipy.stats import norm
@@ -172,7 +172,7 @@ class KernelTPE(TPE):
         best_score = -math.inf
         for _ in range(self.n_candidates):
             candidate = solution_type(self.domain, connector=self.domain.get_connector())
-            score = 0.0
+            drawn = []
             for path, leaf in _leaves(candidate):
                 if path not in good:
                     continue
@@ -182,7 +182,13 @@ class KernelTPE(TPE):
                 model_good, model_bad = models[path]
                 value = model_good.draw(leaf)
                 leaf.set(value)
-                score += model_good.log_density(value) - model_bad.log_density(value)
+                drawn.append((path, value, model_good, model_bad))
+            # Scored once every variable is drawn, so that a conditional variable counts
+            # only when the value drawn for the one it depends on makes it active.
+            score = 0.0
+            for path, value, model_good, model_bad in drawn:
+                if candidate.is_active(cast(str, path[0])):
+                    score += model_good.log_density(value) - model_bad.log_density(value)
             if score > best_score:
                 best_candidate, best_score = candidate, score
         assert best_candidate is not None
@@ -219,7 +225,9 @@ def _observations(solutions: Sequence[Solution]) -> Dict[Path, List[Any]]:
     observed: Dict[Path, List[Any]] = {}
     for solution in solutions:
         for path, leaf in _leaves(solution):
-            observed.setdefault(path, []).append(leaf.get())
+            # A conditional variable's values count only where it was active.
+            if solution.is_active(cast(str, path[0])):
+                observed.setdefault(path, []).append(leaf.get())
     return observed
 
 

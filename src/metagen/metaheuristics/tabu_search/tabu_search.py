@@ -222,6 +222,10 @@ class TabuSearch(Metaheuristic):
 
     def _within_radius(self, solution: Solution, visited: Solution) -> bool:
         for name, value in solution.get_variables().items():
+            # An inactive variable does not tell two solutions apart; if it is active
+            # in only one of them, the variable it depends on differs and fails below.
+            if not solution.is_active(name):
+                continue
             other = visited.get(name)
             if isinstance(value, Solution) and isinstance(other, Solution):
                 if not self._within_radius(value, other):

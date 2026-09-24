@@ -9,6 +9,12 @@
   taken from already defined variables, one per position. Every position is drawn,
   mutated, checked and recombined against its own definition, and a dynamic structure
   grows and shrinks at its end. All the metaheuristics support it.
+- **Conditional variables**: `Domain.set_condition(name, variable, values)` makes a
+  variable active only when another one, an integer or a categorical one, takes one of
+  the given values. While inactive, `solution[name]` is `None` and
+  `Solution.is_active(name)` is `False`; the metaheuristics do not mutate it, two
+  solutions that differ only in it are equal, and TPE and KernelTPE model it only from
+  the solutions in which it was active.
 - **`infection_alteration_limit`** in `StrainProperties`: how far a CVOA infection moves
   each variable it changes, as a `RelativeAlteration`, an absolute amount or `None` (the
   default, which draws the variable over its whole domain).

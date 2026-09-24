@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import numbers
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Sized, cast
+from typing import Any, Dict, Sized, Tuple, cast
 
 from metagen.framework.domain.literals import (DF, METAGEN_TYPE, Attributes, C,
                                                CatAttr, CatVal, D, DefAttr,
@@ -310,6 +310,9 @@ class BaseDefinition(Base):
         super().__init__(DF)
         self.__var_list: List[str] = []
         self.__value: Dict[str, Base] = {}
+        # A conditional variable's name -> (the variable it depends on, the values of
+        # that variable that make it active).
+        self.__conditions: Dict[str, Tuple[str, List[Any]]] = {}
 
     def __is_not_defined(self, name: str):
         """
@@ -367,7 +370,11 @@ class BaseDefinition(Base):
         Deletes a variable from the current definition.
 
         :param name: A string representing the name of the variable.
+        :raises ValueError: if the variable takes part in a condition.
         """
+        if name in self.__conditions or any(variable == name for variable, _ in self.__conditions.values()):
+            raise ValueError(f"[DEFINITION error] The variable {name} takes part in a condition "
+                             f"and cannot be moved or deleted.")
         self.__var_list.remove(name)
         del self.__value[name]
 
@@ -401,6 +408,54 @@ class BaseDefinition(Base):
         :return: A boolean indicating whether the given value is valid for the variable.
         """
         return self.__value[name].check_value(value)
+
+    def set_condition(self, name: str, variable: str, values: List[Any]) -> None:
+        """
+        Make a variable active only when another one takes one of the given values.
+
+        :param name: The conditional variable.
+        :type name: str
+        :param variable: The variable it depends on, an integer or a categorical one.
+        :type variable: str
+        :param values: The values of ``variable`` that make ``name`` active.
+        :type values: list
+        :raises ValueError: if either variable is not defined, if ``variable`` is not an
+            integer or a categorical one, if a value is not valid for it, or if the
+            condition would chain with another one.
+        """
+        for defined in (name, variable):
+            if not self.is_variable(defined):
+                raise ValueError(Messages.definition(defined, "d_n"))
+        if name == variable:
+            raise ValueError(f"[DEFINITION error] The variable {name} cannot depend on itself.")
+        controller = self.__value[variable]
+        if not isinstance(controller, (IntegerDefinition, CategoricalDefinition)):
+            raise ValueError(f"[DEFINITION error] The variable {variable} must be an integer or a "
+                             f"categorical variable for {name} to depend on it.")
+        if not isinstance(values, list) or not values:
+            raise ValueError(f"[DEFINITION error] The values that make {name} active must be a "
+                             f"non-empty list.")
+        invalid = [value for value in values if not controller.check_value(value)]
+        if invalid:
+            raise ValueError(f"[DEFINITION error] The values {invalid} are not valid for the "
+                             f"variable {variable}.")
+        if name in self.__conditions:
+            raise ValueError(f"[DEFINITION error] The variable {name} already has a condition.")
+        if variable in self.__conditions or any(other == name for other, _ in self.__conditions.values()):
+            raise ValueError(f"[DEFINITION error] A condition cannot depend on a conditional "
+                             f"variable: {name} and {variable} would chain.")
+        self.__conditions[name] = (variable, list(values))
+
+    def get_condition(self, name: str) -> Tuple[str, List[Any]] | None:
+        """
+        The condition of a variable, if it has one.
+
+        :param name: The name of the variable.
+        :type name: str
+        :return: The variable it depends on and the values that make it active, or None.
+        :rtype: tuple or None
+        """
+        return self.__conditions.get(name)
 
     def is_variable(self, name: str) -> bool:
         """
@@ -453,6 +508,9 @@ class BaseDefinition(Base):
                 res += ": [DEF]\n" + v.to_string(level + 1)
             else:
                 res += ": " + v.__str__()
+            if k in self.__conditions:
+                variable, values = self.__conditions[k]
+                res += " {Active if " + variable + " in " + str(values) + "}"
             if cnt != len(self.__value.items()):
                 res += "\n"
             cnt += 1

@@ -159,8 +159,12 @@ class TPESolution(Solution):
         """
 
         for variable_name, variable_value in self.get_variables().items():
-            best_values = [sol.get(variable_name) for sol in best_solutions]
-            worst_values = [sol.get(variable_name) for sol in worst_solutions]
+            # A conditional variable is modeled only from the solutions in which it was
+            # active; its values elsewhere meant nothing.
+            best_values = [sol.get(variable_name) for sol in best_solutions if sol.is_active(variable_name)]
+            worst_values = [sol.get(variable_name) for sol in worst_solutions if sol.is_active(variable_name)]
+            if not best_values or not worst_values:
+                continue
 
             variable_value.resample(best_values, worst_values)
 

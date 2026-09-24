@@ -49,6 +49,19 @@ By default the elements of a structure share one definition. With ``set_structur
 
 A solution of this domain holds ``[20]``, ``[12, 40]`` or ``[30, 50, 100]``, for instance: the first element is always between 8 and 32, the second between 16 and 64 and the third between 32 and 128. As with ``set_structure_to_variable``, the variables move into the structure unless ``remember=True`` is given.
 
+A variable can be **conditional**: active only when another one takes some values, like a momentum that only means something for one of the solvers. ``set_condition`` declares it, over a variable at the top level of the domain that depends on an integer or a categorical one, also at the top level and not conditional itself:
+
+.. code-block:: python
+
+    from metagen.framework import Domain
+
+    domain = Domain()
+    domain.define_categorical("solver", ["adam", "sgd"])
+    domain.define_real("momentum", 0.5, 0.99)
+    domain.set_condition("momentum", "solver", ["sgd"])     # active only with sgd
+
+While it is inactive, ``solution["momentum"]`` returns ``None`` and ``solution.is_active("momentum")`` returns ``False``. The metaheuristics do not spend mutations on it, two solutions that differ only in it are the same solution, and the models of ``TPE`` and ``KernelTPE`` learn it only from the solutions in which it was active. Its value is kept, so it comes back with a valid one when the variable becomes active again.
+
 Internally every definition answers ``get_attributes()`` with a tuple whose first element names its type:
 
 * ``("INTEGER", minimum, maximum, step)`` and ``("REAL", minimum, maximum, step)``, with ``None`` as the step when there is no grid.
@@ -82,6 +95,7 @@ Domain class
     ~Domain.set_structure_to_real
     ~Domain.set_structure_to_variable
     ~Domain.set_structure_to_variables
+    ~Domain.set_condition
     ~Domain.get_core
 
 .. autoclass:: metagen.framework.Domain

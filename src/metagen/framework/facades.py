@@ -383,6 +383,33 @@ class Domain:
                 f"positions and {len(variables)} variables were given.")
         structure.set_positions([_check_base_type(self._core, var, remember) for var in variables])
 
+    def set_condition(self, name: str, variable: str, values: list):
+        """ It makes a variable active only when another one takes one of the given values, for a
+        hyperparameter that only means something for some settings of another. While it is inactive,
+        ``solution[name]`` returns None, the searches do not spend mutations on it and two solutions
+        that differ only in it are the same solution. Its value is kept, so it comes back with a
+        valid one when the variable becomes active again.
+
+        .. code-block:: python
+
+            from metagen.framework import Domain
+
+            domain = Domain()
+            domain.define_categorical("solver", ["adam", "sgd"])
+            domain.define_real("momentum", 0.5, 0.99)
+            domain.set_condition("momentum", "solver", ["sgd"])
+
+        :param name: The conditional variable, defined at the top level of the domain.
+        :param variable: The variable it depends on: an integer or a categorical one, at the top
+            level, and not conditional itself.
+        :param values: The values of ``variable`` that make ``name`` active.
+        :type name: str
+        :type variable: str
+        :type values: list
+        :raises ValueError: if the condition is not valid.
+        """
+        self._core.set_condition(name, variable, values)
+
     def get_core(self) -> BaseDefinition:
         """ It returns the core which contains the all the defined variables.
         """
