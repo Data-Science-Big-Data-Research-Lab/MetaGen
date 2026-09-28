@@ -17,6 +17,6 @@
 from .core import (Base, BaseDefinition, BaseStructureDefinition,
                    CategoricalDefinition, DynamicStructureDefinition,
                    IntegerDefinition, PermutationDefinition, RealDefinition,
-                   StaticStructureDefinition)
+                   StaticStructureDefinition, SubsetDefinition)
 
-__all__ = ["Base", "BaseDefinition", "BaseStructureDefinition", "CategoricalDefinition", "RealDefinition", "IntegerDefinition", "DynamicStructureDefinition", "StaticStructureDefinition", "PermutationDefinition"]
+__all__ = ["Base", "BaseDefinition", "BaseStructureDefinition", "CategoricalDefinition", "RealDefinition", "IntegerDefinition", "DynamicStructureDefinition", "StaticStructureDefinition", "PermutationDefinition", "SubsetDefinition"]

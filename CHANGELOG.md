@@ -2,6 +2,15 @@
 
 ## 1.2.0 (in development)
 
+### New
+
+- **Subsets**: `Domain.define_subset(name, elements, min_size=1, max_size=None)` defines
+  a selection of some of a set of distinct elements, between a minimum and a maximum
+  number of them, read as a list in the order of the elements and settable from a list,
+  a tuple or a set. Mutations add, remove or change one element at a time, drawn among
+  the steps the sizes allow; a limit counts steps, and a relative limit is a fraction of
+  the maximum size. Structures can hold subsets.
+
 ### Changes
 
 - **Reading a list value gives a copy**: `solution[name]` on a permutation returns a new

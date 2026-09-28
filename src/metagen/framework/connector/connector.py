@@ -29,7 +29,7 @@ SolutionEntry: TypeAlias = Union[
     Tuple[type[Union[types.BaseType, types.Solution]], str]]
 
 #: The Python types a domain variable can be expressed as.
-BuiltinType: TypeAlias = type[Union[int, float, str, list, tuple, dict]]
+BuiltinType: TypeAlias = type[Union[int, float, str, list, tuple, frozenset, dict]]
 
 
 def _solution_class(entry: SolutionEntry) -> type[types.BaseType | types.Solution]:
@@ -78,6 +78,8 @@ class BaseConnector:
         # Registered under tuple and not list: list is the key of the structures, and
         # the registry maps each builtin to one type. The value still reads as a list.
         self.register(definitions.PermutationDefinition, types.Permutation, tuple)
+        # Under frozenset, for the same reason: a selection has no builtin of its own.
+        self.register(definitions.SubsetDefinition, types.Subset, frozenset)
 
     def register(self, domain_type: type[definitions.Base], solution_type: SolutionEntry,
                  builtin_type: BuiltinType) -> None:
@@ -89,7 +91,7 @@ class BaseConnector:
         :param solution_type: The solution type to register.
         :type solution_type: type[types.BaseType | `types.Solution`] or Tuple[type[types.BaseType | `types.Solution`], str]
         :param builtin_type: The built-in type to register.
-        :type builtin_type: type[int | float | str | list | tuple | dict]
+        :type builtin_type: type[int | float | str | list | tuple | frozenset | dict]
         :return: None
         """
 
@@ -98,12 +100,12 @@ class BaseConnector:
         self._solution_to_builtin[solution_type] = builtin_type
         self._builtin_to_solution[builtin_type] = solution_type
 
-    def get_type(self, definition: definitions.Base | int | float | str | list | tuple | dict | type[definitions.Base | int | float | str | list | tuple | dict]) -> type[types.BaseType | types.Solution]:
+    def get_type(self, definition: definitions.Base | int | float | str | list | tuple | frozenset | dict | type[definitions.Base | int | float | str | list | tuple | frozenset | dict]) -> type[types.BaseType | types.Solution]:
         """
         Retrieves the solution type based on the input definition.
 
         :param definition: The definition object or type for which to retrieve the solution type.
-        :type definition: definitions.Base or int or float or str or list or tuple or dict or type[definitions.Base or int or float or str or list or tuple or dict]
+        :type definition: definitions.Base or int or float or str or list or tuple or frozenset or dict or type[definitions.Base or int or float or str or list or tuple or frozenset or dict]
         :return: The corresponding solution type.
         :rtype: type[`types.BaseType` | `types.Solution`]
         :raises ValueError: If the definition is not registered in the connector.
@@ -117,7 +119,7 @@ class BaseConnector:
             # BaseStructureDefinition is not, but nothing is registered under it.
             if issubclass(definition_class, definitions.Base):
                 return _solution_class(self._domain_to_solution[definition_class])
-            elif issubclass(definition_class, (int, float, str, list, tuple, dict)):
+            elif issubclass(definition_class, (int, float, str, list, tuple, frozenset, dict)):
                 return _solution_class(self._builtin_to_solution[definition_class])
             else:
                 raise ValueError(

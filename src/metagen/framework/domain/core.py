@@ -18,13 +18,13 @@ from __future__ import annotations
 
 import numbers
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Sized, Tuple, cast
+from typing import Any, Dict, Optional, Sized, Tuple, cast
 
 from metagen.framework.domain.literals import (DF, METAGEN_TYPE, Attributes, C,
                                                CatAttr, CatVal, D, DefAttr,
                                                DefType, DymAttr, I, IntAttr,
                                                List, MetaVal, P, PermAttr, R, RealAttr, S,
-                                               StaAttr, StrBaseAttr, StrVal)
+                                               SB, StaAttr, StrBaseAttr, StrVal, SubAttr)
 from metagen.framework.domain.preconditions import Messages, Preconditions
 
 
@@ -341,6 +341,127 @@ class PermutationDefinition(Base):
     def __str__(self):
         return "[" + super().get_type() + "] " + "{Elements = " + str(self.__elements) + "}"
 
+
+
+class SubsetDefinition(Base):
+    """
+    A selection of some of a fixed set of distinct elements, between a minimum and a
+    maximum number of them, such as the features a model uses or the items that go
+    into a knapsack. A value holds each chosen element once, in the order the elements
+    were given.
+
+    :param elements: The elements to choose from, distinct and of one type.
+    :type elements: CatVal
+    :param min_size: The fewest elements a value may hold, zero or more.
+    :type min_size: int
+    :param max_size: The most elements a value may hold; None means all of them.
+    :type max_size: int or None
+    :raises ValueError: if the elements are empty, repeat or mix types, or the sizes
+        are not ``0 <= min_size <= max_size <= len(elements)``.
+    """
+
+    # Beyond this many elements, printing the definition gives their count instead.
+    _SHOWN_ELEMENTS: int = 20
+
+    def __init__(self, elements: CatVal, min_size: int = 1, max_size: Optional[int] = None) -> None:
+        try:
+            Preconditions.Categorical.categories(elements)
+        except ValueError:
+            raise ValueError("[SUBSET definition error] The elements must be a non-empty list of distinct "
+                             "values of one type: int, float or str.") from None
+        size = len(elements)
+        max_size = size if max_size is None else max_size
+        for name, bound in (("minimum", min_size), ("maximum", max_size)):
+            if not isinstance(bound, numbers.Integral) or isinstance(bound, bool):
+                raise ValueError(f"[SUBSET definition error] The {name} size {bound!r} must be an integer.")
+        if not 0 <= min_size <= max_size <= size:
+            raise ValueError(f"[SUBSET definition error] The sizes must satisfy 0 <= minimum ({min_size}) "
+                             f"<= maximum ({max_size}) <= number of elements ({size}).")
+        Base.__init__(self, SB)
+        self.__elements: CatVal = cast(CatVal, list(elements))
+        self.__min_size: int = int(min_size)
+        self.__max_size: int = int(max_size)
+        self.__positions: Dict[Any, int] = {element: position for position, element in enumerate(elements)}
+        self.__kind: type = type(elements[0])
+
+    def get_attributes(self) -> SubAttr:
+        """
+        The subset type ``SB``, the elements, in the order they were given, and the
+        minimum and maximum sizes.
+
+        :return: A tuple with the type, the elements and the two sizes.
+        :rtype: SubAttr
+        """
+        return SB, self.__elements, self.__min_size, self.__max_size
+
+    def position(self, element: Any) -> int:
+        """
+        Where an element sits among the elements of the definition.
+
+        :param element: One of the elements.
+        :type element: Any
+        :return: Its position, from zero.
+        :rtype: int
+        :raises KeyError: if it is not one of the elements.
+        """
+        return self.__positions[element]
+
+    def canonical(self, value: Any) -> List[Any]:
+        """
+        A valid value as a list of the definition's own elements, in their order: a
+        numpy scalar or an int standing for a float element comes back as the element.
+
+        :param value: A list, tuple, set or frozenset the definition accepts.
+        :type value: Any
+        :return: The same elements, ordered as in the definition.
+        :rtype: list
+        """
+        return [self.__elements[position] for position in sorted(self.__positions[member] for member in value)]
+
+    def check_value(self, value: Any) -> bool:
+        """
+        Whether a value is a valid selection: a list, tuple, set or frozenset of
+        elements of the definition, none repeated, holding between the minimum and the
+        maximum number of them.
+
+        :param value: The value to check.
+        :type value: Any
+        :return: True if the value is a valid selection, otherwise False.
+        :rtype: bool
+        """
+        if not isinstance(value, (list, tuple, set, frozenset)):
+            return False
+        if not self.__min_size <= len(value) <= self.__max_size:
+            return False
+        try:
+            members = set(value)
+        except TypeError:
+            return False
+        return len(members) == len(value) and all(
+            member in self.__positions and self._of_the_elements_kind(member) for member in members)
+
+    def _of_the_elements_kind(self, member: Any) -> bool:
+        # A dict finds True under 1 and 1.0 under 1, so membership alone would take a
+        # bool or a float for an integer element. The same rules as the numeric
+        # definitions: an integer takes any integral but a bool, a real any real number
+        # but a bool, which is how an int or a numpy scalar stands for a float element.
+        if issubclass(self.__kind, bool):
+            return isinstance(member, bool)
+        if isinstance(member, bool) or type(member).__name__ == "bool_":
+            return False
+        if issubclass(self.__kind, int):
+            return isinstance(member, numbers.Integral)
+        if issubclass(self.__kind, float):
+            return isinstance(member, numbers.Real)
+        return isinstance(member, str)
+
+    def __str__(self) -> str:
+        if len(self.__elements) <= self._SHOWN_ELEMENTS:
+            elements = str(self.__elements)
+        else:
+            elements = f"{len(self.__elements)} ({self.__elements[0]!r} ... {self.__elements[-1]!r})"
+        return ("[" + super().get_type() + "] " + "{Elements = " + elements
+                + ", Size = [" + str(self.__min_size) + ", " + str(self.__max_size) + "]}")
 
 class BaseDefinition(Base):
     """

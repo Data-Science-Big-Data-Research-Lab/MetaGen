@@ -19,7 +19,8 @@ from typing import Any, Callable, cast
 from metagen.framework.domain.core import (BaseStructureDefinition,
                                            DynamicStructureDefinition,
                                            PermutationDefinition,
-                                           StaticStructureDefinition)
+                                           StaticStructureDefinition,
+                                           SubsetDefinition)
 from metagen.framework.solution.literals import InputValue, SolVector
 from metagen.framework.solution import Solution
 from metagen.framework.solution.base_solution import builtin_value
@@ -289,14 +290,17 @@ class Structure(BaseType):
         if isinstance(value, (BaseType, Solution)):  # Compatibility with already defined types
             return value
 
-        if isinstance(value, int | float | str | list | dict):
+        base = self.get_definition().get_base()
+        # A permutation or a subset reads as a list, which does not name its type, since
+        # the connector maps list to the structures, so the base does. A subset may also
+        # be given as a tuple or a set, as it may at the top level of a solution.
+        by_base = isinstance(base, (PermutationDefinition, SubsetDefinition))
+        if isinstance(value, int | float | str | list | dict) or (
+                isinstance(base, SubsetDefinition) and isinstance(value, tuple | set | frozenset)):
             # From the value's own type rather than from the base, so a dict becomes
             # a group; built with the base definition all the same. Same registry mypy
             # cannot follow as in _new_element.
-            base = self.get_definition().get_base()
-            # A list is also the value of a permutation, whose type the list alone
-            # does not name: the connector maps list to the structures.
-            key: Any = base if isinstance(base, PermutationDefinition) else value
+            key: Any = base if by_base else value
             element_class = cast(Callable[..., BaseType | Solution],
                                  self.get_connector().get_type(key))
             converted = element_class(base, connector=self.get_connector())

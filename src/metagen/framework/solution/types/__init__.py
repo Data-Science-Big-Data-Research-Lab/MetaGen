@@ -20,5 +20,6 @@ from .integer import Integer
 from .permutation import Permutation
 from .real import Real
 from .structure import Structure
+from .subset import Subset
 
-__all__ = ["Structure", "Categorical", "Integer", "Permutation", "Real", "BaseType"]
+__all__ = ["Structure", "Categorical", "Integer", "Permutation", "Real", "Subset", "BaseType"]
