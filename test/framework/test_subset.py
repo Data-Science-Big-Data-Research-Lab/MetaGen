@@ -790,3 +790,155 @@ def test_kernel_tpe_keeps_the_subset_candidate_that_scores_highest(monkeypatch):
         scores = [good_model.log_density(value) - bad_model.log_density(value) for value in drawn]
         assert len(drawn) == 24
         assert np.isclose(good_model.log_density(chosen) - bad_model.log_density(chosen), max(scores))
+
+
+# --- every algorithm -------------------------------------------------------------
+
+WEIGHTS = [12, 7, 11, 8, 9, 6, 14, 5, 10, 13, 4, 15, 3, 9, 7, 11, 6, 8, 12, 5]
+VALUES = [24, 13, 23, 15, 16, 11, 28, 9, 20, 25, 7, 30, 5, 17, 14, 21, 12, 15, 22, 10]
+CAPACITY = 60
+
+
+def _knapsack_domain(connector=None, condition=False):
+    domain = Domain(connector) if connector is not None else Domain()
+    domain.define_subset("items", list(range(20)), 0, 20)
+    domain.define_real("x", -1.0, 1.0)
+    if condition:
+        domain.define_categorical("pack", ["yes", "no"])
+        domain.set_condition("items", "pack", ["yes"])
+    return domain
+
+
+def _knapsack_and_log():
+    invalid = []
+
+    def fitness(solution):
+        items = solution["items"]
+        if items is None:
+            return 0.0 + solution["x"] ** 2
+        if not _valid(items, list(range(20)), 0, 20):
+            invalid.append(items)
+        weight = sum(WEIGHTS[i] for i in items)
+        return -sum(VALUES[i] for i in items) + 10 * max(0, weight - CAPACITY) + solution["x"] ** 2
+
+    return fitness, invalid
+
+
+def _algorithms():
+    from metagen.metaheuristics import (GA, SA, SSGA, HillClimbing, KernelTPE, Memetic,
+                                        RandomSearch, TabuSearch, TPE)
+    return [RandomSearch, HillClimbing, TabuSearch, SA, GA, SSGA, Memetic, TPE, KernelTPE]
+
+
+def _build(algorithm, condition=False, **kwargs):
+    from metagen.metaheuristics import GA, SSGA, Memetic
+    from metagen.metaheuristics.genetic.genetic_tools import GAConnector
+    genetic = algorithm in (GA, SSGA, Memetic)
+    domain = _knapsack_domain(GAConnector() if genetic else None, condition)
+    fitness, invalid = _knapsack_and_log()
+    return algorithm(domain, fitness, **kwargs), fitness, invalid
+
+
+@pytest.mark.parametrize("index", range(9), ids=lambda i: _algorithms()[i].__name__)
+def test_every_algorithm_keeps_the_subset_valid_and_reports_its_true_fitness(index):
+    algorithm, fitness, invalid = _build(_algorithms()[index], seed=40)
+    best = algorithm.run()
+    assert invalid == []
+    assert best.get_fitness() == fitness(best)
+    history = algorithm.best_solution_fitnesses
+    assert all(later <= earlier for earlier, later in zip(history, history[1:]))
+
+
+TARGET = set(range(0, 200, 25))
+
+
+def _sparse_domain(connector=None):
+    domain = Domain(connector) if connector is not None else Domain()
+    domain.define_subset("s", list(range(200)), 3, 8)
+    return domain
+
+
+def _distance_to_target(solution):
+    return len(TARGET ^ set(solution["s"]))
+
+
+# Measured on 28 September 2026: SSGA wins 4 of 10 with its default budget, 110
+# evaluations at two children per iteration; it does improve (from 11 to 9 in 50
+# iterations, to 5 in 500), only slower than random sampling spends the same budget.
+# It is also the weakest on the behavior bench.
+_SLOW = {"SSGA": "two children per iteration: 110 evaluations are too few to beat random sampling here"}
+
+
+@pytest.mark.parametrize("index", [
+    pytest.param(i, marks=pytest.mark.xfail(reason=_SLOW[name], strict=True)) if name in _SLOW else i
+    for i, name in enumerate(a.__name__ for a in _algorithms()) if i > 0
+], ids=lambda i: _algorithms()[i].__name__)
+def test_every_algorithm_beats_random_sampling_with_its_own_budget(index):
+    """Choosing the eight elements of a target among two hundred: every search beats
+    as many random selections as it evaluates, on at least eight of ten seeds. The
+    problem is separable, the case an element-by-element model is made for."""
+    from metagen.metaheuristics import GA, SSGA, Memetic
+    from metagen.metaheuristics.genetic.genetic_tools import GAConnector
+    algorithm_class = _algorithms()[index]
+    genetic = algorithm_class in (GA, SSGA, Memetic)
+    wins = 0
+    for seed in range(10):
+        evaluations = []
+
+        def counted(solution):
+            evaluations.append(1)
+            return _distance_to_target(solution)
+
+        best = algorithm_class(_sparse_domain(GAConnector() if genetic else None), counted, seed=seed).run()
+        set_seed(1000 + seed)
+        domain = _sparse_domain()
+        random_best = min(_distance_to_target(Solution(domain)) for _ in evaluations)
+        wins += best.get_fitness() < random_best
+    assert wins >= 8
+
+
+@pytest.mark.parametrize("index", range(9), ids=lambda i: _algorithms()[i].__name__)
+def test_every_algorithm_runs_with_a_conditional_subset(index):
+    algorithm, fitness, invalid = _build(_algorithms()[index], condition=True, seed=41)
+    best = algorithm.run()
+    assert invalid == [] and best.get_fitness() == fitness(best)
+
+
+@pytest.mark.parametrize("variant", ["CVOA", "ProbabilisticCVOA"])
+def test_cvoa_keeps_the_subset_valid(variant):
+    from metagen.metaheuristics import ProbabilisticCVOA, StrainProperties, cvoa_launcher
+    from metagen.metaheuristics.cvoa.cvoa import CVOA
+    strain_class = {"CVOA": CVOA, "ProbabilisticCVOA": ProbabilisticCVOA}[variant]
+    fitness, invalid = _knapsack_and_log()
+    strains = [StrainProperties("S1", pandemic_duration=4, social_distancing=2)]
+    best = cvoa_launcher(strains, _knapsack_domain(), fitness, seed=0, strain_class=strain_class)
+    assert invalid == [] and best.get_fitness() == fitness(best)
+
+
+@pytest.mark.parametrize("index", range(9), ids=lambda i: _algorithms()[i].__name__)
+def test_a_run_with_a_subset_resumes_exactly(index, tmp_path):
+    whole, fitness, _ = _build(_algorithms()[index], seed=42, max_iterations=8)
+    reference = whole.run().get_fitness(), list(whole.best_solution_fitnesses)
+    path = str(tmp_path / "run.ckpt")
+    algorithm, _, _ = _build(_algorithms()[index], seed=42, max_iterations=8, checkpoint=path)
+
+    def stops_after_three_iterations(solution):
+        if algorithm.current_iteration >= 3:
+            algorithm.request_stop()
+        return fitness(solution)
+
+    algorithm.fitness_function = stops_after_three_iterations
+    algorithm.run()
+    resumed = type(algorithm).resume(path, fitness)
+    best = resumed.run()
+    assert (best.get_fitness(), resumed.best_solution_fitnesses) == reference
+
+
+def test_the_history_records_the_subset_as_a_list(tmp_path):
+    from metagen.metaheuristics import HillClimbing
+    path = tmp_path / "history.jsonl"
+    algorithm, _, _ = _build(HillClimbing, seed=43, max_iterations=5, history=str(path))
+    algorithm.run()
+    lines = [json.loads(line) for line in path.read_text().splitlines()]
+    assert lines and all(isinstance(line["best_solution"]["items"], list) for line in lines
+                         if "best_solution" in line)
