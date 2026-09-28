@@ -9,7 +9,9 @@
   number of them, read as a list in the order of the elements and settable from a list,
   a tuple or a set. Mutations add, remove or change one element at a time, drawn among
   the steps the sizes allow; a limit counts steps, and a relative limit is a fraction of
-  the maximum size. Structures can hold subsets.
+  the maximum size. The genetic algorithms cross subsets at one point: both parents are
+  cut at the same share of their length and each child takes the head of one and the
+  tail of the other. Structures can hold subsets.
 
 ### Changes
 

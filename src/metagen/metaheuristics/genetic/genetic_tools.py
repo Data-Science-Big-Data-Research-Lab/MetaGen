@@ -25,7 +25,8 @@ from metagen.framework import BaseConnector, Solution, Domain
 from metagen.framework.domain import (BaseDefinition, CategoricalDefinition,
                                       DynamicStructureDefinition,
                                       IntegerDefinition, PermutationDefinition,
-                                      RealDefinition, StaticStructureDefinition)
+                                      RealDefinition, StaticStructureDefinition,
+                                      SubsetDefinition)
 from metagen.framework.rng import get_rng
 
 class Crossable(Protocol):
@@ -185,6 +186,55 @@ class GAPermutation(types.Permutation):
             children.append(child)
         return children[0], children[1]
 
+
+
+class GASubset(types.Subset):
+    """
+    A subset that crosses over at one point: both parents are cut at the same share of
+    their length, and each child takes the head of one and the tail of the other,
+    without repetitions. A child left short of the minimum size is completed with
+    elements drawn at random among those it does not hold.
+
+    :ivar connector: The connector used to link different types
+    :vartype connector: BaseConnector
+    """
+
+    def crossover(self, other: GASubset) -> Tuple[GASubset, GASubset]:
+        """
+        One-point crossover between this subset and another.
+
+        :param other: The other parent's value for this variable.
+        :type other: GASubset
+        :return: Two new subsets.
+        :rtype: Tuple[GASubset, GASubset]
+        """
+        definition = self.get_definition()
+        _, elements, min_size, _ = definition.get_attributes()
+        first, second = list(self.get()), list(other.get())
+        share = 0.0
+        while share == 0.0:
+            share = get_rng().random()
+        cut_first, cut_second = int(share * len(first)), int(share * len(second))
+        # Cut at the same share, each child starts with at least as many elements as
+        # the shorter parent, so never below the minimum until repetitions are dropped:
+        # int(s*a) + b - int(s*b) > s*a - 1 + b - s*b >= min(a, b) - 1, and the same
+        # for the other child.
+        children = []
+        for head, tail in ((first[:cut_first], second[cut_second:]),
+                           (first[cut_first:], second[:cut_second])):
+            held = set(head)
+            child_values = head + [element for element in tail if element not in held]
+            short = min_size - len(child_values)
+            if short > 0:
+                taken = set(child_values)
+                child_values += get_rng().sample([e for e in elements if e not in taken], short)
+            # Never above the maximum: a child holds at most share * |first| elements of
+            # one parent and fewer than (1 - share) * |second| + 1 of the other, so fewer
+            # than the maximum plus one when both parents fit in it.
+            child = GASubset(definition, connector=self.connector)
+            child.set(child_values)
+            children.append(child)
+        return children[0], children[1]
 
 class GAStructure(types.Structure):
     """
@@ -478,6 +528,7 @@ class GAConnector(BaseConnector):
         self.register(StaticStructureDefinition, (GAStructure, "static"), list)
         self.register(DynamicStructureDefinition, (GAStructure, "dynamic"), list)
         self.register(PermutationDefinition, GAPermutation, tuple)
+        self.register(SubsetDefinition, GASubset, frozenset)
 
 
 def tournament_selection(solutions: Sequence[Solution], tournament_size: int = 2) -> Solution:

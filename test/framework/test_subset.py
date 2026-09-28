@@ -508,3 +508,155 @@ def test_the_connector_knows_the_subset():
     assert connector.get_type(SubsetDefinition(LETTERS)) is Subset
     assert connector.get_builtin(subset) is frozenset
     assert connector.get_definition(subset) is SubsetDefinition
+
+
+# --- the crossover of the genetic algorithms -------------------------------------
+
+def _ga_subset(elements=LETTERS, min_size=1, max_size=None):
+    from metagen.metaheuristics.genetic.genetic_tools import GAConnector, GASubset
+    return GASubset(SubsetDefinition(elements, min_size, max_size), connector=GAConnector())
+
+
+def _cuts(a, b):
+    """Every pair of cut points a share in (0, 1) gives to lengths ``a`` and ``b``."""
+    points = sorted({0.0, 1.0} | {i / a for i in range(1, a) if a} | {j / b for j in range(1, b) if b})
+    shares = points[1:-1] + [(low + high) / 2 for low, high in zip(points, points[1:])]
+    return {(int(share * a), int(share * b)) for share in shares}
+
+
+def test_one_share_never_leaves_a_child_shorter_than_the_shorter_parent():
+    """Why the crossover needs no redraw: cut at one share, each child, before its
+    repetitions are dropped, is at least as long as the shorter parent."""
+    for a in range(0, 30):
+        for b in range(0, 30):
+            for i, j in _cuts(a, b):
+                assert i + b - j >= min(a, b) and a - i + j >= min(a, b)
+                assert i + b - j <= max(a, b) and a - i + j <= max(a, b)
+
+
+def _before_repair(head, tail):
+    return head + [element for element in tail if element not in head]
+
+
+def _explains(children, first, second, elements, min_size):
+    """Whether one pair of cuts gives both children: each is its head and tail without
+    repetitions, completed, only if short, up to the minimum with elements it did not
+    hold."""
+    for i, j in _cuts(len(first), len(second)):
+        matched = True
+        for child, (head, tail) in zip(children, ((first[:i], second[j:]), (first[i:], second[:j]))):
+            base = _before_repair(head, tail)
+            extra = [element for element in child if element not in base]
+            if not set(base) <= set(child) or (extra and len(child) != min_size) \
+                    or (not extra and len(child) != len(base)) \
+                    or any(element not in elements for element in extra):
+                matched = False
+                break
+        if matched:
+            return True
+    return False
+
+
+@pytest.mark.parametrize("elements, min_size, max_size", [
+    (LETTERS, 1, 8), (LETTERS, 0, 8), (LETTERS, 2, 5), (LETTERS, 3, 3), (LETTERS, 0, 2),
+    (LETTERS, 8, 8), (list(range(40)), 2, 10), (list(range(6179)), 2, 50),
+])
+def test_the_crossover_gives_valid_children_that_one_cut_explains(elements, min_size, max_size):
+    set_seed(20)
+    for _ in range(400):
+        mother, father = _ga_subset(elements, min_size, max_size), _ga_subset(elements, min_size, max_size)
+        first, second = list(mother.get()), list(father.get())
+        children = mother.crossover(father)
+        values = [child.get() for child in children]
+        assert all(_valid(value, elements, min_size, max_size) for value in values)
+        assert _explains(values, first, second, elements, min_size)
+        assert mother.get() == first and father.get() == second
+
+
+def test_a_short_child_is_completed_with_elements_it_did_not_hold():
+    """Parents that share c and d: cutting both in half gives a child made of c, d and
+    c again, which drops to two and has to be completed; the element that completes it
+    may be one neither parent held."""
+    set_seed(21)
+    completed = 0
+    for _ in range(500):
+        mother, father = _ga_subset(LETTERS, 3, 5), _ga_subset(LETTERS, 3, 5)
+        mother.set(["a", "b", "c", "d"])
+        father.set(["c", "d", "e"])
+        for child in mother.crossover(father):
+            assert _valid(child.get(), LETTERS, 3, 5)
+            completed += bool(set(child.get()) - {"a", "b", "c", "d", "e"})
+    assert completed > 0
+
+
+def test_parents_of_different_lengths_are_never_cut_to_leave_a_child_short():
+    """Before its repetitions go, each child has at least the minimum. Disjoint
+    parents make every child's size before repair its size after."""
+    set_seed(22)
+    for _ in range(1000):
+        mother, father = _ga_subset(LETTERS, 3, 6), _ga_subset(LETTERS, 3, 6)
+        mother.set(["a", "b", "c"])
+        father.set(["d", "e", "f", "g", "h"])
+        children = mother.crossover(father)
+        assert all(set(child.get()) <= set(LETTERS) and len(child.get()) >= 3 for child in children)
+        assert sorted(len(child.get()) for child in children) in ([3, 5], [4, 4])
+
+
+def test_equal_lengths_keep_the_length_when_nothing_repeats():
+    set_seed(23)
+    for _ in range(300):
+        mother, father = _ga_subset(LETTERS, 1, 8), _ga_subset(LETTERS, 1, 8)
+        mother.set(["a", "c", "e", "g"])
+        father.set(["b", "d", "f", "h"])
+        assert [len(child.get()) for child in mother.crossover(father)] == [4, 4]
+
+
+def test_the_children_are_new_objects():
+    mother, father = _ga_subset(), _ga_subset()
+    mother.set(["a", "b"])
+    father.set(["c", "d", "e"])
+    for child in mother.crossover(father):
+        assert child is not mother and child is not father
+        child.mutate(1)
+    assert mother.get() == ["a", "b"] and father.get() == ["c", "d", "e"]
+
+
+def test_the_crossover_is_reproducible():
+    def run():
+        set_seed(24)
+        mother, father = _ga_subset(list(range(100)), 2, 30), _ga_subset(list(range(100)), 2, 30)
+        return [[child.get() for child in mother.crossover(father)] for _ in range(50)]
+    assert run() == run()
+
+
+def test_a_solution_of_three_subsets_crosses_each_one_on_its_own_cut():
+    """The way a tricluster crosses over: every dimension with its own share."""
+    from metagen.metaheuristics.genetic.genetic_tools import GAConnector
+    from metagen.metaheuristics.tools import solution_class
+    set_seed(25)
+    domain = Domain(GAConnector())
+    names = ("rows", "columns", "layers")
+    for name in names:
+        domain.define_subset(name, list(range(30)), 2, 12)
+    solution_type = solution_class(domain)
+    independent = 0
+    for _ in range(300):
+        mother, father = (solution_type(domain, connector=domain.get_connector()) for _ in range(2))
+        children = mother.crossover(father)
+        for name in names:
+            values = [child[name] for child in children]
+            assert _explains(values, mother[name], father[name], list(range(30)), 2)
+        shares = {name: len(children[0][name]) - len(mother[name]) for name in names}
+        independent += len(set(shares.values())) > 1
+    assert independent > 0
+
+
+def test_the_genetic_connector_registers_the_subset_crossover():
+    from metagen.metaheuristics import GA
+    from metagen.metaheuristics.genetic.genetic_tools import GAConnector, GASubset
+    connector = GAConnector()
+    assert connector.get_type(frozenset) is GASubset
+    assert connector.get_type(SubsetDefinition(LETTERS)) is GASubset
+    domain = Domain(connector)
+    domain.define_subset("s", LETTERS)
+    GA(domain, lambda solution: len(solution["s"]))
