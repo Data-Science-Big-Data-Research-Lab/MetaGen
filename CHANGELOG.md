@@ -1,6 +1,9 @@
 # Changelog
 
-## 1.2.0 (in development)
+## 1.2.0
+
+MetaGen 1.2.0 adds subsets to the search spaces: a selection of some of a set of elements,
+between a minimum and a maximum number of them.
 
 ### New
 
@@ -16,7 +19,7 @@
 
 ### Changes
 
-- **Reading a list value gives a copy**: `solution[name]` on a permutation returns a new
+- **Reading a list value gives a copy**: `solution[name]` on a permutation or a subset returns a new
   list, so changing what was read leaves the solution, and the fitness it carries, as
   they were.
 
