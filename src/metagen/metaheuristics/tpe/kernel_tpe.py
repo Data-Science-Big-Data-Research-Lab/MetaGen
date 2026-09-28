@@ -46,9 +46,9 @@ class KernelTPE(TPE):
       distance to its nearest neighbor, clipped between the prior's width divided by
       the number of observations and the prior's width; integers are modeled on the
       real line and rounded to their grid; a categorical variable is modeled by its
-      counts, with the prior adding one to every category; a subset by the probability
-      that each element is in, with a prior worth one observation in which every element
-      is in as often as the mean size allows.
+      counts, with the prior adding ``prior_weight`` to every category; a subset by the
+      probability that each element is in, with a prior worth ``prior_weight``
+      observations that keeps the mean size of the observed selections.
     - **Candidates are drawn from the model of the best solutions**, ``n_candidates``
       of them per iteration, **and only the one that maximizes** ``l(x) / g(x)``, the
       ratio of the densities under the best and the rest, **is evaluated**: one

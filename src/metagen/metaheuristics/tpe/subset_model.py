@@ -29,9 +29,10 @@ class SubsetModel:
     """
     The model TPE and KernelTPE fit to a subset variable: for each element, the
     probability that it is in the selection, estimated from the observed selections
-    together with a prior worth ``prior_weight`` observations. The prior is what a
-    selection drawn at random looks like: every element in with the probability that
-    the mean size gives, ``(min_size + max_size) / 2`` over the number of elements.
+    together with a prior worth ``prior_weight`` observations. The prior puts every
+    element in with the same probability, the one that keeps the mean size of the
+    observed selections: their mean size over the number of elements, or, before any
+    observation, the middle of the sizes over it.
 
     :param definition: The definition of the subset.
     :type definition: SubsetDefinition
@@ -46,11 +47,15 @@ class SubsetModel:
         self.definition = definition
         _, self.elements, self.min_size, self.max_size = definition.get_attributes()
         size = len(self.elements)
-        prior = (self.min_size + self.max_size) / 2.0 / size
         counts = np.zeros(size)
         for selection in selections:
             for element in selection:
                 counts[definition.position(element)] += 1
+        # The prior keeps the size of what was observed: centered on the middle of the
+        # sizes instead, a selection with no maximum would take in half the elements
+        # it never saw, hundreds of them among thousands.
+        mean_size = counts.sum() / len(selections) if selections else (self.min_size + self.max_size) / 2.0
+        prior = mean_size / size
         total = len(selections) + prior_weight
         inclusion = (counts + prior_weight * prior) / total if total > 0 else np.full(size, prior)
         self.inclusion: np.ndarray = np.clip(inclusion, _EDGE, 1.0 - _EDGE)

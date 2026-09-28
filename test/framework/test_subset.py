@@ -651,6 +651,34 @@ def test_a_solution_of_three_subsets_crosses_each_one_on_its_own_cut():
     assert independent > 0
 
 
+@pytest.mark.parametrize("kind", ["static", "dynamic", "positional"])
+def test_structures_of_subsets_cross_over_into_valid_children(kind):
+    from metagen.metaheuristics.genetic.genetic_tools import GAConnector
+    from metagen.metaheuristics.tools import solution_class
+    set_seed(26)
+    domain = Domain(GAConnector())
+    if kind == "static":
+        domain.define_static_structure("teams", 3)
+    else:
+        domain.define_dynamic_structure("teams", 1, 3)
+    domain.define_subset("first", LETTERS, 1, 3)
+    domain.define_subset("second", list(range(20)), 2, 6)
+    domain.define_subset("third", ["x", "y", "z"], 0, 2)
+    if kind == "positional":
+        domain.set_structure_to_variables("teams", ["first", "second", "third"])
+        rules = [(LETTERS, 1, 3), (list(range(20)), 2, 6), (["x", "y", "z"], 0, 2)]
+    else:
+        domain.set_structure_to_variable("teams", "first")
+        rules = [(LETTERS, 1, 3)] * 3
+    make = solution_class(domain)
+    for _ in range(300):
+        mother, father = (make(domain, connector=domain.get_connector()) for _ in range(2))
+        before = mother["teams"], father["teams"]
+        for child in mother.crossover(father):
+            assert all(_valid(team, *rule) for team, rule in zip(child["teams"], rules))
+        assert (mother["teams"], father["teams"]) == before
+
+
 def test_the_genetic_connector_registers_the_subset_crossover():
     from metagen.metaheuristics import GA
     from metagen.metaheuristics.genetic.genetic_tools import GAConnector, GASubset
@@ -668,11 +696,52 @@ def test_the_inclusion_model_counts_the_observations_and_the_prior():
     from metagen.metaheuristics.tpe.subset_model import SubsetModel
     definition = SubsetDefinition(["a", "b", "c", "d"], 1, 3)
     model = SubsetModel(definition, [["a", "b"], ["a"], ["a", "c"]], prior_weight=1.0)
-    prior = (1 + 3) / 2 / 4
+    prior = (5 / 3) / 4                        # the mean observed size over the elements
     expected = [(3 + prior) / 4, (1 + prior) / 4, (1 + prior) / 4, (0 + prior) / 4]
     assert np.allclose(model.inclusion, expected)
     empty = SubsetModel(definition, [], prior_weight=1.0)
-    assert np.allclose(empty.inclusion, prior)
+    assert np.allclose(empty.inclusion, (1 + 3) / 2 / 4)   # before any: the middle of the sizes
+
+
+def test_the_model_draws_selections_of_the_observed_size_when_the_maximum_is_wide():
+    """With no maximum declared, a prior centered on the middle of the sizes would put
+    half of a thousand elements in; the observed selections hold twenty."""
+    from metagen.metaheuristics import KernelTPE
+    from metagen.metaheuristics.tools import solution_class
+    from metagen.framework.rng import get_rng
+    set_seed(35)
+    domain = Domain()
+    domain.define_subset("g", list(range(1000)))
+    algorithm = KernelTPE(domain, lambda solution: len(solution["g"]), seed=35)
+    make = solution_class(domain)
+
+    def observed():
+        solution = make(domain, connector=domain.get_connector())
+        solution.set("g", get_rng().sample(range(1000), 20))
+        solution.evaluate(algorithm.fitness_function)
+        return solution
+
+    good, bad = [observed() for _ in range(5)], [observed() for _ in range(100)]
+    sizes = [len(algorithm.propose(good, bad)["g"]) for _ in range(20)]
+    assert np.mean(sizes) < 35
+    from metagen.metaheuristics.tpe.subset_model import SubsetModel
+    drawn = [len(SubsetModel(domain.get_core().get("g"), [s["g"] for s in good], 1.0).draw()) for _ in range(200)]
+    assert 15 < np.mean(drawn) < 30
+
+
+def test_bringing_a_draw_within_the_sizes_keeps_the_likeliest_elements():
+    """A draw too large drops the elements least likely to be in, and a draw too small
+    takes those most likely: with 0, 1 and 2 far likelier than the rest and room for
+    exactly three, most draws are those three either way. Measured: about 900 of 2000
+    too large and 1370 too small, against 200 and 110 when the repair goes the wrong
+    way or draws uniformly."""
+    from metagen.metaheuristics.tpe.subset_model import SubsetModel
+    set_seed(36)
+    for inclusion in ([0.9] * 3 + [0.3] * 7, [0.3] * 3 + [0.01] * 7):
+        model = SubsetModel(SubsetDefinition(list(range(10)), 3, 3), [], prior_weight=1.0)
+        model.inclusion[:] = inclusion
+        kept = sum(model.draw() == [0, 1, 2] for _ in range(2000))
+        assert kept > 600
 
 
 def test_the_inclusion_model_draws_valid_selections_that_follow_it():
