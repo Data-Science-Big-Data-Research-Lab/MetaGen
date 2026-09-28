@@ -11,7 +11,8 @@
   the steps the sizes allow; a limit counts steps, and a relative limit is a fraction of
   the maximum size. The genetic algorithms cross subsets at one point: both parents are
   cut at the same share of their length and each child takes the head of one and the
-  tail of the other. Structures can hold subsets.
+  tail of the other. TPE and KernelTPE model a subset by the probability that each
+  element is in. Structures can hold subsets.
 
 ### Changes
 

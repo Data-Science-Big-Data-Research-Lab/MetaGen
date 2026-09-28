@@ -23,9 +23,10 @@ from scipy.stats import norm
 
 from metagen.framework import Domain, Solution
 from metagen.framework.rng import get_numpy_rng
-from metagen.framework.solution.types import Categorical, Integer, Permutation, Real, Structure
+from metagen.framework.solution.types import Categorical, Integer, Permutation, Real, Structure, Subset
 from metagen.metaheuristics.gamma_schedules import GammaConfig, compute_gamma
 from metagen.metaheuristics.tools import solution_class
+from metagen.metaheuristics.tpe.subset_model import SubsetModel
 from metagen.metaheuristics.tpe.tpe import TPE
 
 Path = Tuple[Union[str, int], ...]
@@ -45,7 +46,9 @@ class KernelTPE(TPE):
       distance to its nearest neighbor, clipped between the prior's width divided by
       the number of observations and the prior's width; integers are modeled on the
       real line and rounded to their grid; a categorical variable is modeled by its
-      counts, with the prior adding one to every category.
+      counts, with the prior adding one to every category; a subset by the probability
+      that each element is in, with a prior worth one observation in which every element
+      is in as often as the mean size allows.
     - **Candidates are drawn from the model of the best solutions**, ``n_candidates``
       of them per iteration, **and only the one that maximizes** ``l(x) / g(x)``, the
       ratio of the densities under the best and the rest, **is evaluated**: one
@@ -214,7 +217,7 @@ class KernelTPE(TPE):
         return best_candidate
 
 
-Leaf = Union[Integer, Real, Categorical, Permutation]
+Leaf = Union[Integer, Real, Categorical, Permutation, Subset]
 
 
 def _leaves(solution: Solution, prefix: Path = ()) -> List[Tuple[Path, Leaf]]:
@@ -234,7 +237,7 @@ def _leaves_of(value: Any, path: Path) -> List[Tuple[Path, Leaf]]:
         for index in range(len(value)):
             found.extend(_leaves_of(value.get(index), path + (index,)))
         return found
-    if isinstance(value, (Integer, Real, Categorical, Permutation)):
+    if isinstance(value, (Integer, Real, Categorical, Permutation, Subset)):
         return [(path, value)]
     return []
 
@@ -336,14 +339,16 @@ class _NumericModel:
         return float(np.log(max(densities.sum(), 1e-300)))
 
 
-_Model = Union[_CategoricalModel, _NumericModel]
+_Model = Union[_CategoricalModel, _NumericModel, SubsetModel]
 
 
-ModeledLeaf = Union[Integer, Real, Categorical]
+ModeledLeaf = Union[Integer, Real, Categorical, Subset]
 
 
 def _model(leaf: ModeledLeaf, values: Sequence[Any], prior_weight: float) -> _Model:
     """The Parzen estimator of a variable given the observed values."""
+    if isinstance(leaf, Subset):
+        return SubsetModel(leaf.get_definition(), values, prior_weight)
     if isinstance(leaf, Categorical):
         _, categories = leaf.get_definition().get_attributes()
         return _CategoricalModel(categories, values, prior_weight)

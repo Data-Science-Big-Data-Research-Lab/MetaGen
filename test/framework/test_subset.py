@@ -660,3 +660,133 @@ def test_the_genetic_connector_registers_the_subset_crossover():
     domain = Domain(connector)
     domain.define_subset("s", LETTERS)
     GA(domain, lambda solution: len(solution["s"]))
+
+
+# --- TPE and KernelTPE -----------------------------------------------------------
+
+def test_the_inclusion_model_counts_the_observations_and_the_prior():
+    from metagen.metaheuristics.tpe.subset_model import SubsetModel
+    definition = SubsetDefinition(["a", "b", "c", "d"], 1, 3)
+    model = SubsetModel(definition, [["a", "b"], ["a"], ["a", "c"]], prior_weight=1.0)
+    prior = (1 + 3) / 2 / 4
+    expected = [(3 + prior) / 4, (1 + prior) / 4, (1 + prior) / 4, (0 + prior) / 4]
+    assert np.allclose(model.inclusion, expected)
+    empty = SubsetModel(definition, [], prior_weight=1.0)
+    assert np.allclose(empty.inclusion, prior)
+
+
+def test_the_inclusion_model_draws_valid_selections_that_follow_it():
+    from metagen.metaheuristics.tpe.subset_model import SubsetModel
+    set_seed(30)
+    definition = SubsetDefinition(list(range(20)), 2, 6)
+    observed = [[0, 1, 2], [0, 1, 3], [0, 2, 3], [0, 1]]
+    model = SubsetModel(definition, observed, prior_weight=1.0)
+    counts = Counter()
+    for _ in range(2000):
+        value = model.draw()
+        assert _valid(value, list(range(20)), 2, 6)
+        counts.update(value)
+    assert counts[0] > counts[1] > counts[10] and counts[1] > counts[19]
+
+
+@pytest.mark.parametrize("min_size, max_size", [(0, 0), (0, 20), (5, 5), (18, 20), (20, 20)])
+def test_the_inclusion_model_keeps_to_any_sizes(min_size, max_size):
+    from metagen.metaheuristics.tpe.subset_model import SubsetModel
+    set_seed(31)
+    elements = list(range(20))
+    definition = SubsetDefinition(elements, min_size, max_size)
+    for observed in ([], [elements[:max_size]], [elements[:min_size]] * 5):
+        model = SubsetModel(definition, observed, prior_weight=1.0)
+        for _ in range(200):
+            assert _valid(model.draw(), elements, min_size, max_size)
+
+
+def test_the_log_density_prefers_the_selections_of_the_observations():
+    from metagen.metaheuristics.tpe.subset_model import SubsetModel
+    definition = SubsetDefinition(list(range(10)), 1, 5)
+    good = SubsetModel(definition, [[0, 1, 2]] * 5, 1.0)
+    bad = SubsetModel(definition, [[7, 8, 9]] * 5, 1.0)
+    def score(selection):
+        return good.log_density(selection) - bad.log_density(selection)
+    assert score([0, 1, 2]) > score([0, 1, 9]) > score([7, 8, 9])
+    assert np.isclose(np.exp(good.log_density([0, 1, 2])), np.prod(
+        [good.inclusion[i] if i in (0, 1, 2) else 1 - good.inclusion[i] for i in range(10)]))
+
+
+def test_tpe_resamples_a_subset_from_the_best_references():
+    from metagen.metaheuristics.tpe.tpe_tools import TPEConnector, TPESubset
+    from metagen.metaheuristics.tools import solution_class
+    set_seed(32)
+    domain = Domain(TPEConnector())
+    domain.define_subset("s", list(range(30)), 1, 10)
+    assert domain.get_connector().get_type(frozenset) is TPESubset
+    make = solution_class(domain)
+    best, worst = [], []
+    for values, bucket in (([0, 1, 2], best), ([0, 1, 3], best), ([27, 28, 29], worst)):
+        solution = make(domain, connector=domain.get_connector())
+        solution.set("s", values)
+        bucket.append(solution)
+    counts = Counter()
+    for _ in range(500):
+        candidate = make(domain, connector=domain.get_connector())
+        candidate.resample(best, worst)
+        assert _valid(candidate["s"], list(range(30)), 1, 10)
+        counts.update(candidate["s"])
+    assert counts[0] > 300 and counts[0] > 5 * counts[28]
+
+
+def test_kernel_tpe_draws_and_scores_the_subset():
+    """With a subset as the only variable, the candidate KernelTPE proposes is the one
+    that scores highest under l/g, and it is drawn from the model of the good ones."""
+    from metagen.metaheuristics import KernelTPE
+    from metagen.metaheuristics.tools import solution_class
+    set_seed(33)
+    domain = Domain()
+    domain.define_subset("s", list(range(12)), 1, 6)
+    algorithm = KernelTPE(domain, lambda solution: len(solution["s"]), seed=33, n_candidates=24)
+    make = solution_class(domain)
+    good, bad = [], []
+    for values, bucket in (([0, 1], good), ([0, 2], good), ([0, 1, 2], good),
+                           ([9, 10, 11], bad), ([8, 9, 10, 11], bad), ([7, 11], bad)):
+        solution = make(domain, connector=domain.get_connector())
+        solution.set("s", values)
+        solution.evaluate(algorithm.fitness_function)
+        bucket.append(solution)
+    counts = Counter()
+    for _ in range(200):
+        candidate = algorithm.propose(good, bad)
+        assert _valid(candidate["s"], list(range(12)), 1, 6)
+        counts.update(candidate["s"])
+    assert counts[0] > 150 and counts[11] < 20
+
+
+def test_kernel_tpe_keeps_the_subset_candidate_that_scores_highest(monkeypatch):
+    from metagen.metaheuristics import KernelTPE
+    from metagen.metaheuristics.tools import solution_class
+    from metagen.metaheuristics.tpe.subset_model import SubsetModel
+    set_seed(34)
+    domain = Domain()
+    domain.define_subset("s", list(range(12)), 1, 6)
+    algorithm = KernelTPE(domain, lambda solution: len(solution["s"]), seed=34, n_candidates=24)
+    make = solution_class(domain)
+    good, bad = [], []
+    for values, bucket in (([0, 1], good), ([2, 3], good), ([9, 10, 11], bad), ([4, 5], bad)):
+        solution = make(domain, connector=domain.get_connector())
+        solution.set("s", values)
+        bucket.append(solution)
+    drawn, original = [], SubsetModel.draw
+
+    def recording(self, leaf=None):
+        value = original(self, leaf)
+        drawn.append(value)
+        return value
+
+    monkeypatch.setattr(SubsetModel, "draw", recording)
+    good_model = SubsetModel(domain.get_core().get("s"), [[0, 1], [2, 3]], 1.0)
+    bad_model = SubsetModel(domain.get_core().get("s"), [[9, 10, 11], [4, 5]], 1.0)
+    for _ in range(20):
+        drawn.clear()
+        chosen = algorithm.propose(good, bad)["s"]
+        scores = [good_model.log_density(value) - bad_model.log_density(value) for value in drawn]
+        assert len(drawn) == 24
+        assert np.isclose(good_model.log_density(chosen) - bad_model.log_density(chosen), max(scores))

@@ -4,10 +4,12 @@ import metagen.framework.solution as types
 from metagen.framework import BaseConnector, Solution
 from metagen.framework.domain import (BaseDefinition, CategoricalDefinition,
                                       IntegerDefinition, PermutationDefinition, RealDefinition,
-                                      StaticStructureDefinition, DynamicStructureDefinition)
+                                      StaticStructureDefinition, DynamicStructureDefinition,
+                                      SubsetDefinition)
 from scipy.stats import norm
 import numpy as np
 from metagen.framework.rng import get_numpy_rng
+from metagen.metaheuristics.tpe.subset_model import SubsetModel
 
 def sample_from_values(tpe_type, best_values, worst_values):
     _, min_value, max_value, step = tpe_type.get_definition().get_attributes()
@@ -122,6 +124,23 @@ class TPEPermutation(types.Permutation):
         self.mutate(alteration_limit=1)
 
 
+
+class TPESubset(types.Subset):
+    """
+    The subset type TPE resamples: every element in with the probability it has among
+    the best reference solutions, together with a prior worth one of them.
+    """
+
+    def resample(self, best_values, worst_values):
+        """
+        Draw a selection from the inclusion probabilities of the best references.
+
+        :param best_values: The subsets of the best reference solutions.
+        :param worst_values: The subsets of the worst ones, not used.
+        """
+        model = SubsetModel(self.get_definition(), [value.get() for value in best_values], 1.0)
+        self.set(model.draw())
+
 class TPEStructure(types.Structure):
     """
     The Structure type TPE resamples position by position.
@@ -216,3 +235,4 @@ class TPEConnector(BaseConnector):
         self.register(StaticStructureDefinition, (TPEStructure, "static"), list)
         self.register(DynamicStructureDefinition, (TPEStructure, "dynamic"), list)
         self.register(PermutationDefinition, TPEPermutation, tuple)
+        self.register(SubsetDefinition, TPESubset, frozenset)
