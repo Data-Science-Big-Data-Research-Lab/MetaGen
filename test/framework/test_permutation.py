@@ -112,6 +112,16 @@ def test_the_order_crossover_keeps_a_segment_and_the_other_parents_order():
         assert _is_order_crossover(child2["route"], second["route"], first["route"])
 
 
+def test_reading_a_permutation_gives_a_copy():
+    solution = _solution(_domain())
+    solution.set("route", CITIES)
+    read = solution["route"]
+    read.reverse()
+    read.append(9)
+    assert solution["route"] == CITIES
+    assert solution.get("route").get() == CITIES
+
+
 def test_a_structure_can_hold_permutations():
     domain = Domain()
     domain.define_static_structure("routes", 2)

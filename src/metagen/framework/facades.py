@@ -15,7 +15,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 from copy import deepcopy
-from typing import cast
+from typing import Optional, cast
 
 from metagen.framework import BaseConnector
 from metagen.framework.domain import (Base, BaseDefinition,
@@ -23,7 +23,8 @@ from metagen.framework.domain import (Base, BaseDefinition,
                                       CategoricalDefinition,
                                       DynamicStructureDefinition,
                                       IntegerDefinition, PermutationDefinition,
-                                      RealDefinition, StaticStructureDefinition)
+                                      RealDefinition, StaticStructureDefinition,
+                                      SubsetDefinition)
 from metagen.framework.domain.literals import CatVal
 from metagen.framework.domain.preconditions import Messages
 
@@ -162,6 +163,34 @@ class Domain:
         permutation_definition = cast(type[PermutationDefinition], self._connector.get_definition(
             self._connector.get_type(tuple)))
         self._core.define(name, permutation_definition(elements))
+
+    def define_subset(self, name: str, elements: CatVal, min_size: int = 1, max_size: Optional[int] = None) -> None:
+        """ It defines a **SUBSET** variable: a selection of some of the given elements, between a minimum and
+        a maximum number of them, such as the features a model uses or the items that go into a knapsack. It
+        reads as a list without repetitions, in the order the elements were given, and it can be set from a
+        list, a tuple or a set in any order.
+
+        .. code-block:: python
+
+            from metagen.framework import Domain
+
+            domain = Domain()
+            domain.define_subset("features", ["age", "income", "debt", "score", "region"], 1, 3)
+            domain.define_subset("items", list(range(30)))    # any number of them, from 1 to 30
+
+        :param name: The variable name.
+        :param elements: The elements to choose from: at least one, distinct and of one type.
+        :param min_size: The fewest elements a value may hold, zero or more, defaults to 1.
+        :param max_size: The most elements a value may hold, defaults to all of them.
+        :type name: str
+        :type elements: list of int, float or str
+        :type min_size: int
+        :type max_size: int, optional
+        :raises ValueError: if the elements or the sizes are not valid.
+        """
+        subset_definition = cast(type[SubsetDefinition], self._connector.get_definition(
+            self._connector.get_type(frozenset)))
+        self._core.define(name, subset_definition(elements, min_size, max_size))
 
     def define_group(self, name: str):
         """ It defines a **GROUP** variable receiving a name as its identifier, and a list with the categories that it will be able to have.

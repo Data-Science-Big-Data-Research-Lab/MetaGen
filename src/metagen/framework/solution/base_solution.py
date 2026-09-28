@@ -23,6 +23,7 @@ from typing import (TYPE_CHECKING, Any, Dict, KeysView, Optional, Union,
                     ValuesView, cast)
 
 import metagen.framework.solution as types
+from metagen.framework.domain import SubsetDefinition
 from metagen.framework.rng import get_rng
 
 if TYPE_CHECKING:
@@ -52,7 +53,10 @@ def builtin_value(value: Any) -> Any:
         return {name: value[name] for name in value}
     if isinstance(value, types.Structure):
         return [builtin_value(element) for element in value.value]
-    return value.get() if isinstance(value, types.BaseType) else value
+    raw = value.get() if isinstance(value, types.BaseType) else value
+    # A permutation or a subset holds a list: a copy, so that changing what was read
+    # does not change the solution behind the back of its fitness.
+    return list(raw) if isinstance(raw, list) else raw
 
 
 def _hashable(value: Any) -> Any:
@@ -195,7 +199,10 @@ class Solution:
             :func:`_set_sub_solution`
             :func:`_set_value`
         """
-        if isinstance(value, (numbers.Number, str, list)) and not isinstance(value, bool):
+        # A subset may also be given as a tuple or a set, in any order.
+        is_selection = (isinstance(value, (tuple, set, frozenset))
+                        and isinstance(self.get_definition().get(variable), SubsetDefinition))
+        if (isinstance(value, (numbers.Number, str, list)) and not isinstance(value, bool)) or is_selection:
             variable_definition: Base = self.get_definition().get(variable)
 
             # The type comes from the definition, not from the value. Asking the

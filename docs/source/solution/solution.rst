@@ -67,6 +67,12 @@ Permutation
     :members:
     :show-inheritance:
 
+Subset
+------------
+.. autoclass:: metagen.framework.solution.types.Subset
+    :members:
+    :show-inheritance:
+
 Structure
 ------------
 .. autoclass:: metagen.framework.solution.types.Structure

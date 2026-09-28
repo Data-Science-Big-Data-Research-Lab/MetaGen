@@ -1,5 +1,28 @@
 # Changelog
 
+## 1.2.0
+
+MetaGen 1.2.0 adds subsets to the search spaces: a selection of some of a set of elements,
+between a minimum and a maximum number of them.
+
+### New
+
+- **Subsets**: `Domain.define_subset(name, elements, min_size=1, max_size=None)` defines
+  a selection of some of a set of distinct elements, between a minimum and a maximum
+  number of them, read as a list in the order of the elements and settable from a list,
+  a tuple or a set. Mutations add, remove or change one element at a time, drawn among
+  the steps the sizes allow; a limit counts steps, and a relative limit is a fraction of
+  the maximum size. The genetic algorithms cross subsets at one point: both parents are
+  cut at the same share of their length and each child takes the head of one and the
+  tail of the other. TPE and KernelTPE model a subset by the probability that each
+  element is in. Structures can hold subsets.
+
+### Changes
+
+- **Reading a list value gives a copy**: `solution[name]` on a permutation or a subset returns a new
+  list, so changing what was read leaves the solution, and the fitness it carries, as
+  they were.
+
 ## 1.1.1
 
 MetaGen 1.1.1 imports from any working directory.

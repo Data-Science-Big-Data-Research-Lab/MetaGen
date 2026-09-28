@@ -103,7 +103,8 @@ def test_the_pausing_and_resuming_examples_run(scratch):
     assert namespace["best_solution"].get_fitness() < 1e-3
 
 
-@pytest.mark.parametrize("method", ["set_structure_to_variables", "set_condition", "define_permutation"])
+@pytest.mark.parametrize("method", ["set_structure_to_variables", "set_condition", "define_permutation",
+                                    "define_subset"])
 def test_the_examples_of_the_domain_docstrings_run(method, scratch):
     blocks = _blocks(getattr(Domain, method).__doc__.replace("\n        ", "\n"))
     assert blocks

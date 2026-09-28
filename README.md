@@ -14,7 +14,7 @@ MetaGen simplifies the development of **metaheuristics** and the **optimization 
 ### 🔹 Key Features
 
 ✔ **Metaheuristic Development Framework** – A base class with the run loop, elitism and callbacks; you write three methods.  
-✔ **Hyperparameter Optimization Tools** – Search spaces with integers, reals, categoricals, permutations, groups and variable-length structures, conditional variables that apply only for some values of another, and a range per position of a structure, for layer and architecture-level tuning.  
+✔ **Hyperparameter Optimization Tools** – Search spaces with integers, reals, categoricals, permutations, subsets, groups and variable-length structures, conditional variables that apply only for some values of another, and a range per position of a structure, for layer and architecture-level tuning.  
 ✔ **Standardized Interface** – Ensures compatibility between metaheuristic developers and end users.  
 ✔ **Dynamic Architecture Optimization** – Structures whose length the search itself changes.  
 ✔ **Seamless Integration** – Compatible with `scikit-learn`, `tensorflow`, `pytorch`, and other ML libraries.  
