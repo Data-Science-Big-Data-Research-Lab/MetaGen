@@ -52,7 +52,10 @@ def builtin_value(value: Any) -> Any:
         return {name: value[name] for name in value}
     if isinstance(value, types.Structure):
         return [builtin_value(element) for element in value.value]
-    return value.get() if isinstance(value, types.BaseType) else value
+    raw = value.get() if isinstance(value, types.BaseType) else value
+    # A permutation holds a list: a copy, so that changing what was read does not
+    # change the solution behind the back of its fitness.
+    return list(raw) if isinstance(raw, list) else raw
 
 
 def _hashable(value: Any) -> Any:

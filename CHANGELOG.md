@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.2.0 (in development)
+
+### Changes
+
+- **Reading a list value gives a copy**: `solution[name]` on a permutation returns a new
+  list, so changing what was read leaves the solution, and the fitness it carries, as
+  they were.
+
 ## 1.1.1
 
 MetaGen 1.1.1 imports from any working directory.
