@@ -8,7 +8,7 @@ Domain
 Definitions
 =================
    
-The ``Domain`` class describes the space of the solutions: which variables a solution has, of which type, and between which bounds. A variable is of one of three kinds:
+The ``Domain`` class describes the space of the solutions: which variables a solution has, of which type, and between which bounds. A variable is of one of these kinds:
 
 * **Basic**: a single value.
 
@@ -18,6 +18,7 @@ The ``Domain`` class describes the space of the solutions: which variables a sol
 
 * **Structure**: a list whose elements share one definition, which may be basic, a group or another structure, or have one definition per position (see below). A **static** structure has a fixed length; a **dynamic** one has a length between a minimum and a maximum, optionally on a grid of a given step, and the search changes it.
 * **Permutation**: an ordering of a fixed set of distinct elements, each of them exactly once, such as the order in which to visit some cities. It reads as a list, and every metaheuristic keeps it a valid ordering: mutations swap positions and the genetic algorithms cross orderings over with the order crossover.
+* **Subset**: a selection of some of a fixed set of distinct elements, between a minimum and a maximum number of them, such as the features a model uses or the items that go into a knapsack. It reads as a list in the order the elements were given, and can be set from a list, a tuple or a set in any order. Mutations add, remove or change one element at a time, and the genetic algorithms cross two selections at one point.
 * **Group**: a set of named variables that travel together, such as the settings of one layer of a neural network. A structure of groups describes, for instance, an architecture with a variable number of layers.
 
 .. code-block:: python
@@ -60,6 +61,42 @@ A **grid** covers values such as the multiples of a number, and a **permutation*
     domain.define_integer("even", 2, 20, 2)                  # 2, 4, 6 ... 20
     domain.define_permutation("route", [1, 2, 3, 4, 5, 6, 7, 8])
 
+A **subset** is declared with its elements and, optionally, the fewest and the most of them a selection may hold, one and all of them by default. This one chooses between one and three features:
+
+.. code-block:: python
+
+    from metagen.framework import Domain, Solution
+
+    domain = Domain()
+    domain.define_subset("features", ["age", "income", "debt", "score", "region"], 1, 3)
+
+    solution = Solution(domain)
+    solution.set("features", {"score", "age"})
+    print(solution["features"])                             # ['age', 'score']
+
+A knapsack is a subset of the items whose weight must not exceed a capacity. The capacity goes into the fitness function as a penalty, and the genetic algorithm searches the selections:
+
+.. code-block:: python
+
+    from metagen.framework import Domain, Solution
+    from metagen.metaheuristics import GA
+    from metagen.metaheuristics.genetic.genetic_tools import GAConnector
+
+    weights = [12, 7, 11, 8, 9, 6, 14, 5, 10, 13, 4, 15, 3, 9, 7, 11, 6, 8, 12, 5]
+    values = [24, 13, 23, 15, 16, 11, 28, 9, 20, 25, 7, 30, 5, 17, 14, 21, 12, 15, 22, 10]
+    capacity = 60
+
+    domain = Domain(GAConnector())
+    domain.define_subset("items", list(range(len(weights))), 0)
+
+    def fitness(solution: Solution) -> float:
+        items = solution["items"]
+        weight = sum(weights[i] for i in items)
+        return -sum(values[i] for i in items) + 10 * max(0, weight - capacity)
+
+    best_solution = GA(domain, fitness, seed=0).run()
+    print(best_solution["items"], -best_solution.get_fitness())
+
 Other constraints between variables, such as one having to be smaller than another, are expressed in the fitness function: return a penalty, a value worse than any feasible solution can reach, for the solutions that break them.
 
 .. code-block:: python
@@ -96,6 +133,7 @@ Internally every definition answers ``get_attributes()`` with a tuple whose firs
 * ``("STATIC", length, attributes of the element)`` for a static structure.
 * ``("DYNAMIC", minimum length, maximum length, length step, attributes of the element)`` for a dynamic one.
 * ``("PERMUTATION", [elements])`` for a permutation.
+* ``("SUBSET", [elements], minimum size, maximum size)`` for a subset.
 * In a structure with a definition per position, the attributes of the element are a tuple with the attributes of each position.
 
 The details of the definition are described in the `Core`_.
@@ -112,6 +150,7 @@ Domain class
     ~Domain.define_real
     ~Domain.define_categorical
     ~Domain.define_permutation
+    ~Domain.define_subset
     ~Domain.define_group
     ~Domain.define_integer_in_group
     ~Domain.define_real_in_group
@@ -174,6 +213,12 @@ CategoricalDefinition
 PermutationDefinition
 ----------------------------
 .. autoclass:: metagen.framework.domain.core.PermutationDefinition
+    :members:
+    :show-inheritance:
+
+SubsetDefinition
+----------------------------
+.. autoclass:: metagen.framework.domain.core.SubsetDefinition
     :members:
     :show-inheritance:
 
