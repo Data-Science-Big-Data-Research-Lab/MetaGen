@@ -127,7 +127,7 @@ def _printed_as_commented(code: str, namespace: dict) -> None:
 
 
 @pytest.mark.parametrize("name", ["Cube", "Cube.without_missing", "Tricluster", "msr3d", "msl", "lsl",
-                                  "grq", "peq", "spq", "triq", "cell_jaccard", "recovery"])
+                                  "grq", "peq", "spq", "triq", "cell_jaccard", "recovery", "plant"])
 def test_the_examples_of_the_triclustering_docstrings_run_and_print_what_they_say(name, scratch):
     import metagen.triclustering as triclustering
     target = triclustering

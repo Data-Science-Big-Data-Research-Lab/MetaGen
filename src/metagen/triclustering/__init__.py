@@ -19,7 +19,8 @@ from .measures import lsl, msl, msr3d
 from .quality import grq, peq, spq, triq
 from .recovery import (cell_jaccard, cell_precision, cell_recall, coordinate_jaccard, coordinate_recall,
                        recovery, relevance)
+from .synthetic import plant
 from .tricluster import Tricluster
 
 __all__ = ["Cube", "Tricluster", "cell_jaccard", "cell_precision", "cell_recall", "coordinate_jaccard",
-           "coordinate_recall", "grq", "lsl", "msl", "msr3d", "peq", "recovery", "relevance", "spq", "triq"]
+           "coordinate_recall", "grq", "lsl", "msl", "msr3d", "peq", "plant", "recovery", "relevance", "spq", "triq"]
