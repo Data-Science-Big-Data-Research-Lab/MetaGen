@@ -15,6 +15,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 from .cube import Cube
+from .measures import lsl, msl, msr3d
 from .tricluster import Tricluster
 
-__all__ = ["Cube", "Tricluster"]
+__all__ = ["Cube", "Tricluster", "lsl", "msl", "msr3d"]
