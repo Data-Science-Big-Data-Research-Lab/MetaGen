@@ -16,6 +16,7 @@
 """
 from .cube import Cube
 from .measures import lsl, msl, msr3d
+from .quality import grq, peq, spq, triq
 from .tricluster import Tricluster
 
-__all__ = ["Cube", "Tricluster", "lsl", "msl", "msr3d"]
+__all__ = ["Cube", "Tricluster", "grq", "lsl", "msl", "msr3d", "peq", "spq", "triq"]
