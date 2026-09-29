@@ -16,6 +16,7 @@ Core Components
     solution/solution
     metaheuristics/index
     connector/connector
+    triclustering/reference
 
 Component Overview
 ------------------
@@ -24,6 +25,7 @@ Component Overview
 - **Solution**: Represent and manipulate potential solutions
 - **Metaheuristics**: Optimization algorithms and strategies
 - **Connector**: Bridge between domain definitions and solution representations
+- **Triclustering**: Data, triclusters and the measures of their quality
 
 Usage Guidelines
 ----------------

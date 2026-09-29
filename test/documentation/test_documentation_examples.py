@@ -66,6 +66,7 @@ def scratch(tmp_path, monkeypatch):
     "domain/domain.rst",
     "metagen_in_action/working_with_solutions.rst",
     "choosing/index.rst",
+    "triclustering/index.rst",
 ])
 def test_the_examples_of_the_page_run(page, scratch):
     blocks = _blocks((DOCS / page).read_text())
@@ -109,3 +110,34 @@ def test_the_examples_of_the_domain_docstrings_run(method, scratch):
     blocks = _blocks(getattr(Domain, method).__doc__.replace("\n        ", "\n"))
     assert blocks
     _run(blocks)
+
+
+def _printed_as_commented(code: str, namespace: dict) -> None:
+    """Run the code and check that every ``print(...)  # value`` prints that value."""
+    import contextlib
+    import io
+    expected = [line.split("#", 1)[1].strip() for line in code.splitlines()
+                if line.lstrip().startswith("print(") and "#" in line]
+    output = io.StringIO()
+    with contextlib.redirect_stdout(output):
+        exec(compile(code, "example", "exec"), namespace)
+    printed = output.getvalue().splitlines()
+    assert [line for line, _ in zip(printed, expected)] == expected[:len(printed)]
+    assert len(printed) >= len(expected)
+
+
+@pytest.mark.parametrize("name", ["Cube", "Cube.without_missing", "Tricluster", "msr3d", "msl", "lsl"])
+def test_the_examples_of_the_triclustering_docstrings_run_and_print_what_they_say(name, scratch):
+    import metagen.triclustering as triclustering
+    target = triclustering
+    for part in name.split("."):
+        target = getattr(target, part)
+    blocks = _blocks(textwrap.dedent("\n".join(target.__doc__.splitlines()[1:])))
+    assert blocks
+    for code in blocks:
+        _printed_as_commented(code, {})
+
+
+def test_the_triclustering_page_prints_what_it_says(scratch):
+    for code in _blocks((DOCS / "triclustering" / "index.rst").read_text()):
+        _printed_as_commented(code, {})

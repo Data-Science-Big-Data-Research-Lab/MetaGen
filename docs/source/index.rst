@@ -119,5 +119,6 @@ Index
     performance_tracking/index
     pausing_and_resuming/index
     distributed_execution/index
+    triclustering/index
     advanced_topics/index
     api
