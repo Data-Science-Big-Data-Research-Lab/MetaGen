@@ -14,3 +14,27 @@ Triclustering
 .. autofunction:: metagen.triclustering.msl
 
 .. autofunction:: metagen.triclustering.lsl
+
+.. autofunction:: metagen.triclustering.grq
+
+.. autofunction:: metagen.triclustering.peq
+
+.. autofunction:: metagen.triclustering.spq
+
+.. autofunction:: metagen.triclustering.triq
+
+.. autofunction:: metagen.triclustering.plant
+
+.. autofunction:: metagen.triclustering.cell_jaccard
+
+.. autofunction:: metagen.triclustering.cell_recall
+
+.. autofunction:: metagen.triclustering.cell_precision
+
+.. autofunction:: metagen.triclustering.coordinate_jaccard
+
+.. autofunction:: metagen.triclustering.coordinate_recall
+
+.. autofunction:: metagen.triclustering.recovery
+
+.. autofunction:: metagen.triclustering.relevance

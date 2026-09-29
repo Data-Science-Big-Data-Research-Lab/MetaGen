@@ -4,7 +4,7 @@
 Triclustering
 =============
 
-A **tricluster** is a block of a three-dimensional dataset, some genes under some conditions at some times, whose values behave alike. |metagen|'s ``metagen.triclustering`` package holds the data such a search works on and the measures that tell a good tricluster from a poor one. The measures are plain functions, so they evaluate a tricluster wherever it comes from.
+A **tricluster** is a block of a three-dimensional dataset, some genes under some conditions at some times, whose values behave alike. |metagen|'s ``metagen.triclustering`` package holds the data such a search works on, the measures and qualities that tell a good tricluster from a poor one, and synthetic data with planted triclusters to check a search against. The measures are plain functions, so they evaluate a tricluster wherever it comes from.
 
 The data: a cube
 ----------------
@@ -79,6 +79,57 @@ The points of a series are taken one unit apart, whatever the names of the times
     print(round(msl(cube, planted), 3), round(msl(cube, elsewhere), 3))                              # 2.109 2.629
 
 A slope along the genes or the conditions depends on the order they have in the cube. It means something when that order does, such as doses, temperatures or positions on a map, and ``views="time"`` leaves those views out when it does not, as with genes listed in no particular order. The last line of the example shows why it matters: the planted genes rise alike over time, so along the genes and the conditions their slopes are zero up to noise, and a slope a hair below zero turns into an angle of almost 2π, the largest difference there is. Those views then tell the planted block from the rest far less clearly than the time view does.
+
+The quality of a tricluster
+---------------------------
+
+Four qualities describe a tricluster from 0 to 1, **the higher the better**, the other way round from the measures above:
+
+* :py:func:`~metagen.triclustering.grq`, the **graphical quality**, is ``1 − MSL / 2π``, with the same ``views``.
+* :py:func:`~metagen.triclustering.peq` and :py:func:`~metagen.triclustering.spq`, the **Pearson** and **Spearman qualities**, are the mean absolute correlation over every pair of profiles, a profile being the values of one gene under one condition over the times. A flat profile, the same value at every time, has no correlation with any other: its pairs are left out, and with fewer than two profiles that vary the quality is not defined (NaN). ``flat_profiles="zero"`` counts those pairs as 0 instead.
+* :py:func:`~metagen.triclustering.triq`, **TRIQ**, is their weighted mean, 0.8, 0.1 and 0.1, or 0.4, 0.05, 0.05 and 0.5 when a biological quality is given as ``bioq``. A quality that is not defined is left out, with its weight.
+
+The metaheuristics minimize: to search by TRIQ, give them ``1 − TRIQ``.
+
+.. code-block:: python
+
+    from metagen.triclustering import Tricluster, grq, peq, plant, spq, triq
+
+    cube, planted = plant((100, 8, 10), [(20, 3, 5)], pattern="additive", noise=0.05, seed=0)
+    target = planted[0]
+    elsewhere = Tricluster([g for g in range(100) if g not in target.genes][:20], target.conditions, target.times)
+    print(round(grq(cube, target, views="time"), 3), round(peq(cube, target), 3), round(spq(cube, target), 3))  # 0.991 0.995 1.0
+    print(round(triq(cube, target, views="time"), 3), round(triq(cube, elsewhere, views="time"), 3))          # 0.992 0.556
+    print(round(triq(cube, target, views="time", bioq=0.001), 3))                                         # 0.497
+
+Synthetic data with planted triclusters
+---------------------------------------
+
+To try a triclustering on data whose answer is known, :py:func:`~metagen.triclustering.plant` builds a cube of standard normal noise and plants triclusters in it: one per size ``(genes, conditions, times)``, at random positions, no two sharing a gene. Their values follow a pattern, ``"constant"``, ``"additive"`` (a mean plus an effect per gene, condition and time) or ``"multiplicative"`` (the same, multiplied), with optional noise. A ``seed`` makes the cube reproducible.
+
+.. code-block:: python
+
+    from metagen.triclustering import plant
+
+    cube, planted = plant((100, 8, 10), [(20, 3, 5), (15, 4, 4)], pattern="multiplicative", noise=0.1, seed=0)
+    print(cube.shape, [tricluster.size for tricluster in planted])   # (100, 8, 10) [(20, 3, 5), (15, 4, 4)]
+
+Measuring what was recovered
+----------------------------
+
+Five similarities compare a tricluster found with one planted, from 0 to 1: :py:func:`~metagen.triclustering.cell_jaccard`, the cells they share over the cells of either; :py:func:`~metagen.triclustering.cell_recall` and :py:func:`~metagen.triclustering.cell_precision`, the share of the planted cells found and of the found cells planted; and :py:func:`~metagen.triclustering.coordinate_jaccard` and :py:func:`~metagen.triclustering.coordinate_recall`, the same over genes, conditions and times.
+
+Over lists, :py:func:`~metagen.triclustering.recovery` takes, for each planted tricluster, its similarity to the most similar one found, and averages them: how much of what was planted has been found. :py:func:`~metagen.triclustering.relevance` does the same from the triclusters found: how much of what was found was planted. Both take the similarity to use, ``cell_jaccard`` by default.
+
+.. code-block:: python
+
+    from metagen.triclustering import Tricluster, cell_precision, cell_recall, plant, recovery, relevance
+
+    cube, planted = plant((100, 8, 10), [(20, 3, 5), (15, 4, 4)], seed=0)
+    first = planted[0]
+    found = [Tricluster(first.genes[:10], first.conditions, first.times)]   # half of the first one
+    print(recovery(found, planted), relevance(found, planted))                              # 0.25 0.5
+    print(recovery(found, planted, cell_recall), relevance(found, planted, cell_precision))  # 0.25 1.0
 
 Reference
 ---------
