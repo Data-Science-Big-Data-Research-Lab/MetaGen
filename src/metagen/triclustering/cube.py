@@ -67,13 +67,7 @@ class Cube:
 
     def __init__(self, values: Any, genes: Optional[Sequence[Any]] = None,
                  conditions: Optional[Sequence[Any]] = None, times: Optional[Sequence[Any]] = None) -> None:
-        try:
-            array = np.array(values, dtype=np.float64)
-        except (TypeError, ValueError) as error:
-            raise ValueError(f"The values of a cube must be numbers: {error}") from None
-        if array.ndim != 3:
-            raise ValueError(f"The values of a cube must have three dimensions (genes, conditions, times), "
-                             f"not {array.ndim}.")
+        array = _numbers(values)
         for axis, size in zip(AXES, array.shape):
             if size < 2:
                 raise ValueError(f"A cube needs at least two {axis}, not {size}.")
@@ -85,6 +79,9 @@ class Cube:
                              f"Remove them, for instance with Cube.without_missing, or fill them in first.")
         array.setflags(write=False)
         self._values = array
+        # Handed out as a view of it: the owner of the memory could turn writing back on,
+        # a view of a read-only array cannot.
+        self._view = array.view()
         self._names = tuple(_names(axis, given, size)
                             for axis, given, size in zip(AXES, (genes, conditions, times), array.shape))
 
@@ -120,13 +117,7 @@ class Cube:
         """
         if axis not in AXES:
             raise ValueError(f"The axis must be one of {list(AXES)}, not {axis!r}.")
-        try:
-            array = np.array(values, dtype=np.float64)
-        except (TypeError, ValueError) as error:
-            raise ValueError(f"The values of a cube must be numbers: {error}") from None
-        if array.ndim != 3:
-            raise ValueError(f"The values of a cube must have three dimensions (genes, conditions, times), "
-                             f"not {array.ndim}.")
+        array = _numbers(values)
         index = AXES.index(axis)
         others = tuple(other for other in range(3) if other != index)
         kept = tuple(int(position) for position in np.flatnonzero(np.isfinite(array).all(axis=others)))
@@ -142,7 +133,7 @@ class Cube:
     @property
     def values(self) -> np.ndarray:
         """The values, read-only, with shape (genes, conditions, times)."""
-        return self._values
+        return self._view
 
     @property
     def shape(self) -> Tuple[int, int, int]:
@@ -184,9 +175,26 @@ class Cube:
         return f"Cube({genes} genes, {conditions} conditions, {times} times)"
 
 
+def _numbers(values: Any) -> np.ndarray:
+    """The values as a new array of floats, from integers or reals only: booleans,
+    complex numbers and text would turn into numbers that mean something else."""
+    try:
+        given = np.asarray(values)
+    except ValueError as error:           # ragged nested lists
+        raise ValueError(f"The values of a cube must be numbers: {error}") from None
+    if given.dtype.kind not in "iuf":
+        raise ValueError(f"The values of a cube must be integer or real numbers, not {given.dtype}.")
+    if given.ndim != 3:
+        raise ValueError(f"The values of a cube must have three dimensions (genes, conditions, times), "
+                         f"not {given.ndim}.")
+    return np.array(given, dtype=np.float64)
+
+
 def _names(axis: str, given: Optional[Sequence[Any]], size: int) -> Tuple[Any, ...]:
     if given is None:
         return tuple(range(size))
+    if isinstance(given, (str, bytes)):
+        raise ValueError(f"The names of the {axis} must be a sequence of names, not one string.")
     names = tuple(given)
     if len(names) != size:
         raise ValueError(f"There are {len(names)} names of {axis} for {size} {axis}.")

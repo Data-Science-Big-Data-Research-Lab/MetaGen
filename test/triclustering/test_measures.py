@@ -130,6 +130,54 @@ def _grid(shape):
     return np.meshgrid(*(np.arange(size, dtype=float) for size in shape), indexing="ij")
 
 
+def test_the_three_views_on_a_case_worked_out_by_hand():
+    """Two genes, three conditions, two times, with x = gene · condition: each gene is a
+    line over the conditions with slope 0 or 1, and nothing changes over time.
+
+    - Conditions on the X axis: series gene 0 (angles 0, 0) and gene 1 (π/4, π/4) in
+      each of the two panels; two pairs in panels differ by π/4, two pairs of panels by
+      0: π/8.
+    - Genes on the X axis: series condition 0, 1 and 2 with slopes 0, 1 and 2, one
+      segment each, in each of the two panels; three pairs per panel differ by π/4,
+      arctan 2 and arctan 2 − π/4, six in all, and three pairs of panels by 0:
+      4 · arctan 2 / 9.
+    - Times on the X axis: every series is flat: 0.
+    """
+    genes, conditions, _ = np.meshgrid(np.arange(2.0), np.arange(3.0), np.arange(2.0), indexing="ij")
+    cube = Cube(genes * conditions)
+    whole = Tricluster(range(2), range(3), range(2))
+    along_conditions, along_genes = math.pi / 8, 4 * math.atan(2) / 9
+    assert math.isclose(msl(cube, whole, views="distinct"), (along_conditions + along_genes + 0.0) / 3, rel_tol=1e-12)
+    assert math.isclose(msl(cube, whole, views="trlab"), 2 * along_genes / 3, rel_tol=1e-12)
+    assert msl(cube, whole, views="time") == 0.0
+    # With straight lines, the least squares line is the line itself.
+    for views in VIEWS:
+        assert math.isclose(lsl(cube, whole, views=views), msl(cube, whole, views=views), rel_tol=1e-12)
+
+
+def test_a_flat_series_of_any_values_has_slope_zero():
+    """Rows that are flat but hold values like 0.3 or -1.7: a least squares slope worked
+    out from raw sums comes out as ±1e-17, and the side of zero decides between an angle
+    of 0 and one of 2π."""
+    rows = np.random.default_rng(4).normal(size=(10, 1, 1))
+    cube = Cube(np.broadcast_to(rows, (10, 3, 7)))
+    whole = Tricluster(range(10), range(3), range(7))
+    assert lsl(cube, whole, views="time") == 0.0 and msl(cube, whole, views="time") == 0.0
+    assert lsl(cube, whole) < 1e-15
+
+
+def test_the_residue_keeps_its_precision_far_from_zero():
+    noise = np.random.default_rng(5).normal(size=(5, 3, 4)) * 1e-3
+    whole = Tricluster(range(5), range(3), range(4))
+    assert math.isclose(msr3d(Cube(noise + 1e6), whole), msr3d(Cube(noise), whole), rel_tol=1e-6)
+
+
+def test_a_nan_comes_through_the_pair_differences():
+    from metagen.triclustering.measures import _pair_sums
+    assert math.isnan(_pair_sums(np.array([[[1.0, np.nan, 2.0]]]), axis=2))
+    assert _pair_sums(np.full((1, 1, 4), 0.1), axis=2) == 0.0
+
+
 @pytest.mark.parametrize("views", ["distinct", "time", "trlab"])
 def test_a_constant_block_measures_zero(views):
     cube = Cube(np.full((4, 3, 5), 2.5))

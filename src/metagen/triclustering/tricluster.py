@@ -32,8 +32,8 @@ if TYPE_CHECKING:
 class Tricluster:
     """
     A tricluster: a subset of the genes, one of the conditions and one of the times of
-    a cube, given by their positions. Each is kept sorted, in the order of the cube,
-    whatever the order it was given in, and none may repeat.
+    a cube, given by their positions, at least two of each. Each is kept sorted, in the
+    order of the cube, whatever the order it was given in, and none may repeat.
 
     Two triclusters are equal when they hold the same positions; the fitness, if any,
     does not count.
@@ -53,7 +53,8 @@ class Tricluster:
     :type times: Iterable[int]
     :param fitness: The fitness it was found with, if any.
     :type fitness: float, optional
-    :raises ValueError: if a position is not a non-negative integer or repeats.
+    :raises ValueError: if a position is not a non-negative integer or repeats, or a
+        dimension has fewer than two.
     """
 
     genes: Tuple[int, ...]
@@ -90,16 +91,13 @@ class Tricluster:
 
     def check(self, cube: Cube) -> None:
         """
-        Check that the tricluster fits in a cube: every position within the cube, and at
-        least two genes, two conditions and two times, the fewest the measures need.
+        Check that the tricluster fits in a cube: every position within the cube.
 
         :param cube: The cube.
         :type cube: Cube
         :raises ValueError: if it does not fit.
         """
         for axis, positions, size in zip(AXES, (self.genes, self.conditions, self.times), cube.shape):
-            if len(positions) < 2:
-                raise ValueError(f"A tricluster needs at least two {axis}, not {len(positions)}.")
             if positions[-1] >= size:
                 raise ValueError(f"The {axis} {[p for p in positions if p >= size]} are beyond the "
                                  f"{size} {axis} of the cube.")
@@ -121,11 +119,17 @@ class Tricluster:
 
 def _positions(axis: str, given: Iterable[int]) -> Tuple[int, ...]:
     positions: List[int] = []
-    for position in given:
+    try:
+        items = list(given)
+    except TypeError:
+        raise ValueError(f"The {axis} of a tricluster must be a collection of positions, not {given!r}.") from None
+    for position in items:
         if isinstance(position, bool) or not isinstance(position, numbers.Integral) or position < 0:
             raise ValueError(f"The {axis} of a tricluster must be non-negative integer positions, "
                              f"not {position!r}.")
         positions.append(int(position))
     if len(set(positions)) != len(positions):
         raise ValueError(f"The {axis} of a tricluster repeat: {positions}.")
+    if len(positions) < 2:
+        raise ValueError(f"A tricluster needs at least two {axis}, not {len(positions)}.")
     return tuple(sorted(positions))

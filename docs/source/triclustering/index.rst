@@ -58,7 +58,7 @@ The three measures are the lower the better, and zero for a perfectly coherent t
 * :py:func:`~metagen.triclustering.msl`, the **multi-slope measure**, compares the shapes of the series in the graphical views of the tricluster: in each view one dimension goes on the X axis, another makes the series and the third the panels, and every segment of a series has an angle. Two series differ by the mean difference of the angles of their segments.
 * :py:func:`~metagen.triclustering.lsl`, the **least-squares-lines measure**, does the same with the angle of the least squares line of each series.
 
-MSL and LSL range from 0 to 2π, and ``normalized=True`` divides them by 2π. Their ``views`` option chooses the views they average: ``"distinct"``, the default, takes the three views, with the genes, the times and the conditions on the X axis in turn; ``"time"`` takes only the view with the times on the X axis, the time-series view; ``"trlab"`` counts the view with the genes on the X axis twice and the one with the times once.
+The points of a series are taken one unit apart, whatever the names of the times. MSL and LSL range from 0 to 2π, and ``normalized=True`` divides them by 2π. Their ``views`` option chooses the views they average: ``"distinct"``, the default, takes the three views, with the genes, the times and the conditions on the X axis in turn; ``"time"`` takes only the view with the times on the X axis, the time-series view; ``"trlab"`` counts the view with the genes on the X axis twice and the one with the times once.
 
 .. code-block:: python
 
@@ -73,11 +73,12 @@ MSL and LSL range from 0 to 2π, and ``normalized=True`` divides them by 2π. Th
 
     planted = Tricluster(range(8), range(3), range(8))
     elsewhere = Tricluster(range(20, 28), range(3), range(8))
-    for name, tricluster in (("planted", planted), ("elsewhere", elsewhere)):
-        print(name, round(msl(cube, tricluster, views="time"), 3), round(lsl(cube, tricluster, views="time"), 3),
-              round(msr3d(cube, tricluster), 4))
+    print(round(msl(cube, planted, views="time"), 3), round(msl(cube, elsewhere, views="time"), 3))  # 0.069 2.741
+    print(round(lsl(cube, planted, views="time"), 3), round(lsl(cube, elsewhere, views="time"), 3))  # 0.01 3.003
+    print(round(msr3d(cube, planted), 4), round(msr3d(cube, elsewhere), 4))                          # 0.0016 0.455
+    print(round(msl(cube, planted), 3), round(msl(cube, elsewhere), 3))                              # 2.109 2.629
 
-A slope along the genes or the conditions depends on the order they have in the cube. It means something when that order does, such as doses, temperatures or positions on a map, and ``views="time"`` leaves those views out when it does not, as with genes listed in no particular order.
+A slope along the genes or the conditions depends on the order they have in the cube. It means something when that order does, such as doses, temperatures or positions on a map, and ``views="time"`` leaves those views out when it does not, as with genes listed in no particular order. The last line of the example shows why it matters: the planted genes rise alike over time, so along the genes and the conditions their slopes are zero up to noise, and a slope a hair below zero turns into an angle of almost 2π, the largest difference there is. Those views then tell the planted block from the rest far less clearly than the time view does.
 
 Reference
 ---------

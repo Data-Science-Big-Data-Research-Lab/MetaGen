@@ -16,6 +16,12 @@ def _values(shape=(6, 4, 5), seed=0):
 
 # --- the cube --------------------------------------------------------------------
 
+def test_integer_and_float32_values_become_floats():
+    assert Cube(np.ones((2, 2, 2), dtype=np.int8)).values.dtype == np.float64
+    assert Cube(np.ones((2, 2, 2), dtype=np.float32)).values.dtype == np.float64
+    assert Cube(np.ones((2, 2, 2), dtype=np.uint16)).values.dtype == np.float64
+
+
 def test_a_cube_keeps_its_values_as_floats_and_names_its_positions_by_default():
     values = np.arange(24).reshape(2, 3, 4)
     cube = Cube(values)
@@ -36,6 +42,9 @@ def test_a_cube_is_read_only_and_a_copy_of_what_it_was_given():
     assert cube.values[0, 0, 0] != 99.0
     with pytest.raises(ValueError):
         cube.values[0, 0, 0] = 1.0
+    with pytest.raises(ValueError):
+        cube.values.setflags(write=True)
+    assert not np.shares_memory(cube.values, values)
 
 
 @pytest.mark.parametrize("values, message", [
@@ -45,13 +54,20 @@ def test_a_cube_is_read_only_and_a_copy_of_what_it_was_given():
     (np.zeros((3, 1, 3)), "two conditions"),
     (np.zeros((3, 3, 1)), "two times"),
     ([[["a", "b"], ["c", "d"]], [["e", "f"], ["g", "h"]]], "numbers"),
+    ([[["1.5", "2"], ["3", "4"]], [["5", "6"], ["7", "8"]]], "numbers"),
+    (np.ones((2, 2, 2), dtype=bool), "numbers"),
+    (np.ones((2, 2, 2), dtype=complex), "numbers"),
+    ([[[1, 2j], [3, 4]], [[5, 6], [7, 8]]], "numbers"),
+    (np.array([[[1, 2], [3, 4]], [[5, 6], [7, None]]], dtype=object), "numbers"),
+    ([[[1, 2], [3]], [[4, 5], [6, 7]]], "numbers"),
 ])
 def test_a_cube_rejects_values_of_the_wrong_shape_or_kind(values, message):
     with pytest.raises(ValueError, match=message):
         Cube(values)
 
 
-@pytest.mark.parametrize("names", [{"genes": ["a"]}, {"conditions": ["a", "b", "c"]}, {"times": list(range(6))}])
+@pytest.mark.parametrize("names", [{"genes": ["a"]}, {"conditions": ["a", "b", "c"]}, {"times": list(range(6))},
+                                   {"times": "abcde"}])
 def test_a_cube_rejects_names_that_do_not_match_the_shape(names):
     with pytest.raises(ValueError, match="names"):
         Cube(_values((2, 2, 5)), **names)
@@ -124,8 +140,9 @@ def test_numpy_integers_are_positions():
     assert tricluster.genes == (1, 4) and all(type(p) is int for p in tricluster.conditions)
 
 
-@pytest.mark.parametrize("genes", [[1, 1], [-1, 2], [1.0, 2], [True, 2], ["a", "b"], [None]])
-def test_a_tricluster_rejects_positions_that_are_not_distinct_non_negative_integers(genes):
+@pytest.mark.parametrize("genes", [[1, 1], [-1, 2], [1.0, 2], [True, 2], ["a", "b"], [None], 5, None,
+                                   [np.True_, 2], [np.float64(1), 2], [2], []])
+def test_a_tricluster_rejects_positions_that_are_not_two_or_more_distinct_non_negative_integers(genes):
     with pytest.raises(ValueError):
         Tricluster(genes, [0, 1], [0, 1])
 
@@ -153,11 +170,9 @@ def test_check_accepts_a_tricluster_that_fits():
 @pytest.mark.parametrize("tricluster, message", [
     (Tricluster([0, 6], [0, 1], [0, 1]), r"genes \[6\] are beyond the 6 genes"),
     (Tricluster([0, 1], [0, 4, 7], [0, 1]), r"conditions \[4, 7\] are beyond the 4"),
-    (Tricluster([0, 1], [0, 1], [5]), "two times"),
-    (Tricluster([2], [0, 1], [0, 1]), "two genes"),
-    (Tricluster([0, 1], [], [0, 1]), "two conditions"),
+    (Tricluster([0, 1], [0, 1], [3, 5]), r"times \[5\] are beyond the 5 times"),
 ])
-def test_check_rejects_what_does_not_fit_or_is_too_small(tricluster, message):
+def test_check_rejects_what_does_not_fit(tricluster, message):
     cube = Cube(_values())
     with pytest.raises(ValueError, match=message):
         tricluster.check(cube)

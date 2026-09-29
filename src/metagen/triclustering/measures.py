@@ -61,7 +61,10 @@ def msr3d(cube: Cube, tricluster: Tricluster) -> float:
     :return: Its mean squared residue.
     :rtype: float
     """
+    # Centered first: the residue does not change with a constant, and with values far
+    # from zero the means would otherwise lose the digits the residue lives in.
     values = cube.subcube(tricluster)
+    values = values - values.mean()
     residue = (values
                - values.mean(axis=2, keepdims=True) - values.mean(axis=1, keepdims=True)
                - values.mean(axis=0, keepdims=True)
@@ -191,12 +194,13 @@ def _segment_angles(view: np.ndarray) -> np.ndarray:
 
 def _line_angle(view: np.ndarray) -> np.ndarray:
     """(series, x, panels) values to (series, 1, panels) angles of the least squares lines."""
-    n = view.shape[1]
-    x = np.arange(1, n + 1, dtype=np.float64)
-    sum_x, sum_xx = x.sum(), (x * x).sum()
-    sum_y = view.sum(axis=1, keepdims=True)
-    sum_xy = np.einsum("sxp,x->sp", view, x)[:, None, :]
-    slope = (n * sum_xy - sum_x * sum_y) / (n * sum_xx - sum_x * sum_x)
+    x = np.arange(1, view.shape[1] + 1, dtype=np.float64)
+    centered = x - x.mean()
+    # From the values less their mean: the textbook n·Σxy − Σx·Σy leaves a slope of
+    # ±1e-17 on a flat series of non-integer values, and the sign decides between an
+    # angle of 0 and one of 2π, the largest difference there is.
+    deviations = view - view.mean(axis=1, keepdims=True)
+    slope = np.einsum("sxp,x->sp", deviations, centered)[:, None, :] / (centered * centered).sum()
     return _turn(np.arctan(slope))
 
 
@@ -225,4 +229,6 @@ def _pair_sums(values: np.ndarray, axis: int) -> float:
     weights = (2 * np.arange(n) - n + 1).reshape(shape)
     # A sum of absolute values: the weighted sum can round a hair below zero when every
     # value is the same, and a measure that should read 0 would read -0.0 or -1e-17.
-    return max(0.0, float((ordered * weights).sum()))
+    # Only that: a NaN comes through as NaN.
+    total = float((ordered * weights).sum())
+    return 0.0 if total < 0.0 else total
