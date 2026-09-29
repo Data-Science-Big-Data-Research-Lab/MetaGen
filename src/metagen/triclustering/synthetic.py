@@ -16,6 +16,7 @@
 """
 from __future__ import annotations
 
+import math
 import numbers
 from typing import List, Literal, Optional, Sequence, Tuple
 
@@ -62,7 +63,8 @@ def plant(shape: Sequence[int], sizes: Sequence[Sequence[int]], pattern: Pattern
 
     :param shape: The number of genes, conditions and times of the cube.
     :type shape: Sequence[int]
-    :param sizes: The number of genes, conditions and times of each tricluster to plant.
+    :param sizes: The number of genes, conditions and times of each tricluster to plant;
+        with none, the cube is noise alone.
     :type sizes: Sequence[Sequence[int]]
     :param pattern: ``"constant"``, ``"additive"`` or ``"multiplicative"``, defaults to
         ``"additive"``.
@@ -74,7 +76,7 @@ def plant(shape: Sequence[int], sizes: Sequence[Sequence[int]], pattern: Pattern
     :return: The cube, and the triclusters planted, in the order of ``sizes``.
     :rtype: Tuple[Cube, List[Tricluster]]
     :raises ValueError: if the shape or the sizes are not valid, the triclusters need more
-        genes than the cube has, the pattern is unknown or the noise is negative.
+        genes than the cube has, the pattern is unknown or the noise is negative or not finite.
     """
     dimensions = _counts("shape", shape)
     wanted = [_counts("size", size) for size in sizes]
@@ -86,8 +88,8 @@ def plant(shape: Sequence[int], sizes: Sequence[Sequence[int]], pattern: Pattern
                          f"the cube has {dimensions[0]}.")
     if pattern not in _PATTERNS:
         raise ValueError(f"pattern must be one of {list(_PATTERNS)}, not {pattern!r}.")
-    if noise < 0:
-        raise ValueError(f"noise is a standard deviation and cannot be negative, not {noise}.")
+    if not (noise >= 0 and math.isfinite(noise)):
+        raise ValueError(f"noise is a standard deviation, finite and not negative, not {noise}.")
 
     # A generator of its own with a seed, so that the cube does not depend on anything
     # else drawn before; MetaGen's otherwise, never NumPy's global one.

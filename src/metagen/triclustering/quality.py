@@ -86,7 +86,7 @@ def peq(cube: Cube, tricluster: Tricluster, flat_profiles: FlatProfiles = "exclu
         values = np.stack([rising, 2 * rising + 1, -rising, np.full(5, 3.0)])  # the last is flat
         cube = Cube(values.reshape(4, 1, 5).repeat(2, axis=1))
         whole = Tricluster(range(4), range(2), range(5))
-        print(peq(cube, whole), round(peq(cube, whole, flat_profiles="zero"), 4))   # 1.0 0.5357
+        print(round(peq(cube, whole), 12), round(peq(cube, whole, flat_profiles="zero"), 4))   # 1.0 0.5357
 
     :param cube: The data.
     :type cube: Cube
@@ -113,7 +113,7 @@ def spq(cube: Cube, tricluster: Tricluster, flat_profiles: FlatProfiles = "exclu
 
         times = np.arange(1.0, 6.0)
         values = np.stack([times, times ** 3, np.log(times)]).reshape(3, 1, 5).repeat(2, axis=1)
-        print(spq(Cube(values), Tricluster(range(3), range(2), range(5))))       # 1.0
+        print(round(spq(Cube(values), Tricluster(range(3), range(2), range(5))), 12))   # 1.0
 
     :param cube: The data.
     :type cube: Cube
@@ -142,7 +142,7 @@ def triq(cube: Cube, tricluster: Tricluster, bioq: Optional[float] = None,
 
     The weights are 0.8, 0.1 and 0.1 without a biological quality, and 0.4, 0.05, 0.05 and
     0.5 with one. A quality that is not defined (a PEQ or SPQ with fewer than two profiles
-    that vary) is left out, and its weight with it. The metaheuristics minimize: to search
+    that vary, or a biological quality given as NaN) is left out, and its weight with it. The metaheuristics minimize: to search
     by TRIQ, give them ``1 − TRIQ``.
 
     .. code-block:: python
@@ -161,7 +161,7 @@ def triq(cube: Cube, tricluster: Tricluster, bioq: Optional[float] = None,
     :type cube: Cube
     :param tricluster: The tricluster.
     :type tricluster: Tricluster
-    :param bioq: Its biological quality, if any.
+    :param bioq: Its biological quality, from 0 to 1, or NaN if it is not defined; if any.
     :type bioq: float, optional
     :param weights: The weights, by the names ``"grq"``, ``"peq"``, ``"spq"`` and ``"bioq"``;
         they need not add up to 1.
@@ -172,9 +172,11 @@ def triq(cube: Cube, tricluster: Tricluster, bioq: Optional[float] = None,
     :type flat_profiles: str, optional
     :return: Its quality.
     :rtype: float
-    :raises ValueError: if the weights do not name exactly the qualities in use, or one is
-        negative.
+    :raises ValueError: if the biological quality is outside ``[0, 1]``, or the weights do not
+        name exactly the qualities in use, or one is negative or not finite.
     """
+    if bioq is not None and not (math.isnan(bioq) or 0.0 <= bioq <= 1.0):
+        raise ValueError(f"A biological quality is between 0 and 1, or NaN when it is not defined, not {bioq}.")
     qualities: Dict[str, float] = {"grq": grq(cube, tricluster, views=views),
                                    "peq": peq(cube, tricluster, flat_profiles),
                                    "spq": spq(cube, tricluster, flat_profiles)}
@@ -183,8 +185,8 @@ def triq(cube: Cube, tricluster: Tricluster, bioq: Optional[float] = None,
     chosen = dict(weights) if weights is not None else dict(WEIGHTS if bioq is None else WEIGHTS_WITH_BIOQ)
     if set(chosen) != set(qualities):
         raise ValueError(f"The weights must be for {sorted(qualities)}, not {sorted(chosen)}.")
-    if any(weight < 0 for weight in chosen.values()):
-        raise ValueError(f"The weights cannot be negative: {chosen}.")
+    if not all(math.isfinite(weight) and weight >= 0 for weight in chosen.values()):
+        raise ValueError(f"The weights must be finite and not negative: {chosen}.")
     defined = {name: value for name, value in qualities.items() if not math.isnan(value)}
     total = sum(chosen[name] for name in defined)
     if total <= 0:
@@ -203,16 +205,24 @@ def _correlation_quality(profiles: np.ndarray, flat_profiles: str) -> float:
     """The mean absolute Pearson correlation over the pairs of columns."""
     if flat_profiles not in ("exclude", "zero"):
         raise ValueError(f"flat_profiles must be 'exclude' or 'zero', not {flat_profiles!r}.")
-    centered = profiles - profiles.mean(axis=0)
-    norms = np.sqrt((centered * centered).sum(axis=0))
     # Flat exactly when every value is the same: the only case with no correlation.
     flat = np.ptp(profiles, axis=0) == 0
+    # Each profile scaled by its largest value first, which a correlation does not see:
+    # otherwise values near 1e-170 underflow to a norm of 0 and values near 1e160
+    # overflow it, and a profile that varies would read as flat. It also turns a flat
+    # profile into exactly 1 or -1 throughout, which centers to exactly 0; centered as it
+    # came, it could leave a tiny constant (the mean of three 0.1 is not 0.1) that would
+    # correlate 1 with another flat profile.
+    largest = np.abs(profiles).max(axis=0)
+    scaled = profiles / np.where(largest > 0, largest, 1.0)
+    centered = scaled - scaled.mean(axis=0)
     if flat_profiles == "exclude":
-        centered, norms = centered[:, ~flat], norms[~flat]
+        centered = centered[:, ~flat]
     columns = centered.shape[1]
     if columns < 2:
         return math.nan
-    # A flat column, kept under "zero", becomes all zeros and correlates 0 with every other.
+    norms = np.sqrt((centered * centered).sum(axis=0))
+    # A flat column, kept under "zero", stays all zeros and correlates 0 with every other.
     standardized = np.divide(centered, norms, out=np.zeros_like(centered), where=norms > 0)
     total = 0.0
     for start in range(0, columns, _BLOCK):

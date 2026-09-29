@@ -73,6 +73,27 @@ def test_peq_and_spq_match_scipy_pair_by_pair(shape, flat_profiles):
     assert math.isclose(spq(cube, whole, flat_profiles), _literal(values, True, flat_profiles), rel_tol=1e-12)
 
 
+@pytest.mark.parametrize("flat_value", [0.1, 1 / 3, 1e-5, 7.7e8])
+def test_flat_profiles_of_any_value_count_as_zero_and_not_as_correlated(flat_value):
+    """Centering a flat profile by its mean can leave a tiny constant: the mean of three
+    0.1 is not 0.1. Six genes under two conditions: four genes flat and two that vary
+    alike, 12 profiles and 66 pairs, of which only the 6 among the four that vary
+    correlate."""
+    rising = np.array([0.3, 1.9, 0.7])
+    values = np.stack([np.full(3, flat_value)] * 4 + [rising, rising]).reshape(6, 1, 3).repeat(2, axis=1)
+    cube, whole = Cube(values), _whole((6, 2, 3))
+    assert math.isclose(peq(cube, whole, "zero"), 6 / 66) and math.isclose(spq(cube, whole, "zero"), 6 / 66)
+    assert math.isclose(peq(cube, whole), 1.0)
+
+
+@pytest.mark.parametrize("scale", [1e-170, 1e-30, 1e30, 1e160, 1e300])
+def test_the_correlation_does_not_depend_on_the_scale_of_the_values(scale):
+    times = np.arange(5.0)
+    values = np.stack([times, 2 * times + 1, -times]).reshape(3, 1, 5).repeat(2, axis=1) * scale
+    cube, whole = Cube(values), _whole((3, 2, 5))
+    assert math.isclose(peq(cube, whole), 1.0) and math.isclose(spq(cube, whole), 1.0)
+
+
 def test_the_correlations_are_worked_out_by_blocks_the_same(monkeypatch):
     values = _with_flat_profiles((9, 4, 7), seed=3)
     cube, whole = Cube(values), _whole((9, 4, 7))
@@ -105,7 +126,7 @@ def test_flat_profiles_are_left_out_or_counted_as_zero():
     rising = np.arange(5.0)
     values = np.stack([rising, 2 * rising + 1, -rising, np.full(5, 3.0)]).reshape(4, 1, 5).repeat(2, axis=1)
     cube, whole = Cube(values), _whole((4, 2, 5))
-    assert peq(cube, whole) == 1.0 and spq(cube, whole) == 1.0
+    assert math.isclose(peq(cube, whole), 1.0) and math.isclose(spq(cube, whole), 1.0)
     assert math.isclose(peq(cube, whole, flat_profiles="zero"), 15 / 28)
 
 
@@ -163,6 +184,14 @@ def test_triq_is_the_weighted_mean_of_the_qualities():
     assert math.isclose(triq(SYNTHETIC, tricluster, weights={"grq": 2, "peq": 1, "spq": 1}), (2 * g + p + s) / 4)
 
 
+def test_a_biological_quality_given_as_nan_is_left_out():
+    tricluster = Tricluster(range(4), range(3), range(5))
+    assert triq(SYNTHETIC, tricluster, bioq=math.nan) == triq(SYNTHETIC, tricluster, weights=WEIGHTS_WITHOUT_BIOQ)
+
+
+WEIGHTS_WITHOUT_BIOQ = {"grq": 0.4, "peq": 0.05, "spq": 0.05}
+
+
 def test_triq_leaves_out_a_quality_that_is_not_defined():
     values = np.full((3, 2, 4), 2.0)
     values[0, 0] = [1.0, 2.0, 3.0, 4.0]          # one profile varies: no pair to correlate
@@ -178,9 +207,27 @@ def test_triq_leaves_out_a_quality_that_is_not_defined():
     {"bioq": 0.1, "weights": {"grq": 1, "peq": 1, "spq": 1}},
     {"weights": {"grq": 1, "peq": -1, "spq": 1}},
     {"weights": {"grq": 0, "peq": 0, "spq": 0}},
+    {"weights": {"grq": math.inf, "peq": 1, "spq": 1}},
+    {"weights": {"grq": math.nan, "peq": 1, "spq": 1}},
+    {"bioq": -0.1},
+    {"bioq": 1.5},
+    {"bioq": math.inf},
     {"flat_profiles": "drop"},
+    {"flat_profiles": "drop", "views": "time"},
     {"views": "all"},
 ])
 def test_triq_rejects_weights_or_options_that_do_not_fit(arguments):
     with pytest.raises(ValueError):
         triq(SYNTHETIC, Tricluster(range(4), range(3), range(5)), **arguments)
+
+
+def test_the_correlations_of_a_large_tricluster_take_far_less_than_pair_by_pair():
+    """200 genes under 19 conditions over 8 times: 3 800 profiles, over 7 million pairs."""
+    import time
+    values = np.random.default_rng(6).normal(size=(200, 19, 8))
+    cube, whole = Cube(values), _whole((200, 19, 8))
+    start = time.perf_counter()
+    peq(cube, whole)
+    spq(cube, whole)
+    assert time.perf_counter() - start < 30
+

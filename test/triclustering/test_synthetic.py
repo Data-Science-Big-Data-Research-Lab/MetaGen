@@ -1,5 +1,7 @@
 """Cubes with planted triclusters: each planted block has the pattern it says, none
 share a cell, the rest is standard normal noise, and a seed reproduces the cube."""
+import itertools
+
 import numpy as np
 import pytest
 
@@ -21,7 +23,7 @@ def test_the_triclusters_have_the_sizes_asked_for_fit_and_share_no_cell():
     assert [tricluster.size for tricluster in planted] == SIZES
     for tricluster in planted:
         tricluster.check(cube)
-    for first, second in zip(planted, planted[1:]):
+    for first, second in itertools.combinations(planted, 2):
         assert cell_jaccard(first, second) == 0.0 and not set(first.genes) & set(second.genes)
 
 
@@ -91,6 +93,8 @@ def test_without_a_seed_it_follows_metagens_generator_and_leaves_numpys_global_o
     ({"sizes": [(6, 2, 2), (5, 2, 2)]}, "genes"),
     ({"pattern": "shifting"}, "pattern"),
     ({"noise": -0.1}, "negative"),
+    ({"noise": float("nan")}, "finite"),
+    ({"noise": float("inf")}, "finite"),
 ])
 def test_what_cannot_be_planted_is_rejected(arguments, message):
     call = {"shape": (10, 5, 5), "sizes": [(3, 2, 2)], **arguments}
@@ -106,3 +110,9 @@ def test_a_search_can_tell_a_planted_tricluster_from_the_rest():
     others = [g for g in range(80) if g not in target.genes][:15]
     elsewhere = Tricluster(others, target.conditions, target.times)
     assert msr3d(cube, target) < 0.01 < msr3d(cube, elsewhere)
+
+
+def test_with_no_sizes_the_cube_is_noise_alone():
+    cube, planted = plant((20, 3, 4), [], seed=0)
+    assert planted == [] and cube.shape == (20, 3, 4)
+
