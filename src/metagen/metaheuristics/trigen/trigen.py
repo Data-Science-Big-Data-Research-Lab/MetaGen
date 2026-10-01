@@ -25,7 +25,7 @@ from metagen.framework.rng import set_seed
 from metagen.logging.metagen_logger import metagen_logger
 from metagen.metaheuristics.trigen.fitness import Measure, SizeReference, TriclusterFitness
 from metagen.metaheuristics.trigen.population import DataHierarchy, Sizes
-from metagen.metaheuristics.trigen.trigen_ga import TriGenGA, validate
+from metagen.metaheuristics.trigen.trigen_ga import TriGenGA, require_integer, validate
 from metagen.triclustering import Cube, Tricluster
 from metagen.triclustering.cube import AXES
 from metagen.triclustering.measures import Views
@@ -94,8 +94,8 @@ class TriGen:
     :param seed: Seed for MetaGen's generators, set once for the whole run, defaults to None.
     :type seed: int or None, optional
     :param history: File the run writes a JSON line to per search: the tricluster found,
-        its fitness and terms, and the evaluations and seconds it took. None, the default,
-        writes nothing.
+        its sizes, fitness and terms, the best fitness after each generation, and the
+        evaluations and seconds it took. None, the default, writes nothing.
     :type history: str or None, optional
     :raises ValueError: if a parameter is out of its range.
     """
@@ -106,6 +106,7 @@ class TriGen:
                  measure: Measure = "msl", views: Views = "distinct", flat_profiles: FlatProfiles = "exclude",
                  weights: Optional[Mapping[str, float]] = None, size_reference: SizeReference = "dataset",
                  seed: Optional[int] = None, history: Optional[str] = None) -> None:
+        require_integer("n_triclusters", n_triclusters)
         if n_triclusters < 1:
             raise ValueError(f"TriGen finds at least one tricluster, not {n_triclusters}.")
         validate(population_size, generations, random_fraction, selection_rate, mutation_probability)
@@ -160,7 +161,8 @@ class TriGen:
             search.run()
             chosen = _choose(search, set(self.triclusters))
             record: Dict[str, Any] = {"search": index, "evaluations": search._evaluations,
-                                      "seconds": search._seconds}
+                                      "seconds": search._seconds,
+                                      "best_fitnesses": list(search.best_solution_fitnesses)}
             if chosen is None:
                 metagen_logger.warning(f"TriGen search {index} evaluated no tricluster that had not been found "
                                        f"already: the search space has run out of new ones.")
@@ -170,6 +172,7 @@ class TriGen:
                 chosen = Tricluster(chosen.genes, chosen.conditions, chosen.times, fitness=terms["fitness"])
                 record["tricluster"] = {"genes": list(chosen.genes), "conditions": list(chosen.conditions),
                                         "times": list(chosen.times)}
+                record["sizes"] = list(chosen.size)
                 record["fitness"] = terms["fitness"]
                 record["terms"] = terms
                 self.triclusters.append(chosen)

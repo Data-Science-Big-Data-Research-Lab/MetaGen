@@ -1,5 +1,6 @@
-"""TriGen finds planted triclusters: on cubes with two of them, what it finds lies within
-them, far more than random triclusters of the same sizes do."""
+"""What TriGen finds lies within planted triclusters: on cubes with two of them, far more
+of the cells it finds belong to them than with random triclusters of the same sizes. How
+much of each planted tricluster it recovers is not pinned here."""
 import numpy as np
 
 from metagen.framework.rng import set_seed

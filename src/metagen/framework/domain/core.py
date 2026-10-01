@@ -384,6 +384,12 @@ class SubsetDefinition(Base):
         self.__positions: Dict[Any, int] = {element: position for position, element in enumerate(elements)}
         self.__kind: type = type(elements[0])
 
+    def __deepcopy__(self, memo: Dict[int, Any]) -> SubsetDefinition:
+        # A definition never changes once built, so a copy of a solution can share it.
+        # Copying it copied every element, thousands for the genes of a dataset, for
+        # every variable of every child a genetic algorithm breeds.
+        return self
+
     def get_attributes(self) -> SubAttr:
         """
         The subset type ``SB``, the elements, in the order they were given, and the
@@ -445,6 +451,8 @@ class SubsetDefinition(Base):
         # bool or a float for an integer element. The same rules as the numeric
         # definitions: an integer takes any integral but a bool, a real any real number
         # but a bool, which is how an int or a numpy scalar stands for a float element.
+        if type(member) is self.__kind:      # the common case, without the abstract checks below
+            return True
         if issubclass(self.__kind, bool):
             return isinstance(member, bool)
         if isinstance(member, bool) or type(member).__name__ == "bool_":

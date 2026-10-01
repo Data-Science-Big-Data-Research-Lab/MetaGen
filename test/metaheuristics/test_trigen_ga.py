@@ -214,3 +214,27 @@ def test_each_child_mutates_with_the_probability_given_by_one_step(monkeypatch, 
         assert len(calls) == probability * children
     else:
         assert abs(len(calls) / children - probability) < 0.06
+
+
+def test_every_pair_of_parents_is_two_different_individuals(monkeypatch):
+    from metagen.metaheuristics.genetic.genetic_tools import GASolution
+    pairs = []
+    original = GASolution.crossover
+
+    def recording(self, other):
+        pairs.append((id(self), id(other)))
+        return original(self, other)
+
+    monkeypatch.setattr(GASolution, "crossover", recording)
+    _search(generations=5).run()
+    assert pairs and all(first != second for first, second in pairs)
+
+
+def test_a_second_run_starts_a_new_record_of_what_it_evaluated():
+    search = _search(generations=3)
+    search.run()
+    first = dict(search.evaluated)
+    search.tricluster_fitness.found.append(min(first, key=first.__getitem__))
+    search.run()
+    assert all(value == search.tricluster_fitness.evaluate(tricluster)
+               for tricluster, value in search.evaluated.items())

@@ -16,7 +16,8 @@
 """
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Sequence, Tuple, cast
+import numbers
+from typing import Any, Dict, List, Optional, Sequence, Tuple, cast
 
 from metagen.framework import Domain, Solution
 from metagen.framework.rng import get_rng
@@ -193,6 +194,8 @@ class TriGenGA(Metaheuristic):
         return population, min(population, key=Solution.get_fitness)
 
     def _initialize(self) -> Tuple[List[Solution], Solution]:
+        # A new run starts a new record; a resumed one does not come through here.
+        self.evaluated = {}
         result = super()._initialize()
         self._record(self.current_solutions)
         return result
@@ -211,6 +214,17 @@ class TriGenGA(Metaheuristic):
         return self.current_iteration >= self.generations
 
 
+def require_integer(name: str, value: Any) -> None:
+    """
+    Check that a count is an integer: a float such as 10.5 would fail later, or be rounded
+    without a word.
+
+    :raises ValueError: if it is not.
+    """
+    if isinstance(value, bool) or not isinstance(value, numbers.Integral):
+        raise ValueError(f"{name} must be an integer, not {value!r}.")
+
+
 def validate(population_size: int, generations: int, random_fraction: float, selection_rate: float,
              mutation_probability: float) -> None:
     """
@@ -221,6 +235,8 @@ def validate(population_size: int, generations: int, random_fraction: float, sel
 
     :raises ValueError: if a parameter is out of its range.
     """
+    require_integer("population_size", population_size)
+    require_integer("generations", generations)
     if population_size < 4:
         raise ValueError(f"TriGen needs a population of at least 4, not {population_size}.")
     if generations < 1:

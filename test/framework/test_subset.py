@@ -1011,3 +1011,17 @@ def test_the_history_records_the_subset_as_a_list(tmp_path):
     lines = [json.loads(line) for line in path.read_text().splitlines()]
     assert lines and all(isinstance(line["best_solution"]["items"], list) for line in lines
                          if "best_solution" in line)
+
+
+def test_a_copy_of_a_solution_shares_the_definition_of_its_subsets():
+    """A definition never changes, and copying it copied every element, thousands for the
+    genes of a dataset, for every child a genetic algorithm breeds."""
+    domain = Domain()
+    domain.define_subset("genes", list(range(5000)), 2, 20)
+    solution = Solution(domain)
+    before = solution["genes"]
+    clone = copy.deepcopy(solution)
+    assert clone.get("genes").get_definition() is solution.get("genes").get_definition()
+    clone.get("genes").set([2, 3] if before != [2, 3] else [4, 5])
+    assert solution["genes"] == before and clone["genes"] != before
+

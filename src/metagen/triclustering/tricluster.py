@@ -124,6 +124,9 @@ def _positions(axis: str, given: Iterable[int]) -> Tuple[int, ...]:
     except TypeError:
         raise ValueError(f"The {axis} of a tricluster must be a collection of positions, not {given!r}.") from None
     for position in items:
+        if type(position) is int and position >= 0:      # the common case, without the abstract check
+            positions.append(position)
+            continue
         if isinstance(position, bool) or not isinstance(position, numbers.Integral) or position < 0:
             raise ValueError(f"The {axis} of a tricluster must be non-negative integer positions, "
                              f"not {position!r}.")

@@ -107,6 +107,10 @@ class TriclusterFitness:
                  found: Optional[Sequence[Tricluster]] = None) -> None:
         if measure not in _MEASURES:
             raise ValueError(f"measure must be one of {list(_MEASURES)}, not {measure!r}.")
+        if views not in ("distinct", "time", "trlab"):
+            raise ValueError(f"views must be one of ['distinct', 'time', 'trlab'], not {views!r}.")
+        if flat_profiles not in ("exclude", "zero"):
+            raise ValueError(f"flat_profiles must be 'exclude' or 'zero', not {flat_profiles!r}.")
         chosen = dict(WEIGHTS if weights is None else weights)
         if set(chosen) != set(WEIGHTS):
             raise ValueError(f"The weights must be for {sorted(WEIGHTS)}, not {sorted(chosen)}.")
@@ -130,8 +134,9 @@ class TriclusterFitness:
         self.weights: Dict[str, float] = chosen
         self.references: Tuple[int, int, int] = references
         self.found: List[Tricluster] = list(found or [])
-        # Fails early on an unknown choice of views or of flat profiles, not mid-search.
-        self.quality(Tricluster((0, 1), (0, 1), (0, 1)))
+        # The coordinates of the triclusters found as sets, built again only when the
+        # list changes, not on every evaluation.
+        self._found_sets: Tuple[Tuple[Tricluster, ...], List[Tuple[set, set, set]]] = ((), [])
 
     def __call__(self, solution: Solution) -> float:
         """
@@ -173,6 +178,12 @@ class TriclusterFitness:
             return msr3d(self.cube, tricluster)
         return 1.0 - triq(self.cube, tricluster, views=self.views, flat_profiles=self.flat_profiles)
 
+    def _sets_of_found(self) -> List[Tuple[set, set, set]]:
+        current = tuple(self.found)
+        if current != self._found_sets[0]:
+            self._found_sets = (current, [_sets(tricluster) for tricluster in current])
+        return self._found_sets[1]
+
     def terms(self, tricluster: Tricluster) -> Dict[str, float]:
         """
         Every term of the fitness of a tricluster, unweighted, and the fitness: the quality;
@@ -189,17 +200,21 @@ class TriclusterFitness:
         own = (tricluster.genes, tricluster.conditions, tricluster.times)
         for axis, positions, reference in zip(AXES, own, self.references):
             terms[axis] = len(positions) / reference
+        found = self._sets_of_found()
         for index, (axis, positions) in enumerate(zip(AXES, own)):
             mine = set(positions)
-            shared = sum(len(mine & set((other.genes, other.conditions, other.times)[index]))
-                         for other in self.found)
-            terms[f"overlap_{axis}"] = shared / (len(mine) * len(self.found)) if self.found else 0.0
+            shared = sum(len(mine & sets[index]) for sets in found)
+            terms[f"overlap_{axis}"] = shared / (len(mine) * len(found)) if found else 0.0
         weights = self.weights
         total = (weights["quality"] * terms["quality"]
                  + sum(weights[axis] * (1.0 - terms[axis]) for axis in AXES)
                  + sum(weights[f"overlap_{axis}"] * terms[f"overlap_{axis}"] for axis in AXES))
         terms["fitness"] = total / sum(weights.values())
         return terms
+
+
+def _sets(tricluster: Tricluster) -> Tuple[set, set, set]:
+    return set(tricluster.genes), set(tricluster.conditions), set(tricluster.times)
 
 
 def _three(sizes: Sequence[int]) -> Tuple[int, int, int]:

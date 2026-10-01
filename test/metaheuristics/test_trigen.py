@@ -107,6 +107,11 @@ def test_the_history_has_a_line_per_search(tmp_path):
     {"max_sizes": (15, 4)},
     {"measure": "mse"},
     {"size_reference": "cube"},
+    {"n_triclusters": 2.5},
+    {"population_size": 10.5},
+    {"generations": 2.5},
+    {"views": "all", "measure": "msr3d"},
+    {"flat_profiles": "drop"},
 ])
 def test_parameters_out_of_range_are_rejected(arguments):
     with pytest.raises(ValueError):
@@ -120,3 +125,38 @@ def test_the_hierarchy_counts_how_many_triclusters_found_hold_each_coordinate():
         for position, level in enumerate(levels):
             holding = sum(position in (t.genes, t.conditions, t.times)[dimension] for t in triclusters)
             assert level == holding
+
+
+def test_a_search_takes_the_best_new_one_of_its_last_population_before_anything_else():
+    """The best new tricluster evaluated may have been lost from the population; the last
+    population still comes first, and what the search evaluated is the fallback."""
+    from types import SimpleNamespace
+    from metagen.metaheuristics.trigen.trigen import _choose
+
+    class Individual(dict):
+        def __init__(self, tricluster, fitness):
+            super().__init__(genes=tricluster.genes, conditions=tricluster.conditions, times=tricluster.times)
+            self.fitness = fitness
+
+        def get_fitness(self):
+            return self.fitness
+
+    found = Tricluster([0, 1], [0, 1], [0, 1])
+    in_population = Tricluster([2, 3], [0, 1], [0, 1])
+    lost = Tricluster([4, 5], [0, 1], [0, 1])
+    search = SimpleNamespace(current_solutions=[Individual(found, 0.1), Individual(in_population, 0.5)],
+                             evaluated={found: 0.1, in_population: 0.5, lost: 0.2})
+    assert _choose(search, {found}) == in_population
+    search.current_solutions = [Individual(found, 0.1)]
+    assert _choose(search, {found}) == lost
+    assert _choose(search, {found, in_population, lost}) is None
+
+
+def test_the_history_holds_the_sizes_and_the_progress_of_each_search():
+    trigen = _trigen()
+    triclusters = trigen.run()
+    for record, tricluster in zip(trigen.history, triclusters):
+        assert record["sizes"] == list(tricluster.size)
+        progress = record["best_fitnesses"]
+        assert len(progress) == SETTINGS["generations"]
+        assert all(later <= earlier for earlier, later in zip(progress, progress[1:]))
