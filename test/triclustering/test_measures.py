@@ -196,9 +196,9 @@ def test_series_that_share_one_line_over_time_measure_zero_in_the_time_view():
     genes, conditions, times = _grid((6, 3, 5))
     cube = Cube(2.0 * times + 10.0 * genes - 3.0 * conditions)        # parallel lines over time
     whole = Tricluster(range(6), range(3), range(5))
-    assert msl(cube, whole, views="time") == 0.0 and lsl(cube, whole, views="time") == 0.0
-    # Along the genes and the conditions the series are parallel lines too; the angles
-    # there are not exact in floating point, so zero up to rounding.
+    # The angles of equal slopes are not exact in floating point, and how they round
+    # depends on the platform, so zero up to rounding, in every view.
+    assert msl(cube, whole, views="time") < 1e-15 and lsl(cube, whole, views="time") < 1e-15
     assert msl(cube, whole) < 1e-15 and lsl(cube, whole) < 1e-15
 
 
