@@ -18,3 +18,4 @@ costs in evaluations, see :doc:`../choosing/index`.
     mm
     tpe
     cvoa
+    trigen

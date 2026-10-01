@@ -75,8 +75,8 @@ class TriclusterFitness:
         cube, planted = plant((60, 6, 8), [(15, 3, 5)], noise=0.05, seed=0)
         fitness = TriclusterFitness(cube)
         before = fitness.evaluate(planted[0])
-        fitness.found.append(planted[0])
-        print(fitness.evaluate(planted[0]) > before)            # True: it now repeats a found one
+        fitness.found.append(planted[0])                         # now it repeats a tricluster found
+        print(fitness.evaluate(planted[0]) > before)            # True
 
     :param cube: The data.
     :type cube: Cube

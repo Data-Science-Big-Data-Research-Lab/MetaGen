@@ -139,6 +139,20 @@ def test_the_examples_of_the_triclustering_docstrings_run_and_print_what_they_sa
         _printed_as_commented(code, {})
 
 
+@pytest.mark.parametrize("name", ["TriGen", "TriclusterFitness"])
+def test_the_examples_of_the_trigen_docstrings_run_and_print_what_they_say(name, scratch):
+    import metagen.metaheuristics as metaheuristics
+    blocks = _blocks(textwrap.dedent("\n".join(getattr(metaheuristics, name).__doc__.splitlines()[1:])))
+    assert blocks
+    for code in blocks:
+        _printed_as_commented(code, {})
+
+
+def test_the_trigen_page_prints_what_it_says(scratch):
+    for code in _blocks((DOCS / "metaheuristics" / "trigen.rst").read_text()):
+        _printed_as_commented(code, {})
+
+
 def test_the_triclustering_page_prints_what_it_says(scratch):
     for code in _blocks((DOCS / "triclustering" / "index.rst").read_text()):
         _printed_as_commented(code, {})
