@@ -2,6 +2,7 @@
 found, with the fitness it had when it was found, reproducible from a seed."""
 import json
 import logging
+import math
 import subprocess
 import sys
 import textwrap
@@ -9,7 +10,7 @@ import textwrap
 import pytest
 
 from metagen.metaheuristics import TriclusterFitness, TriGen
-from metagen.triclustering import Cube, Tricluster, plant
+from metagen.triclustering import Cube, Tricluster, msl, plant
 
 CUBE, PLANTED = plant((60, 6, 8), [(12, 3, 5), (10, 2, 4)], noise=0.05, seed=0)
 SETTINGS = {"generations": 8, "population_size": 20, "min_sizes": (4, 2, 3), "max_sizes": (15, 4, 6)}
@@ -112,6 +113,7 @@ def test_the_history_has_a_line_per_search(tmp_path):
     {"generations": 2.5},
     {"views": "all", "measure": "msr3d"},
     {"flat_profiles": "drop"},
+    {"growth": "size"},
 ])
 def test_parameters_out_of_range_are_rejected(arguments):
     with pytest.raises(ValueError):
@@ -160,3 +162,59 @@ def test_the_history_holds_the_sizes_and_the_progress_of_each_search():
         progress = record["best_fitnesses"]
         assert len(progress) == SETTINGS["generations"]
         assert all(later <= earlier for earlier, later in zip(progress, progress[1:]))
+
+
+def test_growing_adds_the_coordinates_of_a_block_and_lowers_the_score():
+    """An additive block of 8 genes, 3 conditions and 4 times in noise; growth starts from
+    a corner of it, 2 × 2 × 2, and follows the fitness: it takes in the rest of the block,
+    within the largest sizes, with a fitness no higher. The quality alone, which does
+    not reward size, soon stops: with noise, most coordinates added raise MSL a little."""
+    from metagen.metaheuristics.trigen.trigen import grow
+    cube, (block,) = plant((40, 6, 8), [(8, 3, 4)], noise=0.01, seed=2)
+    start = Tricluster(block.genes[:2], block.conditions[:2], block.times[:2])
+    fitness = TriclusterFitness(cube)
+    scored = []
+
+    def score(tricluster):
+        scored.append(tricluster)
+        return fitness.evaluate(tricluster)
+
+    grown, evaluations = grow(start, score, ((2, 8), (2, 3), (2, 4)), cube.shape)
+    assert evaluations == len(scored)
+    assert grown == block
+    assert fitness.evaluate(grown) <= fitness.evaluate(start)
+    quality = lambda tricluster: msl(cube, tricluster, normalized=True)   # noqa: E731
+    stopped, _ = grow(start, quality, ((2, 8), (2, 3), (2, 4)), cube.shape)
+    assert math.prod(stopped.size) < math.prod(grown.size) and quality(stopped) <= quality(start)
+
+
+def test_a_tricluster_at_its_largest_sizes_does_not_grow():
+    from metagen.metaheuristics.trigen.trigen import grow
+    full = Tricluster(range(4), range(2), range(3))
+    grown, evaluations = grow(full, lambda tricluster: 0.0, ((2, 4), (2, 2), (2, 3)), CUBE.shape)
+    assert grown == full and evaluations == 1
+
+
+def test_growth_starts_from_what_the_search_returns_and_lowers_its_fitness():
+    """The first search is the same with and without growth: what it finds grown holds what
+    it finds as returned, with a fitness no higher."""
+    returned = _trigen(growth=None, n_triclusters=1).run()[0]
+    for growth in ("fitness", "quality"):
+        trigen = _trigen(growth=growth, n_triclusters=1)
+        grown = trigen.run()[0]
+        assert all(set(mine) <= set(theirs) for mine, theirs in zip(
+            (returned.genes, returned.conditions, returned.times), (grown.genes, grown.conditions, grown.times)))
+        assert trigen.history[0]["growth_evaluations"] > 0
+        if growth == "fitness":
+            assert grown.fitness <= returned.fitness
+    trigen = _trigen(growth=None)
+    trigen.run()
+    assert all(record["growth_evaluations"] == 0 for record in trigen.history)
+
+
+def test_a_tricluster_that_grows_into_one_found_is_kept_as_returned(monkeypatch):
+    import metagen.metaheuristics.trigen.trigen as module
+    first = _trigen(growth=None, n_triclusters=1).run()[0]
+    monkeypatch.setattr(module, "grow", lambda tricluster, *rest: (first, 1))
+    triclusters = _trigen(growth="fitness", n_triclusters=2).run()
+    assert triclusters[0] == first and triclusters[1] != first

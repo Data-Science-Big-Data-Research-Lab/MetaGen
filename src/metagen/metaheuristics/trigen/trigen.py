@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import json
 import os
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Set
+from typing import Any, Callable, Dict, List, Literal, Mapping, Optional, Sequence, Set, Tuple
 
 from metagen.framework import Solution
 from metagen.framework.rng import set_seed
@@ -30,6 +30,8 @@ from metagen.triclustering import Cube, Tricluster
 from metagen.triclustering.cube import AXES
 from metagen.triclustering.measures import Views
 from metagen.triclustering.quality import FlatProfiles
+
+Growth = Optional[Literal["fitness", "quality"]]
 
 
 class TriGen:
@@ -46,6 +48,13 @@ class TriGen:
     returns the best of the rest of those it evaluated, and when it evaluated nothing new,
     it returns nothing, and TriGen says so: fewer triclusters than asked for mean the
     search space ran out of new ones.
+
+    The tricluster a search returns then grows: TriGen adds to it, one at a time, the
+    gene, condition or time that leaves its fitness lowest, while that fitness is no
+    higher than the current one and the dimension is below its largest size. With
+    ``growth="quality"`` the same steps follow the quality term instead of the whole
+    fitness, and with ``growth=None`` the tricluster is kept as the search returned it.
+    A tricluster that grows into one already found is kept as the search returned it.
 
     .. code-block:: python
 
@@ -78,7 +87,8 @@ class TriGen:
         each, defaults to (2, 2, 2).
     :type min_sizes: Sequence[int], optional
     :param max_sizes: The most genes, conditions and times of a tricluster, defaults to the
-        size of the cube.
+        size of the cube. The fitness rewards size, so without them a tricluster may take in
+        most of the cube.
     :type max_sizes: Sequence[int], optional
     :param measure: The quality term of the fitness, defaults to ``"msl"``.
     :type measure: str, optional
@@ -94,9 +104,13 @@ class TriGen:
     :param seed: Seed for MetaGen's generators, set once for the whole run, defaults to None.
     :type seed: int or None, optional
     :param history: File the run writes a JSON line to per search: the tricluster found,
-        its sizes, fitness and terms, the best fitness after each generation, and the
-        evaluations and seconds it took. None, the default, writes nothing.
+        its sizes, fitness and terms, the best fitness after each generation, the
+        evaluations and seconds it took, and the evaluations its growth took. None, the
+        default, writes nothing.
     :type history: str or None, optional
+    :param growth: What the tricluster a search returns grows by, ``"fitness"``,
+        ``"quality"`` or None not to grow it, defaults to ``"fitness"``.
+    :type growth: str or None, optional
     :raises ValueError: if a parameter is out of its range.
     """
 
@@ -105,7 +119,8 @@ class TriGen:
                  min_sizes: Sequence[int] = (2, 2, 2), max_sizes: Optional[Sequence[int]] = None,
                  measure: Measure = "msl", views: Views = "distinct", flat_profiles: FlatProfiles = "exclude",
                  weights: Optional[Mapping[str, float]] = None, size_reference: SizeReference = "dataset",
-                 seed: Optional[int] = None, history: Optional[str] = None) -> None:
+                 seed: Optional[int] = None, history: Optional[str] = None,
+                 growth: Growth = "fitness") -> None:
         require_integer("n_triclusters", n_triclusters)
         if n_triclusters < 1:
             raise ValueError(f"TriGen finds at least one tricluster, not {n_triclusters}.")
@@ -118,6 +133,8 @@ class TriGen:
             if not 2 <= low <= high <= size:
                 raise ValueError(f"The sizes of the {axis} must satisfy 2 <= minimum ({low}) <= maximum ({high}) "
                                  f"<= the {size} {axis} of the cube.")
+        if growth not in ("fitness", "quality", None):
+            raise ValueError(f"growth is 'fitness', 'quality' or None, not {growth!r}.")
         self.cube = cube
         self.n_triclusters = n_triclusters
         self.generations = generations
@@ -128,6 +145,18 @@ class TriGen:
         self.sizes: Sizes = ((smallest[0], largest[0]), (smallest[1], largest[1]), (smallest[2], largest[2]))
         self.fitness = TriclusterFitness(cube, measure=measure, views=views, flat_profiles=flat_profiles,
                                          weights=weights, size_reference=size_reference, max_sizes=largest)
+        # Growing is not part of the Java TriGen; it is the node addition of Cheng and
+        # Church taken to three dimensions. Measured in the bench of phase 4b, 30 seeds
+        # (metagen-auditoria/trigen/banco/bloque4_tablas.md and bloque5_informe.md):
+        # growing by the fitness doubles the recovery of planted triclusters (Jaccard
+        # 0.25 -> 0.52, 0.21 -> 0.34, 0.09 -> 0.22, p < 0.01) and the baseline does not
+        # reach it with more generations for the same evaluations: it converges to small,
+        # very coherent pieces near the smallest size, with more precision on P4 and more
+        # TRIQ on yeast than growing. A trade of size for coherence, decided for size,
+        # pending BIOQ. Growing costs evaluations, little on small cubes and up to 25
+        # times the search on yeast (a thousand genes tried per step). Growing against
+        # the starting score instead of the current one drifted to the largest sizes.
+        self.growth = growth
         self.seed = seed
         self.history_file = history
         #: The triclusters found by the last run, in the order they were found.
@@ -159,10 +188,17 @@ class TriGen:
                               random_fraction=self.random_fraction, selection_rate=self.selection_rate,
                               mutation_probability=self.mutation_probability)
             search.run()
-            chosen = _choose(search, set(self.triclusters))
+            found = set(self.triclusters)
+            chosen = _choose(search, found)
             record: Dict[str, Any] = {"search": index, "evaluations": search._evaluations,
                                       "seconds": search._seconds,
-                                      "best_fitnesses": list(search.best_solution_fitnesses)}
+                                      "best_fitnesses": list(search.best_solution_fitnesses),
+                                      "growth_evaluations": 0}
+            if chosen is not None and self.growth is not None:
+                score = self.fitness.evaluate if self.growth == "fitness" else self.fitness.quality
+                grown, record["growth_evaluations"] = grow(chosen, score, self.sizes, self.cube.shape)
+                if grown not in found:
+                    chosen = grown
             if chosen is None:
                 metagen_logger.warning(f"TriGen search {index} evaluated no tricluster that had not been found "
                                        f"already: the search space has run out of new ones.")
@@ -187,6 +223,49 @@ class TriGen:
 
 def _tricluster(solution: Solution) -> Tricluster:
     return Tricluster(solution["genes"], solution["conditions"], solution["times"])
+
+
+def grow(tricluster: Tricluster, score: Callable[[Tricluster], float], sizes: Sizes,
+         shape: Tuple[int, int, int]) -> Tuple[Tricluster, int]:
+    """
+    Grow a tricluster one coordinate at a time: at each step, the gene, condition or time,
+    of a dimension below its largest size, that leaves the score lowest, as long as that
+    score is no higher than the current one. Ties go to the first dimension, then to the
+    first position.
+
+    :param tricluster: The tricluster to grow.
+    :type tricluster: Tricluster
+    :param score: What to keep low, the lower the better.
+    :type score: Callable[[Tricluster], float]
+    :param sizes: The smallest and largest size of each dimension.
+    :type sizes: Sizes
+    :param shape: The shape of the cube.
+    :type shape: Tuple[int, int, int]
+    :return: The grown tricluster, and how many triclusters were scored.
+    :rtype: Tuple[Tricluster, int]
+    """
+    parts = [list(tricluster.genes), list(tricluster.conditions), list(tricluster.times)]
+    current = score(tricluster)
+    evaluations = 1
+    while True:
+        best: Optional[Tuple[float, int, int]] = None
+        for dimension in range(3):
+            if len(parts[dimension]) >= sizes[dimension][1]:
+                continue
+            held = set(parts[dimension])
+            for position in range(shape[dimension]):
+                if position in held:
+                    continue
+                trial = list(parts)
+                trial[dimension] = parts[dimension] + [position]
+                value = score(Tricluster(trial[0], trial[1], trial[2]))
+                evaluations += 1
+                if value <= current and (best is None or value < best[0]):
+                    best = (value, dimension, position)
+        if best is None:
+            return Tricluster(parts[0], parts[1], parts[2]), evaluations
+        current = best[0]
+        parts[best[1]].append(best[2])
 
 
 def _choose(search: TriGenGA, found: Set[Tricluster]) -> Optional[Tricluster]:
