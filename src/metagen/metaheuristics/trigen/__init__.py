@@ -15,5 +15,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 from .fitness import TriclusterFitness
+from .trigen import TriGen
+from .trigen_ga import TriGenGA
 
-__all__ = ["TriclusterFitness"]
+__all__ = ["TriGen", "TriGenGA", "TriclusterFitness"]
