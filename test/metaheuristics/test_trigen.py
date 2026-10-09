@@ -114,6 +114,8 @@ def test_the_history_has_a_line_per_search(tmp_path):
     {"views": "all", "measure": "msr3d"},
     {"flat_profiles": "drop"},
     {"growth": "size"},
+    {"scoring": "pareto"},
+    {"scoring": "significance", "weights": {"quality": 1.0}},
 ])
 def test_parameters_out_of_range_are_rejected(arguments):
     with pytest.raises(ValueError):
@@ -215,6 +217,6 @@ def test_growth_starts_from_what_the_search_returns_and_lowers_its_fitness():
 def test_a_tricluster_that_grows_into_one_found_is_kept_as_returned(monkeypatch):
     import metagen.metaheuristics.trigen.trigen as module
     first = _trigen(growth=None, n_triclusters=1).run()[0]
-    monkeypatch.setattr(module, "grow", lambda tricluster, *rest: (first, 1))
+    monkeypatch.setattr(module, "grow", lambda tricluster, *rest, **options: (first, 1))
     triclusters = _trigen(growth="fitness", n_triclusters=2).run()
     assert triclusters[0] == first and triclusters[1] != first

@@ -19,7 +19,10 @@ from __future__ import annotations
 import math
 from typing import Dict, List, Literal, Mapping, Optional, Sequence, Tuple
 
+import numpy as np
+
 from metagen.framework import Solution
+from metagen.framework.rng import get_numpy_rng
 from metagen.triclustering import Cube, Tricluster, lsl, msl, msr3d, triq
 from metagen.triclustering.cube import AXES
 from metagen.triclustering.measures import Views
@@ -31,6 +34,18 @@ Measure = Literal["msl", "lsl", "msr3d", "triq"]
 #: What the size of a tricluster is measured against.
 SizeReference = Literal["dataset", "max"]
 
+#: How the fitness scores a tricluster: a weighted mean of its terms, or its significance.
+Scoring = Literal["weighted", "significance"]
+
+# The model of chance: the quality of random triclusters is measured at NULL_SIZES sizes
+# drawn log-uniformly over every size the cube allows, NULL_SAMPLES triclusters each, and
+# its mean and the logarithm of its deviation are fitted as linear in the logarithms of
+# the three sizes. Measured in the phase 4c probes (metagen-auditoria/trigen/mediciones/
+# sonda_significacion3.py): an error of about 0.1 deviations against 300 samples per
+# size, in under a second on yeast.
+NULL_SIZES = 30
+NULL_SAMPLES = 60
+
 #: The weights of the fitness: its quality, the size of each dimension and the overlap of
 #: each dimension with the triclusters already found.
 WEIGHTS: Mapping[str, float] = {"quality": 0.8, "genes": 0.04, "conditions": 0.03, "times": 0.03,
@@ -41,8 +56,11 @@ _MEASURES = ("msl", "lsl", "msr3d", "triq")
 
 class TriclusterFitness:
     """
-    The fitness TriGen minimizes: how coherent a tricluster is, how small, and how much it
-    repeats of the triclusters already found, as a weighted mean of seven terms,
+    The fitness TriGen minimizes. It scores a tricluster in one of two ways.
+
+    **Weighted**, ``scoring="weighted"``, the default: how coherent a tricluster is, how
+    small, and how much it repeats of the triclusters already found, as a weighted mean of
+    seven terms,
 
     .. math::
 
@@ -60,8 +78,34 @@ class TriclusterFitness:
       been found: it penalizes overlap.
 
     The weights are 0.8 for the quality, 0.04, 0.03 and 0.03 for the sizes of the genes,
-    conditions and times, and 0.04, 0.03 and 0.03 for their overlaps. ``found`` is the list
-    of triclusters already found; TriGen adds to it between one search and the next.
+    conditions and times, and 0.04, 0.03 and 0.03 for their overlaps.
+
+    **By significance**, ``scoring="significance"``: how unlikely the quality of the
+    tricluster is among random triclusters of its same size in the cube,
+
+    .. math::
+
+        z = \\frac{\\mu(|G|, |C|, |T|) - Q}{\\sigma(|G|, |C|, |T|)}, \\qquad
+        FF = -\\left(z(X) - \\max\\left(0, \\max_s z(X \\cap X_s)\\right)\\right),
+
+    where :math:`\\mu` and :math:`\\sigma` are the mean and the deviation of the quality of
+    random triclusters of that size, and :math:`X \\cap X_s` is the tricluster of the
+    genes, conditions and times that :math:`X` shares with the tricluster found
+    :math:`X_s`, left out when it shares fewer than two in a dimension. There is no size
+    term and there are no weights: a part of a pattern scores lower than the whole pattern,
+    because the same coherence over less data is likelier by chance, and adding coordinates
+    that do not follow the pattern brings the quality back towards that of chance. Only the
+    significance not already found counts: a tricluster found, or one found with other
+    coordinates added, scores no better than 0, while a new pattern that only shares some
+    conditions or times with one found keeps its whole score.
+
+    The model of chance is fitted from random triclusters drawn with MetaGen's generator
+    over every size the cube allows, so it does not depend on the sizes TriGen is bounded
+    to; TriGen fits it at the start of each run. It follows MSL, the default quality,
+    closely; with ``"msr3d"`` it can be off by a few deviations at some sizes.
+
+    ``found`` is the list of triclusters already found; TriGen adds to it between one
+    search and the next.
 
     It is called on a solution with three subset variables, ``genes``, ``conditions`` and
     ``times``, and on a :py:class:`~metagen.triclustering.Tricluster` with
@@ -70,13 +114,17 @@ class TriclusterFitness:
     .. code-block:: python
 
         from metagen.metaheuristics import TriclusterFitness
-        from metagen.triclustering import plant
+        from metagen.triclustering import Tricluster, plant
 
         cube, planted = plant((60, 6, 8), [(15, 3, 5)], noise=0.05, seed=0)
         fitness = TriclusterFitness(cube)
         before = fitness.evaluate(planted[0])
         fitness.found.append(planted[0])                         # now it repeats a tricluster found
         print(fitness.evaluate(planted[0]) > before)            # True
+
+        significance = TriclusterFitness(cube, scoring="significance")
+        whole, part = planted[0], Tricluster(planted[0].genes[:5], planted[0].conditions, planted[0].times)
+        print(significance.significance(whole) > significance.significance(part))   # True
 
     :param cube: The data.
     :type cube: Cube
@@ -97,14 +145,22 @@ class TriclusterFitness:
     :type max_sizes: Sequence[int], optional
     :param found: The triclusters already found, defaults to none.
     :type found: Sequence[Tricluster], optional
+    :param scoring: ``"weighted"`` or ``"significance"``, defaults to ``"weighted"``. The
+        weights and the size reference only apply to ``"weighted"``.
+    :type scoring: str, optional
     :raises ValueError: if an option is unknown, the weights are not the seven, or one is
-        negative or not finite, or the maximum sizes are missing or do not fit the cube.
+        negative or not finite, the maximum sizes are missing or do not fit the cube, or
+        weights are given with ``scoring="significance"``.
     """
 
     def __init__(self, cube: Cube, measure: Measure = "msl", views: Views = "distinct",
                  flat_profiles: FlatProfiles = "exclude", weights: Optional[Mapping[str, float]] = None,
                  size_reference: SizeReference = "dataset", max_sizes: Optional[Sequence[int]] = None,
-                 found: Optional[Sequence[Tricluster]] = None) -> None:
+                 found: Optional[Sequence[Tricluster]] = None, scoring: Scoring = "weighted") -> None:
+        if scoring not in ("weighted", "significance"):
+            raise ValueError(f"scoring must be 'weighted' or 'significance', not {scoring!r}.")
+        if scoring == "significance" and weights is not None:
+            raise ValueError("The weights only apply to scoring='weighted'.")
         if measure not in _MEASURES:
             raise ValueError(f"measure must be one of {list(_MEASURES)}, not {measure!r}.")
         if views not in ("distinct", "time", "trlab"):
@@ -134,6 +190,9 @@ class TriclusterFitness:
         self.weights: Dict[str, float] = chosen
         self.references: Tuple[int, int, int] = references
         self.found: List[Tricluster] = list(found or [])
+        self.scoring = scoring
+        # The fitted model of chance: coefficients of the mean and of the log deviation.
+        self._chance: Optional[Tuple[np.ndarray, np.ndarray]] = None
         # The coordinates of the triclusters found as sets, built again only when the
         # list changes, not on every evaluation.
         self._found_sets: Tuple[Tuple[Tricluster, ...], List[Tuple[set, set, set]]] = ((), [])
@@ -178,6 +237,52 @@ class TriclusterFitness:
             return msr3d(self.cube, tricluster)
         return 1.0 - triq(self.cube, tricluster, views=self.views, flat_profiles=self.flat_profiles)
 
+    def fit_chance(self) -> None:
+        """
+        Fit the model of chance of ``scoring="significance"``, drawing random triclusters
+        with MetaGen's generator, so a seed set before makes it reproducible. TriGen fits it
+        at the start of each run. Used on its own, the first significance asked for fits it
+        if it has not been fitted; fit it before handing the fitness to an algorithm that
+        evaluates in other processes, which would otherwise each fit their own.
+        """
+        rng = get_numpy_rng()
+        shape = self.cube.shape
+        sizes = [tuple(int(round(math.exp(rng.uniform(math.log(2), math.log(extent))))) for extent in shape)
+                 for _ in range(NULL_SIZES)]
+        means, deviations = [], []
+        for size in sizes:
+            values = []
+            for _ in range(NULL_SAMPLES):
+                genes, conditions, times = (rng.choice(extent, count, replace=False)
+                                            for extent, count in zip(shape, size))
+                values.append(self.quality(Tricluster(genes, conditions, times)))
+            means.append(float(np.mean(values)))
+            deviations.append(max(float(np.std(values)), 1e-12))
+        design = np.column_stack([np.ones(len(sizes))] + [np.log([size[axis] for size in sizes]) for axis in range(3)])
+        self._chance = (np.linalg.lstsq(design, np.array(means), rcond=None)[0],
+                        np.linalg.lstsq(design, np.log(deviations), rcond=None)[0])
+
+    def significance(self, tricluster: Tricluster, quality: Optional[float] = None) -> float:
+        """
+        How many deviations the quality of a tricluster is better than that of random
+        triclusters of its same size in the cube, z: around 0 for a tricluster no better
+        than chance, and higher the more unlikely its coherence is by chance.
+
+        :param tricluster: The tricluster.
+        :type tricluster: Tricluster
+        :param quality: Its quality term, if already known.
+        :type quality: float, optional
+        :return: Its significance, z.
+        :rtype: float
+        """
+        if self._chance is None:
+            self.fit_chance()
+        assert self._chance is not None
+        mean, deviation = self._chance
+        row: np.ndarray = np.array([1.0, *np.log(tricluster.size)])
+        value = self.quality(tricluster) if quality is None else quality
+        return (float(row @ mean) - value) / float(np.exp(row @ deviation))
+
     def _sets_of_found(self) -> List[Tuple[set, set, set]]:
         current = tuple(self.found)
         if current != self._found_sets[0]:
@@ -189,7 +294,9 @@ class TriclusterFitness:
         Every term of the fitness of a tricluster, unweighted, and the fitness: the quality;
         the size of each dimension as a share of its reference (``"genes"``,
         ``"conditions"``, ``"times"``); its overlap with the triclusters found in each
-        dimension (``"overlap_genes"``, ...); and ``"fitness"``.
+        dimension (``"overlap_genes"``, ...); with ``scoring="significance"``, its
+        significance, ``"z"``, and the largest significance it shares with a tricluster
+        found, ``"z_found"``; and ``"fitness"``.
 
         :param tricluster: The tricluster.
         :type tricluster: Tricluster
@@ -205,12 +312,34 @@ class TriclusterFitness:
             mine = set(positions)
             shared = sum(len(mine & sets[index]) for sets in found)
             terms[f"overlap_{axis}"] = shared / (len(mine) * len(found)) if found else 0.0
+        if self.scoring == "significance":
+            # Only what is new counts. Scaling z by the overlap instead, -z * (1 - O),
+            # scored the tricluster found padded with noise better than the tricluster
+            # found itself (review of 2 October 2026; SPEC-fase4c-significacion.md, §14):
+            # the noise lowers O faster than it lowers z.
+            terms["z"] = self.significance(tricluster, terms["quality"])
+            terms["z_found"] = max([0.0] + [self.significance(shared) for shared in
+                                            (_shared(tricluster, found) for found in self.found)
+                                            if shared is not None])
+            terms["fitness"] = -(terms["z"] - terms["z_found"])
+            return terms
         weights = self.weights
         total = (weights["quality"] * terms["quality"]
                  + sum(weights[axis] * (1.0 - terms[axis]) for axis in AXES)
                  + sum(weights[f"overlap_{axis}"] * terms[f"overlap_{axis}"] for axis in AXES))
         terms["fitness"] = total / sum(weights.values())
         return terms
+
+
+def _shared(tricluster: Tricluster, other: Tricluster) -> Optional[Tricluster]:
+    """The tricluster of the coordinates two triclusters share, or None if they share
+    fewer than two in a dimension."""
+    genes, conditions, times = (sorted(set(mine) & set(theirs)) for mine, theirs in
+                                zip((tricluster.genes, tricluster.conditions, tricluster.times),
+                                    (other.genes, other.conditions, other.times)))
+    if min(len(genes), len(conditions), len(times)) < 2:
+        return None
+    return Tricluster(genes, conditions, times)
 
 
 def _sets(tricluster: Tricluster) -> Tuple[set, set, set]:
