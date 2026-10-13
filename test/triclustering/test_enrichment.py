@@ -302,6 +302,24 @@ def test_the_synonyms_of_a_gene_do_not_annotate(local):
     assert local.enrich(["g15", "g16"], POPULATION).terms == ()
 
 
+def test_with_synonyms_a_gene_is_also_found_by_its_identifier_and_its_synonyms(tmp_path):
+    """g15 and g16 are synonyms of g5, and ID_g6 the identifier of g6. "shared" is a synonym
+    of two genes: it answers to neither."""
+    (tmp_path / "go.obo").write_text(OBO)
+    (tmp_path / "genes.gaf").write_text(GAF + _gaf_line("g1", "GO:0000003", synonyms="shared")
+                                        + _gaf_line("g7", "GO:0000005", synonyms="shared"))
+    population = POPULATION + ["ID_g6", "shared"]
+    engine = LocalGO(str(tmp_path / "go.obo"), str(tmp_path / "genes.gaf"), synonyms=True)
+    terms = _by_id(engine.enrich(["g15", "g16", "ID_g6"], population))
+    assert terms["GO:0000004"].study_count == 2 and terms["GO:0000006"].study_count == 1
+    # In the population: g5 and its two synonyms; a symbol keeps its own annotations.
+    assert terms["GO:0000004"].population_count == 3
+    assert engine.enrich(["shared", "g17"], population).terms == ()
+    assert _by_id(engine.enrich(["g1"], population))["GO:0000003"].population_count == 5
+    plain = LocalGO(str(tmp_path / "go.obo"), str(tmp_path / "genes.gaf"))
+    assert plain.enrich(["g15", "g16", "ID_g6"], population).terms == ()
+
+
 def test_the_study_has_to_be_within_the_population(local):
     with pytest.raises(ValueError, match="not in the population"):
         local.enrich(["g1", "elsewhere"], POPULATION)

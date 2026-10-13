@@ -112,7 +112,7 @@ For gene expression data, :py:func:`~metagen.triclustering.bioq`, the **biologic
 :py:func:`~metagen.triclustering.enrich` computes the analysis of a tricluster with an engine, and needs the cube to carry the names of its genes, as the organism's gene symbols:
 
 * :py:class:`~metagen.triclustering.GProfiler`, the default choice, asks the g:Profiler web service, which keeps its annotations up to date and reports their version with every result. ``organism`` takes g:Profiler's names, such as ``"hsapiens"``, ``"mmusculus"`` or ``"scerevisiae"``, and ``cache_dir`` keeps each answer on disk so that the same analysis is not asked twice.
-* :py:class:`~metagen.triclustering.LocalGO` computes the analysis without a connection, from an ontology file and an annotation file of the organism. Those files have to be kept up to date by hand: the current ones are at https://current.geneontology.org. It counts every gene of the cube as the population, where g:Profiler counts those it can annotate, so their p-values differ.
+* :py:class:`~metagen.triclustering.LocalGO` computes the analysis without a connection, from an ontology file and an annotation file of the organism. Those files have to be kept up to date by hand: the current ones are at https://current.geneontology.org. It counts every gene of the cube as the population, where g:Profiler counts those it can annotate, so their p-values differ. With ``synonyms=True`` it also finds a gene by its identifier or its synonyms, which datasets named by systematic names, such as those of yeast, need.
 * :py:func:`~metagen.triclustering.ontologizer_table` reads a table already computed by Ontologizer.
 
 .. code-block:: python

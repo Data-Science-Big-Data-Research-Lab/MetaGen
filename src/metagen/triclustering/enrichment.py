@@ -497,6 +497,11 @@ class LocalGO:
     :type obo: str
     :param gaf: The annotation file, unzipped.
     :type gaf: str
+    :param synonyms: Whether a gene that is not the symbol of any gene of the annotation
+        file is also looked up by its identifier and by its synonyms, taking the gene only
+        when a single one answers to the name; defaults to False. Datasets that name their
+        genes by systematic names, such as those of yeast (``YAL001C``), need it.
+    :type synonyms: bool, optional
     :raises ValueError: if the ontology file holds no terms, or the annotation file no
         annotation to them.
     """
@@ -508,13 +513,14 @@ class LocalGO:
     # 5a (metagen-auditoria/trigen/fase5/informe_5a.md): from the files of 2024 to those of
     # 2026, the significant terms of the same analysis agree by 0.81 (Jaccard, median).
 
-    def __init__(self, obo: str, gaf: str) -> None:
+    def __init__(self, obo: str, gaf: str, synonyms: bool = False) -> None:
         self.obo = obo
         self.gaf = gaf
+        self.synonyms = synonyms
         self._names, self._parents, alternatives, ontology_version = _read_obo(obo)
         if not self._parents:
             raise ValueError(f"{obo} holds no terms: is it an ontology in the OBO format?")
-        self._annotations, annotation_version = _read_gaf(gaf, self._parents, alternatives)
+        self._annotations, self._other_names, annotation_version = _read_gaf(gaf, self._parents, alternatives)
         if not self._annotations:
             raise ValueError(f"{gaf} holds no annotation to the terms of {obo}: is it an annotation file in "
                              f"the GAF format, of that ontology?")
@@ -558,7 +564,12 @@ class LocalGO:
     def _terms(self, gene: str) -> Set[str]:
         if gene not in self._closure:
             closure: Set[str] = set()
-            for term in self._annotations.get(gene, ()):
+            symbol = gene
+            if self.synonyms and gene not in self._annotations:
+                answering = self._other_names.get(gene, ())
+                if len(answering) == 1:
+                    symbol = next(iter(answering))
+            for term in self._annotations.get(symbol, ()):
                 closure |= self._upwards(term)
             if closure:
                 closure.add(_ROOT)
@@ -640,11 +651,12 @@ def _read_obo(path: str) -> Tuple[Dict[str, str], Dict[str, Set[str]], Dict[str,
 
 
 def _read_gaf(path: str, known: Dict[str, Set[str]],
-              alternatives: Dict[str, str]) -> Tuple[Dict[str, Set[str]], str]:
+              alternatives: Dict[str, str]) -> Tuple[Dict[str, Set[str]], Dict[str, Set[str]], str]:
     """The terms annotated to each gene symbol, leaving out NOT annotations and terms the
-    ontology does not hold, and the date of the file. An annotation to an alternative
-    identifier is one to its term."""
+    ontology does not hold; the symbols that answer to each identifier and synonym; and
+    the date of the file. An annotation to an alternative identifier is one to its term."""
     annotations: Dict[str, Set[str]] = defaultdict(set)
+    other_names: Dict[str, Set[str]] = defaultdict(set)
     version = ""
     with _open_text(path) as handle:
         for line in handle:
@@ -658,7 +670,12 @@ def _read_gaf(path: str, known: Dict[str, Set[str]],
             term = alternatives.get(fields[4], fields[4])
             if term in known:
                 annotations[fields[2]].add(term)
-    return dict(annotations), version
+                other_names[fields[1]].add(fields[2])
+                if len(fields) > 10:
+                    for synonym in fields[10].split("|"):
+                        if synonym:
+                            other_names[synonym].add(fields[2])
+    return dict(annotations), dict(other_names), version
 
 
 # --- Ontologizer tables ----------------------------------------------------------------------
