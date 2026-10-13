@@ -16,15 +16,19 @@
 """
 from __future__ import annotations
 
+import datetime
 import json
 import os
+import time
 from typing import Any, Callable, Dict, List, Literal, Mapping, Optional, Sequence, Set, Tuple
 
 from metagen.framework import Solution
 from metagen.framework.rng import set_seed
 from metagen.logging.metagen_logger import metagen_logger
-from metagen.metaheuristics.trigen.fitness import Measure, Scoring, SizeReference, TriclusterFitness
+from metagen.metaheuristics.trigen.fitness import (NULL_SAMPLES, NULL_SIZES, Measure, Scoring, SizeReference,
+                                                   TriclusterFitness)
 from metagen.metaheuristics.trigen.population import DataHierarchy, Sizes
+from metagen.metaheuristics.trigen.results import TriGenResult, _plain
 from metagen.metaheuristics.trigen.trigen_ga import TriGenGA, require_integer, validate
 from metagen.triclustering import Cube, Tricluster
 from metagen.triclustering.cube import AXES
@@ -180,8 +184,15 @@ class TriGen:
         # With growth="quality" the quality alone improves as the tricluster shrinks, so
         # pruning by it ends every tricluster at the smallest sizes.
         self.pruning = (scoring == "significance" and growth == "fitness") if pruning is None else bool(pruning)
+        self.size_reference = size_reference
         self.seed = seed
         self.history_file = history
+        #: The seconds the last run took.
+        self.seconds = 0.0
+        #: Whether the last run reached its end.
+        self.finished = False
+        #: The configuration and the date the last run started with; None before any run.
+        self.started: Optional[Dict[str, Any]] = None
         #: The triclusters found by the last run, in the order they were found.
         self.triclusters: List[Tricluster] = []
         #: A record per search of the last run, as written to the history file.
@@ -197,6 +208,16 @@ class TriGen:
             when it was found, against the triclusters found before it.
         :rtype: List[Tricluster]
         """
+        clock = time.perf_counter()
+        self.seconds, self.finished = 0.0, False
+        self.started = {"configuration": self.configuration(), "chance_evaluations": 0,
+                        "date": datetime.datetime.now().astimezone().isoformat(timespec="seconds")}
+        try:
+            return self._run()
+        finally:
+            self.seconds = time.perf_counter() - clock
+
+    def _run(self) -> List[Tricluster]:
         if self.seed is not None:
             set_seed(self.seed)
         if self.history_file is not None and os.path.exists(self.history_file):
@@ -207,6 +228,8 @@ class TriGen:
         # driver and not lazily inside an evaluation: the same seed gives the same run.
         if self.fitness.scoring == "significance":
             self.fitness.fit_chance()
+            if self.started is not None:
+                self.started["chance_evaluations"] = NULL_SIZES * NULL_SAMPLES
         self.triclusters = []
         self.history = []
         for index in range(self.n_triclusters):
@@ -246,7 +269,52 @@ class TriGen:
             if self.history_file is not None:
                 with open(self.history_file, "a") as handle:
                     handle.write(json.dumps(record) + "\n")
+        self.finished = True
         return list(self.triclusters)
+
+    def configuration(self) -> Dict[str, Any]:
+        """
+        The arguments this TriGen was built with, all but the cube and the history file,
+        by name and as plain values: a TriGen built with them on the same cube is this one.
+
+        :return: The configuration.
+        :rtype: Dict[str, Any]
+        """
+        return _plain({"n_triclusters": self.n_triclusters, "generations": self.generations,
+                "population_size": self.population_size, "random_fraction": self.random_fraction,
+                "selection_rate": self.selection_rate, "mutation_probability": self.mutation_probability,
+                "min_sizes": [low for low, _ in self.sizes], "max_sizes": [high for _, high in self.sizes],
+                "measure": self.fitness.measure, "views": self.fitness.views,
+                "flat_profiles": self.fitness.flat_profiles,
+                "weights": None if self.fitness.scoring == "significance" else dict(self.fitness.weights),
+                "size_reference": self.size_reference, "seed": self.seed, "growth": self.growth,
+                "scoring": self.fitness.scoring, "pruning": self.pruning})
+
+    def result(self, label: Optional[str] = None) -> TriGenResult:
+        """
+        The result of the last run, with all it takes to keep it and to run it again. Of a
+        run cut short, it is what its searches had found, and says it is not complete.
+
+        :param label: A free label for the data, such as the name of the dataset.
+        :type label: str, optional
+        :return: The result.
+        :rtype: TriGenResult
+        :raises ValueError: if this TriGen has not run.
+        """
+        return TriGenResult.from_run(self, label)
+
+    def save(self, path: str, label: Optional[str] = None) -> None:
+        """
+        Save the result of the last run to a JSON file; :py:meth:`TriGenResult.load` reads
+        it back.
+
+        :param path: The file.
+        :type path: str
+        :param label: A free label for the data, such as the name of the dataset.
+        :type label: str, optional
+        :raises ValueError: if this TriGen has not run.
+        """
+        self.result(label).save(path)
 
 
 def _tricluster(solution: Solution) -> Tricluster:

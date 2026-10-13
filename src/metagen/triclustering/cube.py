@@ -16,6 +16,7 @@
 """
 from __future__ import annotations
 
+import hashlib
 from typing import TYPE_CHECKING, Any, Optional, Sequence, Tuple
 
 import numpy as np
@@ -155,6 +156,16 @@ class Cube:
     def times(self) -> Tuple[Any, ...]:
         """The names of the times."""
         return self._names[2]
+
+    @property
+    def fingerprint(self) -> str:
+        """A fingerprint of the shape and the values, the same for two cubes that hold the
+        same data and, in practice, for no others: the SHA-256 of the shape and of the
+        values as 64-bit floats. The names do not count."""
+        digest = hashlib.sha256(repr(self.shape).encode("ascii"))
+        # Adding zero turns -0.0 into 0.0: two cubes with equal values share a fingerprint.
+        digest.update(np.ascontiguousarray(self._values + 0.0, dtype="<f8").tobytes())
+        return digest.hexdigest()
 
     def subcube(self, tricluster: Tricluster) -> np.ndarray:
         """

@@ -69,11 +69,43 @@ With the significance, growing by the fitness also prunes by default (``pruning`
 
 The significance measures how unlikely a coherence is, not how strong: on data where many genes follow a broad, weak common trend, it can favor large triclusters of moderate coherence over small, tightly coherent ones. The model of chance is fitted at the start of each run from random triclusters, drawn with MetaGen's generator, so a seed reproduces it; it takes about two thousand evaluations of the quality measure. It follows MSL, the default quality, closely; with MSR3D it can be off by a few deviations at some sizes, so MSL is the measure to use with the significance.
 
+Saving a run
+------------
+
+``trigen.save(path)`` writes the result of a run to a JSON file: the triclusters, with the positions and the names of their genes, conditions and times and the terms of their fitness; the configuration and the seed; the versions, the platform and the date; the progress, the evaluations and the seconds of each search; whether the run reached its end; and a fingerprint of the data. Names that are neither text nor numbers, such as dates, are kept as their text. The file says the name and the version of its format, and holds neither the data nor a path to them, so it can be moved and read on its own, from any language.
+
+:py:class:`~metagen.metaheuristics.TriGenResult` reads it back. ``matches(cube)`` tells whether a cube holds the data the run worked on, by its fingerprint, and ``trigen(cube)`` builds a TriGen with the configuration of the run, to run it again. ``to_csv(path)`` writes the triclusters as a long table, a row per coordinate with its tricluster, its dimension, its position and its name.
+
+.. code-block:: python
+
+    from metagen.metaheuristics import TriGen, TriGenResult
+    from metagen.triclustering import Cube, plant
+
+    data, planted = plant((60, 6, 8), [(12, 3, 5)], noise=0.05, seed=0)
+    cube = Cube(data.values, genes=[f"gene{index}" for index in range(60)])
+    trigen = TriGen(cube, n_triclusters=2, generations=10, population_size=20,
+                    min_sizes=(4, 2, 3), max_sizes=(15, 4, 6), seed=0)
+    trigen.run()
+    trigen.save("run.json", label="planted example")
+
+    result = TriGenResult.load("run.json")
+    print(result.triclusters == trigen.triclusters)            # True
+    print(result.data["label"], result.matches(cube))          # planted example True
+    print(result.configuration["generations"], result.configuration["seed"])   # 10 0
+    print(result.names[0]["genes"][:3])                        # ['gene0', 'gene1', 'gene6']
+    print(result.trigen(cube).run() == result.triclusters)     # True
+    result.to_csv("triclusters.csv")
+
+Quality and enrichment measures are computed from a result, not kept in it: the file of a run stays the same however it is evaluated afterwards. The ``history`` file, a line per search as it ends, remains the record to look at while a long run is under way.
+
 Reference
 ---------
 
 .. autoclass:: metagen.metaheuristics.TriGen
-    :members: run
+    :members: run, save, result, configuration
+
+.. autoclass:: metagen.metaheuristics.TriGenResult
+    :members: load, save, matches, trigen, to_csv, from_run
 
 .. autoclass:: metagen.metaheuristics.TriclusterFitness
     :members: evaluate, terms, quality, significance, fit_chance
