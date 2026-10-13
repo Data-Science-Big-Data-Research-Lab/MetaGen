@@ -175,7 +175,7 @@ def _level(p: float, bounds: Tuple[float, ...]) -> int:
     return len(bounds) + 1
 
 
-def bioq(enrichment: Enrichment, bonus: float = 0.0, adjusted: bool = True, threshold: float = 1e-40,
+def bioq(enrichment: Enrichment, bonus: float = 10.0, adjusted: bool = True, threshold: float = 1e-40,
          base: float = 10.0, step: float = 1.0, difference: float = 10.0, alpha: Optional[float] = None) -> float:
     """
     The biological quality of a tricluster (BIOQ), from the enrichment of its genes: the
@@ -190,9 +190,9 @@ def bioq(enrichment: Enrichment, bonus: float = 0.0, adjusted: bool = True, thre
     :math:`s / b^l` is not below the threshold, and the last level, :math:`L`, those down
     to 0; :math:`w_l = 1 + d\\,(l - 1)`; :math:`\\kappa_l` is the share of the terms in
     level :math:`l`; and :math:`l_b` is the level of the most significant term. With the
-    defaults, :math:`s = 1`, :math:`b = 10`, :math:`d = 10` and a threshold of
-    :math:`10^{-40}`, there are 41 levels, the last for the p-values up to
-    :math:`10^{-40}`.
+    defaults, :math:`s = 1`, :math:`b = 10`, :math:`d = 10`, a threshold of
+    :math:`10^{-40}` and :math:`V_{bonus} = 10`, there are 41 levels, the last for the
+    p-values up to :math:`10^{-40}`.
 
     Since most terms of an analysis are not significant, BIOQ is usually small, between
     :math:`10^{-5}` and :math:`10^{-3}`. Two options make it use more of its range: a
@@ -205,12 +205,12 @@ def bioq(enrichment: Enrichment, bonus: float = 0.0, adjusted: bool = True, thre
 
         terms = (Term("GO:1", "a", 1e-12), Term("GO:2", "b", 0.03), Term("GO:3", "c", 0.6))
         enrichment = Enrichment(terms, engine="example", version="", study_size=20, population_size=5000)
-        print(round(bioq(enrichment), 6))                                    # 0.033066
-        print(round(bioq(enrichment, threshold=1e-20, alpha=0.05), 6))       # 0.191066
+        print(round(bioq(enrichment), 6))                                    # 0.033653
+        print(round(bioq(enrichment, threshold=1e-20, alpha=0.05), 6))       # 0.192968
 
     :param enrichment: The enrichment of the genes of the tricluster.
     :type enrichment: Enrichment
-    :param bonus: :math:`V_{bonus}`, not negative, defaults to 0.
+    :param bonus: :math:`V_{bonus}`, not negative, defaults to 10.
     :type bonus: float, optional
     :param adjusted: Whether to score the adjusted p-values, defaults to True; False scores
         those before the correction, when the engine gives them.
@@ -236,10 +236,12 @@ def bioq(enrichment: Enrichment, bonus: float = 0.0, adjusted: bool = True, thre
     :raises ValueError: if ``adjusted=False`` and the engine gives no p-values before the
         correction, if a p-value is not in [0, 1], or if a parameter is out of its range.
     """
-    # TrLab scored with a bonus of 10 (BIOQ.java passes its base as the bonus): bonus=10
-    # reproduces its BIOQ exactly from its Ontologizer tables (metagen-auditoria/trigen/
-    # fase5/informe_5a.md). Its threshold, base, step and difference were read from a file
-    # but had no effect, the levels being built once before.
+    # The bonus is 10, as TrLab scored (BIOQ.java) and as the values published with TRIQ
+    # were computed: its smallest, 0.000728, is (1 + 1 + 10) / 16492 (metagen-auditoria/
+    # trigen/fase5/informe_decision_bioq.md, section 4). With it, bioq reproduces the BIOQ
+    # of TrLab exactly from its Ontologizer tables (fase5/informe_5a.md). TrLab's threshold,
+    # base, step and difference were read from a file but had no effect, the levels being
+    # built once before.
     # A p-value of 0 counts in the last level and can be the best term. TrLab dropped it
     # from the levels, and the bonus with it when it was the best (T-15, metagen-auditoria/
     # trigen/HALLAZGOS.md); none of its historical tables holds one.

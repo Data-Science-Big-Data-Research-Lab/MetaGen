@@ -131,16 +131,19 @@ def test_p_values_out_of_range_and_a_negative_bonus_are_rejected(p_values, bonus
 
 
 def test_bioq_is_the_score_by_levels_over_the_largest_possible():
-    """Three terms in levels 13, 2 and 1, with weights 121, 11 and 1; the best is in level 13."""
-    expected = ((121 * 13 + 11 * 2 + 1 * 1) / 3 + 13) / (401 * 41 + 41)
+    """Three terms in levels 13, 2 and 1, with weights 121, 11 and 1; the best is in level 13,
+    and the bonus is 10 unless said otherwise."""
+    expected = ((121 * 13 + 11 * 2 + 1 * 1) / 3 + 13 + 10) / (401 * 41 + 41 + 10)
     assert bioq(_enrichment(1e-12, 0.03, 0.6)) == pytest.approx(expected, rel=1e-12)
-    with_bonus = ((121 * 13 + 11 * 2 + 1 * 1) / 3 + 13 + 10) / (401 * 41 + 41 + 10)
-    assert bioq(_enrichment(1e-12, 0.03, 0.6), bonus=10) == pytest.approx(with_bonus, rel=1e-12)
+    without_bonus = ((121 * 13 + 11 * 2 + 1 * 1) / 3 + 13) / (401 * 41 + 41)
+    assert bioq(_enrichment(1e-12, 0.03, 0.6), bonus=0) == pytest.approx(without_bonus, rel=1e-12)
 
 
 def test_bioq_ranges_from_nearly_zero_to_one():
-    assert bioq(_enrichment(1e-50, 1e-45, 0.0)) == 1.0
-    assert bioq(_enrichment(1.0, 0.9, 0.5)) == pytest.approx(2 / (401 * 41 + 41))
+    assert bioq(_enrichment(1e-50, 1e-45, 0.0)) == 1.0 == bioq(_enrichment(1e-50, 1e-45, 0.0), bonus=0)
+    # Every term in level 1: 1, plus the level of the best, plus the bonus.
+    assert bioq(_enrichment(1.0, 0.9, 0.5)) == pytest.approx(12 / (401 * 41 + 41 + 10))
+    assert bioq(_enrichment(1.0, 0.9, 0.5), bonus=0) == pytest.approx(2 / (401 * 41 + 41))
     assert math.isnan(bioq(_enrichment()))
 
 
@@ -160,9 +163,9 @@ def test_fewer_levels_and_only_the_significant_terms_use_more_of_the_range():
     11 levels, the last from 1e-10 down, with weight 101; with alpha, the term that is not
     significant is not scored."""
     enrichment = _enrichment(1e-12, 0.03, 0.6)
-    fewer = ((101 * 11 + 11 * 2 + 1 * 1) / 3 + 11) / (101 * 11 + 11)
+    fewer = ((101 * 11 + 11 * 2 + 1 * 1) / 3 + 11 + 10) / (101 * 11 + 11 + 10)
     assert bioq(enrichment, threshold=1e-10) == pytest.approx(fewer, rel=1e-12)
-    significant = ((121 * 13 + 11 * 2) / 2 + 13) / (401 * 41 + 41)
+    significant = ((121 * 13 + 11 * 2) / 2 + 13 + 10) / (401 * 41 + 41 + 10)
     assert bioq(enrichment, alpha=0.05) == pytest.approx(significant, rel=1e-12)
     assert bioq(enrichment, threshold=1e-20, alpha=0.05) > bioq(enrichment, alpha=0.05) > bioq(enrichment)
     assert bioq(_enrichment(0.3, 0.6), alpha=0.05) == 0.0 and math.isnan(bioq(_enrichment(), alpha=0.05))
@@ -174,11 +177,11 @@ def test_the_levels_follow_their_base_step_and_difference():
     and, with a threshold of 0.125, level 4 the rest. A difference of 2: weights 1, 3, 5, 7."""
     enrichment = _enrichment(0.6, 0.5, 0.2, 0.125, 0.01)
     expected = ((1 * 1 + 3 * 2 + 5 * 3 + 7 * 4 + 7 * 4) / 5 + 4) / (7 * 4 + 4)
-    assert bioq(enrichment, base=2, threshold=0.125, difference=2) == pytest.approx(expected, rel=1e-12)
+    assert bioq(enrichment, base=2, threshold=0.125, difference=2, bonus=0) == pytest.approx(expected, rel=1e-12)
     # A step of 0.5 leaves the p-values above it in no level, though they still count.
     halved = ((1 * 1 + 1 * 1 + 3 * 2 + 3 * 2) / 5 + 2) / (3 * 2 + 2)
-    assert bioq(_enrichment(0.6, 0.5, 0.4, 0.25, 0.01), base=2, step=0.5, threshold=0.25, difference=2) == pytest.approx(
-        halved, rel=1e-12)
+    assert bioq(_enrichment(0.6, 0.5, 0.4, 0.25, 0.01), base=2, step=0.5, threshold=0.25, difference=2,
+                bonus=0) == pytest.approx(halved, rel=1e-12)
 
 
 @pytest.mark.parametrize("options", [{"base": 1}, {"step": 0}, {"step": 1.5}, {"difference": -1}, {"threshold": 0},
@@ -366,7 +369,7 @@ def test_an_ontologizer_table_reads_as_an_enrichment(tmp_path):
         "GO:0042611", "MHC protein complex", 1e-33, 7.2e-31, 11, 21)
     assert len(enrichment.terms) == 3
     # Levels 31, 1 and 1; the weight of level 31 is 301.
-    assert bioq(enrichment, bonus=10) == pytest.approx(((301 * 31 + 1 + 1) / 3 + 31 + 10) / (401 * 41 + 41 + 10))
+    assert bioq(enrichment) == pytest.approx(((301 * 31 + 1 + 1) / 3 + 31 + 10) / (401 * 41 + 41 + 10))
 
 
 def test_a_file_that_is_not_an_ontologizer_table_is_rejected(tmp_path):

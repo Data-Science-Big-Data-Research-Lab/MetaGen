@@ -137,10 +137,10 @@ For gene expression data, :py:func:`~metagen.triclustering.bioq`, the **biologic
     print(best.name, f"{best.p_adjusted:.1e}")                          # MHC protein complex 1.7e-06
     print(len(enrichment.significant()))                                # 38
     quality = bioq(enrichment)
-    print(round(quality, 4))                                            # 0.0008
+    print(round(quality, 4))                                            # 0.0015
     print(round(triq(cube, tricluster, views="time", bioq=quality), 3)) # 0.496
     # With fewer levels and only the significant terms.
-    print(round(bioq(enrichment, threshold=1e-20, alpha=0.05), 4))      # 0.0338
+    print(round(bioq(enrichment, threshold=1e-20, alpha=0.05), 4))      # 0.036
     # The purity: 11 of its 12 genes share a term that 13 of the 40 genes of the cube have.
     print(round(purity(enrichment), 3))                                 # 0.592
     print(round(triq(cube, tricluster, views="time", bioq=purity(enrichment)), 3))   # 0.791
