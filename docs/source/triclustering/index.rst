@@ -102,6 +102,44 @@ The metaheuristics minimize: to search by TRIQ, give them ``1 − TRIQ``.
     print(round(triq(cube, target, views="time"), 3), round(triq(cube, elsewhere, views="time"), 3))          # 0.992 0.556
     print(round(triq(cube, target, views="time", bioq=0.001), 3))                                         # 0.497
 
+The biological quality
+----------------------
+
+For gene expression data, :py:func:`~metagen.triclustering.bioq`, the **biological quality** (BIOQ), scores how significant the functional terms of the genes of a tricluster are: an enrichment analysis tests every Gene Ontology term that annotates one of its genes against all the genes of the cube, and BIOQ scores the p-values by levels, the smaller the higher, from 0 to 1. Since most terms of an analysis are not significant, BIOQ is usually small, between :math:`10^{-5}` and :math:`10^{-3}`. Its ``bonus`` adds a fixed amount for the most significant term.
+
+:py:func:`~metagen.triclustering.enrich` computes the analysis of a tricluster with an engine, and needs the cube to carry the names of its genes, as the organism's gene symbols:
+
+* :py:class:`~metagen.triclustering.GProfiler`, the default choice, asks the g:Profiler web service, which keeps its annotations up to date and reports their version with every result. ``organism`` takes g:Profiler's names, such as ``"hsapiens"``, ``"mmusculus"`` or ``"scerevisiae"``, and ``cache_dir`` keeps each answer on disk so that the same analysis is not asked twice.
+* :py:class:`~metagen.triclustering.LocalGO` computes the analysis without a connection, from an ontology file and an annotation file of the organism. Those files have to be kept up to date by hand: the current ones are at https://current.geneontology.org. It counts every gene of the cube as the population, where g:Profiler counts those it can annotate, so their p-values differ.
+* :py:func:`~metagen.triclustering.ontologizer_table` reads a table already computed by Ontologizer.
+
+.. code-block:: python
+
+    from metagen.triclustering import Cube, GProfiler, bioq, enrich, plant, triq
+
+    MHC = ["HLA-DRA", "HLA-DRB1", "HLA-DRB5", "HLA-DQA1", "HLA-DQB1", "HLA-DPA1", "HLA-DPB1",
+           "HLA-DMA", "HLA-DMB", "HLA-DOA", "HLA-DOB", "CD74"]
+    OTHERS = ["ACTB", "GAPDH", "TP53", "EGFR", "MYC", "KRAS", "BRCA1", "BRCA2", "PTEN", "AKT1",
+              "MTOR", "VEGFA", "TNF", "IL6", "INS", "ALB", "APOE", "CFTR", "HBB", "HBA1", "DMD",
+              "SOD1", "APP", "MAPT", "LMNA", "FBN1", "COL1A1", "KIT"]
+
+    # A tricluster planted on the genes of the MHC class II.
+    data, (tricluster,) = plant((40, 4, 5), [(12, 3, 4)], pattern="additive", noise=0.05, seed=0)
+    mhc, others = iter(MHC), iter(OTHERS)
+    names = [next(mhc) if gene in tricluster.genes else next(others) for gene in range(40)]
+    cube = Cube(data.values, genes=names)
+
+    enrichment = enrich(cube, tricluster, GProfiler(organism="hsapiens"))
+    print(enrichment.version)                                           # e114_eg62_p19_9dc92ac8
+    best = enrichment.terms[0]
+    print(best.name, f"{best.p_adjusted:.1e}")                          # MHC protein complex 1.7e-06
+    print(len(enrichment.significant()))                                # 38
+    quality = bioq(enrichment)
+    print(round(quality, 4))                                            # 0.0008
+    print(round(triq(cube, tricluster, views="time", bioq=quality), 3)) # 0.496
+
+The figures of an analysis are those of the annotations it was run with, which g:Profiler updates: the version printed tells which. Any other engine works too: :py:func:`~metagen.triclustering.enrich` takes whatever has a method ``enrich(genes, population)`` that returns an :py:class:`~metagen.triclustering.Enrichment`.
+
 Synthetic data with planted triclusters
 ---------------------------------------
 

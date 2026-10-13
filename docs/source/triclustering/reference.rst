@@ -23,6 +23,26 @@ Triclustering
 
 .. autofunction:: metagen.triclustering.triq
 
+.. autofunction:: metagen.triclustering.bioq
+
+.. autofunction:: metagen.triclustering.enrich
+
+.. autoclass:: metagen.triclustering.GProfiler
+    :members: enrich
+
+.. autoclass:: metagen.triclustering.LocalGO
+    :members: enrich
+
+.. autofunction:: metagen.triclustering.ontologizer_table
+
+.. autoclass:: metagen.triclustering.Enrichment
+    :members: significant
+
+.. autoclass:: metagen.triclustering.Term
+
+.. autoclass:: metagen.triclustering.EnrichmentProvider
+    :members: enrich
+
 .. autofunction:: metagen.triclustering.plant
 
 .. autofunction:: metagen.triclustering.cell_jaccard

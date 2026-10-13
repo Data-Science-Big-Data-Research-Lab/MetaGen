@@ -42,11 +42,48 @@ def _run(blocks, before=None):
     return namespace
 
 
+GPROFILER_ANSWERS = Path(__file__).parent.parent / "triclustering" / "data" / "gprofiler_answers.json"
+
+
+def _answer_gprofiler_from_records(monkeypatch):
+    """The examples that ask g:Profiler get the answer it gave when they were written, so
+    they run without a connection and print the same.
+
+    To record them again, after changing an example or to refresh the annotations, run
+    ``METAGEN_RECORD_GPROFILER=1 pytest test/documentation -k triclustering_page`` with a
+    connection: it asks g:Profiler for real and rewrites the file of answers. Then update
+    the output written in the comments of the example to what it prints.
+    """
+    import hashlib
+    import json
+    import os
+    import metagen.triclustering.enrichment as enrichment
+    answers = json.loads(GPROFILER_ANSWERS.read_text())
+    real = enrichment._post
+
+    def recorded(url, body, timeout):
+        key = hashlib.sha256(body).hexdigest()
+        if os.environ.get("METAGEN_RECORD_GPROFILER"):
+            answer = real(url, body, timeout)
+            answers.clear()
+            answers[key] = {"result": [{field: result[field] for field in
+                                        ("native", "name", "p_value", "intersection_size", "term_size")}
+                                       for result in answer["result"]],
+                            "meta": {"version": answer["meta"]["version"]}}
+            GPROFILER_ANSWERS.write_text(json.dumps(answers, indent=1))
+        assert key in answers, ("An example asks g:Profiler something not recorded: record its answer "
+                                "(see _answer_gprofiler_from_records).")
+        return answers[key]
+
+    monkeypatch.setattr(enrichment, "_post", recorded)
+
+
 @pytest.fixture
 def scratch(tmp_path, monkeypatch):
     """A scratch directory, and the process left as the page found it: the logging page
     turns MetaGen's logger on, and the pausing page installs a signal handler."""
     monkeypatch.chdir(tmp_path)
+    _answer_gprofiler_from_records(monkeypatch)
     # MetaGen's own logger, not logging.getLogger("metagen_logger"): asked for by name
     # before MetaGen creates it, logging would hand MetaGen a plain Logger.
     from metagen.logging.metagen_logger import metagen_logger as logger
@@ -127,7 +164,7 @@ def _printed_as_commented(code: str, namespace: dict) -> None:
 
 
 @pytest.mark.parametrize("name", ["Cube", "Cube.without_missing", "Tricluster", "msr3d", "msl", "lsl",
-                                  "grq", "peq", "spq", "triq", "cell_jaccard", "recovery", "plant"])
+                                  "grq", "peq", "spq", "triq", "bioq", "cell_jaccard", "recovery", "plant"])
 def test_the_examples_of_the_triclustering_docstrings_run_and_print_what_they_say(name, scratch):
     import metagen.triclustering as triclustering
     target = triclustering
