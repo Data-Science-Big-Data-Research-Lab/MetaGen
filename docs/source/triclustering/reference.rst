@@ -25,6 +25,8 @@ Triclustering
 
 .. autofunction:: metagen.triclustering.bioq
 
+.. autofunction:: metagen.triclustering.purity
+
 .. autofunction:: metagen.triclustering.enrich
 
 .. autoclass:: metagen.triclustering.GProfiler

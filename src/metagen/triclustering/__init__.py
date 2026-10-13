@@ -15,7 +15,8 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 from .cube import Cube
-from .enrichment import Enrichment, EnrichmentProvider, GProfiler, LocalGO, Term, bioq, enrich, ontologizer_table
+from .enrichment import (Enrichment, EnrichmentProvider, GProfiler, LocalGO, Term, bioq, enrich,
+                         ontologizer_table, purity)
 from .measures import lsl, msl, msr3d
 from .quality import grq, peq, spq, triq
 from .recovery import (cell_jaccard, cell_precision, cell_recall, coordinate_jaccard, coordinate_recall,
@@ -25,4 +26,5 @@ from .tricluster import Tricluster
 
 __all__ = ["Cube", "Enrichment", "EnrichmentProvider", "GProfiler", "LocalGO", "Term", "Tricluster", "bioq", "enrich",
            "ontologizer_table", "cell_jaccard", "cell_precision", "cell_recall", "coordinate_jaccard",
-           "coordinate_recall", "grq", "lsl", "msl", "msr3d", "peq", "plant", "recovery", "relevance", "spq", "triq"]
+           "coordinate_recall", "grq", "lsl", "msl", "msr3d", "peq", "plant", "purity", "recovery", "relevance", "spq",
+           "triq"]

@@ -16,6 +16,7 @@
 """
 from __future__ import annotations
 
+import functools
 import hashlib
 import json
 import math
@@ -148,26 +149,34 @@ def _by_significance(term: Term) -> Tuple[float, float, str]:
 
 # --- BIOQ ----------------------------------------------------------------------------------
 
-# The levels of BIOQ (TRIQ, BioData Mining 2018, Eqs. 8a-8e): level l = 1, ..., 40 holds the
-# p-values in (10^-l, 10^-(l-1)], level 41 those in [0, 1e-40], and weighs 1 + (l - 1) * 10.
-_LEVELS = 41
-
-
-def _level(p: float) -> int:
-    """The level of a p-value in [0, 1]. The bounds are computed as 1 / 10**l, as TrLab
-    builds them (GoSignificance.java): for ten of the forty powers that differs from the
-    literal 1e-l in the last bit, which only matters for a p-value exactly on a bound."""
-    if p <= 1.0 / 10 ** (_LEVELS - 1):
-        return _LEVELS
-    level = min(_LEVELS - 1, max(1, int(math.floor(-math.log10(p))) + 1))
-    while level < _LEVELS - 1 and p <= 1.0 / 10 ** level:
+@functools.lru_cache(maxsize=None)
+def _lower_bounds(threshold: float, base: float, step: float) -> Tuple[float, ...]:
+    """The lower bound of each level but the last (TRIQ, BioData Mining 2018, Eqs. 8a-8e),
+    built as TrLab builds them (GoSignificance.java): step / base**l while it is not below
+    the threshold. Level l holds the p-values in (bound l, bound l - 1], the first up to 1,
+    and one more level those from 0 to the last bound. Computed this way, for ten of the
+    forty powers of ten the bound differs from the literal 1e-l in the last bit, which
+    only matters for a p-value exactly on a bound."""
+    bounds = []
+    level = 1
+    bound = step / base ** level
+    while bound >= threshold:
+        bounds.append(bound)
         level += 1
-    while level > 1 and p > 1.0 / 10 ** (level - 1):
-        level -= 1
-    return level
+        bound = step / base ** level
+    return tuple(bounds)
 
 
-def bioq(enrichment: Enrichment, bonus: float = 0.0, adjusted: bool = True) -> float:
+def _level(p: float, bounds: Tuple[float, ...]) -> int:
+    """The level of a p-value in [0, 1]: the first whose lower bound it is above."""
+    for level, bound in enumerate(bounds, start=1):
+        if p > bound:
+            return level
+    return len(bounds) + 1
+
+
+def bioq(enrichment: Enrichment, bonus: float = 0.0, adjusted: bool = True, threshold: float = 1e-40,
+         base: float = 10.0, step: float = 1.0, difference: float = 10.0, alpha: Optional[float] = None) -> float:
     """
     The biological quality of a tricluster (BIOQ), from the enrichment of its genes: the
     p-values of its terms are scored by levels, the more significant the higher, and the
@@ -175,14 +184,20 @@ def bioq(enrichment: Enrichment, bonus: float = 0.0, adjusted: bool = True) -> f
 
     .. math::
 
-        BIOQ = \\frac{\\sum_l \\kappa_l\\, w_l\\, l + l_b + V_{bonus}}{401 \\cdot 41 + 41 + V_{bonus}}
+        BIOQ = \\frac{\\sum_l \\kappa_l\\, w_l\\, l + l_b + V_{bonus}}{w_L\\, L + L + V_{bonus}}
 
-    where level :math:`l = 1, \\ldots, 40` holds the p-values in
-    :math:`(10^{-l}, 10^{-(l-1)}]` and level 41 those up to :math:`10^{-40}`,
-    :math:`w_l = 1 + 10 (l - 1)`, :math:`\\kappa_l` is the share of the terms in level
-    :math:`l`, and :math:`l_b` is the level of the most significant term. Since most terms
-    of an analysis are not significant, BIOQ is usually small, between :math:`10^{-5}` and
-    :math:`10^{-3}`.
+    where level :math:`l` holds the p-values in :math:`(s / b^l, s / b^{l-1}]` while
+    :math:`s / b^l` is not below the threshold, and the last level, :math:`L`, those down
+    to 0; :math:`w_l = 1 + d\\,(l - 1)`; :math:`\\kappa_l` is the share of the terms in
+    level :math:`l`; and :math:`l_b` is the level of the most significant term. With the
+    defaults, :math:`s = 1`, :math:`b = 10`, :math:`d = 10` and a threshold of
+    :math:`10^{-40}`, there are 41 levels, the last for the p-values up to
+    :math:`10^{-40}`.
+
+    Since most terms of an analysis are not significant, BIOQ is usually small, between
+    :math:`10^{-5}` and :math:`10^{-3}`. Two options make it use more of its range: a
+    larger ``threshold``, for fewer levels, and ``alpha``, to score only the terms below
+    that significance, so that those that are not significant do not dilute the rest.
 
     .. code-block:: python
 
@@ -190,7 +205,8 @@ def bioq(enrichment: Enrichment, bonus: float = 0.0, adjusted: bool = True) -> f
 
         terms = (Term("GO:1", "a", 1e-12), Term("GO:2", "b", 0.03), Term("GO:3", "c", 0.6))
         enrichment = Enrichment(terms, engine="example", version="", study_size=20, population_size=5000)
-        print(round(bioq(enrichment), 6))                          # 0.033066
+        print(round(bioq(enrichment), 6))                                    # 0.033066
+        print(round(bioq(enrichment, threshold=1e-20, alpha=0.05), 6))       # 0.191066
 
     :param enrichment: The enrichment of the genes of the tricluster.
     :type enrichment: Enrichment
@@ -199,35 +215,132 @@ def bioq(enrichment: Enrichment, bonus: float = 0.0, adjusted: bool = True) -> f
     :param adjusted: Whether to score the adjusted p-values, defaults to True; False scores
         those before the correction, when the engine gives them.
     :type adjusted: bool, optional
-    :return: BIOQ, or NaN if the enrichment has no terms.
+    :param threshold: The p-value below which every term falls in the last level, defaults
+        to 1e-40.
+    :type threshold: float, optional
+    :param base: :math:`b`, how many times narrower each level is than the one before,
+        greater than 1, defaults to 10.
+    :type base: float, optional
+    :param step: :math:`s`, the upper bound of the second level times the base, in (0, 1],
+        defaults to 1.
+    :type step: float, optional
+    :param difference: :math:`d`, how much more each level weighs than the one before, not
+        negative, defaults to 10.
+    :type difference: float, optional
+    :param alpha: If given, only the terms with a p-value below it are scored; None, the
+        default, scores them all.
+    :type alpha: float, optional
+    :return: BIOQ; NaN if the enrichment has no terms, and 0 if it has terms but none is
+        below ``alpha``.
     :rtype: float
     :raises ValueError: if ``adjusted=False`` and the engine gives no p-values before the
-        correction, if a p-value is not in [0, 1], or if the bonus is negative.
+        correction, if a p-value is not in [0, 1], or if a parameter is out of its range.
     """
     # TrLab scored with a bonus of 10 (BIOQ.java passes its base as the bonus): bonus=10
     # reproduces its BIOQ exactly from its Ontologizer tables (metagen-auditoria/trigen/
-    # fase5/informe_5a.md).
-    # A p-value of 0 counts in level 41 and can be the best term. TrLab dropped it from the
-    # levels, and the bonus with it when it was the best (T-15, metagen-auditoria/trigen/
-    # HALLAZGOS.md); none of its historical tables holds one.
+    # fase5/informe_5a.md). Its threshold, base, step and difference were read from a file
+    # but had no effect, the levels being built once before.
+    # A p-value of 0 counts in the last level and can be the best term. TrLab dropped it
+    # from the levels, and the bonus with it when it was the best (T-15, metagen-auditoria/
+    # trigen/HALLAZGOS.md); none of its historical tables holds one.
+    # threshold and alpha: measured in phase 5b-bis (fase5/informe_5b_bis.md). On 40 real
+    # triclusters the median goes from 0.003 to 0.09 with threshold=1e-20 and alpha=0.05;
+    # the score still grows with the number of genes, as any score of p-values does.
+    if not bonus >= 0:
+        raise ValueError(f"The bonus must not be negative: {bonus}.")
+    if not (base > 1 and 0 < step <= 1 and difference >= 0 and 0 < threshold <= step / base):
+        raise ValueError(f"The levels need base > 1, 0 < step <= 1, difference >= 0 and 0 < threshold <= step / base, "
+                         f"not base={base}, step={step}, difference={difference}, threshold={threshold}.")
+    if alpha is not None and not 0 < alpha <= 1:
+        raise ValueError(f"alpha must lie in (0, 1], not {alpha}.")
     if adjusted:
         values = [term.p_adjusted for term in enrichment.terms]
     else:
         if any(term.p is None for term in enrichment.terms):
             raise ValueError(f"The engine {enrichment.engine} gives no p-values before the correction.")
         values = [float(term.p) for term in enrichment.terms if term.p is not None]
-    if not bonus >= 0:
-        raise ValueError(f"The bonus must not be negative: {bonus}.")
     if not all(0.0 <= value <= 1.0 for value in values):
         raise ValueError("The p-values of an enrichment must lie in [0, 1].")
     if not values:
         return math.nan
+    if alpha is not None:
+        values = [value for value in values if value < alpha]
+        if not values:
+            return 0.0
+    bounds = _lower_bounds(float(threshold), float(base), float(step))
+    last = len(bounds) + 1
     counts: Dict[int, int] = defaultdict(int)
     for value in values:
-        counts[_level(value)] += 1
-    score = sum(count / len(values) * (1 + (level - 1) * 10) * level for level, count in counts.items())
-    score += _level(min(values)) + bonus
-    return score / (401 * _LEVELS + _LEVELS + bonus)
+        if value <= step:                     # above the step a p-value falls in no level, but counts
+            counts[_level(value, bounds)] += 1
+    score = sum(count / len(values) * (1 + (level - 1) * difference) * level for level, count in counts.items())
+    if min(values) <= step:
+        score += _level(min(values), bounds)
+    return (score + bonus) / ((1 + (last - 1) * difference) * last + last + bonus)
+
+
+# --- purity --------------------------------------------------------------------------------
+
+def purity(enrichment: Enrichment, alpha: float = 0.05) -> float:
+    """
+    The functional purity of a tricluster, from the enrichment of its genes: the largest
+    share of its genes that a significant term annotates, beyond the share of the genes of
+    the population it annotates,
+
+    .. math::
+
+        purity = \\max_{t:\\ p_t < \\alpha} \\left( \\frac{k_t}{n} - \\frac{K_t}{N} \\right)
+
+    with :math:`k_t` of the :math:`n` genes of the tricluster and :math:`K_t` of the
+    :math:`N` genes of the population annotated to the term :math:`t`. It estimates what
+    share of the genes of the tricluster have a function in common, between 0, for genes
+    with no significant term in common, and nearly 1, when all of them share a specific
+    one. A term that annotates most genes counts for little even if all the genes of the
+    tricluster have it. The p-value only decides which terms count, so the purity does not
+    grow with the number of genes of the tricluster, and it reads the same from one
+    organism or dataset to another.
+
+    .. code-block:: python
+
+        from metagen.triclustering import Enrichment, Term, purity
+
+        terms = (Term("GO:1", "specific", 1e-9, study_count=12, population_count=40),
+                 Term("GO:2", "general", 0.01, study_count=18, population_count=2500),
+                 Term("GO:3", "not significant", 0.6, study_count=3, population_count=300))
+        enrichment = Enrichment(terms, engine="example", version="", study_size=20, population_size=5000)
+        print(purity(enrichment))                                  # 0.592
+
+    :param enrichment: The enrichment of the genes of the tricluster.
+    :type enrichment: Enrichment
+    :param alpha: The significance below which a term counts, defaults to 0.05.
+    :type alpha: float, optional
+    :return: The purity; NaN if the enrichment has no terms, and 0 if none is significant.
+    :rtype: float
+    :raises ValueError: if the engine does not give how many genes each term annotates, or
+        alpha is not in (0, 1].
+    """
+    # Reasoned and measured in phase 5b-bis (metagen-auditoria/trigen/fase5/
+    # informe_5b_bis.md), not taken from the literature; its closest documented relative is
+    # the Biological Homogeneity Index (Datta and Datta, BMC Bioinformatics 2006). On gene
+    # sets built with a share f of the genes of one GO term and the rest at random, it
+    # returns f whatever the size (0.22-0.24 for 0.25, 0.49-0.55 for 0.5, 0.73-0.75 for
+    # 0.75, with 15, 50 and 150 genes), 0 for random sets, and the same for human, mouse
+    # and yeast; BIOQ and any score of p-values grow with the number of genes.
+    # The artificial root of LocalGO and of Ontologizer is not a function: left out.
+    if not 0 < alpha <= 1:
+        raise ValueError(f"alpha must lie in (0, 1], not {alpha}.")
+    if not enrichment.terms:
+        return math.nan
+    if enrichment.study_size < 1 or enrichment.population_size < 1:
+        raise ValueError("The purity needs the sizes of the study and of the population.")
+    best = 0.0
+    for term in enrichment.significant(alpha):
+        if term.id == _ROOT:
+            continue
+        if term.study_count is None or term.population_count is None:
+            raise ValueError(f"The engine {enrichment.engine} does not give how many genes each term annotates.")
+        best = max(best, term.study_count / enrichment.study_size - term.population_count / enrichment.population_size)
+    return best
 
 
 # --- g:Profiler ----------------------------------------------------------------------------

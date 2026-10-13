@@ -105,7 +105,9 @@ The metaheuristics minimize: to search by TRIQ, give them ``1 − TRIQ``.
 The biological quality
 ----------------------
 
-For gene expression data, :py:func:`~metagen.triclustering.bioq`, the **biological quality** (BIOQ), scores how significant the functional terms of the genes of a tricluster are: an enrichment analysis tests every Gene Ontology term that annotates one of its genes against all the genes of the cube, and BIOQ scores the p-values by levels, the smaller the higher, from 0 to 1. Since most terms of an analysis are not significant, BIOQ is usually small, between :math:`10^{-5}` and :math:`10^{-3}`. Its ``bonus`` adds a fixed amount for the most significant term.
+For gene expression data, :py:func:`~metagen.triclustering.bioq`, the **biological quality** (BIOQ), scores how significant the functional terms of the genes of a tricluster are: an enrichment analysis tests every Gene Ontology term that annotates one of its genes against all the genes of the cube, and BIOQ scores the p-values by levels, the smaller the higher, from 0 to 1. Since most terms of an analysis are not significant, BIOQ is usually small, between :math:`10^{-5}` and :math:`10^{-3}`. Its ``bonus`` adds a fixed amount for the most significant term, and two options make it use more of its range: ``threshold``, the p-value below which every term falls in the last level, :math:`10^{-40}` by default, and ``alpha``, to score only the terms below that significance.
+
+:py:func:`~metagen.triclustering.purity`, the **functional purity**, answers a different question: what share of the genes of the tricluster have a function in common. It is the largest share of them that a significant term annotates, beyond the share of the genes of the cube that the term annotates, from 0 to nearly 1. The p-value only decides which terms count, so the purity does not grow with the number of genes, as a score of p-values does, and it reads the same from one organism or dataset to another. Either quality can be given to TRIQ as its biological quality.
 
 :py:func:`~metagen.triclustering.enrich` computes the analysis of a tricluster with an engine, and needs the cube to carry the names of its genes, as the organism's gene symbols:
 
@@ -115,7 +117,7 @@ For gene expression data, :py:func:`~metagen.triclustering.bioq`, the **biologic
 
 .. code-block:: python
 
-    from metagen.triclustering import Cube, GProfiler, bioq, enrich, plant, triq
+    from metagen.triclustering import Cube, GProfiler, bioq, enrich, plant, purity, triq
 
     MHC = ["HLA-DRA", "HLA-DRB1", "HLA-DRB5", "HLA-DQA1", "HLA-DQB1", "HLA-DPA1", "HLA-DPB1",
            "HLA-DMA", "HLA-DMB", "HLA-DOA", "HLA-DOB", "CD74"]
@@ -137,6 +139,11 @@ For gene expression data, :py:func:`~metagen.triclustering.bioq`, the **biologic
     quality = bioq(enrichment)
     print(round(quality, 4))                                            # 0.0008
     print(round(triq(cube, tricluster, views="time", bioq=quality), 3)) # 0.496
+    # With fewer levels and only the significant terms.
+    print(round(bioq(enrichment, threshold=1e-20, alpha=0.05), 4))      # 0.0338
+    # The purity: 11 of its 12 genes share a term that 13 of the 40 genes of the cube have.
+    print(round(purity(enrichment), 3))                                 # 0.592
+    print(round(triq(cube, tricluster, views="time", bioq=purity(enrichment)), 3))   # 0.791
 
 The figures of an analysis are those of the annotations it was run with, which g:Profiler updates: the version printed tells which. Any other engine works too: :py:func:`~metagen.triclustering.enrich` takes whatever has a method ``enrich(genes, population)`` that returns an :py:class:`~metagen.triclustering.Enrichment`.
 

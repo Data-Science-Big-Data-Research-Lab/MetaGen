@@ -14,7 +14,7 @@ from scipy.stats import hypergeom
 
 import metagen.triclustering.enrichment as module
 from metagen.triclustering import (Cube, Enrichment, GProfiler, LocalGO, Term, Tricluster, bioq, enrich,
-                                   ontologizer_table, triq)
+                                   ontologizer_table, purity, triq)
 
 OBO = """format-version: 1.2
 data-version: releases/2026-01-01
@@ -97,6 +97,9 @@ def _by_id(enrichment):
 
 # --- BIOQ ----------------------------------------------------------------------------------
 
+BOUNDS = module._lower_bounds(1e-40, 10.0, 1.0)      # the levels of the defaults
+
+
 def _enrichment(*p_values, raw=None):
     terms = tuple(Term(f"GO:{index}", f"term {index}", p, None if raw is None else raw[index])
                   for index, p in enumerate(p_values))
@@ -107,16 +110,17 @@ def _enrichment(*p_values, raw=None):
                                       (1.0000001e-5, 5), (1e-39, 40), (1.0000001e-40, 40), (1e-40, 41), (1e-300, 41),
                                       (0.0, 41)])
 def test_a_p_value_falls_in_the_level_whose_upper_bound_it_reaches(p, level):
-    assert module._level(p) == level
+    assert module._level(p, BOUNDS) == level
 
 
 def test_the_bounds_of_the_levels_are_one_over_a_power_of_ten():
     """As TrLab computes them: 1 / 10**25 is not the float 1e-25, and a p-value on the bound
     belongs to the level above it."""
     bound = 1.0 / 10 ** 25
-    assert module._level(bound) == 26 and module._level(math.nextafter(bound, 1.0)) == 25
-    for level in range(1, 40):
-        assert module._level(1.0 / 10 ** level) == level + 1
+    assert module._level(bound, BOUNDS) == 26 and module._level(math.nextafter(bound, 1.0), BOUNDS) == 25
+    assert len(BOUNDS) == 40
+    for level in range(1, 41):
+        assert module._level(1.0 / 10 ** level, BOUNDS) == level + 1
 
 
 @pytest.mark.parametrize("p_values, bonus", [((-0.1, 0.5), 0), ((1.5,), 0), ((math.nan, 0.5), 0), ((math.inf,), 0),
@@ -149,6 +153,85 @@ def test_bioq_scores_the_p_values_before_the_correction_when_asked_and_given():
     assert bioq(enrichment, adjusted=False) == bioq(_enrichment(1e-3, 0.2)) > bioq(enrichment)
     with pytest.raises(ValueError):
         bioq(_enrichment(0.5, 0.9), adjusted=False)
+
+
+def test_fewer_levels_and_only_the_significant_terms_use_more_of_the_range():
+    """Three terms, in levels 13, 2 and 1 of the defaults. With a threshold of 1e-10 there are
+    11 levels, the last from 1e-10 down, with weight 101; with alpha, the term that is not
+    significant is not scored."""
+    enrichment = _enrichment(1e-12, 0.03, 0.6)
+    fewer = ((101 * 11 + 11 * 2 + 1 * 1) / 3 + 11) / (101 * 11 + 11)
+    assert bioq(enrichment, threshold=1e-10) == pytest.approx(fewer, rel=1e-12)
+    significant = ((121 * 13 + 11 * 2) / 2 + 13) / (401 * 41 + 41)
+    assert bioq(enrichment, alpha=0.05) == pytest.approx(significant, rel=1e-12)
+    assert bioq(enrichment, threshold=1e-20, alpha=0.05) > bioq(enrichment, alpha=0.05) > bioq(enrichment)
+    assert bioq(_enrichment(0.3, 0.6), alpha=0.05) == 0.0 and math.isnan(bioq(_enrichment(), alpha=0.05))
+    assert bioq(_enrichment(1e-50, 1e-45), threshold=1e-20, alpha=0.05) == 1.0
+
+
+def test_the_levels_follow_their_base_step_and_difference():
+    """Base 2 and step 1: level 1 holds (0.5, 1], level 2 (0.25, 0.5], level 3 (0.125, 0.25]
+    and, with a threshold of 0.125, level 4 the rest. A difference of 2: weights 1, 3, 5, 7."""
+    enrichment = _enrichment(0.6, 0.5, 0.2, 0.125, 0.01)
+    expected = ((1 * 1 + 3 * 2 + 5 * 3 + 7 * 4 + 7 * 4) / 5 + 4) / (7 * 4 + 4)
+    assert bioq(enrichment, base=2, threshold=0.125, difference=2) == pytest.approx(expected, rel=1e-12)
+    # A step of 0.5 leaves the p-values above it in no level, though they still count.
+    halved = ((1 * 1 + 1 * 1 + 3 * 2 + 3 * 2) / 5 + 2) / (3 * 2 + 2)
+    assert bioq(_enrichment(0.6, 0.5, 0.4, 0.25, 0.01), base=2, step=0.5, threshold=0.25, difference=2) == pytest.approx(
+        halved, rel=1e-12)
+
+
+@pytest.mark.parametrize("options", [{"base": 1}, {"step": 0}, {"step": 1.5}, {"difference": -1}, {"threshold": 0},
+                                     {"threshold": 0.5}, {"alpha": 0}, {"alpha": 1.5}])
+def test_levels_out_of_range_are_rejected(options):
+    with pytest.raises(ValueError):
+        bioq(_enrichment(0.01, 0.5), **options)
+
+
+# --- purity --------------------------------------------------------------------------------
+
+def _counted(*terms, study=20, population=5000):
+    return Enrichment(tuple(Term(f"GO:{index}", f"term {index}", p, None, k, K) for index, (p, k, K) in enumerate(terms)),
+                      engine="test", version="v", study_size=study, population_size=population)
+
+
+def test_the_purity_is_the_largest_share_of_the_genes_beyond_that_of_the_population():
+    """A specific term with 12 of the 20 genes and 40 of the 5000; a general one with 18 of
+    the 20 and half the population; one that is not significant with all 20."""
+    enrichment = _counted((1e-9, 12, 40), (0.01, 18, 2500), (0.6, 20, 100))
+    assert purity(enrichment) == pytest.approx(12 / 20 - 40 / 5000)
+    assert purity(enrichment, alpha=0.7) == pytest.approx(20 / 20 - 100 / 5000)
+    assert purity(_counted((0.01, 18, 2500))) == pytest.approx(18 / 20 - 0.5)
+
+
+def test_the_purity_does_not_depend_on_how_many_genes_or_how_small_the_p_value():
+    small = _counted((1e-4, 8, 50), study=16)
+    large = _counted((1e-60, 80, 50 * 10), study=160, population=50000)
+    assert purity(small) == pytest.approx(purity(large))
+    assert bioq(large) > 10 * bioq(small)
+
+
+def test_the_purity_is_zero_without_a_significant_term_and_not_defined_without_terms():
+    assert purity(_counted((0.2, 15, 30), (0.9, 3, 300))) == 0.0
+    assert math.isnan(purity(_counted()))
+    # A significant term that annotates fewer genes than expected does not count below 0.
+    assert purity(_counted((0.01, 2, 2500))) == 0.0
+
+
+def test_the_artificial_root_is_not_a_function(local):
+    """Every annotated gene has the root: with four annotated genes of four against nine of
+    twenty it would give 0.55; the purity is that of the best real term."""
+    enrichment = local.enrich(["g1", "g2", "g3", "g4"], POPULATION)
+    assert purity(enrichment, alpha=1.0) == pytest.approx(4 / 4 - 5 / 20)
+    root = Enrichment((Term("GO:0000000", "root", 0.001, None, 4, 9),), "LocalGO", "v", 4, 20)
+    assert purity(root) == 0.0
+
+
+def test_the_purity_needs_the_counts_of_each_term():
+    with pytest.raises(ValueError, match="how many genes"):
+        purity(_enrichment(1e-6, 0.5))
+    with pytest.raises(ValueError):
+        purity(_counted((0.01, 5, 50)), alpha=0)
 
 
 def test_more_significant_terms_give_a_higher_bioq_and_a_higher_triq():
