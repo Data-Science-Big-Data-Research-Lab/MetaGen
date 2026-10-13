@@ -25,6 +25,7 @@ import urllib.error
 import urllib.request
 from collections import defaultdict
 from dataclasses import dataclass
+from fractions import Fraction
 from typing import TYPE_CHECKING, Dict, Optional, Protocol, Sequence, Set, Tuple
 
 from scipy.stats import hypergeom
@@ -157,14 +158,23 @@ def _lower_bounds(threshold: float, base: float, step: float) -> Tuple[float, ..
     and one more level those from 0 to the last bound. Computed this way, for ten of the
     forty powers of ten the bound differs from the literal 1e-l in the last bit, which
     only matters for a p-value exactly on a bound."""
+    # The power is computed exactly and rounded once: the float power of the C library
+    # differs in the last bit from one platform to another (10.0 ** 23), and with it the
+    # level of a p-value on a bound.
     bounds = []
     level = 1
-    bound = step / base ** level
-    while bound >= threshold:
-        bounds.append(bound)
+    while step / _rounded(Fraction(base) ** level) >= threshold:
+        bounds.append(step / _rounded(Fraction(base) ** level))
         level += 1
-        bound = step / base ** level
     return tuple(bounds)
+
+
+def _rounded(power: Fraction) -> float:
+    """The float nearest to an exact power, infinite when it is beyond the largest."""
+    try:
+        return float(power)
+    except OverflowError:
+        return math.inf
 
 
 def _level(p: float, bounds: Tuple[float, ...]) -> int:
