@@ -133,3 +133,39 @@ def _counts(what: str, given: Sequence[int]) -> Tuple[int, int, int]:
                          f"each at least 2, not {given!r}.")
     first, second, third = (int(n) for n in counts)
     return first, second, third
+
+
+def null_cube(cube: Cube, seed: Optional[int] = None) -> Cube:
+    """
+    The cube with its rows shuffled apart in each condition: every series of values stays
+    as it was, but a row no longer holds the same gene from one condition to another, so
+    no group of genes moves together across conditions but by chance. Searching such cubes
+    shows what a search finds where there is nothing to find; see
+    :py:func:`~metagen.triclustering.stability`.
+
+    With a ``seed``, the rows are shuffled with a generator of its own; without one, with
+    MetaGen's generator.
+
+    .. code-block:: python
+
+        import numpy as np
+        from metagen.triclustering import Cube, null_cube
+
+        cube = Cube(np.arange(5 * 2 * 3, dtype=float).reshape(5, 2, 3))
+        null = null_cube(cube, seed=0)
+        print(null.shape, null.genes == cube.genes)                         # (5, 2, 3) True
+        print(sorted(map(tuple, null.values[:, 1])) == sorted(map(tuple, cube.values[:, 1])))   # True
+
+    :param cube: The cube.
+    :type cube: Cube
+    :param seed: A seed for this shuffle alone, defaults to None.
+    :type seed: int, optional
+    :return: The shuffled cube, with the names of the given one.
+    :rtype: Cube
+    """
+    rng = np.random.default_rng(seed) if seed is not None else get_numpy_rng()
+    values = cube.values
+    shuffled = np.empty_like(values)
+    for condition in range(values.shape[1]):
+        shuffled[:, condition, :] = values[rng.permutation(values.shape[0]), condition, :]
+    return Cube(shuffled, cube.genes, cube.conditions, cube.times)

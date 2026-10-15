@@ -118,6 +118,32 @@ Saving a run
 
 Quality and enrichment measures are computed from a result, not kept in it: the file of a run stays the same however it is evaluated afterwards. The ``history`` file, a line per search as it ends, remains the record to look at while a long run is under way.
 
+Triclusters that recur
+----------------------
+
+Runs with different seeds may find different triclusters. :py:func:`~metagen.triclustering.stability` tells, for each tricluster of a set of runs on the same data, how much it recurs in the others: the share of the pairs of its genes that share a tricluster in each of the other runs, on average, what that share would be by chance, and its **core**, the genes that turn up together with it in at least half of the other runs. :py:func:`~metagen.triclustering.null_cube` shuffles the rows of a cube apart in each condition, so that no group of genes moves together across conditions but by chance; runs on such cubes show how much triclusters recur where there is nothing to find, which gives a threshold:
+
+.. code-block:: python
+
+    from metagen.metaheuristics import TriGen
+    from metagen.triclustering import null_cube, plant, stability
+
+    cube, planted = plant((80, 6, 8), [(20, 4, 6)], noise=0.1, seed=0)
+    settings = dict(n_triclusters=3, generations=15, population_size=30, min_sizes=(5, 2, 3),
+                    max_sizes=(30, 6, 8), shuffle_genes=True)
+    runs = [TriGen(cube, seed=seed, **settings) for seed in range(4)]
+    nulls = [TriGen(null_cube(cube, seed=seed), seed=seed, **settings) for seed in range(4)]
+    for trigen in runs + nulls:
+        trigen.run()
+
+    real = stability([trigen.result() for trigen in runs])
+    threshold = max(found.stability for run in stability([trigen.result() for trigen in nulls]) for found in run)
+    print([found.stability > threshold for found in real[0]])          # [True, False, True]
+    core = real[0][0].core
+    print(len(core), len(set(core) & set(planted[0].genes)))           # 20 19
+
+The runs are compared by the names of the genes, so they may search the genes in orders of their own, as ``shuffle_genes`` does. ``stability`` also takes the runs as lists of the gene names of their triclusters, with the number of genes of the data as ``population``.
+
 Reference
 ---------
 

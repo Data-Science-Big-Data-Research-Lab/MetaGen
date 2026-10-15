@@ -189,7 +189,7 @@ def _printed_as_commented(code: str, namespace: dict) -> None:
 
 @pytest.mark.parametrize("name", ["Cube", "Cube.without_missing", "Cube.from_netcdf", "data.read_long", "data.read_slices", "data.drop_genes", "data.collapse_genes", "data.rename_genes", "data.check", "data.read_gds", "data.fetch_gds", "Tricluster", "msr3d", "msl", "lsl",
                                   "grq", "peq", "spq", "triq", "bioq", "purity", "cell_jaccard", "recovery",
-                                  "plant"])
+                                  "plant", "null_cube", "stability"])
 def test_the_examples_of_the_triclustering_docstrings_run_and_print_what_they_say(name, scratch):
     import metagen.triclustering as triclustering
     target = triclustering
