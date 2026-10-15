@@ -33,6 +33,57 @@ A cube holds no missing values: whatever stands for a gap, a zero for instance, 
     cube, kept = Cube.without_missing(values)               # drops gene 3
     print(cube.shape, kept[:5])                             # (39, 5, 8) (0, 1, 2, 4, 5)
 
+Loading and preparing data
+--------------------------
+
+A cube is saved in **NetCDF**, the standard format for labeled multidimensional data, which programs in any language read, from Python (xarray, netCDF4), R, Julia or MATLAB to the command line: ``cube.to_netcdf(path)`` writes the values with the dimensions ``gene``, ``condition`` and ``time`` and the names of each, and ``Cube.from_netcdf(path)`` reads them back, also from a file written by another program, whose dimensions may have other names and come in another order. Classic NetCDF needs nothing beyond SciPy; NetCDF-4 needs the ``netcdf`` extra (``pip install pymetagen-datalabupo[netcdf]``).
+
+Data usually arrive in other forms, and :py:mod:`metagen.triclustering.data` reads two of the most common: :py:func:`~metagen.triclustering.data.read_long`, a long table with a row per value and columns for the gene, the condition, the time and the value, as a spreadsheet or a data frame writes it; and :py:func:`~metagen.triclustering.data.read_slices`, a matrix per time, with a row per gene and a column per condition. Both take any separator and line ending, treat the usual markers of a missing value as such, and either report the missing cells or drop the positions that hold them.
+
+Expression data often need preparing before a search, and :py:func:`~metagen.triclustering.data.check` says what may be wrong with a cube without changing it. These are the usual problems:
+
+* **The scale.** MSL reads the angles of the slopes between consecutive times, so it needs data where a slope means something: on raw intensities almost every step is steep, and MSL tells little more than whether a series rises or falls. Expression data are usually taken to log2.
+* **The conditions.** Each condition should be an experimental one. The columns of a single measurement, such as the intensity and the background of a spot, change together over time and make any group of genes look coherent.
+* **The rows.** Control spots are not genes and :py:func:`~metagen.triclustering.data.drop_genes` removes them; probes can be renamed to the symbols of their genes with :py:func:`~metagen.triclustering.data.rename_genes`, and :py:func:`~metagen.triclustering.data.collapse_genes` then makes one row per gene. Gene names that a spreadsheet turned into dates, and names of probes or sequences, which an enrichment analysis does not know, are worth fixing before anything else.
+* **The order of the genes.** The search reads the order of the rows (see the TriGen documentation): when it means nothing, as with genes listed by name, ``shuffle_genes=True`` makes each run search them in an order of its own.
+
+.. code-block:: python
+
+    import numpy as np
+    from metagen.triclustering import Cube
+    from metagen.triclustering.data import check, collapse_genes, drop_genes, read_long, rename_genes
+
+    # A long table of raw intensities, a row per probe, sample and hour, as a spreadsheet writes it.
+    rng = np.random.default_rng(0)
+    probes = [f"{index}_at" for index in range(1000, 1040)] + ["AFFX-BioB-5_at"]
+    with open("expression.csv", "w") as handle:
+        handle.write("probe,sample,hour,intensity\n")
+        for probe in probes:
+            level = rng.normal(7, 1.5)
+            for sample in ("wild", "mutant", "control"):
+                for hour in (0, 6, 12, 24):
+                    handle.write(f"{probe},{sample},{hour},{2 ** (level + rng.normal(scale=0.8)):.1f}\n")
+
+    cube = read_long("expression.csv", gene="probe", condition="sample", time="hour", value="intensity")
+    print(cube)                                                  # Cube(41 genes, 3 conditions, 4 times)
+    warnings = check(cube)
+    print(len(warnings), warnings[0].split(":")[0])     # 4 The values may need a transform, such as log2
+
+    # The annotation of the platform: two probes per gene.
+    symbols = ["DDR1", "RFC2", "HSPA6", "PAX8", "GUCA1A", "UBA7", "THRA", "PTPN21", "CCL5", "CYP2E1",
+               "EPHB3", "ESRRA", "CYP2A6", "SCARB1", "TTLL12", "WFDC2", "MAPK1", "ADAM32", "SPATA17", "PRR22"]
+    annotation = {f"{index}_at": symbols[(index - 1000) // 2] for index in range(1000, 1040)}
+    cube = drop_genes(cube, pattern="^AFFX")
+    cube, unmapped = rename_genes(cube, annotation)
+    cube = collapse_genes(cube, how="variance")
+    cube = Cube(np.log2(cube.values), cube.genes, cube.conditions, cube.times)
+    print(cube, unmapped, check(cube))                          # Cube(20 genes, 3 conditions, 4 times) [] []
+
+    cube.to_netcdf("expression.nc", attributes={"description": "an example", "source": "a spreadsheet"})
+    print(Cube.from_netcdf("expression.nc").fingerprint == cube.fingerprint)   # True
+
+The four warnings of the raw table are the scale, the names of probes, the control spot and the alphabetical order of the probes. Once a cube is prepared, saving it in NetCDF and reading it from there keeps the same values, and the same fingerprint, on any machine; the same preparation run on another machine may differ in the last digit of a computed value.
+
 A tricluster
 ------------
 
