@@ -847,8 +847,8 @@ def read_gds(path: str, time: str, conditions: Optional[Sequence[str]] = None, g
     labels = list(dict.fromkeys(" / ".join(factors[factor][sample] for factor in chosen) for sample in samples))
     groups: Dict[Tuple[str, str], List[int]] = {}
     for column, sample in enumerate(samples):
-        key = (" / ".join(factors[factor][sample] for factor in chosen), factors[time][sample])
-        groups.setdefault(key, []).append(column)
+        group = (" / ".join(factors[factor][sample] for factor in chosen), factors[time][sample])
+        groups.setdefault(group, []).append(column)
     counts = {len(groups.get((label, level), [])) for label in labels for level in times}
     if len(counts) != 1 or 0 in counts:
         raise ValueError(f"The conditions of {path} do not have as many replicates at every time ({sorted(counts)}): "
