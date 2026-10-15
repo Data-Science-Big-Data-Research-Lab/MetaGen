@@ -46,6 +46,26 @@ Each tricluster keeps the fitness it had when it was found, against the triclust
 
 When a search evaluates nothing that has not been found already, which only happens in a small search space, it adds no tricluster and says so in the log: TriGen then returns fewer triclusters than asked for.
 
+The order of the genes
+----------------------
+
+The search is not blind to the order of the genes in the cube: the initial population draws blocks of consecutive positions, and MSL, with the default views, reads the slopes along the genes in the order they have. When that order means something, such as positions along a chromosome, that is what is wanted. When it does not, as in most expression data, where the genes are often listed by name, ``shuffle_genes=True`` makes each run search the genes in an order of its own, drawn from the seeded generator, and gives back the triclusters with the positions of the cube:
+
+.. code-block:: python
+
+    from metagen.metaheuristics import TriGen
+    from metagen.triclustering import plant, recovery
+
+    cube, planted = plant((100, 10, 12), [(20, 4, 6), (15, 3, 5)], pattern="additive", noise=0.05, seed=0)
+    trigen = TriGen(cube, n_triclusters=2, generations=50, population_size=100,
+                    min_sizes=(5, 2, 3), max_sizes=(30, 6, 8), shuffle_genes=True, seed=0)
+    found = trigen.run()
+    print([tricluster.size for tricluster in found])     # [(18, 4, 5), (14, 2, 4)]
+    print(found[0].genes[:5])                            # (2, 10, 20, 28, 30)
+    print(round(recovery(found, planted), 3))            # 0.624
+
+The fitness and the terms of each tricluster are those of the order its run saw; with ``views="time"`` they do not depend on the order. A seed reproduces the order, and a saved run keeps the option, so ``TriGenResult.trigen(cube)`` runs it again in the same order.
+
 Scoring by significance
 -----------------------
 

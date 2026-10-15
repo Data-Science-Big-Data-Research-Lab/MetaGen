@@ -42,7 +42,7 @@ VERSION = 1
 #: The arguments of TriGen a result keeps: all but the cube and the history file.
 CONFIGURATION = ("n_triclusters", "generations", "population_size", "random_fraction", "selection_rate",
                  "mutation_probability", "min_sizes", "max_sizes", "measure", "views", "flat_profiles", "weights",
-                 "size_reference", "seed", "growth", "scoring", "pruning")
+                 "size_reference", "seed", "growth", "scoring", "pruning", "shuffle_genes")
 
 
 @dataclass
@@ -97,6 +97,9 @@ class TriGenResult:
     searches: List[Dict[str, Any]] = field(default_factory=list)
 
     def __post_init__(self) -> None:
+        if isinstance(self.configuration, dict) and "shuffle_genes" not in self.configuration:
+            # Saved before TriGen could shuffle the genes, which is to say without shuffling them.
+            self.configuration = {**self.configuration, "shuffle_genes": False}
         if not isinstance(self.configuration, dict) or set(self.configuration) != set(CONFIGURATION):
             given = sorted(self.configuration) if isinstance(self.configuration, dict) else self.configuration
             raise ValueError(f"The configuration of a TriGen holds {sorted(CONFIGURATION)}, not {given}")

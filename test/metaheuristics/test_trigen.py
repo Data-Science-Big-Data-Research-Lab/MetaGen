@@ -10,7 +10,7 @@ import textwrap
 import pytest
 
 from metagen.metaheuristics import TriclusterFitness, TriGen
-from metagen.triclustering import Cube, Tricluster, msl, plant
+from metagen.triclustering import Cube, Tricluster, msl, plant, recovery
 
 CUBE, PLANTED = plant((60, 6, 8), [(12, 3, 5), (10, 2, 4)], noise=0.05, seed=0)
 SETTINGS = {"generations": 8, "population_size": 20, "min_sizes": (4, 2, 3), "max_sizes": (15, 4, 6)}
@@ -220,3 +220,36 @@ def test_a_tricluster_that_grows_into_one_found_is_kept_as_returned(monkeypatch)
     monkeypatch.setattr(module, "grow", lambda tricluster, *rest, **options: (first, 1))
     triclusters = _trigen(growth="fitness", n_triclusters=2).run()
     assert triclusters[0] == first and triclusters[1] != first
+
+
+def test_shuffling_the_genes_gives_back_the_positions_of_the_cube():
+    """Each run searches the genes in an order of its own and gives back the positions of
+    the cube: with the time view alone the fitness does not depend on the order of the
+    genes, so each tricluster has, at its positions in the cube, the fitness it was found
+    with."""
+    trigen = _trigen(n_triclusters=3, views="time", shuffle_genes=True)
+    triclusters = trigen.run()
+    assert len(triclusters) == 3
+    for index, tricluster in enumerate(triclusters):
+        tricluster.check(CUBE)
+        fitness = TriclusterFitness(CUBE, views="time", max_sizes=SETTINGS["max_sizes"], found=triclusters[:index])
+        assert tricluster.fitness == pytest.approx(fitness.evaluate(tricluster), abs=1e-12)
+        assert trigen.history[index]["tricluster"]["genes"] == list(tricluster.genes)
+    assert trigen.fitness.found == triclusters
+    assert [sum(level) for level in trigen.hierarchy.levels] == [sum(t.size[axis] for t in triclusters) for axis in range(3)]
+
+
+def test_shuffling_the_genes_is_reproducible_and_changes_the_order_searched():
+    first = _trigen(shuffle_genes=True).run()
+    assert _trigen(shuffle_genes=True).run() == first
+    assert _trigen(shuffle_genes=True, seed=2).run() != first
+    assert _trigen().run() != first
+    assert TriGen(CUBE, **SETTINGS).shuffle_genes is False
+
+
+def test_shuffling_the_genes_finds_a_planted_tricluster():
+    cube, planted = plant((100, 8, 10), [(20, 4, 6)], noise=0.05, seed=3)
+    recovered = [recovery(TriGen(cube, n_triclusters=1, generations=30, population_size=50, min_sizes=(5, 2, 3),
+                                 max_sizes=(30, 6, 8), shuffle_genes=True, seed=seed).run(), planted)
+                 for seed in range(6)]
+    assert sum(recovered) / len(recovered) >= 0.5

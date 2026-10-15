@@ -23,7 +23,7 @@ import time
 from typing import Any, Callable, Dict, List, Literal, Mapping, Optional, Sequence, Set, Tuple
 
 from metagen.framework import Solution
-from metagen.framework.rng import set_seed
+from metagen.framework.rng import get_numpy_rng, set_seed
 from metagen.logging.metagen_logger import metagen_logger
 from metagen.metaheuristics.trigen.fitness import (NULL_SAMPLES, NULL_SIZES, Measure, Scoring, SizeReference,
                                                    TriclusterFitness)
@@ -66,6 +66,13 @@ class TriGen:
     fitness. With ``scoring="significance"`` (see :py:class:`TriclusterFitness`) the
     fitness has no size term, and the largest sizes can be left at the size of the cube.
     A tricluster that grows into one already found is kept as the search returned it.
+
+    The order of the genes in the cube steers the search: the initial population draws
+    genes from runs of neighboring positions, and MSL with the default views reads the
+    slopes along the genes in their order. When that order means nothing, as in most
+    expression data, ``shuffle_genes=True`` makes each run search the genes in an order of
+    its own, drawn from the seeded generator, and gives back the triclusters with the
+    positions of the cube; their fitness and terms are those of the order the run saw.
 
     .. code-block:: python
 
@@ -128,6 +135,9 @@ class TriGen:
     :param pruning: Whether growing may also remove coordinates; None, the default, prunes
         with ``scoring="significance"`` and ``growth="fitness"``, and not otherwise.
     :type pruning: bool or None, optional
+    :param shuffle_genes: Whether each run searches the genes in an order of its own,
+        defaults to False.
+    :type shuffle_genes: bool, optional
     :raises ValueError: if a parameter is out of its range.
     """
 
@@ -138,7 +148,7 @@ class TriGen:
                  weights: Optional[Mapping[str, float]] = None, size_reference: SizeReference = "dataset",
                  seed: Optional[int] = None, history: Optional[str] = None,
                  growth: Growth = "fitness", scoring: Scoring = "weighted",
-                 pruning: Optional[bool] = None) -> None:
+                 pruning: Optional[bool] = None, shuffle_genes: bool = False) -> None:
         require_integer("n_triclusters", n_triclusters)
         if n_triclusters < 1:
             raise ValueError(f"TriGen finds at least one tricluster, not {n_triclusters}.")
@@ -161,9 +171,10 @@ class TriGen:
         self.selection_rate = selection_rate
         self.mutation_probability = mutation_probability
         self.sizes: Sizes = ((smallest[0], largest[0]), (smallest[1], largest[1]), (smallest[2], largest[2]))
-        self.fitness = TriclusterFitness(cube, measure=measure, views=views, flat_profiles=flat_profiles,
-                                         weights=weights, size_reference=size_reference, max_sizes=largest,
-                                         scoring=scoring)
+        self._fitness_options: Dict[str, Any] = dict(measure=measure, views=views, flat_profiles=flat_profiles,
+                                                     weights=weights, size_reference=size_reference,
+                                                     max_sizes=largest, scoring=scoring)
+        self.fitness = TriclusterFitness(cube, **self._fitness_options)
         # Growing is not part of the Java TriGen; it is the node addition of Cheng and
         # Church taken to three dimensions. Measured in the bench of phase 4b, 30 seeds
         # (metagen-auditoria/trigen/banco/bloque4_tablas.md and bloque5_informe.md):
@@ -185,6 +196,11 @@ class TriGen:
         # pruning by it ends every tricluster at the smallest sizes.
         self.pruning = (scoring == "significance" and growth == "fitness") if pruning is None else bool(pruning)
         self.size_reference = size_reference
+        # Measured in phase 5c (metagen-auditoria/trigen/fase5c/informe_5c.md, section 5):
+        # on gse112660, whose genes are in alphabetical order, TriGen without growth finds
+        # purity 0.226 in the given order and 0.018 with the genes shuffled; on yeast the
+        # triclusters of runs with the same order share genes by position, not by biology.
+        self.shuffle_genes = bool(shuffle_genes)
         self.seed = seed
         self.history_file = history
         #: The seconds the last run took.
@@ -222,31 +238,41 @@ class TriGen:
             set_seed(self.seed)
         if self.history_file is not None and os.path.exists(self.history_file):
             os.remove(self.history_file)
-        hierarchy = self.hierarchy = DataHierarchy(self.cube.shape)
+        # The searches work on the cube in the order of this run, and what they find goes
+        # back to the positions of the cube before it is kept.
+        cube, fitness, order = self.cube, self.fitness, None
+        if self.shuffle_genes:
+            order = [int(position) for position in get_numpy_rng().permutation(self.cube.shape[0])]
+            cube = Cube(self.cube.values[order], genes=[self.cube.genes[position] for position in order],
+                        conditions=self.cube.conditions, times=self.cube.times)
+            fitness = TriclusterFitness(cube, **self._fitness_options)
+        hierarchy = DataHierarchy(cube.shape)
+        self.hierarchy = DataHierarchy(self.cube.shape)
         self.fitness.found = []
+        fitness.found = []
         # Each run fits the model of chance anew from the seeded generator, here in the
         # driver and not lazily inside an evaluation: the same seed gives the same run.
-        if self.fitness.scoring == "significance":
-            self.fitness.fit_chance()
+        if fitness.scoring == "significance":
+            fitness.fit_chance()
             if self.started is not None:
                 self.started["chance_evaluations"] = NULL_SIZES * NULL_SAMPLES
         self.triclusters = []
         self.history = []
+        found: List[Tricluster] = []
         for index in range(self.n_triclusters):
-            search = TriGenGA(self.fitness, self.sizes, hierarchy, first=index == 0,
+            search = TriGenGA(fitness, self.sizes, hierarchy, first=index == 0,
                               population_size=self.population_size, generations=self.generations,
                               random_fraction=self.random_fraction, selection_rate=self.selection_rate,
                               mutation_probability=self.mutation_probability)
             search.run()
-            found = set(self.triclusters)
-            chosen = _choose(search, found)
+            chosen = _choose(search, set(found))
             record: Dict[str, Any] = {"search": index, "evaluations": search._evaluations,
                                       "seconds": search._seconds,
                                       "best_fitnesses": list(search.best_solution_fitnesses),
                                       "growth_evaluations": 0}
             if chosen is not None and self.growth is not None:
-                score = self.fitness.evaluate if self.growth == "fitness" else self.fitness.quality
-                grown, record["growth_evaluations"] = grow(chosen, score, self.sizes, self.cube.shape,
+                score = fitness.evaluate if self.growth == "fitness" else fitness.quality
+                grown, record["growth_evaluations"] = grow(chosen, score, self.sizes, cube.shape,
                                                            pruning=self.pruning)
                 if grown not in found:
                     chosen = grown
@@ -255,16 +281,23 @@ class TriGen:
                                        f"already: the search space has run out of new ones.")
                 record["tricluster"] = None
             else:
-                terms = self.fitness.terms(chosen)
+                terms = fitness.terms(chosen)
                 chosen = Tricluster(chosen.genes, chosen.conditions, chosen.times, fitness=terms["fitness"])
+                found.append(chosen)
+                fitness.found.append(chosen)
+                hierarchy.update(chosen)
+                if order is not None:
+                    chosen = Tricluster([order[position] for position in chosen.genes], chosen.conditions,
+                                        chosen.times, fitness=terms["fitness"])
                 record["tricluster"] = {"genes": list(chosen.genes), "conditions": list(chosen.conditions),
                                         "times": list(chosen.times)}
                 record["sizes"] = list(chosen.size)
                 record["fitness"] = terms["fitness"]
                 record["terms"] = terms
                 self.triclusters.append(chosen)
-                self.fitness.found.append(chosen)
-                hierarchy.update(chosen)
+                if fitness is not self.fitness:
+                    self.fitness.found.append(chosen)
+                self.hierarchy.update(chosen)
             self.history.append(record)
             if self.history_file is not None:
                 with open(self.history_file, "a") as handle:
@@ -288,7 +321,8 @@ class TriGen:
                 "flat_profiles": self.fitness.flat_profiles,
                 "weights": None if self.fitness.scoring == "significance" else dict(self.fitness.weights),
                 "size_reference": self.size_reference, "seed": self.seed, "growth": self.growth,
-                "scoring": self.fitness.scoring, "pruning": self.pruning})
+                "scoring": self.fitness.scoring, "pruning": self.pruning,
+                "shuffle_genes": self.shuffle_genes})
 
     def result(self, label: Optional[str] = None) -> TriGenResult:
         """
