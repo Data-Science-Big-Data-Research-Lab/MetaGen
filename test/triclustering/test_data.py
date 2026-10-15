@@ -315,3 +315,131 @@ def test_constant_rows_zeros_and_alphabetical_order_are_reported():
     assert not any("zero" in warning for warning in check(Cube(integers, genes=_names(40))))
     ordered = sorted(f"G{index:03d}" for index in range(40))
     assert check(Cube(SOUND, genes=ordered))[0].startswith("The genes are in alphabetical order")
+
+
+# --- GEO ---------------------------------------------------------------------------------
+
+import gzip  # noqa: E402
+
+from metagen.triclustering.data import read_gds  # noqa: E402
+
+
+def _gds(path, values=None, extra_column=True, zipped=False):
+    """A GDS in miniature: two protocols, three hours, two series of the first protocol and
+    one of the second (as GDS4472, with its series as another factor)."""
+    samples = [f"GSM{index}" for index in range(9)]
+    hours = {0: "hour 0", 1: "hour 8", 2: "hour 16"}
+    lines = ["^DATABASE = Geo", "^DATASET = GDS0"]
+    subsets = [("protocol", "silencing", samples[:6]), ("protocol", "control", samples[6:]),
+               ("other", "TC 1", samples[0:6:2]), ("other", "TC 2", samples[1:6:2]), ("other", "TC n/a", samples[6:])]
+    # hours appear in the file out of order: 16, 0, 8
+    for order, hour in ((2, "hour 16"), (0, "hour 0"), (1, "hour 8")):
+        subsets.append(("time", hour, [s for i, s in enumerate(samples) if (i // 2 if i < 6 else i - 6) == order]))
+    for index, (kind, description, members) in enumerate(subsets):
+        lines += [f"^SUBSET = GDS0_{index}", f"!subset_description = {description}",
+                  "!subset_sample_id = " + ",".join(members), f"!subset_type = {kind}"]
+    lines.append("!dataset_table_begin")
+    lines.append("\t".join(["ID_REF", "IDENTIFIER"] + samples + (["Gene title"] if extra_column else [])))
+    for gene in range(4):
+        row = [str(gene * 100 + column) for column in range(9)] if values is None else values[gene]
+        lines.append("\t".join([f"{gene}_at", f"GENE{gene}"] + row + (["a title"] if extra_column else [])))
+    lines.append("!dataset_table_end")
+    content = ("\n".join(lines) + "\n").encode()
+    (gzip.open if zipped else open)(path, "wb").write(content)
+    return str(path)
+
+
+def test_a_gds_becomes_a_cube_with_its_factors_as_conditions_and_times(tmp_path):
+    path = _gds(tmp_path / "GDS0.soft")
+    cube = read_gds(path, time="time")
+    assert cube.times == ("hour 0", "hour 8", "hour 16")
+    assert cube.conditions == ("silencing / TC 1", "silencing / TC 2", "control / TC n/a")
+    assert cube.genes == ("GENE0", "GENE1", "GENE2", "GENE3")
+    # GSM0, GSM2, GSM4 are the first series of the silencing at hours 0, 8 and 16
+    assert cube.values[1, 0].tolist() == [100.0, 102.0, 104.0] and cube.values[1, 2].tolist() == [106.0, 107.0, 108.0]
+    probes = read_gds(_gds(tmp_path / "GDS0.soft.gz", zipped=True), time="time", genes="ID_REF")
+    assert probes.genes == ("0_at", "1_at", "2_at", "3_at") and np.array_equal(probes.values, cube.values)
+
+
+def test_replicates_are_split_or_averaged(tmp_path):
+    samples = [f"GSM{index}" for index in range(8)]
+    lines = ["^DATASET = GDS1"]
+    for index, (kind, description, members) in enumerate((
+            ("genotype", "wild", samples[:4]), ("genotype", "rd1", samples[4:]),
+            ("age", "day 2", ["GSM0", "GSM1", "GSM4", "GSM5"]), ("age", "day 8", ["GSM2", "GSM3", "GSM6", "GSM7"]))):
+        lines += [f"^SUBSET = GDS1_{index}", f"!subset_description = {description}",
+                  "!subset_sample_id = " + ",".join(members), f"!subset_type = {kind}"]
+    lines += ["!dataset_table_begin", "\t".join(["ID_REF", "IDENTIFIER"] + samples)]
+    lines += ["\t".join([f"p{g}", f"G{g}"] + [str(g * 10 + s) for s in range(8)]) for g in range(3)]
+    path = tmp_path / "GDS1.soft"
+    path.write_text("\n".join(lines + ["!dataset_table_end"]) + "\n")
+    split = read_gds(str(path), time="age")
+    assert split.conditions == ("wild #1", "wild #2", "rd1 #1", "rd1 #2") and split.times == ("day 2", "day 8")
+    assert split.values[1, 1].tolist() == [11.0, 13.0] and split.values[1, 2].tolist() == [14.0, 16.0]
+    mean = read_gds(str(path), time="age", replicates="mean")
+    assert mean.conditions == ("wild", "rd1") and mean.values[1, 0].tolist() == [10.5, 12.5]
+
+
+def test_what_does_not_fit_says_so(tmp_path):
+    path = _gds(tmp_path / "GDS0.soft")
+    with pytest.raises(ValueError, match="no factor 'age'"):
+        read_gds(path, time="age")
+    with pytest.raises(ValueError, match="as many replicates"):
+        read_gds(path, time="time", conditions=["protocol"])      # the control has one series, the silencing two
+    with pytest.raises(ValueError, match="'split' or 'mean'"):
+        read_gds(path, time="time", replicates="median")
+    with pytest.raises(ValueError, match="IDENTIFIER"):
+        read_gds(path, time="time", genes="symbol")
+    text = tmp_path / "text.soft"
+    text.write_text("gene,value\n")
+    with pytest.raises(ValueError, match="not the SOFT file"):
+        read_gds(str(text), time="time")
+    gaps = [[str(gene * 10 + column) for column in range(9)] for gene in range(4)]
+    gaps[2][3] = "null"
+    with pytest.raises(ValueError, match="1 cells missing"):
+        read_gds(_gds(tmp_path / "gaps.soft", values=gaps), time="time")
+    assert read_gds(_gds(tmp_path / "gaps.soft", values=gaps), time="time", drop_missing="genes").genes == \
+        ("GENE0", "GENE1", "GENE3")
+
+
+from metagen.triclustering import data as data_module  # noqa: E402
+from metagen.triclustering.data import fetch_gds  # noqa: E402
+
+
+def test_fetching_a_gds_downloads_it_once_from_its_place_in_geo(tmp_path, monkeypatch):
+    asked = []
+
+    def download(url, path, timeout):
+        asked.append(url)
+        _gds(path, zipped=True)
+
+    monkeypatch.setattr(data_module, "_download", download)
+    path = fetch_gds("GDS4510", folder=str(tmp_path / "geo"))
+    assert path == str(tmp_path / "geo" / "GDS4510_full.soft.gz")
+    assert asked == ["https://ftp.ncbi.nlm.nih.gov/geo/datasets/GDS4nnn/GDS4510/soft/GDS4510_full.soft.gz"]
+    assert read_gds(path, time="time").shape == (4, 3, 3)
+    assert fetch_gds("GDS4510", folder=str(tmp_path / "geo")) == path and len(asked) == 1
+    fetch_gds("GDS12", folder=str(tmp_path / "geo"), full=False)
+    assert asked[-1] == "https://ftp.ncbi.nlm.nih.gov/geo/datasets/GDSnnn/GDS12/soft/GDS12.soft.gz"
+
+
+def test_fetching_what_geo_does_not_have_or_cannot_serve_says_so_and_leaves_nothing(tmp_path, monkeypatch):
+    import urllib.error
+
+    def missing(url, path, timeout):
+        open(path, "wb").write(b"half")
+        raise urllib.error.HTTPError(url, 404, "Not Found", None, None)
+
+    def offline(url, path, timeout):
+        raise urllib.error.URLError("no route to host")
+
+    folder = tmp_path / "geo"
+    monkeypatch.setattr(data_module, "_download", missing)
+    with pytest.raises(ValueError, match="GEO has no DataSet GDS9999999"):
+        fetch_gds("GDS9999999", folder=str(folder))
+    monkeypatch.setattr(data_module, "_download", offline)
+    with pytest.raises(RuntimeError, match="could not be reached"):
+        fetch_gds("GDS1", folder=str(folder))
+    assert list(folder.iterdir()) == []
+    with pytest.raises(ValueError, match="GDS followed by digits"):
+        fetch_gds("GSE112660")

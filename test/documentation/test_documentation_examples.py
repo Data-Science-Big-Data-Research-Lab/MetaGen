@@ -78,12 +78,36 @@ def _answer_gprofiler_from_records(monkeypatch):
     monkeypatch.setattr(enrichment, "_post", recorded)
 
 
+def _serve_gds_from_a_small_copy(monkeypatch):
+    """The examples that download a GEO DataSet get a small copy with its factors, so they
+    run without a connection."""
+    import gzip
+    import metagen.triclustering.data as data
+
+    def download(url, path, timeout):
+        samples = [f"GSM{index}" for index in range(32)]
+        lines = ["^DATASET = GDS4510"]
+        groups = [("genotype/variation", "wild type", samples[:16]), ("genotype/variation", "rd1", samples[16:])]
+        groups += [("age", f"postnatal day {day}", [s for i, s in enumerate(samples) if (i % 16) // 4 == step])
+                   for step, day in enumerate((2, 4, 6, 8))]
+        for index, (kind, description, members) in enumerate(groups):
+            lines += [f"^SUBSET = GDS4510_{index}", f"!subset_description = {description}",
+                      "!subset_sample_id = " + ",".join(members), f"!subset_type = {kind}"]
+        lines += ["!dataset_table_begin", "\t".join(["ID_REF", "IDENTIFIER"] + samples)]
+        lines += ["\t".join([f"{g}_at", f"Gene{g}"] + ["1.0"] * 32) for g in range(3)] + ["!dataset_table_end"]
+        with gzip.open(path, "wt") as handle:
+            handle.write("\n".join(lines) + "\n")
+
+    monkeypatch.setattr(data, "_download", download)
+
+
 @pytest.fixture
 def scratch(tmp_path, monkeypatch):
     """A scratch directory, and the process left as the page found it: the logging page
     turns MetaGen's logger on, and the pausing page installs a signal handler."""
     monkeypatch.chdir(tmp_path)
     _answer_gprofiler_from_records(monkeypatch)
+    _serve_gds_from_a_small_copy(monkeypatch)
     # MetaGen's own logger, not logging.getLogger("metagen_logger"): asked for by name
     # before MetaGen creates it, logging would hand MetaGen a plain Logger.
     from metagen.logging.metagen_logger import metagen_logger as logger
@@ -163,7 +187,7 @@ def _printed_as_commented(code: str, namespace: dict) -> None:
     assert len(printed) >= len(expected)
 
 
-@pytest.mark.parametrize("name", ["Cube", "Cube.without_missing", "Cube.from_netcdf", "data.read_long", "data.read_slices", "data.drop_genes", "data.collapse_genes", "data.rename_genes", "data.check", "Tricluster", "msr3d", "msl", "lsl",
+@pytest.mark.parametrize("name", ["Cube", "Cube.without_missing", "Cube.from_netcdf", "data.read_long", "data.read_slices", "data.drop_genes", "data.collapse_genes", "data.rename_genes", "data.check", "data.read_gds", "data.fetch_gds", "Tricluster", "msr3d", "msl", "lsl",
                                   "grq", "peq", "spq", "triq", "bioq", "purity", "cell_jaccard", "recovery",
                                   "plant"])
 def test_the_examples_of_the_triclustering_docstrings_run_and_print_what_they_say(name, scratch):

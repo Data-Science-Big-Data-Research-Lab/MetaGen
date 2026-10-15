@@ -16,11 +16,17 @@ Triclustering
 
 .. autofunction:: metagen.triclustering.data.read_slices
 
+.. autofunction:: metagen.triclustering.data.read_gds
+
+.. autofunction:: metagen.triclustering.data.fetch_gds
+
 .. autofunction:: metagen.triclustering.data.drop_genes
 
 .. autofunction:: metagen.triclustering.data.collapse_genes
 
 .. autofunction:: metagen.triclustering.data.rename_genes
+
+.. autofunction:: metagen.triclustering.data.check
 
 .. autoclass:: metagen.triclustering.Tricluster
     :members: size, check, labels, from_solution

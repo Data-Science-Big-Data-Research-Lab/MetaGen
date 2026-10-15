@@ -14,6 +14,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
+from . import data
 from .cube import Cube
 from .enrichment import (Enrichment, EnrichmentProvider, GProfiler, LocalGO, Term, bioq, enrich,
                          ontologizer_table, purity)
