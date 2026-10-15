@@ -684,7 +684,7 @@ def check(cube: Cube) -> List[str]:
     centered = values - values.mean(axis=2, keepdims=True)
     columns = centered.transpose(1, 0, 2).reshape(values.shape[1], -1)
     if values.shape[1] > 1 and np.all(np.std(columns, axis=1) > 0):
-        correlation = np.corrcoef(columns)
+        correlation: np.ndarray = np.asarray(np.corrcoef(columns))
         pairs = [(cube.conditions[a], cube.conditions[b], correlation[a, b])
                  for a in range(len(columns)) for b in range(a + 1, len(columns)) if abs(correlation[a, b]) >= 0.98]
         if pairs:
