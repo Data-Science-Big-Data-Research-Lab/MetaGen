@@ -253,3 +253,16 @@ def test_shuffling_the_genes_finds_a_planted_tricluster():
                                  max_sizes=(30, 6, 8), shuffle_genes=True, seed=seed).run(), planted)
                  for seed in range(6)]
     assert sum(recovered) / len(recovered) >= 0.5
+
+
+def test_the_normalized_msr3d_makes_the_fitness_the_same_in_any_units():
+    from metagen.triclustering import Cube
+    scaled = Cube(CUBE.values * 1000.0)
+    tricluster = PLANTED[0]
+    raw, raw_scaled = TriclusterFitness(CUBE, measure="msr3d"), TriclusterFitness(scaled, measure="msr3d")
+    assert raw_scaled.evaluate(tricluster) != pytest.approx(raw.evaluate(tricluster))
+    normalized = TriclusterFitness(CUBE, measure="msr3d_normalized")
+    normalized_scaled = TriclusterFitness(scaled, measure="msr3d_normalized")
+    assert normalized_scaled.evaluate(tricluster) == pytest.approx(normalized.evaluate(tricluster))
+    found = TriGen(CUBE, **{**SETTINGS, "n_triclusters": 2, "seed": 1, "measure": "msr3d_normalized"}).run()
+    assert len(found) == 2

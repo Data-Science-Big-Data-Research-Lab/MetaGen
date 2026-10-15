@@ -30,7 +30,7 @@ Views = Literal["distinct", "time", "trlab"]
 TWO_PI = 2.0 * math.pi
 
 
-def msr3d(cube: Cube, tricluster: Tricluster) -> float:
+def msr3d(cube: Cube, tricluster: Tricluster, normalized: bool = False) -> float:
     """
     The mean squared residue of a tricluster (MSR3D): how far its values are from the
     sum of the effects of their gene, condition and time, the mean of the squared
@@ -43,7 +43,9 @@ def msr3d(cube: Cube, tricluster: Tricluster) -> float:
 
     where a dot stands for the mean over that dimension. It is zero for a tricluster of
     coherent values, the lower the better, and it is in the units of the data squared,
-    so its scale is the data's.
+    so its scale is the data's. ``normalized=True`` divides it by the variance of all the
+    values of the cube, which takes the scale out: it is then the same for the data in any
+    units, and below 1 for values with no pattern.
 
     .. code-block:: python
 
@@ -54,10 +56,17 @@ def msr3d(cube: Cube, tricluster: Tricluster) -> float:
         cube = Cube(1.0 * genes + 2.0 * conditions + 0.5 * times)     # additive: no interaction
         print(round(msr3d(cube, Tricluster([0, 2, 4], [0, 1], [1, 2, 3])), 12))   # 0.0
 
+        noise = Cube(np.random.default_rng(0).normal(scale=50.0, size=(40, 6, 8)))
+        tricluster = Tricluster(range(10), range(3), range(4))
+        print(round(msr3d(noise, tricluster)), round(msr3d(noise, tricluster, normalized=True), 3))   # 660 0.265
+
     :param cube: The data.
     :type cube: Cube
     :param tricluster: The tricluster.
     :type tricluster: Tricluster
+    :param normalized: Whether to divide it by the variance of the values of the cube,
+        defaults to False. For a cube whose values are all the same, it is then 0.
+    :type normalized: bool, optional
     :return: Its mean squared residue.
     :rtype: float
     """
@@ -71,7 +80,11 @@ def msr3d(cube: Cube, tricluster: Tricluster) -> float:
                + values.mean(axis=(1, 2), keepdims=True) + values.mean(axis=(0, 2), keepdims=True)
                + values.mean(axis=(0, 1), keepdims=True)
                - values.mean())
-    return float((residue ** 2).mean())
+    value = float((residue ** 2).mean())
+    if not normalized:
+        return value
+    spread = float(np.var(cube.values))
+    return value / spread if spread > 0 else 0.0
 
 
 def msl(cube: Cube, tricluster: Tricluster, views: Views = "distinct", normalized: bool = False) -> float:

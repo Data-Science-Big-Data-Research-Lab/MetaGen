@@ -29,7 +29,7 @@ from metagen.triclustering.measures import Views
 from metagen.triclustering.quality import FlatProfiles
 
 #: The measure of coherence the fitness takes as its quality term.
-Measure = Literal["msl", "lsl", "msr3d", "triq"]
+Measure = Literal["msl", "lsl", "msr3d", "msr3d_normalized", "triq"]
 
 #: What the size of a tricluster is measured against.
 SizeReference = Literal["dataset", "max"]
@@ -51,7 +51,7 @@ NULL_SAMPLES = 60
 WEIGHTS: Mapping[str, float] = {"quality": 0.8, "genes": 0.04, "conditions": 0.03, "times": 0.03,
                                 "overlap_genes": 0.04, "overlap_conditions": 0.03, "overlap_times": 0.03}
 
-_MEASURES = ("msl", "lsl", "msr3d", "triq")
+_MEASURES = ("msl", "lsl", "msr3d", "msr3d_normalized", "triq")
 
 
 class TriclusterFitness:
@@ -70,7 +70,9 @@ class TriclusterFitness:
     over the genes, the conditions and the times :math:`X`.
 
     - :math:`Q` is the quality: ``"msl"`` (MSL / 2π, the default), ``"lsl"`` (LSL / 2π),
-      ``"msr3d"`` (MSR3D, in the units of the data squared) or ``"triq"`` (1 − TRIQ).
+      ``"msr3d"`` (MSR3D, in the units of the data squared), ``"msr3d_normalized"`` (MSR3D
+      divided by the variance of the cube, so that the weights mean the same whatever the
+      scale of the data) or ``"triq"`` (1 − TRIQ).
     - :math:`1 - |X| / R_X` favors larger triclusters. :math:`R_X` is the size of that
       dimension in the cube, or, with ``size_reference="max"``, the largest size allowed.
     - :math:`O_X = \\sum_{s} |X \\cap X_s| / (|X| \\cdot |S|)` is the share of its
@@ -185,6 +187,8 @@ class TriclusterFitness:
             raise ValueError(f"size_reference must be 'dataset' or 'max', not {size_reference!r}.")
         self.cube = cube
         self.measure = measure
+        # The variance of the cube, for the normalized MSR3D; computed once, when first needed.
+        self._spread: Optional[float] = None
         self.views = views
         self.flat_profiles = flat_profiles
         self.weights: Dict[str, float] = chosen
@@ -235,6 +239,10 @@ class TriclusterFitness:
             return lsl(self.cube, tricluster, views=self.views, normalized=True)
         if self.measure == "msr3d":
             return msr3d(self.cube, tricluster)
+        if self.measure == "msr3d_normalized":
+            if self._spread is None:
+                self._spread = float(np.var(self.cube.values))
+            return msr3d(self.cube, tricluster) / self._spread if self._spread > 0 else 0.0
         return 1.0 - triq(self.cube, tricluster, views=self.views, flat_profiles=self.flat_profiles)
 
     def fit_chance(self) -> None:

@@ -255,3 +255,14 @@ def test_the_pair_differences_take_n_log_n_and_not_n_squared():
     slow_seconds = time.perf_counter() - start
     assert math.isclose(fast, slow, rel_tol=1e-12)
     assert fast_seconds * 10 < slow_seconds
+
+
+def test_the_normalized_msr3d_takes_the_scale_of_the_data_out():
+    from metagen.triclustering import Cube, Tricluster, msr3d
+    values = np.random.default_rng(4).normal(size=(30, 5, 6))
+    tricluster = Tricluster(range(8), range(3), range(4))
+    small, large = Cube(values), Cube(values * 100 + 7)
+    assert msr3d(large, tricluster) == pytest.approx(msr3d(small, tricluster) * 10000)
+    assert msr3d(large, tricluster, normalized=True) == pytest.approx(msr3d(small, tricluster, normalized=True))
+    assert msr3d(small, tricluster, normalized=True) == pytest.approx(msr3d(small, tricluster) / np.var(values))
+    assert msr3d(Cube(np.ones((5, 3, 4))), Tricluster(range(3), range(2), range(3)), normalized=True) == 0.0
