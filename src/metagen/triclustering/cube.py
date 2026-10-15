@@ -17,7 +17,7 @@
 from __future__ import annotations
 
 import hashlib
-from typing import TYPE_CHECKING, Any, Optional, Sequence, Tuple
+from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence, Tuple
 
 import numpy as np
 
@@ -130,6 +130,67 @@ class Cube:
                 raise ValueError(f"There are {len(given)} names of {axis} for {array.shape[index]} {axis}.")
             names[index] = [given[position] for position in kept]
         return cls(np.take(array, kept, axis=index), *names), kept
+
+    @classmethod
+    def from_netcdf(cls, path: str, variable: str = "values", dimensions: Sequence[str] = ("gene", "condition", "time"),
+                    drop_missing: Optional[str] = None) -> Cube:
+        """
+        Read a cube from a NetCDF file, the standard format for labeled multidimensional
+        data, classic or NetCDF-4 (the latter with the ``netcdf`` extra). The variable may
+        have its dimensions in any order and under any names; see
+        :py:func:`~metagen.triclustering.data.read_netcdf`.
+
+        .. code-block:: python
+
+            import numpy as np
+            from metagen.triclustering import Cube
+
+            values = np.random.default_rng(0).normal(size=(30, 4, 6))
+            cube = Cube(values, genes=[f"g{index}" for index in range(30)], times=[0, 1, 2, 4, 8, 16])
+            cube.to_netcdf("cube.nc", attributes={"description": "an example"})
+            again = Cube.from_netcdf("cube.nc")
+            print(again.shape, again.genes[:2], again.times[-1])            # (30, 4, 6) ('g0', 'g1') 16
+            print(again.fingerprint == cube.fingerprint)                    # True
+
+        :param path: The file.
+        :type path: str
+        :param variable: The variable that holds the values, defaults to ``"values"``.
+        :type variable: str, optional
+        :param dimensions: The names in the file of the dimensions of the genes, the
+            conditions and the times, defaults to ``("gene", "condition", "time")``.
+        :type dimensions: Sequence[str], optional
+        :param drop_missing: The axis along which to drop the positions that hold missing
+            cells, as :py:meth:`without_missing` does; None, the default, makes them an error.
+        :type drop_missing: str, optional
+        :return: The cube.
+        :rtype: Cube
+        :raises ValueError: if the file has no such variable or dimensions, or holds missing
+            cells and ``drop_missing`` is None.
+        """
+        from metagen.triclustering.data import read_netcdf
+        return read_netcdf(path, variable=variable, dimensions=dimensions, drop_missing=drop_missing)
+
+    def to_netcdf(self, path: str, attributes: Optional[Mapping[str, Any]] = None,
+                  format: str = "NETCDF3_64BIT") -> None:
+        """
+        Write the cube to a NetCDF file, the standard format for labeled multidimensional
+        data, read by any program that reads NetCDF, in any language: the values with the
+        dimensions ``gene``, ``condition`` and ``time``, and the names of each. Saving the
+        data once prepared, and reading them back from the file, keeps the same values,
+        and the same fingerprint, on any machine. See
+        :py:func:`~metagen.triclustering.data.write_netcdf`.
+
+        :param path: The file.
+        :type path: str
+        :param attributes: Global attributes that describe the data, such as a description
+            or its source, each a text or a number.
+        :type attributes: Mapping[str, Any], optional
+        :param format: ``"NETCDF3_64BIT"``, the default, or ``"NETCDF4"``, which needs the
+            ``netcdf`` extra.
+        :type format: str, optional
+        """
+        from metagen.triclustering.data import write_netcdf
+        write_netcdf(self, path, attributes=attributes, format=format)  # type: ignore[arg-type]
 
     @property
     def values(self) -> np.ndarray:

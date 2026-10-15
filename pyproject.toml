@@ -39,6 +39,11 @@ tensorboard = [
 distributed = [
     "ray>=2.40.0",
 ]
+# NetCDF-4 files for the triclustering cubes; classic NetCDF needs nothing beyond SciPy.
+netcdf = [
+    "xarray",
+    "netCDF4",
+]
 # The behavioral benchmark tunes a scikit-learn model, to exercise a domain that mixes
 # integers, categoricals and reals.
 test = [
@@ -49,6 +54,8 @@ all = [
     "tensorboard",
     "tensorboardX",
     "ray>=2.40.0",
+    "xarray",
+    "netCDF4",
 ]
 
 [project.urls]
