@@ -97,6 +97,41 @@ def test_a_hierarchical_tricluster_takes_the_least_explored_coordinates():
         assert not set(tricluster.times) & set(explored.times)
 
 
+def test_a_hierarchy_of_cells_counts_the_cells_of_each_tricluster_found():
+    hierarchy = DataHierarchy(SHAPE, cells=True)
+    hierarchy.update(Tricluster(range(5), range(2), range(3)))
+    hierarchy.update(Tricluster(range(3, 8), [1, 2], [2, 3]))
+    assert hierarchy.cells is not None and hierarchy.cells.sum() == 5 * 2 * 3 + 5 * 2 * 2
+    assert hierarchy.cells[3, 1, 2] == 2 and hierarchy.cells[0, 0, 0] == 1 and hierarchy.cells[9, 0, 0] == 0
+    assert hierarchy.levels[0][3] == 2
+    assert DataHierarchy(SHAPE).cells is None
+
+
+def test_the_genes_by_cells_are_those_least_held_in_the_conditions_and_times_drawn():
+    set_seed(5)
+    hierarchy = DataHierarchy(SHAPE, cells=True)
+    explored = Tricluster(range(20), range(4), range(7))
+    hierarchy.update(explored)
+    # In other times the explored genes hold no cell, so they are as free as the rest.
+    assert set(hierarchy.draw_genes([0, 1], [7, 8, 9], 30)) == set(range(30))
+    # In its own conditions and times, the genes not explored go first.
+    assert hierarchy.draw_genes([0, 1], [0, 1], 10) == list(range(20, 30))
+
+
+def test_a_hierarchical_tricluster_by_cells_may_reuse_genes_in_other_times():
+    set_seed(5)
+    hierarchy = DataHierarchy(SHAPE, cells=True)
+    explored = Tricluster(range(20), range(6), range(7))
+    hierarchy.update(explored)
+    reused = 0
+    for _ in range(200):
+        tricluster = hierarchical(hierarchy, ((3, 8), (2, 4), (2, 3)))
+        _within(tricluster, sizes=((3, 8), (2, 4), (2, 3)))
+        assert not set(tricluster.times) & set(explored.times)
+        reused += bool(set(tricluster.genes) & set(explored.genes))
+    assert reused > 100
+
+
 # --- the initial population -------------------------------------------------------
 
 def test_the_first_search_starts_half_scattered_and_half_from_blocks():

@@ -37,6 +37,9 @@ SizeReference = Literal["dataset", "max"]
 #: How the fitness scores a tricluster: a weighted mean of its terms, or its significance.
 Scoring = Literal["weighted", "significance"]
 
+#: What the overlap of the weighted fitness counts: coordinates of each dimension, or cells.
+Overlap = Literal["coordinates", "cells"]
+
 # The model of chance: the quality of random triclusters is measured at NULL_SIZES sizes
 # drawn log-uniformly over every size the cube allows, NULL_SAMPLES triclusters each, and
 # its mean and the logarithm of its deviation are fitted as linear in the logarithms of
@@ -81,6 +84,11 @@ class TriclusterFitness:
 
     The weights are 0.8 for the quality, 0.04, 0.03 and 0.03 for the sizes of the genes,
     conditions and times, and 0.04, 0.03 and 0.03 for their overlaps.
+
+    With ``overlap="cells"``, the three overlaps give way to one: :math:`O_{cells}`, the
+    share of the cells of the tricluster that a tricluster already found holds, weighted by
+    the three overlap weights together. A tricluster with the genes of one found, in other
+    times, then shares none of its cells and is not penalized.
 
     **By significance**, ``scoring="significance"``: how unlikely the quality of the
     tricluster is among random triclusters of its same size in the cube,
@@ -150,6 +158,10 @@ class TriclusterFitness:
     :param scoring: ``"weighted"`` or ``"significance"``, defaults to ``"weighted"``. The
         weights and the size reference only apply to ``"weighted"``.
     :type scoring: str, optional
+    :param overlap: What the overlap of the weighted fitness counts, ``"coordinates"`` or
+        ``"cells"``, defaults to ``"coordinates"``. The significance already compares the
+        cells two triclusters share, so it scores the same with either.
+    :type overlap: str, optional
     :raises ValueError: if an option is unknown, the weights are not the seven, or one is
         negative or not finite, the maximum sizes are missing or do not fit the cube, or
         weights are given with ``scoring="significance"``.
@@ -158,9 +170,12 @@ class TriclusterFitness:
     def __init__(self, cube: Cube, measure: Measure = "msl", views: Views = "distinct",
                  flat_profiles: FlatProfiles = "exclude", weights: Optional[Mapping[str, float]] = None,
                  size_reference: SizeReference = "dataset", max_sizes: Optional[Sequence[int]] = None,
-                 found: Optional[Sequence[Tricluster]] = None, scoring: Scoring = "weighted") -> None:
+                 found: Optional[Sequence[Tricluster]] = None, scoring: Scoring = "weighted",
+                 overlap: Overlap = "coordinates") -> None:
         if scoring not in ("weighted", "significance"):
             raise ValueError(f"scoring must be 'weighted' or 'significance', not {scoring!r}.")
+        if overlap not in ("coordinates", "cells"):
+            raise ValueError(f"overlap must be 'coordinates' or 'cells', not {overlap!r}.")
         if scoring == "significance" and weights is not None:
             raise ValueError("The weights only apply to scoring='weighted'.")
         if measure not in _MEASURES:
@@ -195,11 +210,14 @@ class TriclusterFitness:
         self.references: Tuple[int, int, int] = references
         self.found: List[Tricluster] = list(found or [])
         self.scoring = scoring
+        self.overlap = overlap
         # The fitted model of chance: coefficients of the mean and of the log deviation.
         self._chance: Optional[Tuple[np.ndarray, np.ndarray]] = None
         # The coordinates of the triclusters found as sets, built again only when the
         # list changes, not on every evaluation.
         self._found_sets: Tuple[Tuple[Tricluster, ...], List[Tuple[set, set, set]]] = ((), [])
+        # The cells the triclusters found hold, built again only when the list changes.
+        self._found_cells: Tuple[Tuple[Tricluster, ...], Optional[np.ndarray]] = ((), None)
 
     def __call__(self, solution: Solution) -> float:
         """
@@ -285,18 +303,29 @@ class TriclusterFitness:
                                                               tricluster.conditions, tricluster.times))
             return fitness
         weights = self.weights
-        found = self._sets_of_found()
-        shared = sum(len(set(tricluster.genes) & sets[0]) for sets in found)
-        extra = np.zeros(positions.size)
-        for sets in found:
-            extra += np.isin(positions, list(sets[0]))
-        overlap_genes = (shared + extra) / (genes * len(found)) if found else np.zeros(positions.size)
         total = (weights["quality"] * quality
                  + weights["genes"] * (1.0 - genes / self.references[0])
-                 + weights["conditions"] * (1.0 - base["conditions"]) + weights["times"] * (1.0 - base["times"])
-                 + weights["overlap_genes"] * overlap_genes
-                 + weights["overlap_conditions"] * base["overlap_conditions"]
-                 + weights["overlap_times"] * base["overlap_times"])
+                 + weights["conditions"] * (1.0 - base["conditions"]) + weights["times"] * (1.0 - base["times"]))
+        if self.overlap == "cells":
+            occupied = self._cells_of_found()
+            if occupied is None:
+                cells = np.zeros(positions.size)
+            else:
+                window = np.ix_(list(tricluster.conditions), list(tricluster.times))
+                held = int(occupied[list(tricluster.genes)][(slice(None),) + window].sum())
+                added = occupied[positions][(slice(None),) + window].sum(axis=(1, 2))
+                cells = (held + added) / (genes * conditions * times)
+            total = total + _cell_weight(weights) * cells
+        else:
+            found = self._sets_of_found()
+            shared = sum(len(set(tricluster.genes) & sets[0]) for sets in found)
+            extra = np.zeros(positions.size)
+            for sets in found:
+                extra += np.isin(positions, list(sets[0]))
+            overlap_genes = (shared + extra) / (genes * len(found)) if found else np.zeros(positions.size)
+            total = (total + weights["overlap_genes"] * overlap_genes
+                     + weights["overlap_conditions"] * base["overlap_conditions"]
+                     + weights["overlap_times"] * base["overlap_times"])
         return total / sum(weights.values())
 
     def fit_chance(self) -> None:
@@ -351,12 +380,40 @@ class TriclusterFitness:
             self._found_sets = (current, [_sets(tricluster) for tricluster in current])
         return self._found_sets[1]
 
+    def _cells_of_found(self) -> Optional[np.ndarray]:
+        """Whether a tricluster found holds each cell of the cube; None while none has been found."""
+        current = tuple(self.found)
+        if current != self._found_cells[0]:
+            occupied = None
+            if current:
+                occupied = np.zeros(self.cube.shape, dtype=bool)
+                for tricluster in current:
+                    occupied[np.ix_(list(tricluster.genes), list(tricluster.conditions), list(tricluster.times))] = True
+            self._found_cells = (current, occupied)
+        return self._found_cells[1]
+
+    def cell_overlap(self, tricluster: Tricluster) -> float:
+        """
+        The share of the cells of a tricluster that a tricluster already found holds, 0
+        while none has been found.
+
+        :param tricluster: The tricluster.
+        :type tricluster: Tricluster
+        :return: The share, from 0 to 1.
+        :rtype: float
+        """
+        occupied = self._cells_of_found()
+        if occupied is None:
+            return 0.0
+        return float(occupied[np.ix_(list(tricluster.genes), list(tricluster.conditions), list(tricluster.times))].mean())
+
     def terms(self, tricluster: Tricluster) -> Dict[str, float]:
         """
         Every term of the fitness of a tricluster, unweighted, and the fitness: the quality;
         the size of each dimension as a share of its reference (``"genes"``,
         ``"conditions"``, ``"times"``); its overlap with the triclusters found in each
-        dimension (``"overlap_genes"``, ...); with ``scoring="significance"``, its
+        dimension (``"overlap_genes"``, ...); with ``overlap="cells"``, the share of its
+        cells held by a tricluster found (``"overlap_cells"``); with ``scoring="significance"``, its
         significance, ``"z"``, and the largest significance it shares with a tricluster
         found, ``"z_found"``; and ``"fitness"``.
 
@@ -374,6 +431,8 @@ class TriclusterFitness:
             mine = set(positions)
             shared = sum(len(mine & sets[index]) for sets in found)
             terms[f"overlap_{axis}"] = shared / (len(mine) * len(found)) if found else 0.0
+        if self.overlap == "cells":
+            terms["overlap_cells"] = self.cell_overlap(tricluster)
         if self.scoring == "significance":
             # Only what is new counts. Scaling z by the overlap instead, -z * (1 - O),
             # scored the tricluster found padded with noise better than the tricluster
@@ -387,8 +446,11 @@ class TriclusterFitness:
             return terms
         weights = self.weights
         total = (weights["quality"] * terms["quality"]
-                 + sum(weights[axis] * (1.0 - terms[axis]) for axis in AXES)
-                 + sum(weights[f"overlap_{axis}"] * terms[f"overlap_{axis}"] for axis in AXES))
+                 + sum(weights[axis] * (1.0 - terms[axis]) for axis in AXES))
+        if self.overlap == "cells":
+            total += _cell_weight(weights) * terms["overlap_cells"]
+        else:
+            total += sum(weights[f"overlap_{axis}"] * terms[f"overlap_{axis}"] for axis in AXES)
         terms["fitness"] = total / sum(weights.values())
         return terms
 
@@ -402,6 +464,11 @@ def _shared(tricluster: Tricluster, other: Tricluster) -> Optional[Tricluster]:
     if min(len(genes), len(conditions), len(times)) < 2:
         return None
     return Tricluster(genes, conditions, times)
+
+
+def _cell_weight(weights: Mapping[str, float]) -> float:
+    """The weight of the overlap by cells: those of the three overlaps by coordinates."""
+    return sum(weights[f"overlap_{axis}"] for axis in AXES)
 
 
 def _sets(tricluster: Tricluster) -> Tuple[set, set, set]:

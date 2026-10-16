@@ -27,8 +27,8 @@ import numpy as np
 from metagen.framework import Solution
 from metagen.framework.rng import get_numpy_rng, set_seed
 from metagen.logging.metagen_logger import metagen_logger
-from metagen.metaheuristics.trigen.fitness import (NULL_SAMPLES, NULL_SIZES, Measure, Scoring, SizeReference,
-                                                   TriclusterFitness)
+from metagen.metaheuristics.trigen.fitness import (NULL_SAMPLES, NULL_SIZES, Measure, Overlap, Scoring,
+                                                   SizeReference, TriclusterFitness)
 from metagen.metaheuristics.trigen.population import DataHierarchy, Sizes
 from metagen.metaheuristics.trigen.results import TriGenResult, _plain
 from metagen.metaheuristics.trigen.trigen_ga import TriGenGA, require_integer, validate
@@ -38,6 +38,9 @@ from metagen.triclustering.measures import Views
 from metagen.triclustering.quality import FlatProfiles
 
 Growth = Optional[Literal["fitness", "quality"]]
+
+#: What the searches after the first start from: the coordinates or the cells least held.
+Hierarchy = Literal["coordinates", "cells"]
 
 
 class TriGen:
@@ -140,6 +143,14 @@ class TriGen:
     :param shuffle_genes: Whether each run searches the genes in an order of its own,
         defaults to False.
     :type shuffle_genes: bool, optional
+    :param overlap: What the overlap of the weighted fitness counts, ``"coordinates"`` or
+        ``"cells"``, defaults to ``"coordinates"``; see :py:class:`TriclusterFitness`.
+    :type overlap: str, optional
+    :param hierarchy: What the searches after the first start from, ``"coordinates"``,
+        the genes, conditions and times the triclusters found hold least, or ``"cells"``,
+        the conditions and times they hold least and the genes with the fewest of their
+        cells in them, defaults to ``"coordinates"``.
+    :type hierarchy: str, optional
     :raises ValueError: if a parameter is out of its range.
     """
 
@@ -150,7 +161,8 @@ class TriGen:
                  weights: Optional[Mapping[str, float]] = None, size_reference: SizeReference = "dataset",
                  seed: Optional[int] = None, history: Optional[str] = None,
                  growth: Growth = "fitness", scoring: Scoring = "weighted",
-                 pruning: Optional[bool] = None, shuffle_genes: bool = False) -> None:
+                 pruning: Optional[bool] = None, shuffle_genes: bool = False,
+                 overlap: Overlap = "coordinates", hierarchy: Hierarchy = "coordinates") -> None:
         # The defaults of the search were chosen by measurement (C7,
         # metagen-auditoria/trigen/c7/informe_c7.md): a grid of populations and generations,
         # then of selection and mutation rates, over planted cubes, 30 seeds each. A
@@ -171,6 +183,8 @@ class TriGen:
                                  f"<= the {size} {axis} of the cube.")
         if growth not in ("fitness", "quality", None):
             raise ValueError(f"growth is 'fitness', 'quality' or None, not {growth!r}.")
+        if hierarchy not in ("coordinates", "cells"):
+            raise ValueError(f"hierarchy is 'coordinates' or 'cells', not {hierarchy!r}.")
         self.cube = cube
         self.n_triclusters = n_triclusters
         self.generations = generations
@@ -181,7 +195,7 @@ class TriGen:
         self.sizes: Sizes = ((smallest[0], largest[0]), (smallest[1], largest[1]), (smallest[2], largest[2]))
         self._fitness_options: Dict[str, Any] = dict(measure=measure, views=views, flat_profiles=flat_profiles,
                                                      weights=weights, size_reference=size_reference,
-                                                     max_sizes=largest, scoring=scoring)
+                                                     max_sizes=largest, scoring=scoring, overlap=overlap)
         self.fitness = TriclusterFitness(cube, **self._fitness_options)
         # Growing is not part of the Java TriGen; it is the node addition of Cheng and
         # Church taken to three dimensions. Measured in the bench of phase 4b, 30 seeds
@@ -209,6 +223,8 @@ class TriGen:
         # purity 0.226 in the given order and 0.018 with the genes shuffled; on yeast the
         # triclusters of runs with the same order share genes by position, not by biology.
         self.shuffle_genes = bool(shuffle_genes)
+        #: What the searches after the first start from, ``"coordinates"`` or ``"cells"``.
+        self.hierarchy_kind: Hierarchy = hierarchy
         self.seed = seed
         self.history_file = history
         #: The seconds the last run took.
@@ -254,8 +270,9 @@ class TriGen:
             cube = Cube(self.cube.values[order], genes=[self.cube.genes[position] for position in order],
                         conditions=self.cube.conditions, times=self.cube.times)
             fitness = TriclusterFitness(cube, **self._fitness_options)
-        hierarchy = DataHierarchy(cube.shape)
-        self.hierarchy = DataHierarchy(self.cube.shape)
+        cells = self.hierarchy_kind == "cells"
+        hierarchy = DataHierarchy(cube.shape, cells=cells)
+        self.hierarchy = DataHierarchy(self.cube.shape, cells=cells)
         self.fitness.found = []
         fitness.found = []
         # Each run fits the model of chance anew from the seeded generator, here in the
@@ -332,7 +349,8 @@ class TriGen:
                 "weights": None if self.fitness.scoring == "significance" else dict(self.fitness.weights),
                 "size_reference": self.size_reference, "seed": self.seed, "growth": self.growth,
                 "scoring": self.fitness.scoring, "pruning": self.pruning,
-                "shuffle_genes": self.shuffle_genes})
+                "shuffle_genes": self.shuffle_genes, "overlap": self.fitness.overlap,
+                "hierarchy": self.hierarchy_kind})
 
     def result(self, label: Optional[str] = None) -> TriGenResult:
         """

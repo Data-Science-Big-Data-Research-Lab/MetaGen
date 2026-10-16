@@ -17,7 +17,9 @@
 from __future__ import annotations
 
 import math
-from typing import List, Sequence, Tuple
+from typing import List, Optional, Sequence, Tuple
+
+import numpy as np
 
 from metagen.framework.rng import get_rng
 from metagen.triclustering import Tricluster
@@ -32,12 +34,20 @@ class DataHierarchy:
     TriGen starts the searches after the first one from the coordinates of the lowest
     levels, the least explored, so that each search looks elsewhere.
 
+    With ``cells``, it also counts how many triclusters found hold each cell, and the genes
+    of a tricluster are drawn by the cells they have held in its conditions and times: a
+    gene of a tricluster found in some times is as unexplored as any other in the rest.
+
     :param shape: The number of genes, conditions and times of the cube.
     :type shape: Sequence[int]
+    :param cells: Whether to count the cells too, defaults to False.
+    :type cells: bool, optional
     """
 
-    def __init__(self, shape: Sequence[int]) -> None:
+    def __init__(self, shape: Sequence[int], cells: bool = False) -> None:
         self.levels: List[List[int]] = [[0] * size for size in shape]
+        #: How many triclusters found hold each cell; None without ``cells``.
+        self.cells: Optional[np.ndarray] = np.zeros(tuple(shape), dtype=np.int32) if cells else None
 
     def update(self, tricluster: Tricluster) -> None:
         """
@@ -49,6 +59,8 @@ class DataHierarchy:
         for levels, positions in zip(self.levels, (tricluster.genes, tricluster.conditions, tricluster.times)):
             for position in positions:
                 levels[position] += 1
+        if self.cells is not None:
+            self.cells[np.ix_(list(tricluster.genes), list(tricluster.conditions), list(tricluster.times))] += 1
 
     def draw(self, dimension: int, size: int) -> List[int]:
         """
@@ -63,15 +75,40 @@ class DataHierarchy:
         :return: The positions, sorted.
         :rtype: List[int]
         """
-        levels = self.levels[dimension]
-        chosen: List[int] = []
-        for level in sorted(set(levels)):
-            if len(chosen) == size:
-                break
-            at_level = [position for position, count in enumerate(levels) if count == level]
-            missing = size - len(chosen)
-            chosen.extend(at_level if len(at_level) <= missing else get_rng().sample(at_level, missing))
-        return sorted(chosen)
+        return _lowest(self.levels[dimension], size)
+
+    def draw_genes(self, conditions: Sequence[int], times: Sequence[int], size: int) -> List[int]:
+        """
+        ``size`` genes, those that the triclusters found hold the fewest cells of in some
+        conditions and times first, drawn level by level as :py:meth:`draw` does. Without
+        ``cells``, the genes of the lowest levels, as :py:meth:`draw` gives them.
+
+        :param conditions: The conditions.
+        :type conditions: Sequence[int]
+        :param times: The times.
+        :type times: Sequence[int]
+        :param size: How many genes, at most the number of genes.
+        :type size: int
+        :return: The genes, sorted.
+        :rtype: List[int]
+        """
+        if self.cells is None:
+            return self.draw(0, size)
+        held = self.cells[(slice(None),) + np.ix_(list(conditions), list(times))].sum(axis=(1, 2))
+        return _lowest([int(count) for count in held], size)
+
+
+def _lowest(levels: Sequence[int], size: int) -> List[int]:
+    """``size`` positions, the lowest levels first: a level with fewer positions than are
+    still missing goes in whole, and from the level that has more they are drawn at random."""
+    chosen: List[int] = []
+    for level in sorted(set(levels)):
+        if len(chosen) == size:
+            break
+        at_level = [position for position, count in enumerate(levels) if count == level]
+        missing = size - len(chosen)
+        chosen.extend(at_level if len(at_level) <= missing else get_rng().sample(at_level, missing))
+    return sorted(chosen)
 
 
 def _tricluster(parts: Sequence[Sequence[int]]) -> Tricluster:
@@ -122,7 +159,9 @@ def block(shape: Sequence[int], sizes: Sizes) -> Tricluster:
 def hierarchical(hierarchy: DataHierarchy, sizes: Sizes) -> Tricluster:
     """
     A tricluster from the least explored coordinates: a size between its bounds in each
-    dimension and that many positions of the lowest levels of the data hierarchy.
+    dimension and that many positions of the lowest levels of the data hierarchy. With a
+    hierarchy of cells, the conditions and times are drawn first, and then the genes that
+    the triclusters found hold the fewest cells of in them.
 
     :param hierarchy: The data hierarchy.
     :type hierarchy: DataHierarchy
@@ -131,7 +170,12 @@ def hierarchical(hierarchy: DataHierarchy, sizes: Sizes) -> Tricluster:
     :return: The tricluster.
     :rtype: Tricluster
     """
-    return _tricluster([hierarchy.draw(dimension, _size(bounds)) for dimension, bounds in enumerate(sizes)])
+    if hierarchy.cells is None:
+        return _tricluster([hierarchy.draw(dimension, _size(bounds)) for dimension, bounds in enumerate(sizes)])
+    genes = _size(sizes[0])
+    conditions = hierarchy.draw(1, _size(sizes[1]))
+    times = hierarchy.draw(2, _size(sizes[2]))
+    return Tricluster(hierarchy.draw_genes(conditions, times, genes), conditions, times)
 
 
 def initial_population(shape: Sequence[int], sizes: Sizes, hierarchy: DataHierarchy, first: bool,

@@ -66,6 +66,31 @@ The search is not blind to the order of the genes in the cube: the initial popul
 
 The fitness and the terms of each tricluster are those of the order its run saw; with ``views="time"`` they do not depend on the order. A seed reproduces the order, and a saved run keeps the option, so ``TriGenResult.trigen(cube)`` runs it again in the same order.
 
+Counting what was found by cells
+--------------------------------
+
+By default, what the triclusters found have taken is counted by coordinates, dimension by dimension: the overlap of the weighted fitness is the share of the genes, of the conditions and of the times of a tricluster that the triclusters found hold, and the searches after the first start from the genes, conditions and times they hold least. A tricluster with the genes of one found, in other times, then counts as a repeat, although it shares none of its cells. Two options count by cells instead. ``overlap="cells"`` makes the overlap the share of the cells of a tricluster that a tricluster found holds, weighted by the three overlap weights together. ``hierarchy="cells"`` makes the searches after the first start from the conditions and times held least and, in them, from the genes with the fewest cells held:
+
+.. code-block:: python
+
+    from metagen.metaheuristics import TriclusterFitness, TriGen
+    from metagen.triclustering import Tricluster, plant
+
+    cube, planted = plant((100, 10, 12), [(20, 4, 6), (15, 3, 5)], pattern="additive", noise=0.05, seed=0)
+    found = Tricluster(range(20), range(4), range(6))
+    later = Tricluster(range(20), range(4), range(6, 12))   # the same genes and conditions, other times
+    print(TriclusterFitness(cube, found=[found]).terms(later)["overlap_genes"])               # 1.0
+    print(TriclusterFitness(cube, found=[found], overlap="cells").cell_overlap(later))        # 0.0
+
+    trigen = TriGen(cube, n_triclusters=2, generations=50, population_size=100, min_sizes=(5, 2, 3),
+                    max_sizes=(30, 6, 8), overlap="cells", hierarchy="cells", seed=0)
+    found = trigen.run()
+    print([tricluster.size for tricluster in found])        # [(16, 4, 5), (23, 3, 3)]
+    # How many triclusters found hold each cell.
+    print(int(trigen.hierarchy.cells.sum()))                 # 527
+
+The significance already compares the cells two triclusters share, so ``overlap`` leaves it as it is; ``hierarchy`` applies to both scorings. A saved run keeps both options.
+
 Scoring by significance
 -----------------------
 

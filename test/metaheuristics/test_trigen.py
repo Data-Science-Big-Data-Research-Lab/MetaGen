@@ -118,6 +118,8 @@ def test_the_history_has_a_line_per_search(tmp_path):
     {"growth": "size"},
     {"scoring": "pareto"},
     {"scoring": "significance", "weights": {"quality": 1.0}},
+    {"overlap": "genes"},
+    {"hierarchy": "levels"},
 ])
 def test_parameters_out_of_range_are_rejected(arguments):
     with pytest.raises(ValueError):
@@ -306,3 +308,26 @@ def test_growing_with_every_gene_scored_at_once_finds_what_scoring_each_finds(ar
 
     monkeypatch.setattr(module, "grow", one_by_one)
     assert _trigen(**arguments).run() == fast
+
+
+def test_by_cells_a_run_is_reproducible_and_counts_the_cells_it_found():
+    trigen = _trigen(overlap="cells", hierarchy="cells")
+    first = trigen.run()
+    assert _trigen(overlap="cells", hierarchy="cells").run() == first
+    assert trigen.configuration()["overlap"] == "cells" and trigen.configuration()["hierarchy"] == "cells"
+    assert trigen.fitness.overlap == "cells"
+    assert trigen.hierarchy.cells is not None
+    assert trigen.hierarchy.cells.sum() == sum(math.prod(tricluster.size) for tricluster in first)
+    assert all("overlap_cells" in record["terms"] for record in trigen.history)
+    default = _trigen()
+    assert (default.fitness.overlap, default.hierarchy_kind) == ("coordinates", "coordinates")
+    assert default.hierarchy.cells is None
+
+
+def test_by_cells_shuffled_runs_count_the_cells_at_the_positions_of_the_cube():
+    trigen = _trigen(overlap="cells", hierarchy="cells", shuffle_genes=True)
+    found = trigen.run()
+    assert trigen.hierarchy.cells is not None
+    for tricluster in found:
+        assert trigen.hierarchy.cells[list(tricluster.genes)][:, list(tricluster.conditions)][
+            :, :, list(tricluster.times)].min() >= 1

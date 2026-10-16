@@ -307,17 +307,29 @@ def test_names_that_are_not_text_or_numbers_are_kept_as_their_text(tmp_path):
     assert [row[3] for row in rows[1:1 + len(first.genes)]] == [genes[position] for position in first.genes]
 
 
-def test_a_result_saved_before_the_genes_could_be_shuffled_reads_as_not_shuffling(tmp_path):
+def test_a_result_saved_before_the_later_options_reads_with_their_defaults(tmp_path):
     trigen = TriGen(CUBE, **SETTINGS)
     trigen.run()
     path = tmp_path / "run.json"
     trigen.save(str(path))
     content = json.loads(path.read_text())
-    del content["configuration"]["shuffle_genes"]
+    for option in ("shuffle_genes", "overlap", "hierarchy"):
+        del content["configuration"][option]
     path.write_text(json.dumps(content))
     result = TriGenResult.load(str(path))
     assert result.configuration["shuffle_genes"] is False
+    assert result.configuration["overlap"] == result.configuration["hierarchy"] == "coordinates"
     assert result.trigen(CUBE).run() == result.triclusters
+
+
+def test_a_run_by_cells_is_saved_and_run_again_as_it_was(tmp_path):
+    trigen = TriGen(CUBE, **{**SETTINGS, "overlap": "cells", "hierarchy": "cells"})
+    trigen.run()
+    path = str(tmp_path / "run.json")
+    trigen.save(path)
+    result = TriGenResult.load(path)
+    assert result.configuration["overlap"] == result.configuration["hierarchy"] == "cells"
+    assert result.trigen(CUBE).run() == result.triclusters == trigen.triclusters
 
 
 def test_a_shuffled_run_is_saved_and_run_again_as_it_was(tmp_path):

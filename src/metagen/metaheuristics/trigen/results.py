@@ -42,7 +42,13 @@ VERSION = 1
 #: The arguments of TriGen a result keeps: all but the cube and the history file.
 CONFIGURATION = ("n_triclusters", "generations", "population_size", "random_fraction", "selection_rate",
                  "mutation_probability", "min_sizes", "max_sizes", "measure", "views", "flat_profiles", "weights",
-                 "size_reference", "seed", "growth", "scoring", "pruning", "shuffle_genes")
+                 "size_reference", "seed", "growth", "scoring", "pruning", "shuffle_genes", "overlap",
+                 "hierarchy")
+
+
+# The options TriGen gained after the format was set, with the value a result saved before
+# them ran with.
+_LATER_OPTIONS: Dict[str, Any] = {"shuffle_genes": False, "overlap": "coordinates", "hierarchy": "coordinates"}
 
 
 @dataclass
@@ -97,9 +103,9 @@ class TriGenResult:
     searches: List[Dict[str, Any]] = field(default_factory=list)
 
     def __post_init__(self) -> None:
-        if isinstance(self.configuration, dict) and "shuffle_genes" not in self.configuration:
-            # Saved before TriGen could shuffle the genes, which is to say without shuffling them.
-            self.configuration = {**self.configuration, "shuffle_genes": False}
+        if isinstance(self.configuration, dict):
+            # Saved before TriGen had these options, which is to say with what they default to.
+            self.configuration = {**_LATER_OPTIONS, **self.configuration}
         if not isinstance(self.configuration, dict) or set(self.configuration) != set(CONFIGURATION):
             given = sorted(self.configuration) if isinstance(self.configuration, dict) else self.configuration
             raise ValueError(f"The configuration of a TriGen holds {sorted(CONFIGURATION)}, not {given}")

@@ -137,7 +137,76 @@ def test_a_solution_of_three_subsets_has_the_fitness_of_its_tricluster():
     {"size_reference": "max", "max_sizes": (31, 4, 4)},
     {"size_reference": "max", "max_sizes": (10, 4)},
     {"size_reference": "cube"},
+    {"overlap": "genes"},
 ])
 def test_options_that_do_not_fit_are_rejected(arguments):
     with pytest.raises(ValueError):
         TriclusterFitness(SYNTHETIC, **arguments)
+
+
+# --- the overlap by cells ---------------------------------------------------------
+
+CELLS_CUBE, _ = plant((40, 6, 8), [(10, 3, 4)], noise=0.05, seed=0)
+
+
+def _random_tricluster(rng, shape=CELLS_CUBE.shape):
+    return Tricluster(*(sorted(rng.choice(extent, int(rng.integers(2, extent + 1)), replace=False).tolist())
+                        for extent in shape))
+
+
+def test_the_overlap_by_cells_is_the_share_of_cells_held_by_a_tricluster_found():
+    rng = np.random.default_rng(0)
+    fitness = TriclusterFitness(CELLS_CUBE, overlap="cells")
+    for _ in range(50):
+        fitness.found = [_random_tricluster(rng) for _ in range(int(rng.integers(1, 4)))]
+        tricluster = _random_tricluster(rng)
+        held = [any(g in found.genes and c in found.conditions and t in found.times for found in fitness.found)
+                for g in tricluster.genes for c in tricluster.conditions for t in tricluster.times]
+        assert fitness.cell_overlap(tricluster) == pytest.approx(sum(held) / len(held))
+        assert fitness.terms(tricluster)["overlap_cells"] == fitness.cell_overlap(tricluster)
+
+
+def test_the_same_genes_in_other_times_share_no_cell():
+    found = Tricluster(range(10), range(3), range(4))
+    other = Tricluster(range(10), range(3), range(4, 8))
+    by_coordinates = TriclusterFitness(CELLS_CUBE, found=[found])
+    by_cells = TriclusterFitness(CELLS_CUBE, found=[found], overlap="cells")
+    assert by_coordinates.terms(other)["overlap_genes"] == 1.0
+    assert by_cells.terms(other)["overlap_cells"] == 0.0
+    assert by_cells.terms(found)["overlap_cells"] == 1.0
+    assert by_cells.evaluate(other) < by_coordinates.evaluate(other)
+
+
+def test_the_overlap_by_cells_weighs_as_the_three_overlaps_together():
+    found = Tricluster(range(10), range(3), range(4))
+    tricluster = Tricluster(range(5, 15), range(2, 5), range(2, 6))
+    fitness = TriclusterFitness(CELLS_CUBE, found=[found], overlap="cells")
+    terms, weights = fitness.terms(tricluster), fitness.weights
+    total = (weights["quality"] * terms["quality"]
+             + sum(weights[axis] * (1 - terms[axis]) for axis in ("genes", "conditions", "times"))
+             + (weights["overlap_genes"] + weights["overlap_conditions"] + weights["overlap_times"])
+             * terms["overlap_cells"])
+    assert terms["overlap_cells"] == pytest.approx(5 * 1 * 2 / (10 * 3 * 4))
+    assert terms["fitness"] == pytest.approx(total / sum(weights.values()))
+
+
+@pytest.mark.parametrize("found", [[], [Tricluster(range(10), range(3), range(4))],
+                                   [Tricluster(range(10), range(3), range(4)), Tricluster(range(5, 25), [1, 4], [0, 6, 7])]])
+def test_adding_genes_by_cells_is_scoring_each_candidate(found):
+    fitness = TriclusterFitness(CELLS_CUBE, found=found, overlap="cells")
+    base = Tricluster([2, 7, 11, 30], [0, 1, 4], [1, 2, 3, 6])
+    candidates = [gene for gene in range(CELLS_CUBE.shape[0]) if gene not in base.genes]
+    at_once = fitness.adding_genes(base, candidates)
+    one_by_one = [fitness.evaluate(Tricluster(list(base.genes) + [gene], base.conditions, base.times))
+                  for gene in candidates]
+    assert np.allclose(at_once, one_by_one, rtol=0, atol=1e-12)
+
+
+def test_the_significance_scores_the_same_with_either_overlap():
+    found = [Tricluster(range(10), range(3), range(4))]
+    tricluster = Tricluster(range(5, 15), range(2, 5), range(2, 6))
+    by_coordinates = TriclusterFitness(CELLS_CUBE, found=found, scoring="significance")
+    by_cells = TriclusterFitness(CELLS_CUBE, found=found, scoring="significance", overlap="cells")
+    by_coordinates.fit_chance()
+    by_cells._chance = by_coordinates._chance
+    assert by_cells.evaluate(tricluster) == by_coordinates.evaluate(tricluster)
