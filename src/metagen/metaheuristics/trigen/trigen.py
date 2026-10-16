@@ -91,9 +91,9 @@ class TriGen:
     :type cube: Cube
     :param n_triclusters: How many triclusters to find, defaults to 5.
     :type n_triclusters: int, optional
-    :param generations: The generations of each search, defaults to 20.
+    :param generations: The generations of each search, defaults to 50.
     :type generations: int, optional
-    :param population_size: The population of each search, at least 4, defaults to 10.
+    :param population_size: The population of each search, at least 4, defaults to 200.
     :type population_size: int, optional
     :param random_fraction: The share of the initial population drawn without the data
         hierarchy after the first search, defaults to 0.2.
@@ -143,7 +143,7 @@ class TriGen:
     :raises ValueError: if a parameter is out of its range.
     """
 
-    def __init__(self, cube: Cube, n_triclusters: int = 5, generations: int = 20, population_size: int = 10,
+    def __init__(self, cube: Cube, n_triclusters: int = 5, generations: int = 50, population_size: int = 200,
                  random_fraction: float = 0.2, selection_rate: float = 0.5, mutation_probability: float = 0.1,
                  min_sizes: Sequence[int] = (2, 2, 2), max_sizes: Optional[Sequence[int]] = None,
                  measure: Measure = "msl", views: Views = "distinct", flat_profiles: FlatProfiles = "exclude",
@@ -151,6 +151,12 @@ class TriGen:
                  seed: Optional[int] = None, history: Optional[str] = None,
                  growth: Growth = "fitness", scoring: Scoring = "weighted",
                  pruning: Optional[bool] = None, shuffle_genes: bool = False) -> None:
+        # The defaults of the search were chosen by measurement (C7,
+        # metagen-auditoria/trigen/c7/informe_c7.md): a grid of populations and generations,
+        # then of selection and mutation rates, over planted cubes, 30 seeds each. A
+        # population of 200 over 50 generations is the cheapest configuration as good as the
+        # best on most problems, and the values of the published TriGen; the rates of 0.5 and
+        # 0.1 are the most robust of their grid (as good as the best on 6 of 8 problems).
         require_integer("n_triclusters", n_triclusters)
         if n_triclusters < 1:
             raise ValueError(f"TriGen finds at least one tricluster, not {n_triclusters}.")

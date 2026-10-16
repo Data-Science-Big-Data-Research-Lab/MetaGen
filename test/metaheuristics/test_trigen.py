@@ -10,6 +10,8 @@ import textwrap
 import pytest
 
 from metagen.metaheuristics import TriclusterFitness, TriGen
+from metagen.metaheuristics.trigen.population import DataHierarchy
+from metagen.metaheuristics.trigen.trigen_ga import TriGenGA
 from metagen.triclustering import Cube, Tricluster, msl, plant, recovery
 
 CUBE, PLANTED = plant((60, 6, 8), [(12, 3, 5), (10, 2, 4)], noise=0.05, seed=0)
@@ -245,6 +247,14 @@ def test_shuffling_the_genes_is_reproducible_and_changes_the_order_searched():
     assert _trigen(shuffle_genes=True, seed=2).run() != first
     assert _trigen().run() != first
     assert TriGen(CUBE, **SETTINGS).shuffle_genes is False
+
+
+def test_the_default_search_is_a_population_of_200_over_50_generations():
+    trigen = TriGen(CUBE)
+    assert (trigen.n_triclusters, trigen.population_size, trigen.generations) == (5, 200, 50)
+    assert (trigen.selection_rate, trigen.mutation_probability, trigen.random_fraction) == (0.5, 0.1, 0.2)
+    search = TriGenGA(TriclusterFitness(CUBE), trigen.sizes, DataHierarchy(CUBE.shape), True)
+    assert (search.population_size, search.generations, search.selection_count) == (200, 50, 100)
 
 
 def test_shuffling_the_genes_finds_a_planted_tricluster():

@@ -20,7 +20,7 @@ A search costs ``population_size`` evaluations to start and those of the childre
 
 The fitness rewards size, so the largest sizes are what keeps the triclusters to the scale of the patterns sought: without ``max_sizes``, a tricluster may take in most of the cube, and growing it then costs many evaluations. Set them to the largest triclusters of interest.
 
-The defaults are a quick start: 5 triclusters, 20 generations of 10 individuals. The configurations used with TriGen on real data range from populations of 100 to 200 over 50 to 400 generations.
+The defaults are 5 triclusters, each searched by a population of 200 over 50 generations, with a selection rate of 0.5 and a mutation probability of 0.1. They are a starting point: the values that suit a dataset depend on it, and a smaller population or fewer generations give a quicker first look.
 
 Finding planted triclusters
 ---------------------------

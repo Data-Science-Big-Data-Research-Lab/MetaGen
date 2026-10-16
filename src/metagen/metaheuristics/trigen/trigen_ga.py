@@ -102,9 +102,9 @@ class TriGenGA(Metaheuristic):
     :type hierarchy: DataHierarchy
     :param first: Whether this is the first search.
     :type first: bool
-    :param population_size: The size of the population, at least 4, defaults to 10.
+    :param population_size: The size of the population, at least 4, defaults to 200.
     :type population_size: int, optional
-    :param generations: The number of generations, defaults to 20.
+    :param generations: The number of generations, defaults to 50.
     :type generations: int, optional
     :param random_fraction: The share of the initial population drawn without the hierarchy
         after the first search, defaults to 0.2.
@@ -128,7 +128,7 @@ class TriGenGA(Metaheuristic):
     """
 
     def __init__(self, fitness: TriclusterFitness, sizes: Sizes, hierarchy: DataHierarchy, first: bool,
-                 population_size: int = 10, generations: int = 20, random_fraction: float = 0.2,
+                 population_size: int = 200, generations: int = 50, random_fraction: float = 0.2,
                  selection_rate: float = 0.5, mutation_probability: float = 0.1, seed: Optional[int] = None,
                  checkpoint: Optional[str] = None, checkpoint_every: int = 1, history: Optional[str] = None) -> None:
         validate(population_size, generations, random_fraction, selection_rate, mutation_probability)
