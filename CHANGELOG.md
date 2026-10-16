@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### New
+
+- **A budget for any run**: every metaheuristic but CVOA takes `max_evaluations`, the
+  evaluations of the fitness function a run may make, warmup included, and `timeout`, the
+  seconds it may last. A run stops at whichever comes first, its own stopping criterion or
+  a limit, checked between iterations, so it goes past a limit by at most one iteration.
+  `evaluations`, `seconds` and `stop_reason` say what a run spent and what stopped it, and
+  a run resumed from a checkpoint carries on with what it had spent.
+- **Distributed runs count the evaluations of their workers**: the history of a run on Ray
+  records them, as a sequential run does.
+
 ## 1.2.0
 
 MetaGen 1.2.0 adds subsets to the search spaces: a selection of some of a set of elements,

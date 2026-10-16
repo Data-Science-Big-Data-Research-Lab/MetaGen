@@ -226,12 +226,27 @@ def test_a_distributed_run_resumes_from_its_checkpoint(ray_runtime, tmp_path, mo
     assert (resumed.run().get_fitness(), resumed.best_solution_fitnesses) == reference
 
 
-def test_a_distributed_history_does_not_count_the_evaluations_of_the_workers(ray_runtime):
-    algorithm = GA(_sphere_domain(GAConnector()), _sphere_for_the_workers(), population_size=8,
-                   max_iterations=3, distributed=True, seed=4)
-    algorithm.run()
-    assert [record["iteration"] for record in algorithm.history] == [0, 1, 2]
-    assert all(record["evaluations"] is None for record in algorithm.history)
+@pytest.mark.parametrize("algorithm", [RandomSearch, GA, Memetic, TPE], ids=lambda algorithm: algorithm.__name__)
+def test_a_distributed_run_counts_the_evaluations_of_the_workers(ray_runtime, tmp_path, algorithm):
+    path = tmp_path / "calls.txt"
+    connector = GAConnector() if algorithm in (GA, Memetic) else None
+    extra = {"distribution_level": 2} if algorithm is Memetic else {}
+    run = algorithm(_sphere_domain(connector), _counting_sphere(path), population_size=8, max_iterations=3,
+                    distributed=True, seed=4, **extra)
+    run.run()
+    assert [record["iteration"] for record in run.history] == [0, 1, 2]
+    assert run.evaluations == run.history[-1]["evaluations"] == _evaluations(path)
+
+
+def test_a_distributed_run_stops_within_one_iteration_of_its_evaluations(ray_runtime, tmp_path):
+    path = tmp_path / "calls.txt"
+    run = GA(_sphere_domain(GAConnector()), _counting_sphere(path), population_size=8, max_iterations=10_000,
+             max_evaluations=60, distributed=True, seed=4)
+    run.run()
+    counts = [0] + [record["evaluations"] for record in run.history]
+    step = max(later - earlier for earlier, later in zip(counts, counts[1:]))
+    assert run.stop_reason == "max_evaluations"
+    assert 60 <= run.evaluations == _evaluations(path) < 60 + step
 
 
 def _new_features_objective_for_the_workers():

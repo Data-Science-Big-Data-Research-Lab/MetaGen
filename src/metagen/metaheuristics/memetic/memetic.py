@@ -70,6 +70,12 @@ class Memetic(Metaheuristic):
     :param history: File the run writes its history to, one JSON line per iteration;
         None, the default, writes nothing. See :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
     :type history: str or None, optional
+    :param max_evaluations: Stop once the run has evaluated the fitness at least this
+        many times; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type max_evaluations: int or None, optional
+    :param timeout: Stop once the run has lasted at least this many seconds; see
+        :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type timeout: float or None, optional
     :type distribution_level: int
 
     **Code example**
@@ -108,12 +114,13 @@ class Memetic(Metaheuristic):
                  distribution_level: int = 0, seed: Optional[int] = None,
                  distribution_model: str = "global",
                  checkpoint: Optional[str] = None, checkpoint_every: int = 1, history: Optional[str] = None,
+                 max_evaluations: Optional[int] = None, timeout: Optional[float] = None,
                  mutation_alteration_limit: Any = None) -> None:
         """Initialize the Memetic Algorithm with the given parameters."""
         super().__init__(domain, fitness_function, population_size=population_size, distributed=distributed, log_dir=log_dir, seed=seed,
                          distribution_model=distribution_model,
                          checkpoint=checkpoint, checkpoint_every=checkpoint_every,
-                         history=history)
+                         history=history, max_evaluations=max_evaluations, timeout=timeout)
 
         # Fails here, with a message that says what to do, instead of dying on
         # the first iteration with AttributeError: no attribute 'crossover' (A-07).

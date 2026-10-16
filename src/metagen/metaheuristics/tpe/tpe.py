@@ -59,6 +59,12 @@ class TPE(Metaheuristic):
     :param history: File the run writes its history to, one JSON line per iteration;
         None, the default, writes nothing. See :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
     :type history: str or None, optional
+    :param max_evaluations: Stop once the run has evaluated the fitness at least this
+        many times; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type max_evaluations: int or None, optional
+    :param timeout: Stop once the run has lasted at least this many seconds; see
+        :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type timeout: float or None, optional
 
     :ivar max_iterations: Maximum number of iterations
     :vartype max_iterations: int
@@ -87,7 +93,8 @@ class TPE(Metaheuristic):
                  gamma_config: Optional[GammaConfig] = None, distributed=False, log_dir: Optional[str] = None,
                  seed: Optional[int] = None, population_size: int = 20,
                  distribution_model: str = "global",
-                 checkpoint: Optional[str] = None, checkpoint_every: int = 1, history: Optional[str] = None) -> None:
+                 checkpoint: Optional[str] = None, checkpoint_every: int = 1, history: Optional[str] = None,
+                 max_evaluations: Optional[int] = None, timeout: Optional[float] = None) -> None:
         """
         Initialize the TPE algorithm.
 
@@ -134,7 +141,7 @@ class TPE(Metaheuristic):
                          warmup_iterations=warmup_iterations, distributed=distributed, log_dir=log_dir, seed=seed,
                          distribution_model=distribution_model,
                          checkpoint=checkpoint, checkpoint_every=checkpoint_every,
-                         history=history)
+                         history=history, max_evaluations=max_evaluations, timeout=timeout)
 
         self.max_iterations = max_iterations
         self.candidate_pool_size = candidate_pool_size
