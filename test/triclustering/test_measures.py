@@ -266,3 +266,22 @@ def test_the_normalized_msr3d_takes_the_scale_of_the_data_out():
     assert msr3d(large, tricluster, normalized=True) == pytest.approx(msr3d(small, tricluster, normalized=True))
     assert msr3d(small, tricluster, normalized=True) == pytest.approx(msr3d(small, tricluster) / np.var(values))
     assert msr3d(Cube(np.ones((5, 3, 4))), Tricluster(range(3), range(2), range(3)), normalized=True) == 0.0
+
+
+@pytest.mark.parametrize("views", ["distinct", "time", "trlab"])
+def test_msl_with_each_gene_added_at_once_is_msl_with_it(views):
+    from metagen.triclustering import Cube, Tricluster, msl
+    from metagen.triclustering.measures import _msl_adding_genes
+    rng = np.random.default_rng(11)
+    for _ in range(40):
+        genes, conditions, times = int(rng.integers(6, 40)), int(rng.integers(2, 7)), int(rng.integers(2, 9))
+        cube = Cube(rng.normal(scale=float(rng.choice([0.1, 1.0, 10.0])), size=(genes, conditions, times)))
+        chosen = sorted(int(g) for g in rng.choice(genes, int(rng.integers(2, genes // 2 + 2)), replace=False))
+        tricluster = Tricluster(chosen, sorted(rng.choice(conditions, int(rng.integers(2, conditions + 1)), replace=False)),
+                                sorted(rng.choice(times, int(rng.integers(2, times + 1)), replace=False)))
+        candidates = [g for g in range(genes) if g not in set(chosen)]
+        at_once = _msl_adding_genes(cube, tricluster, candidates, views=views, normalized=True)
+        one_by_one = [msl(cube, Tricluster(chosen + [g], tricluster.conditions, tricluster.times), views=views,
+                          normalized=True) for g in candidates]
+        assert at_once == pytest.approx(one_by_one, abs=1e-12)
+    assert _msl_adding_genes(cube, tricluster, []).size == 0

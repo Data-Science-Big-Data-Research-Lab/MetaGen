@@ -17,7 +17,7 @@
 from __future__ import annotations
 
 import math
-from typing import Callable, Dict, List, Literal, Tuple
+from typing import Callable, Dict, List, Literal, Sequence, Tuple
 
 import numpy as np
 
@@ -245,3 +245,100 @@ def _pair_sums(values: np.ndarray, axis: int) -> float:
     # Only that: a NaN comes through as NaN.
     total = float((ordered * weights).sum())
     return 0.0 if total < 0.0 else total
+
+
+# --- MSL of a tricluster with each of many genes added, at once ----------------------------
+
+def _msl_adding_genes(cube: Cube, tricluster: Tricluster, candidates: Sequence[int], views: str = "distinct",
+                      normalized: bool = False) -> np.ndarray:
+    """
+    The MSL of a tricluster with each candidate gene added to it, at once and the same,
+    but for rounding, as computing each with :py:func:`msl`: the pairs that a new gene
+    adds are summed from sorted prefix sums, and the segment it splits in the view with
+    the genes on the X axis is replaced by the two it makes.
+    """
+    if views not in _VIEWS:
+        raise ValueError(f"views must be one of {list(_VIEWS)}, not {views!r}.")
+    positions = np.asarray(candidates, dtype=int)
+    if positions.size == 0:
+        return np.zeros(0)
+    base = cube.subcube(tricluster)                                  # (genes, conditions, times)
+    columns = np.ix_(positions, np.asarray(tricluster.conditions), np.asarray(tricluster.times))
+    added = cube.values[columns]                                     # (candidates, conditions, times)
+    total = np.zeros(positions.size)
+    for axes, weight in _VIEWS[views]:
+        if axes == _GENES_ON_X:
+            total += weight * _genes_on_x(base, added, np.asarray(tricluster.genes), positions)
+        else:
+            # Times on X: series are genes, x the times, panels the conditions; conditions on X:
+            # series are genes, x the conditions, panels the times.
+            series_axes = (0, 2, 1) if axes == _TIMES_ON_X else (0, 1, 2)
+            total += weight * _a_series_more(np.transpose(base, series_axes),
+                                             np.transpose(added, series_axes))
+    result = total / sum(weight for _, weight in _VIEWS[views])
+    return result / TWO_PI if normalized else result
+
+
+def _a_series_more(view: np.ndarray, added: np.ndarray) -> np.ndarray:
+    """The view's value with each candidate as one more series: view (series, x, panels),
+    added (candidates, x, panels)."""
+    angles = _segment_angles(view)                                    # (series, segments, panels)
+    new = _turn(np.arctan(np.diff(added, axis=1)))                    # (candidates, segments, panels)
+    series, segments, panels = angles.shape
+    within_series = _pair_sums(angles, axis=2) + _pair_sums_each(new, axis=2)
+    # The new series against every old one, per segment and panel, from sorted prefix sums.
+    ordered = np.sort(angles, axis=0)                                 # (series, segments, panels)
+    prefix = np.concatenate([np.zeros((1, segments, panels)), np.cumsum(ordered, axis=0)], axis=0)
+    against = np.zeros(new.shape[0])
+    for segment in range(segments):
+        for panel in range(panels):
+            column, sums = ordered[:, segment, panel], prefix[:, segment, panel]
+            values = new[:, segment, panel]
+            below = np.searchsorted(column, values, side="right")
+            lower = sums[below]
+            against += values * below - lower + (sums[-1] - lower) - values * (series - below)
+    within_panels = _pair_sums(angles, axis=0) + against
+    count = series + 1
+    pairs = count * panels * (panels - 1) // 2 + panels * count * (count - 1) // 2
+    return (within_series + within_panels) / (segments * pairs)
+
+
+def _genes_on_x(base: np.ndarray, added: np.ndarray, genes: np.ndarray, candidates: np.ndarray) -> np.ndarray:
+    """The value of the view with the genes on the X axis with each candidate inserted at its
+    place among the genes: base (genes, conditions, times), added (candidates, conditions,
+    times). Series are conditions and panels times; a segment joins two consecutive genes."""
+    view = np.transpose(base, (1, 0, 2))                              # (conditions, genes, times)
+    angles = _segment_angles(view)                                    # (conditions, segments, times)
+    conditions, segments, times = angles.shape
+
+    def contribution(segment_angles: np.ndarray) -> np.ndarray:
+        """Of segments (..., conditions, times): the pairs of times per condition and of
+        conditions per time."""
+        return _pair_sums_each(segment_angles, axis=-1) + _pair_sums_each(segment_angles, axis=-2)
+
+    per_segment = contribution(np.transpose(angles, (1, 0, 2)))       # (segments,)
+    total = float(per_segment.sum())
+    place = np.searchsorted(genes, candidates)                        # where each one goes
+    before = np.where(place > 0, place - 1, 0)
+    after = np.where(place < genes.size, place, genes.size - 1)
+    first = _turn(np.arctan(added - base[before]))                    # segment (previous gene, candidate)
+    second = _turn(np.arctan(base[after] - added))                    # segment (candidate, next gene)
+    inside = (place > 0) & (place < genes.size)
+    new_total = np.full(candidates.size, total)
+    replaced = np.where(inside, per_segment[np.clip(place - 1, 0, max(segments - 1, 0))], 0.0)
+    new_total += np.where(place > 0, contribution(first), 0.0) + np.where(place < genes.size, contribution(second), 0.0)
+    new_total -= replaced
+    pairs = conditions * times * (times - 1) // 2 + times * conditions * (conditions - 1) // 2
+    return new_total / ((segments + 1) * pairs)
+
+
+def _pair_sums_each(values: np.ndarray, axis: int) -> np.ndarray:
+    """:py:func:`_pair_sums` for each position of the first axis: the sum of ``|a - b|``
+    over every pair along ``axis``, over all the other axes but the first."""
+    ordered = np.sort(values, axis=axis)
+    n = values.shape[axis]
+    shape = [1] * values.ndim
+    shape[axis] = n
+    weights = (2 * np.arange(n) - n + 1).reshape(shape)
+    totals = (ordered * weights).reshape(values.shape[0], -1).sum(axis=1)
+    return np.maximum(totals, 0.0)

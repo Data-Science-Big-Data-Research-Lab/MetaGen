@@ -266,3 +266,33 @@ def test_the_normalized_msr3d_makes_the_fitness_the_same_in_any_units():
     assert normalized_scaled.evaluate(tricluster) == pytest.approx(normalized.evaluate(tricluster))
     found = TriGen(CUBE, **{**SETTINGS, "n_triclusters": 2, "seed": 1, "measure": "msr3d_normalized"}).run()
     assert len(found) == 2
+
+
+@pytest.mark.parametrize("scoring, quality_only", [("weighted", False), ("weighted", True), ("significance", False)])
+def test_the_fitness_with_each_gene_added_at_once_is_that_of_each(scoring, quality_only):
+    from metagen.framework.rng import set_seed
+    found = [Tricluster(range(10, 22), [0, 1, 2], [1, 2, 3, 4])]
+    fitness = TriclusterFitness(CUBE, max_sizes=SETTINGS["max_sizes"], scoring=scoring, found=found)
+    set_seed(0)
+    fitness.fit_chance()
+    base = Tricluster([3, 7, 15, 40], [0, 2], [1, 3, 5])
+    candidates = [g for g in range(60) if g not in set(base.genes)]
+    at_once = fitness.adding_genes(base, candidates, quality_only=quality_only)
+    score = fitness.quality if quality_only else fitness.evaluate
+    one_by_one = [score(Tricluster(list(base.genes) + [g], base.conditions, base.times)) for g in candidates]
+    assert at_once == pytest.approx(one_by_one, abs=1e-12)
+    assert TriclusterFitness(CUBE, measure="msr3d").adding_genes(base, candidates) is None
+
+
+@pytest.mark.parametrize("arguments", [{}, {"growth": "quality"}, {"scoring": "significance"},
+                                       {"scoring": "significance", "pruning": False}, {"measure": "msr3d"}])
+def test_growing_with_every_gene_scored_at_once_finds_what_scoring_each_finds(arguments, monkeypatch):
+    import metagen.metaheuristics.trigen.trigen as module
+    fast = _trigen(**arguments).run()
+    original = module.grow
+
+    def one_by_one(*given, adding_genes=None, **kwargs):
+        return original(*given, **kwargs)
+
+    monkeypatch.setattr(module, "grow", one_by_one)
+    assert _trigen(**arguments).run() == fast

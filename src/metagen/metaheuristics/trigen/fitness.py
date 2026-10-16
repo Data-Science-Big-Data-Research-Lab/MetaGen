@@ -25,7 +25,7 @@ from metagen.framework import Solution
 from metagen.framework.rng import get_numpy_rng
 from metagen.triclustering import Cube, Tricluster, lsl, msl, msr3d, triq
 from metagen.triclustering.cube import AXES
-from metagen.triclustering.measures import Views
+from metagen.triclustering.measures import Views, _msl_adding_genes
 from metagen.triclustering.quality import FlatProfiles
 
 #: The measure of coherence the fitness takes as its quality term.
@@ -244,6 +244,60 @@ class TriclusterFitness:
                 self._spread = float(np.var(self.cube.values))
             return msr3d(self.cube, tricluster) / self._spread if self._spread > 0 else 0.0
         return 1.0 - triq(self.cube, tricluster, views=self.views, flat_profiles=self.flat_profiles)
+
+    def adding_genes(self, tricluster: Tricluster, candidates: Sequence[int],
+                     quality_only: bool = False) -> Optional[np.ndarray]:
+        """
+        The fitness, or with ``quality_only`` the quality term, of a tricluster with each
+        candidate gene added to it, at once: the same, but for rounding, as evaluating each,
+        and much faster for many candidates. Only for MSL; None for the other measures.
+
+        :param tricluster: The tricluster.
+        :type tricluster: Tricluster
+        :param candidates: The genes to add, one at a time, none of them in it.
+        :type candidates: Sequence[int]
+        :param quality_only: Whether to give the quality term alone, defaults to False.
+        :type quality_only: bool, optional
+        :return: A value per candidate, in their order, or None.
+        :rtype: numpy.ndarray or None
+        """
+        if self.measure != "msl":
+            return None
+        quality = _msl_adding_genes(self.cube, tricluster, candidates, views=self.views, normalized=True)
+        if quality_only or len(candidates) == 0:
+            return quality
+        genes, conditions, times = len(tricluster.genes) + 1, len(tricluster.conditions), len(tricluster.times)
+        base = self.terms(tricluster)
+        positions = np.asarray(candidates, dtype=int)
+        if self.scoring == "significance":
+            if self._chance is None:
+                self.fit_chance()
+            assert self._chance is not None
+            mean, deviation = self._chance
+            row = np.array([1.0, math.log(genes), math.log(conditions), math.log(times)])
+            z = (float(row @ mean) - quality) / float(np.exp(row @ deviation))
+            fitness = -(z - base["z_found"])
+            # A gene of a tricluster found changes what it shares with it: those, one by one.
+            found_genes = set().union(*(set(found.genes) for found in self.found)) if self.found else set()
+            for index, position in enumerate(positions):
+                if int(position) in found_genes:
+                    fitness[index] = self.evaluate(Tricluster(list(tricluster.genes) + [int(position)],
+                                                              tricluster.conditions, tricluster.times))
+            return fitness
+        weights = self.weights
+        found = self._sets_of_found()
+        shared = sum(len(set(tricluster.genes) & sets[0]) for sets in found)
+        extra = np.zeros(positions.size)
+        for sets in found:
+            extra += np.isin(positions, list(sets[0]))
+        overlap_genes = (shared + extra) / (genes * len(found)) if found else np.zeros(positions.size)
+        total = (weights["quality"] * quality
+                 + weights["genes"] * (1.0 - genes / self.references[0])
+                 + weights["conditions"] * (1.0 - base["conditions"]) + weights["times"] * (1.0 - base["times"])
+                 + weights["overlap_genes"] * overlap_genes
+                 + weights["overlap_conditions"] * base["overlap_conditions"]
+                 + weights["overlap_times"] * base["overlap_times"])
+        return total / sum(weights.values())
 
     def fit_chance(self) -> None:
         """

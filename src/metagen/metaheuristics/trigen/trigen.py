@@ -22,6 +22,8 @@ import os
 import time
 from typing import Any, Callable, Dict, List, Literal, Mapping, Optional, Sequence, Set, Tuple
 
+import numpy as np
+
 from metagen.framework import Solution
 from metagen.framework.rng import get_numpy_rng, set_seed
 from metagen.logging.metagen_logger import metagen_logger
@@ -272,8 +274,10 @@ class TriGen:
                                       "growth_evaluations": 0}
             if chosen is not None and self.growth is not None:
                 score = fitness.evaluate if self.growth == "fitness" else fitness.quality
-                grown, record["growth_evaluations"] = grow(chosen, score, self.sizes, cube.shape,
-                                                           pruning=self.pruning)
+                quality_only = self.growth == "quality"
+                grown, record["growth_evaluations"] = grow(
+                    chosen, score, self.sizes, cube.shape, pruning=self.pruning,
+                    adding_genes=lambda base, genes: fitness.adding_genes(base, genes, quality_only=quality_only))
                 if grown not in found:
                     chosen = grown
             if chosen is None:
@@ -356,7 +360,8 @@ def _tricluster(solution: Solution) -> Tricluster:
 
 
 def grow(tricluster: Tricluster, score: Callable[[Tricluster], float], sizes: Sizes,
-         shape: Tuple[int, int, int], pruning: bool = False) -> Tuple[Tricluster, int]:
+         shape: Tuple[int, int, int], pruning: bool = False,
+         adding_genes: Optional[Callable[[Tricluster, List[int]], Optional[Any]]] = None) -> Tuple[Tricluster, int]:
     """
     Grow a tricluster one coordinate at a time: at each step, the gene, condition or time,
     of a dimension below its largest size, that leaves the score lowest, as long as that
@@ -377,6 +382,11 @@ def grow(tricluster: Tricluster, score: Callable[[Tricluster], float], sizes: Si
     :type shape: Tuple[int, int, int]
     :param pruning: Whether a step may remove a coordinate, defaults to False.
     :type pruning: bool, optional
+    :param adding_genes: What scores the tricluster with each of many genes added at once,
+        the same, but for rounding, as ``score`` on each, such as
+        :py:meth:`TriclusterFitness.adding_genes`; when it gives None, or without it, each
+        is scored with ``score``.
+    :type adding_genes: Callable, optional
     :return: The grown tricluster, and how many triclusters were scored.
     :rtype: Tuple[Tricluster, int]
     """
@@ -390,7 +400,19 @@ def grow(tricluster: Tricluster, score: Callable[[Tricluster], float], sizes: Si
             moves: List[List[int]] = []
             if len(parts[dimension]) < high:
                 held = set(parts[dimension])
-                moves += [parts[dimension] + [position] for position in range(shape[dimension]) if position not in held]
+                additions = [position for position in range(shape[dimension]) if position not in held]
+                values = (adding_genes(Tricluster(parts[0], parts[1], parts[2]), additions)
+                          if dimension == 0 and adding_genes is not None and additions else None)
+                if values is None:
+                    moves += [parts[dimension] + [position] for position in additions]
+                else:
+                    # The same choice as scoring them one by one: the first lowest that qualifies.
+                    evaluations += len(additions)
+                    qualifies = values < current if pruning else values <= current
+                    if qualifies.any():
+                        index = int(np.flatnonzero(qualifies)[np.argmin(values[qualifies])])
+                        if best is None or values[index] < best[0]:
+                            best = (float(values[index]), dimension, parts[dimension] + [additions[index]])
             if pruning and len(parts[dimension]) > low:
                 moves += [[kept for kept in parts[dimension] if kept != removed] for removed in parts[dimension]]
             for move in moves:
