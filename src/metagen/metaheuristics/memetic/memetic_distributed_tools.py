@@ -14,7 +14,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-from typing import Callable, List
+from typing import Callable, List, Tuple
 
 from metagen.metaheuristics.import_helper import is_package_installed
 
@@ -27,7 +27,7 @@ from metagen.framework import Solution
 from metagen.logging.metagen_logger import get_remote_metagen_logger
 from metagen.metaheuristics.distributed_tools import assign_load_equally
 from metagen.metaheuristics.memetic.memetic_tools import population_local_search
-from metagen.metaheuristics.tools import local_search
+from metagen.metaheuristics.tools import add_calls, calls_of, local_search
 from metagen.framework.rng import set_seed, spawn_seed
 
 
@@ -63,14 +63,17 @@ def distributed_population_local_search(population: List[Solution], fitness_func
         # ever searched and the population came back as three copies of them (F-11).
         population = population[count:]
 
-    results = ray.get(futures)
-    flattened_results = [item for sublist in results for item in sublist]
+    answers = ray.get(futures)
+    # Each task evaluates on a copy of the fitness function and says how many times.
+    add_calls(fitness_function, sum(calls for _, calls in answers))
+    flattened_results = [item for sublist, _ in answers for item in sublist]
 
     return flattened_results
 
 @ray.remote
 def remote_population_local_search(seed: int, population: List[Solution], fitness_function: Callable[[Solution], float],
-                               neighbor_population_size: int, alteration_limit: float, distribution_level:int) -> List[Solution]:
+                               neighbor_population_size: int, alteration_limit: float,
+                               distribution_level: int) -> Tuple[List[Solution], int]:
     """
     Remote worker function for distributed population local search.
 
@@ -85,17 +88,20 @@ def remote_population_local_search(seed: int, population: List[Solution], fitnes
     :type neighbor_population_size: int
     :type alteration_limit: float
     :type distribution_level: int
-    :return: List of improved solutions
-    :rtype: List[:py:class:`~metagen.framework.Solution`]
+    :return: List of improved solutions, and the evaluations of the fitness made
+    :rtype: Tuple[List[:py:class:`~metagen.framework.Solution`], int]
     """
     # A-06: every Ray task is seeded from the driver, or a distributed run does not reproduce.
     set_seed(seed)
-    return population_local_search(population, fitness_function, neighbor_population_size, alteration_limit, distribution_level)
+    before = calls_of(fitness_function)
+    improved = population_local_search(population, fitness_function, neighbor_population_size, alteration_limit,
+                                       distribution_level)
+    return improved, calls_of(fitness_function) - before
 
 
 @ray.remote
 def remote_local_search(seed: int, solution: Solution, fitness_function: Callable[[Solution], float],
-                     neighbor_population_size: int, alteration_limit: float) -> Solution:
+                     neighbor_population_size: int, alteration_limit: float) -> Tuple[Solution, int]:
     """
     Remote worker function for distributed local search on a single solution.
 
@@ -108,12 +114,14 @@ def remote_local_search(seed: int, solution: Solution, fitness_function: Callabl
     :type fitness_function: Callable[[:py:class:`~metagen.framework.Solution`], float]
     :type neighbor_population_size: int
     :type alteration_limit: float
-    :return: Improved solution
-    :rtype: :py:class:`~metagen.framework.Solution`
+    :return: Improved solution, and the evaluations of the fitness made
+    :rtype: Tuple[:py:class:`~metagen.framework.Solution`, int]
     """
     # A-06: every Ray task is seeded from the driver, or a distributed run does not reproduce.
     set_seed(seed)
-    return local_search(solution, fitness_function, neighbor_population_size, alteration_limit)
+    before = calls_of(fitness_function)
+    improved = local_search(solution, fitness_function, neighbor_population_size, alteration_limit)
+    return improved, calls_of(fitness_function) - before
 
 def distributed_local_search(solution: Solution, fitness_function: Callable[[Solution], float],
                          neighbor_population_size: int, alteration_limit: float) -> Solution:
@@ -141,6 +149,7 @@ def distributed_local_search(solution: Solution, fitness_function: Callable[[Sol
     for count in distribution:
         futures.append(
             remote_local_search.remote(spawn_seed(), solution, fitness_function, count, alteration_limit))
-    neighborhood = ray.get(futures)
-    best_neighbor = min(neighborhood, key=lambda sol: sol.get_fitness())
+    answers = ray.get(futures)
+    add_calls(fitness_function, sum(calls for _, calls in answers))
+    best_neighbor = min((neighbor for neighbor, _ in answers), key=lambda sol: sol.get_fitness())
     return best_neighbor

@@ -22,6 +22,33 @@ def solution_class(domain: Domain) -> type[Solution]:
     return cast(type[Solution], domain.get_connector().get_type(domain.get_core()))
 
 
+class CountingFitness:
+    """
+    The fitness function of a run, counting its calls. A worker of Ray runs on a copy of
+    it, so a task gives back how many calls it made (:py:func:`calls_of`) and the caller
+    adds them to its own count (:py:func:`add_calls`).
+    """
+
+    def __init__(self, function: Callable[[Solution], float]) -> None:
+        self.function = function
+        self.calls = 0
+
+    def __call__(self, solution: Solution) -> float:
+        self.calls += 1
+        return self.function(solution)
+
+
+def calls_of(fitness_function: Callable[[Solution], float]) -> int:
+    """The calls a fitness function has counted so far, 0 if it does not count them."""
+    return fitness_function.calls if isinstance(fitness_function, CountingFitness) else 0
+
+
+def add_calls(fitness_function: Callable[[Solution], float], calls: int) -> None:
+    """Add to a counting fitness function the calls made in a worker on a copy of it."""
+    if isinstance(fitness_function, CountingFitness):
+        fitness_function.calls += calls
+
+
 def random_exploration (domain: Domain, fitness_function: Callable[[Solution], float], num_solutions: int) \
                                                                             -> Tuple[List[Solution], Solution]:
 

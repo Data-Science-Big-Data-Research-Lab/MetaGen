@@ -18,6 +18,7 @@
 import heapq
 import json
 import math
+import numbers
 import os
 import pickle
 import statistics
@@ -33,7 +34,7 @@ from metagen.framework.rng import get_rng, set_seed, spawn_seed
 from copy import deepcopy
 
 from metagen.logging.metagen_logger import metagen_logger
-from metagen.metaheuristics.tools import random_exploration
+from metagen.metaheuristics.tools import CountingFitness, add_calls, random_exploration
 
 IS_RAY_INSTALLED = is_package_installed("ray")
 
@@ -50,18 +51,6 @@ if IS_RAY_INSTALLED:
 #: often to save, which the resumed run is given again.
 _NOT_CHECKPOINTED = frozenset({"fitness_function", "logger", "checkpoint", "checkpoint_every",
                                "_stop_requested"})
-
-
-class _CountingFitness:
-    """The fitness function of a run, counting its calls on the driver for the history."""
-
-    def __init__(self, function: Callable[[Solution], float]) -> None:
-        self.function = function
-        self.calls = 0
-
-    def __call__(self, solution: Solution) -> float:
-        self.calls += 1
-        return self.function(solution)
 
 
 def _package_version() -> str:
@@ -143,6 +132,19 @@ class Metaheuristic(ABC):
         which ``pandas.read_json(history, lines=True)`` reads as a table. None, the
         default, writes nothing; the records are in ``history`` either way.
     :type history: str or None, optional
+    :param max_evaluations: Stop once the run has evaluated the fitness at least this many
+        times, warmup included. None, the default, sets no limit.
+    :type max_evaluations: int or None, optional
+    :param timeout: Stop once the run has lasted at least this many seconds. None, the
+        default, sets no limit.
+    :type timeout: float or None, optional
+
+    The run stops at whichever comes first: the algorithm's own stopping criterion,
+    ``max_evaluations``, ``timeout`` or :py:meth:`request_stop`. The limits are checked
+    after the warmup and the initialization and at the end of every iteration, never in
+    the middle of one, so a run may go past them by up to one iteration; ``stop_reason``
+    says which one stopped it, and ``evaluations`` and ``seconds`` what it spent. A run
+    resumed from a checkpoint carries on with what it had spent.
 
     :ivar domain: The problem domain.
     :vartype domain: Domain
@@ -163,12 +165,15 @@ class Metaheuristic(ABC):
     :ivar best_solution_fitnesses: List of fitness values of the best solutions per iteration.
     :vartype best_solution_fitnesses: List[float]
     :ivar history: One record per iteration: ``iteration``; ``evaluations``, counted from
-        the start of the run, warmup included, or None in a distributed run, whose
-        evaluations happen in the workers; ``seconds`` since the start; ``best``, the
+        the start of the run, warmup included, those of the workers too in a distributed
+        run; ``seconds`` since the start; ``best``, the
         best fitness so far; the ``iteration_best``, ``mean``, ``std`` and ``worst``
         fitness of the population and its ``population_size``; and ``best_solution``,
         the values of the best solution so far.
     :vartype history: List[dict]
+    :ivar stop_reason: What stopped the last run: ``"criterion"``, the algorithm's own,
+        ``"max_evaluations"``, ``"timeout"`` or ``"request_stop"``; None before any run.
+    :vartype stop_reason: Optional[str]
     """
 
     # minimum_slice exists since F-46: islands of one individual crashed GA and Memetic.
@@ -179,8 +184,24 @@ class Metaheuristic(ABC):
                  warmup_iterations: int = 0, distributed=False,
                  log_dir: Optional[str] = None, seed: Optional[int] = None,
                  distribution_model: str = "global", checkpoint: Optional[str] = None,
-                 checkpoint_every: int = 1, history: Optional[str] = None) -> None:
+                 checkpoint_every: int = 1, history: Optional[str] = None,
+                 max_evaluations: Optional[int] = None, timeout: Optional[float] = None) -> None:
         super().__init__()
+
+        if max_evaluations is not None and (isinstance(max_evaluations, bool)
+                                            or not isinstance(max_evaluations, numbers.Integral)
+                                            or max_evaluations < 1):
+            raise ValueError(f"max_evaluations must be a positive integer or None, not {max_evaluations!r}")
+        if timeout is not None and (isinstance(timeout, bool) or not isinstance(timeout, numbers.Real)
+                                    or not math.isfinite(timeout) or timeout <= 0):
+            raise ValueError(f"timeout must be a positive number of seconds or None, not {timeout!r}")
+        self.max_evaluations: Optional[int] = None
+        if max_evaluations is not None:
+            self.max_evaluations = int(cast(Any, max_evaluations))
+        self.timeout: Optional[float] = None
+        if timeout is not None:
+            self.timeout = float(cast(Any, timeout))
+        self.stop_reason: Optional[str] = None
 
         if distribution_model not in DISTRIBUTION_MODELS:
             raise ValueError(f"distribution_model must be one of {sorted(DISTRIBUTION_MODELS)}, "
@@ -277,7 +298,10 @@ class Metaheuristic(ABC):
             else:
                 futures.append(call_distributed.remote(spawn_seed(), method, count))
 
-        remote_results = ray.get(futures)
+        answers = ray.get(futures)
+        # Each worker evaluates on a copy of the fitness function and says how many.
+        add_calls(self.fitness_function, sum(calls for _, calls in answers))
+        remote_results = [result for result, _ in answers]
         offspring = [individual for subpopulation in remote_results for individual in subpopulation[0]]
         best_individual = min([result[1] for result in remote_results], key=lambda sol: sol.get_fitness())
 
@@ -509,6 +533,7 @@ class Metaheuristic(ABC):
             :py:meth:`request_stop` stopped the run.
         :rtype: Solution
         """
+        self.stop_reason = None
         resuming = self.checkpoint is not None and os.path.exists(self.checkpoint)
         if resuming:
             self._restore(self._read_checkpoint(cast(str, self.checkpoint)))
@@ -528,7 +553,7 @@ class Metaheuristic(ABC):
                 os.remove(self.history_file)
         # Counted on the driver: the history's evaluations, from where a resumed run
         # left them.
-        counted = _CountingFitness(self.fitness_function)
+        counted = CountingFitness(self.fitness_function)
         self.fitness_function = counted
         evaluations_before, seconds_before, started = self._evaluations, self._seconds, time.perf_counter()
 
@@ -549,8 +574,17 @@ class Metaheuristic(ABC):
                 self._initialize()
 
                 self.current_iteration = 0
+                self._evaluations = evaluations_before + counted.calls
+                self._seconds = seconds_before + time.perf_counter() - started
 
-            while not self.stopping_criterion():
+            while True:
+                # Checked between iterations only, where the state is consistent: the
+                # same point the checkpoint is saved at, so a resumed run stops where
+                # an uninterrupted one would.
+                reason = "criterion" if self.stopping_criterion() else self._limit_reached()
+                if reason is not None:
+                    self.stop_reason = reason
+                    break
                 self.pre_iteration()
 
                 self._iterate()
@@ -570,6 +604,7 @@ class Metaheuristic(ABC):
                         self._stop_requested or self.current_iteration % self.checkpoint_every == 0):
                     self._write_checkpoint()
                 if self._stop_requested:
+                    self.stop_reason = "request_stop"
                     if self.logger:
                         self.logger.writer.flush()
                     return deepcopy(self._best_so_far())
@@ -587,6 +622,34 @@ class Metaheuristic(ABC):
 
         return deepcopy(self._best_so_far())
 
+    def _limit_reached(self) -> Optional[str]:
+        """The budget the run has spent, ``"max_evaluations"`` or ``"timeout"``, or None."""
+        if self.max_evaluations is not None and self._evaluations >= self.max_evaluations:
+            return "max_evaluations"
+        if self.timeout is not None and self._seconds >= self.timeout:
+            return "timeout"
+        return None
+
+    @property
+    def evaluations(self) -> int:
+        """
+        The evaluations of the fitness the last run made, warmup included.
+
+        :return: The count.
+        :rtype: int
+        """
+        return self._evaluations
+
+    @property
+    def seconds(self) -> float:
+        """
+        The seconds the last run lasted.
+
+        :return: The seconds.
+        :rtype: float
+        """
+        return self._seconds
+
     def _record_history(self) -> None:
         """
         Add the record of the iteration just completed to ``history``, and to the
@@ -597,7 +660,7 @@ class Metaheuristic(ABC):
         best = self._best_so_far()
         record = {
             "iteration": self.current_iteration,
-            "evaluations": None if self.distributed else self._evaluations,
+            "evaluations": self._evaluations,
             "seconds": self._seconds,
             "best": best.get_fitness(),
             "iteration_best": min(finite) if finite else None,
