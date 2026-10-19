@@ -5,7 +5,7 @@ from scipy.optimize import minimize
 
 from metagen.metaheuristics.base import Metaheuristic
 import math
-from typing import Callable, List, Tuple, Optional, cast
+from typing import Callable, List, Tuple, Optional, cast, Any, Mapping, Sequence
 import numpy as np
 from scipy.stats import norm
 from metagen.framework import Domain, Solution
@@ -66,6 +66,9 @@ class TPE(Metaheuristic):
     :param timeout: Stop once the run has lasted at least this many seconds; see
         :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
     :type timeout: float or None, optional
+    :param initial_solutions: Solutions to start from, each a mapping from variable names to
+        values; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type initial_solutions: Sequence[Mapping[str, Any]] or None, optional
 
     :ivar max_iterations: Maximum number of iterations
     :vartype max_iterations: int
@@ -98,7 +101,8 @@ class TPE(Metaheuristic):
                  seed: Optional[int] = None, population_size: int = 20,
                  distribution_model: str = "global",
                  checkpoint: Optional[str] = None, checkpoint_every: int = 1, history: Optional[str] = None,
-                 max_evaluations: Optional[int] = None, timeout: Optional[float] = None) -> None:
+                 max_evaluations: Optional[int] = None, timeout: Optional[float] = None,
+                 initial_solutions: Optional[Sequence[Mapping[str, Any]]] = None) -> None:
         """
         Initialize the TPE algorithm.
 
@@ -152,7 +156,8 @@ class TPE(Metaheuristic):
                          warmup_iterations=warmup_iterations, distributed=distributed, log_dir=log_dir, seed=seed,
                          distribution_model=distribution_model,
                          checkpoint=checkpoint, checkpoint_every=checkpoint_every,
-                         history=history, max_evaluations=max_evaluations, timeout=timeout)
+                         history=history, max_evaluations=max_evaluations, timeout=timeout,
+                         initial_solutions=initial_solutions)
 
         # The gamma schedule and the size of the history are planned over max_iterations,
         # so a budget of evaluations becomes the iterations it buys.

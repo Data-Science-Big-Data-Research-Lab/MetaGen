@@ -1,7 +1,7 @@
 from collections import deque
 from metagen.framework import Domain, RelativeAlteration, Solution
 from collections.abc import Callable
-from typing import Any, List, Tuple, Deque, Optional
+from typing import Any, List, Tuple, Deque, Optional, Mapping, Sequence
 
 from metagen.metaheuristics.tools import local_search_with_tabu, solution_class
 from metagen.metaheuristics.base import Metaheuristic
@@ -73,6 +73,9 @@ class HillClimbing(Metaheuristic):
     :param timeout: Stop once the run has lasted at least this many seconds; see
         :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
     :type timeout: float or None, optional
+    :param initial_solutions: Solutions to start from, each a mapping from variable names to
+        values; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type initial_solutions: Sequence[Mapping[str, Any]] or None, optional
 
     :ivar max_iterations: Maximum number of iterations to run
     :vartype max_iterations: int
@@ -111,7 +114,8 @@ class HillClimbing(Metaheuristic):
                  gamma_config: Optional[GammaConfig] = None, distributed=False, log_dir: Optional[str] = None,
                  seed: Optional[int] = None, distribution_model: str = "global",
                  checkpoint: Optional[str] = None, checkpoint_every: int = 1, history: Optional[str] = None,
-                 max_evaluations: Optional[int] = None, timeout: Optional[float] = None):
+                 max_evaluations: Optional[int] = None, timeout: Optional[float] = None,
+                 initial_solutions: Optional[Sequence[Mapping[str, Any]]] = None):
         """
         Initialize the hill climbing algorithm.
 
@@ -139,7 +143,8 @@ class HillClimbing(Metaheuristic):
         super().__init__(domain, fitness_function, population_size, warmup_iterations, distributed, log_dir, seed=seed,
                          distribution_model=distribution_model,
                          checkpoint=checkpoint, checkpoint_every=checkpoint_every,
-                         history=history, max_evaluations=max_evaluations, timeout=timeout)
+                         history=history, max_evaluations=max_evaluations, timeout=timeout,
+                         initial_solutions=initial_solutions)
         # Only a gamma schedule plans over max_iterations: then a budget of evaluations
         # becomes the iterations it buys, each costing the share of the neighbors the
         # schedule gives it.

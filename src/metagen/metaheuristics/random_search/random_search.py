@@ -17,7 +17,7 @@
 from metagen.framework import Domain, Solution
 from metagen.metaheuristics.tools import random_exploration
 from metagen.metaheuristics.base import Metaheuristic
-from typing import Optional, List, Tuple, Callable
+from typing import Optional, List, Tuple, Callable, Any, Mapping, Sequence
 from copy import deepcopy
 
 
@@ -64,6 +64,9 @@ class RandomSearch(Metaheuristic):
     :param timeout: Stop once the run has lasted at least this many seconds; see
         :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
     :type timeout: float or None, optional
+    :param initial_solutions: Solutions to start from, each a mapping from variable names to
+        values; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type initial_solutions: Sequence[Mapping[str, Any]] or None, optional
 
     :ivar max_iterations: Maximum number of iterations to run
     :vartype max_iterations: int
@@ -86,7 +89,8 @@ class RandomSearch(Metaheuristic):
     """
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float], population_size = 10, max_iterations: Optional[int] = None, distributed = False, log_dir: Optional[str] = None, seed: Optional[int] = None, distribution_model: str = "global",
                  checkpoint: Optional[str] = None, checkpoint_every: int = 1, history: Optional[str] = None,
-                 max_evaluations: Optional[int] = None, timeout: Optional[float] = None) -> None:
+                 max_evaluations: Optional[int] = None, timeout: Optional[float] = None,
+                 initial_solutions: Optional[Sequence[Mapping[str, Any]]] = None) -> None:
         """
         Initialize the RandomSearch algorithm.
 
@@ -106,7 +110,8 @@ class RandomSearch(Metaheuristic):
         super().__init__(domain, fitness_function, population_size, distributed=distributed, log_dir=log_dir, seed=seed,
                          distribution_model=distribution_model,
                          checkpoint=checkpoint, checkpoint_every=checkpoint_every,
-                         history=history, max_evaluations=max_evaluations, timeout=timeout)
+                         history=history, max_evaluations=max_evaluations, timeout=timeout,
+                         initial_solutions=initial_solutions)
         self.max_iterations = self._iterations(max_iterations, 20)
 
     def initialize(self, num_solutions=10) -> Tuple[List[Solution], Solution]:

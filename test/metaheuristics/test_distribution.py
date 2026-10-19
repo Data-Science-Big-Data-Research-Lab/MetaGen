@@ -312,3 +312,17 @@ def test_a_distributed_hill_climbing_splits_its_gamma_neighborhood_among_the_sli
         wanted = round(compute_gamma(schedule, iteration=iteration, max_iterations=6, num_solutions=10) * 10)
         assert abs((after - before) - wanted) <= run.distributed_slices
     assert run.evaluations == _evaluations(path)
+
+
+def test_a_distributed_run_starts_from_its_initial_solutions_at_the_same_cost(ray_runtime, tmp_path):
+    def run(name, initial):
+        path = tmp_path / f"{name}.txt"
+        algorithm = GA(_sphere_domain(GAConnector()), _counting_sphere(path), population_size=8, max_iterations=2,
+                       distributed=True, seed=4, initial_solutions=initial)
+        best = algorithm.run()
+        return best, _evaluations(path)
+
+    _, without = run("without", None)
+    best, given = run("given", [{"x": 0.0, "y": 0.0}])
+    assert given == without
+    assert best.get_fitness() == 0.0

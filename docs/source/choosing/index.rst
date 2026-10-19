@@ -83,6 +83,31 @@ Every metaheuristic but CVOA also takes ``max_evaluations``, the evaluations of 
 
 A run resumed from a checkpoint (see :doc:`../pausing_and_resuming/index`) carries on with what it had spent, so it stops where an uninterrupted run would. In a distributed run the evaluations of the workers count too.
 
+
+Starting from known solutions
+-----------------------------
+
+``initial_solutions`` starts a run from solutions known beforehand, such as the configuration of an earlier study or the defaults of a library: each a mapping from variable names to values, with any variable left out drawn at random. They take the place of as many solutions of the initial population, so the cost of the run does not change, and they count as any other: the best of the run may be one of them. A metaheuristic takes at most ``population_size`` of them, and a value that does not fit the domain raises an error when the metaheuristic is built.
+
+.. code-block:: python
+
+    from metagen.framework import Domain
+    from metagen.metaheuristics import KernelTPE
+
+    domain = Domain()
+    domain.define_real("x", -5.0, 5.0)
+    domain.define_integer("n", 1, 100)
+
+    def fitness(solution):
+        return (solution["x"] - 1.0) ** 2 + abs(solution["n"] - 42) / 10
+
+    known = [{"x": 1.0, "n": 40}, {"n": 45}]           # x of the second one is drawn
+    search = KernelTPE(domain, fitness, population_size=10, max_evaluations=100,
+                       initial_solutions=known, seed=0)
+    search.run()
+    print(search.best_solution_fitnesses[0])   # 0.2: the first known solution is the best to start from
+    print(search.evaluations)                  # 100
+
 Running CVOA
 ------------
 
