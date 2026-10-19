@@ -16,6 +16,13 @@
 - **Distributed runs count the evaluations of their workers**: the history of a run on Ray
   records them, as a sequential run does.
 
+### Changes
+
+- **KernelTPE models on its whole warmup**: every solution its warmup evaluates joins the
+  history its model is built on, so a run with a warmup gives different results.
+- **HillClimbing with a gamma schedule** evaluates, each iteration, the share of
+  `population_size` the schedule gives, split among the slices of a distributed run.
+
 ## 1.2.0
 
 MetaGen 1.2.0 adds subsets to the search spaces: a selection of some of a set of elements,
