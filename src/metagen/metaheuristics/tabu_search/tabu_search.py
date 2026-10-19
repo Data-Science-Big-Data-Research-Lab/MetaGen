@@ -20,6 +20,7 @@ from typing import Any, Callable, Deque, List, Optional, Tuple, Mapping, Sequenc
 
 from metagen.framework import Domain, RelativeAlteration, Solution
 from metagen.framework.solution.types import Integer, Real
+from metagen.metaheuristics.racing import Racing
 from metagen.metaheuristics.base import Metaheuristic
 from metagen.metaheuristics.tools import solution_class
 
@@ -103,6 +104,9 @@ class TabuSearch(Metaheuristic):
     :param initial_solutions: Solutions to start from, each a mapping from variable names to
         values; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
     :type initial_solutions: Sequence[Mapping[str, Any]] or None, optional
+    :param racing: Stop evaluating a candidate as soon as it is significantly worse than the
+        population; see :py:class:`~metagen.metaheuristics.racing.Racing`.
+    :type racing: Racing or None, optional
     :param seed: Seed for MetaGen's generators, defaults to None
     :type seed: int or None, optional
 
@@ -142,12 +146,12 @@ class TabuSearch(Metaheuristic):
                  distribution_model: str = "global",
                  checkpoint: Optional[str] = None, checkpoint_every: int = 1, history: Optional[str] = None,
                  max_evaluations: Optional[int] = None, timeout: Optional[float] = None,
-                 initial_solutions: Optional[Sequence[Mapping[str, Any]]] = None):
+                 initial_solutions: Optional[Sequence[Mapping[str, Any]]] = None, racing: Optional[Racing] = None):
         super().__init__(domain, fitness_function, population_size, warmup_iterations, distributed, log_dir,
                          seed=seed, distribution_model=distribution_model,
                          checkpoint=checkpoint, checkpoint_every=checkpoint_every,
                          history=history, max_evaluations=max_evaluations, timeout=timeout,
-                         initial_solutions=initial_solutions)
+                         initial_solutions=initial_solutions, racing=racing)
         self.max_iterations = self._iterations(max_iterations, 20)
         self.tabu_size = tabu_size
         self.tabu_radius: Any = tabu_radius

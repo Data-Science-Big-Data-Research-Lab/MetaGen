@@ -326,3 +326,25 @@ def test_a_distributed_run_starts_from_its_initial_solutions_at_the_same_cost(ra
     best, given = run("given", [{"x": 0.0, "y": 0.0}])
     assert given == without
     assert best.get_fitness() == 0.0
+
+
+def _yielding_sphere_for_the_workers():
+    def folds(solution):
+        base = solution["x"] ** 2 + solution["y"] ** 2
+        for fold in range(10):
+            yield base + 0.1 * fold
+    return folds
+
+
+def test_a_distributed_run_races_its_candidates_and_counts_their_steps(ray_runtime):
+    from metagen.metaheuristics import Racing
+
+    plain = RandomSearch(_sphere_domain(), _yielding_sphere_for_the_workers(), population_size=10, max_iterations=4,
+                         distributed=True, seed=4)
+    plain.run()
+    raced = RandomSearch(_sphere_domain(), _yielding_sphere_for_the_workers(), population_size=10, max_iterations=4,
+                         distributed=True, seed=4, racing=Racing())
+    best = raced.run()
+    assert plain.history[-1]["steps"] == 10 * plain.evaluations
+    assert raced.history[-1]["steps"] < plain.history[-1]["steps"]
+    assert best.raced_out is False

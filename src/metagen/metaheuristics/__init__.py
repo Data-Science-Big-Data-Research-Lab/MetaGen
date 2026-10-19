@@ -24,6 +24,7 @@ from metagen.metaheuristics.tpe import TPE, KernelTPE
 from metagen.metaheuristics.random_search import RandomSearch
 from metagen.metaheuristics.memetic import Memetic
 from metagen.metaheuristics.trigen import TriGen, TriGenResult, TriclusterFitness
+from metagen.metaheuristics.racing import Racing
 
 # The module paths of earlier releases (metagen.metaheuristics.ga, ...rs, ...) stay importable.
 _renamed_modules.install()
@@ -31,4 +32,5 @@ _renamed_modules.install()
 # Memetic is exported whether or not Ray is installed: memetic_tools imports it only
 # for a distributed run (F-24).
 __all__ = ["RandomSearch", "GA", "SSGA", "GAConnector", "SA", "TPE",
-           "cvoa_launcher", "ProbabilisticCVOA", "StrainProperties", "HillClimbing", "TabuSearch", "Memetic", "KernelTPE", "TriGen", "TriGenResult", "TriclusterFitness"]
+           "cvoa_launcher", "ProbabilisticCVOA", "StrainProperties", "HillClimbing", "TabuSearch", "Memetic", "KernelTPE", "TriGen", "TriGenResult", "TriclusterFitness",
+           "Racing"]

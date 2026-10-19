@@ -1,5 +1,6 @@
 from copy import deepcopy
-from typing import Callable, Tuple, List, Set, cast
+from collections.abc import Iterator
+from typing import Any, Callable, Tuple, List, Optional, Set, cast
 
 from metagen.framework import Domain, Solution
 
@@ -22,31 +23,109 @@ def solution_class(domain: Domain) -> type[Solution]:
     return cast(type[Solution], domain.get_connector().get_type(domain.get_core()))
 
 
+class Counts:
+    """The work a fitness function has done: its calls and, for one that yields its
+    steps, the steps taken and how many a whole evaluation takes. Two of them subtract and
+    add, so that a worker of Ray can give back what it did on its copy and the caller add it
+    to its own."""
+
+    def __init__(self, calls: int = 0, steps: int = 0, step_count: Optional[int] = None) -> None:
+        self.calls, self.steps, self.step_count = calls, steps, step_count
+
+    def __add__(self, other: Any) -> "Counts":
+        if isinstance(other, Counts):
+            return Counts(self.calls + other.calls, self.steps + other.steps,
+                          self.step_count if self.step_count is not None else other.step_count)
+        if other == 0:
+            return self
+        return NotImplemented
+
+    __radd__ = __add__
+
+    def __sub__(self, other: "Counts") -> "Counts":
+        return Counts(self.calls - other.calls, self.steps - other.steps, self.step_count)
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, Counts) and (self.calls, self.steps) == (other.calls, other.steps)
+
+    def __repr__(self) -> str:
+        return f"Counts(calls={self.calls}, steps={self.steps})"
+
+
 class CountingFitness:
     """
     The fitness function of a run, counting its calls. A worker of Ray runs on a copy of
-    it, so a task gives back how many calls it made (:py:func:`calls_of`) and the caller
-    adds them to its own count (:py:func:`add_calls`).
+    it, so a task gives back what it did (:py:func:`calls_of`) and the caller adds it to
+    its own count (:py:func:`add_calls`).
+
+    A fitness function may also yield its steps one at a time, such as the loss of each
+    fold of a cross-validation: its value is then their mean, and with a
+    :py:class:`~metagen.metaheuristics.racing.Racing` a solution that falls significantly
+    behind ``references``, the values per step of the population it races against, gets
+    no more steps. Every solution so evaluated keeps its values per step in
+    ``step_values`` and whether it was stopped in ``raced_out``.
     """
 
-    def __init__(self, function: Callable[[Solution], float]) -> None:
+    def __init__(self, function: Callable[[Solution], Any], racing: Any = None,
+                 step_count: Optional[int] = None) -> None:
         self.function = function
         self.calls = 0
+        self.steps = 0
+        self.racing = racing
+        #: The steps of a whole evaluation, learned from the first one.
+        self.step_count = step_count
+        #: The values per step of the solutions a candidate races against.
+        self.references: List[List[float]] = []
 
     def __call__(self, solution: Solution) -> float:
         self.calls += 1
-        return self.function(solution)
+        value = self.function(solution)
+        if not isinstance(value, Iterator):
+            return value
+        return self._steps_of(solution, value)
+
+    def _steps_of(self, solution: Solution, steps: Iterator[Any]) -> float:
+        from metagen.metaheuristics.racing import corrected_mean
+
+        values: List[float] = []
+        references = self.references if self.racing is not None else []
+        raced_out = False
+        for step in steps:
+            values.append(float(step))
+            self.steps += 1
+            if references and self.racing.eliminates(values, references):
+                raced_out = True
+                close = getattr(steps, "close", None)
+                if close is not None:
+                    close()
+                break
+        if not values:
+            raise ValueError("A fitness function that yields its steps must yield at least one.")
+        if not raced_out:
+            if self.step_count is None:
+                self.step_count = len(values)
+            elif len(values) != self.step_count:
+                raise ValueError(f"A fitness function that yields its steps must yield as many for every "
+                                 f"solution: {len(values)} here, {self.step_count} before.")
+        setattr(solution, "step_values", values)
+        setattr(solution, "raced_out", raced_out)
+        return corrected_mean(values, references) if raced_out else sum(values) / len(values)
 
 
-def calls_of(fitness_function: Callable[[Solution], float]) -> int:
-    """The calls a fitness function has counted so far, 0 if it does not count them."""
-    return fitness_function.calls if isinstance(fitness_function, CountingFitness) else 0
-
-
-def add_calls(fitness_function: Callable[[Solution], float], calls: int) -> None:
-    """Add to a counting fitness function the calls made in a worker on a copy of it."""
+def calls_of(fitness_function: Callable[[Solution], Any]) -> Counts:
+    """What a fitness function has counted so far, nothing if it does not count."""
     if isinstance(fitness_function, CountingFitness):
-        fitness_function.calls += calls
+        return Counts(fitness_function.calls, fitness_function.steps, fitness_function.step_count)
+    return Counts()
+
+
+def add_calls(fitness_function: Callable[[Solution], Any], counts: Any) -> None:
+    """Add to a counting fitness function what was done in a worker on a copy of it."""
+    if isinstance(fitness_function, CountingFitness) and isinstance(counts, Counts):
+        fitness_function.calls += counts.calls
+        fitness_function.steps += counts.steps
+        if fitness_function.step_count is None:
+            fitness_function.step_count = counts.step_count
 
 
 def random_exploration (domain: Domain, fitness_function: Callable[[Solution], float], num_solutions: int) \
