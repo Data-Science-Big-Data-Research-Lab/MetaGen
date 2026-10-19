@@ -187,12 +187,15 @@ class HillClimbing(Metaheuristic):
         :return: A tuple containing the new neighborhood solutions and the best solution found
         :rtype: Tuple[List[Solution], Solution]
         """
-        # The neighborhood is the whole population, or the share of it a gamma schedule gives.
+        # The neighborhood is the whole population, or the share of population_size a gamma
+        # schedule gives, split among the slices of a distributed run. The share used to be
+        # taken of `solutions`, which is the previous neighborhood: it shrank every iteration
+        # down to a single neighbor (F-54).
 
         if self.gamma_config:
             gamma = compute_gamma(self.gamma_config, iteration=self.current_iteration,
-                                  max_iterations=self.max_iterations, num_solutions=max(1, len(solutions)))
-            l = max(1, round(gamma * len(solutions)))  # at least one neighbor
+                                  max_iterations=self.max_iterations, num_solutions=self.population_size)
+            l = max(1, round(gamma * self.population_size / self.distributed_slices))  # at least one neighbor
         else:
             l = max(1, len(solutions))  # at least one neighbor
 
@@ -245,8 +248,7 @@ def _gamma_horizon(gamma_config: GammaConfig, population_size: int, evaluations:
     """
     The fewest iterations whose neighbors add up to ``evaluations``, under a gamma
     schedule planned over those same iterations: each iteration evaluates the share of
-    the previous population the schedule gives, at least one, and that is the next
-    population.
+    ``population_size`` the schedule gives, at least one.
 
     :param gamma_config: The gamma schedule.
     :type gamma_config: GammaConfig
@@ -258,13 +260,9 @@ def _gamma_horizon(gamma_config: GammaConfig, population_size: int, evaluations:
     :rtype: int
     """
     def cost(horizon: int) -> int:
-        total, population = 0, population_size
-        for iteration in range(horizon):
-            gamma = compute_gamma(gamma_config, iteration=iteration, max_iterations=horizon,
-                                  num_solutions=max(1, population))
-            population = max(1, round(gamma * population))
-            total += population
-        return total
+        return sum(max(1, round(compute_gamma(gamma_config, iteration=iteration, max_iterations=horizon,
+                                              num_solutions=population_size) * population_size))
+                   for iteration in range(horizon))
 
     # Every iteration costs at least one evaluation, so the answer is at most evaluations.
     low, high = 1, max(1, evaluations)

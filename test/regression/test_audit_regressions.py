@@ -3028,3 +3028,29 @@ def test_f47_tpe_expone_la_poblacion_y_su_coste_es_el_que_dice():
     llamadas.clear()
     TPE(dominio, contada, warmup_iterations=0, candidate_pool_size=2, max_iterations=1, seed=0).run()
     assert len(llamadas) == 20 + 2, "sin warmup, TPE cuesta su poblacion mas el pool por iteracion"
+
+
+# --------------------------------------------------------------------------------
+# F-54 · HillClimbing con gamma_config toma la parte de la poblacion anterior, no de population_size
+# --------------------------------------------------------------------------------
+
+def test_f54_el_vecindario_de_gamma_es_una_parte_de_la_poblacion():
+    """F-54: con un gamma_config, cada iteracion evalua la parte de la poblacion que da el
+    esquema. La poblacion que recibe `iterate` es el vecindario de la iteracion anterior,
+    asi que la parte se tomaba de algo que ya se habia reducido: con poblacion 10 y gamma
+    de 0.8 a 0.5, 8, 6, 4, 3, 2, 1, 1, 1 vecinos en vez de 8, 8, 7, 7, 6, 6, 6, 5."""
+    from metagen.metaheuristics import HillClimbing
+    from metagen.metaheuristics.gamma_schedules import GammaConfig, compute_gamma
+
+    dominio = Domain()
+    dominio.define_real("x", -5.0, 5.0)
+    dominio.define_real("y", -5.0, 5.0)
+    esquema = GammaConfig(gamma_function="linear", minimum=0.5, maximum=0.8)
+    algoritmo = HillClimbing(dominio, lambda s: s["x"] ** 2 + s["y"] ** 2, population_size=10,
+                             warmup_iterations=0, max_iterations=8, seed=0, gamma_config=esquema)
+    algoritmo.run()
+    evaluaciones = [10] + [registro["evaluations"] for registro in algoritmo.history]
+    vecinos = [despues - antes for antes, despues in zip(evaluaciones, evaluaciones[1:])]
+    esperados = [max(1, round(compute_gamma(esquema, iteration=i, max_iterations=8, num_solutions=10) * 10))
+                 for i in range(8)]
+    assert vecinos == esperados
