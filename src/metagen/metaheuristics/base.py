@@ -27,14 +27,14 @@ from abc import ABC, abstractmethod
 from importlib import metadata
 
 from .import_helper import is_package_installed
-from typing import Any, Dict, List, Tuple, Optional, Callable, cast
+from typing import Any, Dict, List, Mapping, Sequence, Tuple, Optional, Callable, cast
 from metagen.framework import Domain, Solution
 from metagen.framework import rng as rng_state
 from metagen.framework.rng import get_rng, set_seed, spawn_seed
 from copy import deepcopy
 
 from metagen.logging.metagen_logger import metagen_logger
-from metagen.metaheuristics.tools import CountingFitness, add_calls, random_exploration
+from metagen.metaheuristics.tools import CountingFitness, add_calls, random_exploration, solution_class
 
 IS_RAY_INSTALLED = is_package_installed("ray")
 
@@ -138,6 +138,13 @@ class Metaheuristic(ABC):
     :param timeout: Stop once the run has lasted at least this many seconds. None, the
         default, sets no limit.
     :type timeout: float or None, optional
+    :param initial_solutions: Solutions to start from, such as a configuration known to
+        work: each a mapping from variable names to values, with any variable left out
+        drawn at random. They take the place of as many solutions of the initial
+        population, so the cost of the run does not change, and count as any other: the
+        best of the run may be one of them. At most ``population_size`` of them. None, the
+        default, starts from random solutions only.
+    :type initial_solutions: Sequence[Mapping[str, Any]] or None, optional
 
     The run stops at whichever comes first: the algorithm's own stopping criterion,
     ``max_evaluations``, ``timeout`` or :py:meth:`request_stop`. The limits are checked
@@ -190,7 +197,8 @@ class Metaheuristic(ABC):
                  log_dir: Optional[str] = None, seed: Optional[int] = None,
                  distribution_model: str = "global", checkpoint: Optional[str] = None,
                  checkpoint_every: int = 1, history: Optional[str] = None,
-                 max_evaluations: Optional[int] = None, timeout: Optional[float] = None) -> None:
+                 max_evaluations: Optional[int] = None, timeout: Optional[float] = None,
+                 initial_solutions: Optional[Sequence[Mapping[str, Any]]] = None) -> None:
         super().__init__()
 
         if max_evaluations is not None and (isinstance(max_evaluations, bool)
@@ -207,6 +215,20 @@ class Metaheuristic(ABC):
         if timeout is not None:
             self.timeout = float(cast(Any, timeout))
         self.stop_reason: Optional[str] = None
+        # Checked here, against the domain, without drawing anything: the solutions are
+        # built in run(), once the seed is set, so that the variables left out are drawn
+        # from the seeded generators.
+        self.initial_solutions: List[Dict[str, Any]] = [dict(values) for values in initial_solutions or []]
+        if len(self.initial_solutions) > population_size:
+            raise ValueError(f"{type(self).__name__} takes at most population_size={population_size} initial "
+                             f"solutions, not {len(self.initial_solutions)}.")
+        core = domain.get_core()
+        for index, values in enumerate(self.initial_solutions):
+            for name, value in values.items():
+                if not core.is_variable(name):
+                    raise ValueError(f"Initial solution {index}: {name!r} is not a variable of the domain.")
+                if not core.check(name, value):
+                    raise ValueError(f"Initial solution {index}: {value!r} is not a valid value of {name!r}.")
         # The iterations the algorithm's own criterion allows, which _iterations() sets:
         # None is no limit, for a run bounded by its budget alone.
         self._iteration_limit: Optional[int] = None
@@ -276,7 +298,8 @@ class Metaheuristic(ABC):
         # after whatever _warmup() left behind, which is one entry per warmup
         # round and has nothing to do with the population being built (F-03).
         if self.current_iteration == -1:
-            distribution = assign_load_equally(self.population_size, self.minimum_slice)
+            distribution = assign_load_equally(self.population_size - len(self.initial_solutions),
+                                               self.minimum_slice)
         else:
             distribution = assign_load_equally(
                 len(self.current_solutions) if len(self.current_solutions) > 0 else self.population_size,
@@ -342,13 +365,24 @@ class Metaheuristic(ABC):
         :return: A tuple containing the population and the best individual.
         :rtype: Tuple[List[Solution], Solution]
         """
-        if self.distributed:
-            if not IS_RAY_INSTALLED:
-                raise ImportError("Ray must be installed to use distributed initialization")
-
-            population, best_individual = self._launch_distributed_method(self.initialize)
-        else:
-            population, best_individual = self.initialize(self.population_size)
+        given = self._initial_population()
+        drawn = self.population_size - len(given)
+        population: List[Solution] = []
+        best_individual: Optional[Solution] = None
+        if drawn > 0:
+            if self.distributed:
+                if not IS_RAY_INSTALLED:
+                    raise ImportError("Ray must be installed to use distributed initialization")
+                population, best_individual = self._launch_distributed_method(self.initialize)
+            else:
+                population, best_individual = self.initialize(drawn)
+        # What initialize returns as its best is kept (HillClimbing returns its starting
+        # point), and only an initial solution better than it takes its place.
+        for solution in given:
+            if best_individual is None or solution.get_fitness() < best_individual.get_fitness():
+                best_individual = solution
+        assert best_individual is not None
+        population = given + population
 
         # F-53: the warmup kept one solution per round and this replaced them all, so a
         # model built on the population never saw what the warmup had evaluated.
@@ -363,6 +397,17 @@ class Metaheuristic(ABC):
             self.best_solution = best_individual
 
         return population, best_individual
+
+    def _initial_population(self) -> List[Solution]:
+        """The initial solutions given to the constructor, built and evaluated."""
+        given = []
+        for values in self.initial_solutions:
+            solution = solution_class(self.domain)(self.domain, connector=self.domain.get_connector())
+            for name, value in values.items():
+                solution.set(name, value)
+            solution.evaluate(self.fitness_function)
+            given.append(solution)
+        return given
 
     def _warmup(self) -> None:
         """

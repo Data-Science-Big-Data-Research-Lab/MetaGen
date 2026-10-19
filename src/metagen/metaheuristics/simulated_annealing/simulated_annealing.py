@@ -18,7 +18,7 @@ from metagen.framework import Domain, RelativeAlteration, Solution
 from metagen.metaheuristics.tools import random_exploration
 import math
 from copy import deepcopy
-from typing import Any, Optional, Callable, Tuple, List, cast
+from typing import Any, Optional, Callable, Tuple, List, cast, Mapping, Sequence
 from metagen.metaheuristics.base import Metaheuristic
 from metagen.framework.rng import get_rng
 
@@ -104,6 +104,9 @@ class SA(Metaheuristic):
     :param timeout: Stop once the run has lasted at least this many seconds; see
         :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
     :type timeout: float or None, optional
+    :param initial_solutions: Solutions to start from, each a mapping from variable names to
+        values; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type initial_solutions: Sequence[Mapping[str, Any]] or None, optional
 
     :ivar max_iterations: Maximum number of iterations
     :vartype max_iterations: int
@@ -142,7 +145,8 @@ class SA(Metaheuristic):
                  distributed=False, log_dir: Optional[str] = None,
                  seed: Optional[int] = None, distribution_model: str = "global",
                  checkpoint: Optional[str] = None, checkpoint_every: int = 1, history: Optional[str] = None,
-                 max_evaluations: Optional[int] = None, timeout: Optional[float] = None) -> None:
+                 max_evaluations: Optional[int] = None, timeout: Optional[float] = None,
+                 initial_solutions: Optional[Sequence[Mapping[str, Any]]] = None) -> None:
         """
         Initialize the Simulated Annealing algorithm.
 
@@ -183,7 +187,8 @@ class SA(Metaheuristic):
                          log_dir=log_dir, seed=seed,
                          distribution_model=distribution_model,
                          checkpoint=checkpoint, checkpoint_every=checkpoint_every,
-                         history=history, max_evaluations=max_evaluations, timeout=timeout)
+                         history=history, max_evaluations=max_evaluations, timeout=timeout,
+                         initial_solutions=initial_solutions)
         # The cooling schedule spans max_iterations, so a budget of evaluations becomes the
         # iterations it buys after the warmup and the starting point.
         # Never None here: an algorithm with a horizon always has one.

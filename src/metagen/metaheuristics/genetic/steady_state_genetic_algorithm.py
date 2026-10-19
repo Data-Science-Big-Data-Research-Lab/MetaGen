@@ -17,7 +17,7 @@
 import heapq
 from collections.abc import Callable
 from copy import deepcopy
-from typing import Any, Optional, List, Tuple, cast
+from typing import Any, Optional, List, Tuple, cast, Mapping, Sequence
 
 from metagen.framework import Domain, RelativeAlteration, Solution
 from .genetic_tools import (GASolution, yield_two_children, require_crossover,
@@ -78,6 +78,9 @@ class SSGA(Metaheuristic):
     :param timeout: Stop once the run has lasted at least this many seconds; see
         :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
     :type timeout: float or None, optional
+    :param initial_solutions: Solutions to start from, each a mapping from variable names to
+        values; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type initial_solutions: Sequence[Mapping[str, Any]] or None, optional
 
     :ivar population_size: The size of the population.
     :vartype population_size: int
@@ -122,11 +125,13 @@ class SSGA(Metaheuristic):
                  seed: Optional[int] = None, distribution_model: str = "global",
                  checkpoint: Optional[str] = None, checkpoint_every: int = 1, history: Optional[str] = None,
                  max_evaluations: Optional[int] = None, timeout: Optional[float] = None,
+                 initial_solutions: Optional[Sequence[Mapping[str, Any]]] = None,
                  mutation_alteration_limit: Any = RelativeAlteration(0.2)):
         super().__init__(domain, fitness_function, population_size=population_size, distributed=distributed, log_dir=log_dir, seed=seed,
                          distribution_model=distribution_model,
                          checkpoint=checkpoint, checkpoint_every=checkpoint_every,
-                         history=history, max_evaluations=max_evaluations, timeout=timeout)
+                         history=history, max_evaluations=max_evaluations, timeout=timeout,
+                         initial_solutions=initial_solutions)
 
         # Fails here, with a message that says what to do, instead of dying on
         # the first iteration with AttributeError: no attribute 'crossover' (A-07).

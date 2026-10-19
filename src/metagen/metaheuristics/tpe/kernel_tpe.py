@@ -16,7 +16,7 @@
 """
 import heapq
 import math
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union, cast
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union, cast, Mapping
 
 import numpy as np
 from scipy.stats import norm
@@ -111,6 +111,9 @@ class KernelTPE(TPE):
     :param timeout: Stop once the run has lasted at least this many seconds; see
         :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
     :type timeout: float or None, optional
+    :param initial_solutions: Solutions to start from, each a mapping from variable names to
+        values; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type initial_solutions: Sequence[Mapping[str, Any]] or None, optional
 
     **Code example**
 
@@ -148,13 +151,15 @@ class KernelTPE(TPE):
                  population_size: int = 20, distributed: bool = False, log_dir: Optional[str] = None,
                  seed: Optional[int] = None, distribution_model: str = "global",
                  checkpoint: Optional[str] = None, checkpoint_every: int = 1, history: Optional[str] = None,
-                 max_evaluations: Optional[int] = None, timeout: Optional[float] = None) -> None:
+                 max_evaluations: Optional[int] = None, timeout: Optional[float] = None,
+                 initial_solutions: Optional[Sequence[Mapping[str, Any]]] = None) -> None:
         super().__init__(domain, fitness_function, max_iterations=max_iterations,
                          warmup_iterations=warmup_iterations, candidate_pool_size=1, gamma_config=gamma_config,
                          distributed=distributed, log_dir=log_dir, seed=seed, population_size=population_size,
                          distribution_model=distribution_model,
                          checkpoint=checkpoint, checkpoint_every=checkpoint_every,
-                         history=history, max_evaluations=max_evaluations, timeout=timeout)
+                         history=history, max_evaluations=max_evaluations, timeout=timeout,
+                         initial_solutions=initial_solutions)
         self.n_candidates = n_candidates
         self.prior_weight = prior_weight
 
