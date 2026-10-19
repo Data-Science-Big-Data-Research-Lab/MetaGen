@@ -29,7 +29,7 @@ class Memetic(Metaheuristic):
     :param domain: The problem domain
     :param fitness_function: The fitness function to optimize
     :param population_size: The population size, defaults to 10
-    :param max_iterations: The maximum number of iterations, defaults to 20
+    :param max_iterations: The maximum number of iterations, defaults to 20; with ``max_evaluations`` or ``timeout`` and no value, no limit
     :param mutation_rate: The mutation rate, defaults to 0.1
     :param tournament_size: How many individuals compete to become a parent, defaults to 2
     :param neighbor_population_size: The size of neighborhood in local search, defaults to 10
@@ -45,7 +45,7 @@ class Memetic(Metaheuristic):
     :type domain: :py:class:`~metagen.framework.Domain`
     :type fitness_function: Callable[[:py:class:`~metagen.framework.Solution`], float]
     :type population_size: int
-    :type max_iterations: int
+    :type max_iterations: int or None
     :type mutation_rate: float
     :type tournament_size: int
     :type neighbor_population_size: int
@@ -106,7 +106,7 @@ class Memetic(Metaheuristic):
 
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
                  population_size: int = 10,
-                 max_iterations: int = 20, mutation_rate: float = 0.1,
+                 max_iterations: Optional[int] = None, mutation_rate: float = 0.1,
                  tournament_size: int = 2,
                  neighbor_population_size: int = 10,
                  alteration_limit: Any = RelativeAlteration(0.2),
@@ -127,7 +127,7 @@ class Memetic(Metaheuristic):
         require_crossover(domain, "Memetic")
 
         self.mutation_rate = mutation_rate
-        self.max_generations = max_iterations
+        self.max_generations = self._iterations(max_iterations, 20)
         self.tournament_size = tournament_size
         self.neighbor_population_size = neighbor_population_size
         self.alteration_limit = alteration_limit
@@ -202,4 +202,4 @@ class Memetic(Metaheuristic):
         :return: True if the stopping criterion is met, False otherwise
         :rtype: bool
         """
-        return self.current_iteration >= self.max_generations
+        return self._iterations_done()

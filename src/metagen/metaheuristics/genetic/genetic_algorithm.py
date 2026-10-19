@@ -37,8 +37,8 @@ class GA(Metaheuristic):
     :type fitness_function: Callable[[Solution], float]
     :param population_size: The size of the population (default is 20).
     :type population_size: int, optional
-    :param max_iterations: The number of generations to run (default is 50).
-    :type max_iterations: int, optional
+    :param max_iterations: The number of generations to run (default is 50); with ``max_evaluations`` or ``timeout`` and no value, no limit.
+    :type max_iterations: int or None, optional
     :param mutation_rate: The probability of mutation for each child (default is 0.1).
     :type mutation_rate: float, optional
     :param tournament_size: How many individuals compete to become a parent (default is 2,
@@ -115,7 +115,7 @@ class GA(Metaheuristic):
 
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
                  population_size: int = 20,
-                 max_iterations: int = 50, mutation_rate: float = 0.1,
+                 max_iterations: Optional[int] = None, mutation_rate: float = 0.1,
                  tournament_size: int = 2,
                  distributed: bool = False, log_dir: Optional[str] = None,
                  seed: Optional[int] = None, distribution_model: str = "global",
@@ -131,7 +131,7 @@ class GA(Metaheuristic):
         # the first iteration with AttributeError: no attribute 'crossover' (A-07).
         require_crossover(domain, "GA")
         self.mutation_rate = mutation_rate
-        self.max_iterations = max_iterations
+        self.max_iterations = self._iterations(max_iterations, 50)
         self.tournament_size = tournament_size
         self.mutation_alteration_limit: Any = mutation_alteration_limit
 
@@ -171,4 +171,4 @@ class GA(Metaheuristic):
         return current_solutions, best_solution
 
     def stopping_criterion(self) -> bool:
-        return self.current_iteration >= self.max_iterations
+        return self._iterations_done()

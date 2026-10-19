@@ -106,7 +106,7 @@ class HillClimbing(Metaheuristic):
 
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
                  population_size: int = 10, warmup_iterations:int = 5,
-                 max_iterations: int = 20, tabu_size: int = 5,
+                 max_iterations: Optional[int] = None, tabu_size: int = 5,
                  alteration_limit: Any = RelativeAlteration(0.2),
                  gamma_config: Optional[GammaConfig] = None, distributed=False, log_dir: Optional[str] = None,
                  seed: Optional[int] = None, distribution_model: str = "global",
@@ -121,8 +121,11 @@ class HillClimbing(Metaheuristic):
         :type fitness_function: Callable[[Solution], float]
         :param population_size: Size of the population (neighborhood) to maintain, defaults to 10
         :type population_size: int, optional
-        :param max_iterations: Maximum number of iterations to run, defaults to 20
-        :type max_iterations: int, optional
+        :param max_iterations: Maximum number of iterations to run, defaults to 20. With
+            ``max_evaluations`` or ``timeout`` and no value, no limit; with a
+            ``gamma_config``, whose schedule spans ``max_iterations``, the iterations
+            ``max_evaluations`` buys, and 20 with ``timeout`` alone
+        :type max_iterations: int or None, optional
         :param tabu_size: Maximum size of the tabu list, defaults to 5
         :type tabu_size: int, optional
         :param alteration_limit: How far a neighbor may move from the current solution,
@@ -137,7 +140,15 @@ class HillClimbing(Metaheuristic):
                          distribution_model=distribution_model,
                          checkpoint=checkpoint, checkpoint_every=checkpoint_every,
                          history=history, max_evaluations=max_evaluations, timeout=timeout)
-        self.max_iterations = max_iterations
+        # Only a gamma schedule plans over max_iterations: then a budget of evaluations
+        # becomes the iterations it buys, each costing the share of the neighbors the
+        # schedule gives it.
+        start = population_size * (warmup_iterations + 1)
+        horizon: Optional[Callable[[int], int]] = None
+        if gamma_config is not None:
+            schedule = gamma_config
+            horizon = lambda budget: _gamma_horizon(schedule, population_size, budget - start)  # noqa: E731
+        self.max_iterations = self._iterations(max_iterations, 20, horizon=horizon)
         self.tabu_size = tabu_size
         self.tabu_list:Deque[Solution] = deque(maxlen=tabu_size)
         self.alteration_limit: Any = alteration_limit
@@ -227,4 +238,40 @@ class HillClimbing(Metaheuristic):
         :return: True if the maximum number of iterations is reached, False otherwise
         :rtype: bool
         """
-        return self.current_iteration >= self.max_iterations
+        return self._iterations_done()
+
+
+def _gamma_horizon(gamma_config: GammaConfig, population_size: int, evaluations: int) -> int:
+    """
+    The fewest iterations whose neighbors add up to ``evaluations``, under a gamma
+    schedule planned over those same iterations: each iteration evaluates the share of
+    the previous population the schedule gives, at least one, and that is the next
+    population.
+
+    :param gamma_config: The gamma schedule.
+    :type gamma_config: GammaConfig
+    :param population_size: The neighbors of a whole iteration.
+    :type population_size: int
+    :param evaluations: The evaluations to fill.
+    :type evaluations: int
+    :return: The iterations, at least 1.
+    :rtype: int
+    """
+    def cost(horizon: int) -> int:
+        total, population = 0, population_size
+        for iteration in range(horizon):
+            gamma = compute_gamma(gamma_config, iteration=iteration, max_iterations=horizon,
+                                  num_solutions=max(1, population))
+            population = max(1, round(gamma * population))
+            total += population
+        return total
+
+    # Every iteration costs at least one evaluation, so the answer is at most evaluations.
+    low, high = 1, max(1, evaluations)
+    while low < high:
+        middle = (low + high) // 2
+        if cost(middle) >= evaluations:
+            high = middle
+        else:
+            low = middle + 1
+    return low

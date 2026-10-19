@@ -60,8 +60,8 @@ class TabuSearch(Metaheuristic):
     :param warmup_iterations: Rounds of random exploration before the search, each
         evaluating ``population_size`` solutions, defaults to 5
     :type warmup_iterations: int, optional
-    :param max_iterations: Iterations to run, defaults to 20
-    :type max_iterations: int, optional
+    :param max_iterations: Iterations to run, defaults to 20; with ``max_evaluations`` or ``timeout`` and no value, no limit
+    :type max_iterations: int or None, optional
     :param tabu_size: How many of the latest visited solutions stay tabu, defaults to 10
     :type tabu_size: int, optional
     :param tabu_radius: How close to a visited solution a neighbor has to be, on every
@@ -132,7 +132,7 @@ class TabuSearch(Metaheuristic):
     # itself matters little on those landscapes; HillClimbing scores 96.
 
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
-                 population_size: int = 10, warmup_iterations: int = 5, max_iterations: int = 20,
+                 population_size: int = 10, warmup_iterations: int = 5, max_iterations: Optional[int] = None,
                  tabu_size: int = 10, tabu_radius: Any = RelativeAlteration(0.02),
                  alteration_limit: Any = RelativeAlteration(0.2), distributed: bool = False,
                  log_dir: Optional[str] = None, seed: Optional[int] = None,
@@ -143,7 +143,7 @@ class TabuSearch(Metaheuristic):
                          seed=seed, distribution_model=distribution_model,
                          checkpoint=checkpoint, checkpoint_every=checkpoint_every,
                          history=history, max_evaluations=max_evaluations, timeout=timeout)
-        self.max_iterations = max_iterations
+        self.max_iterations = self._iterations(max_iterations, 20)
         self.tabu_size = tabu_size
         self.tabu_radius: Any = tabu_radius
         self.alteration_limit: Any = alteration_limit
@@ -221,7 +221,7 @@ class TabuSearch(Metaheuristic):
         return offspring
 
     def stopping_criterion(self) -> bool:
-        return self.current_iteration >= self.max_iterations
+        return self._iterations_done()
 
     def is_tabu(self, solution: Solution) -> bool:
         """

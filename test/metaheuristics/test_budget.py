@@ -127,3 +127,93 @@ def test_the_reason_is_none_before_a_run():
 def test_a_budget_that_is_not_one_is_refused(arguments):
     with pytest.raises(ValueError):
         RandomSearch(_domain(RandomSearch), _sphere, **arguments)
+
+
+# --- max_iterations under a budget ------------------------------------------------
+
+NO_HORIZON = [RandomSearch, GA, SSGA, HillClimbing, TabuSearch, Memetic]
+DEFAULTS = {RandomSearch: 20, GA: 50, SSGA: 50, SA: 20, HillClimbing: 20, TabuSearch: 20, TPE: 50,
+            KernelTPE: 100, Memetic: 20}
+
+
+def _iterations_of(run) -> object:
+    return run.max_generations if isinstance(run, Memetic) else run.max_iterations
+
+
+@pytest.mark.parametrize("algorithm", ALGORITHMS, ids=lambda algorithm: algorithm.__name__)
+def test_without_a_budget_the_default_iterations_are_those_of_always(algorithm):
+    run = algorithm(_domain(algorithm), _sphere, seed=5)
+    assert _iterations_of(run) == DEFAULTS[algorithm]
+    explicit = algorithm(_domain(algorithm), _sphere, max_iterations=DEFAULTS[algorithm], seed=5)
+    assert run.run().get_fitness() == explicit.run().get_fitness()
+    assert run.best_solution_fitnesses == explicit.best_solution_fitnesses
+
+
+@pytest.mark.parametrize("algorithm", NO_HORIZON, ids=lambda algorithm: algorithm.__name__)
+def test_a_budget_without_max_iterations_lifts_the_limit_of_iterations(algorithm):
+    run = algorithm(_domain(algorithm), _sphere, max_evaluations=1500, seed=0)
+    assert _iterations_of(run) is None
+    run.run()
+    assert run.stop_reason == "max_evaluations" and run.evaluations >= 1500
+    assert len(run.history) > DEFAULTS[algorithm] or algorithm in (GA, Memetic)
+
+
+def test_a_timeout_without_max_iterations_lifts_the_limit_too():
+    run = SSGA(_domain(SSGA), _sphere, timeout=0.5, seed=0)
+    run.run()
+    assert run.stop_reason == "timeout" and len(run.history) > DEFAULTS[SSGA]
+
+
+@pytest.mark.parametrize("algorithm", ALGORITHMS, ids=lambda algorithm: algorithm.__name__)
+def test_with_both_the_first_reached_stops_the_run(algorithm):
+    run = algorithm(_domain(algorithm), _sphere, max_iterations=2, max_evaluations=10 ** 9, seed=0)
+    run.run()
+    assert (run.stop_reason, len(run.history)) == ("criterion", 2)
+
+
+def test_the_cooling_of_sa_spans_the_iterations_its_budget_buys():
+    run = SA(_domain(SA), _sphere, warmup_iterations=5, neighbor_population_size=5, max_evaluations=306, seed=0)
+    assert run.max_iterations == 60          # (306 - 5 warmup - 1 start) / 5 neighbors
+    assert run.cooling_rate == pytest.approx((run.T_min / run.initial_temp) ** (1 / 60))
+    run.run()
+    assert (run.stop_reason, len(run.history), run.evaluations) == ("max_evaluations", 60, 306)
+    assert run.current_temp == pytest.approx(run.T_min)
+
+
+@pytest.mark.parametrize("algorithm, start, per_iteration", [(TPE, 10 * 3, 4), (KernelTPE, 10 * 3, 1)],
+                         ids=["TPE", "KernelTPE"])
+def test_a_tpe_plans_over_the_iterations_its_budget_buys(algorithm, start, per_iteration):
+    extra = {"candidate_pool_size": 4} if algorithm is TPE else {}
+    run = algorithm(_domain(algorithm), _sphere, population_size=10, warmup_iterations=2, max_evaluations=110,
+                    seed=0, **extra)
+    assert run.max_iterations == (110 - start) // per_iteration
+    run.run()
+    assert (run.stop_reason, len(run.history), run.evaluations) == ("max_evaluations", run.max_iterations, 110)
+
+
+@pytest.mark.parametrize("algorithm", [SA, TPE, KernelTPE], ids=lambda algorithm: algorithm.__name__)
+def test_with_a_timeout_alone_an_algorithm_that_plans_keeps_its_default(algorithm):
+    run = algorithm(_domain(algorithm), _sphere, timeout=3600, seed=0)
+    assert run.max_iterations == DEFAULTS[algorithm]
+    run.run()
+    assert (run.stop_reason, len(run.history)) == ("criterion", DEFAULTS[algorithm])
+
+
+@pytest.mark.parametrize("schedule", ["linear", "exponential", "sampled_based"])
+def test_the_gamma_schedule_of_hill_climbing_spans_its_budget(schedule):
+    from metagen.metaheuristics.gamma_schedules import GammaConfig
+
+    run = HillClimbing(_domain(HillClimbing), _sphere, max_evaluations=600, seed=0,
+                       gamma_config=GammaConfig(gamma_function=schedule))
+    run.run()
+    assert run.stop_reason == "max_evaluations"
+    assert abs(len(run.history) - run.max_iterations) <= 2
+
+
+def test_a_gamma_schedule_past_its_horizon_stays_at_its_end():
+    from metagen.metaheuristics.gamma_schedules import GammaConfig, compute_gamma
+
+    for schedule in ("linear", "exponential"):
+        config = GammaConfig(gamma_function=schedule)
+        end = compute_gamma(config, iteration=10, max_iterations=10, num_solutions=20)
+        assert compute_gamma(config, iteration=25, max_iterations=10, num_solutions=20) == end
