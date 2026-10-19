@@ -5,7 +5,7 @@ import ray
 
 from metagen.framework import Domain, Solution
 from metagen.framework.rng import set_seed, spawn_seed
-from metagen.metaheuristics.tools import add_calls, calls_of, random_exploration
+from metagen.metaheuristics.tools import Counts, add_calls, calls_of, random_exploration
 
 
 @ray.remote
@@ -23,9 +23,9 @@ def call_distributed(seed: int, function: Callable, *args: Any, **kargs: Any) ->
     # A-06: without the seed no distributed run was reproducible.
     set_seed(seed)
     fitness_function = getattr(getattr(function, "__self__", None), "fitness_function", None)
-    before = calls_of(fitness_function) if fitness_function is not None else 0
+    before = calls_of(fitness_function) if fitness_function is not None else Counts()
     result = function(*args, **kargs)
-    return result, (calls_of(fitness_function) - before if fitness_function is not None else 0)
+    return result, (calls_of(fitness_function) - before if fitness_function is not None else Counts())
 
 
 def assign_load_equally(neighbor_population_size: int, minimum_chunk: int = 1) -> List[int]:
@@ -63,7 +63,7 @@ def assign_load_equally(neighbor_population_size: int, minimum_chunk: int = 1) -
 
 @ray.remote
 def remote_random_exploration(seed: int, domain: Domain, fitness_function: Callable[[Solution], float],
-                              num_solutions: int) -> Tuple[List[Solution], Solution, int]:
+                              num_solutions: int) -> Tuple[List[Solution], Solution, Counts]:
     set_seed(seed)
     before = calls_of(fitness_function)
     population, best = random_exploration(domain, fitness_function, num_solutions)

@@ -13,6 +13,12 @@
   most one iteration.
   `evaluations`, `seconds` and `stop_reason` say what a run spent and what stopped it, and
   a run resumed from a checkpoint carries on with what it had spent.
+- **Racing**: a fitness function can yield the value of each of its steps, such as the folds
+  of a cross-validation, and with `racing=Racing()` every metaheuristic but CVOA stops
+  evaluating a candidate as soon as a Friedman test, followed by Conover's comparison, finds
+  it significantly worse than the population its iteration started from, as F-race and irace
+  do. A candidate stopped early is marked and is never the best of a run, and
+  `max_evaluations` counts the steps taken.
 - **Logarithmic scale**: `define_real`, `define_integer`, their group variants and
   `set_structure_to_real` / `set_structure_to_integer` take `log=True` for a variable that
   spans orders of magnitude. The solution holds the value itself; the metaheuristics draw,

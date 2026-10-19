@@ -24,6 +24,7 @@ from scipy.stats import norm
 from metagen.framework import Domain, Solution
 from metagen.framework.rng import get_numpy_rng
 from metagen.framework.solution.types import Categorical, Integer, Permutation, Real, Structure, Subset
+from metagen.metaheuristics.racing import Racing
 from metagen.metaheuristics.gamma_schedules import GammaConfig, compute_gamma
 from metagen.metaheuristics.tools import solution_class
 from metagen.metaheuristics.tpe.subset_model import SubsetModel
@@ -114,6 +115,9 @@ class KernelTPE(TPE):
     :param initial_solutions: Solutions to start from, each a mapping from variable names to
         values; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
     :type initial_solutions: Sequence[Mapping[str, Any]] or None, optional
+    :param racing: Stop evaluating a candidate as soon as it is significantly worse than the
+        population; see :py:class:`~metagen.metaheuristics.racing.Racing`.
+    :type racing: Racing or None, optional
 
     **Code example**
 
@@ -152,14 +156,14 @@ class KernelTPE(TPE):
                  seed: Optional[int] = None, distribution_model: str = "global",
                  checkpoint: Optional[str] = None, checkpoint_every: int = 1, history: Optional[str] = None,
                  max_evaluations: Optional[int] = None, timeout: Optional[float] = None,
-                 initial_solutions: Optional[Sequence[Mapping[str, Any]]] = None) -> None:
+                 initial_solutions: Optional[Sequence[Mapping[str, Any]]] = None, racing: Optional[Racing] = None) -> None:
         super().__init__(domain, fitness_function, max_iterations=max_iterations,
                          warmup_iterations=warmup_iterations, candidate_pool_size=1, gamma_config=gamma_config,
                          distributed=distributed, log_dir=log_dir, seed=seed, population_size=population_size,
                          distribution_model=distribution_model,
                          checkpoint=checkpoint, checkpoint_every=checkpoint_every,
                          history=history, max_evaluations=max_evaluations, timeout=timeout,
-                         initial_solutions=initial_solutions)
+                         initial_solutions=initial_solutions, racing=racing)
         self.n_candidates = n_candidates
         self.prior_weight = prior_weight
 

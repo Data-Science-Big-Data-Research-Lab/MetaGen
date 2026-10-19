@@ -27,7 +27,7 @@ from metagen.framework import Solution
 from metagen.logging.metagen_logger import get_remote_metagen_logger
 from metagen.metaheuristics.distributed_tools import assign_load_equally
 from metagen.metaheuristics.memetic.memetic_tools import population_local_search
-from metagen.metaheuristics.tools import add_calls, calls_of, local_search
+from metagen.metaheuristics.tools import Counts, add_calls, calls_of, local_search
 from metagen.framework.rng import set_seed, spawn_seed
 
 
@@ -73,7 +73,7 @@ def distributed_population_local_search(population: List[Solution], fitness_func
 @ray.remote
 def remote_population_local_search(seed: int, population: List[Solution], fitness_function: Callable[[Solution], float],
                                neighbor_population_size: int, alteration_limit: float,
-                               distribution_level: int) -> Tuple[List[Solution], int]:
+                               distribution_level: int) -> Tuple[List[Solution], Counts]:
     """
     Remote worker function for distributed population local search.
 
@@ -101,7 +101,7 @@ def remote_population_local_search(seed: int, population: List[Solution], fitnes
 
 @ray.remote
 def remote_local_search(seed: int, solution: Solution, fitness_function: Callable[[Solution], float],
-                     neighbor_population_size: int, alteration_limit: float) -> Tuple[Solution, int]:
+                     neighbor_population_size: int, alteration_limit: float) -> Tuple[Solution, Counts]:
     """
     Remote worker function for distributed local search on a single solution.
 

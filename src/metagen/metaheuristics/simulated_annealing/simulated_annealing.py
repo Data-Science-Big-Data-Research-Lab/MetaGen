@@ -15,6 +15,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 from metagen.framework import Domain, RelativeAlteration, Solution
+from metagen.metaheuristics.racing import Racing
 from metagen.metaheuristics.tools import random_exploration
 import math
 from copy import deepcopy
@@ -107,6 +108,9 @@ class SA(Metaheuristic):
     :param initial_solutions: Solutions to start from, each a mapping from variable names to
         values; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
     :type initial_solutions: Sequence[Mapping[str, Any]] or None, optional
+    :param racing: Stop evaluating a candidate as soon as it is significantly worse than the
+        population; see :py:class:`~metagen.metaheuristics.racing.Racing`.
+    :type racing: Racing or None, optional
 
     :ivar max_iterations: Maximum number of iterations
     :vartype max_iterations: int
@@ -146,7 +150,7 @@ class SA(Metaheuristic):
                  seed: Optional[int] = None, distribution_model: str = "global",
                  checkpoint: Optional[str] = None, checkpoint_every: int = 1, history: Optional[str] = None,
                  max_evaluations: Optional[int] = None, timeout: Optional[float] = None,
-                 initial_solutions: Optional[Sequence[Mapping[str, Any]]] = None) -> None:
+                 initial_solutions: Optional[Sequence[Mapping[str, Any]]] = None, racing: Optional[Racing] = None) -> None:
         """
         Initialize the Simulated Annealing algorithm.
 
@@ -188,7 +192,7 @@ class SA(Metaheuristic):
                          distribution_model=distribution_model,
                          checkpoint=checkpoint, checkpoint_every=checkpoint_every,
                          history=history, max_evaluations=max_evaluations, timeout=timeout,
-                         initial_solutions=initial_solutions)
+                         initial_solutions=initial_solutions, racing=racing)
         # The cooling schedule spans max_iterations, so a budget of evaluations becomes the
         # iterations it buys after the warmup and the starting point.
         # Never None here: an algorithm with a horizon always has one.
