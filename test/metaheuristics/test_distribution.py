@@ -297,3 +297,18 @@ def test_the_new_variable_kinds_run_distributed_and_resume(ray_runtime, algorith
     monkeypatch.undo()
     resumed = algorithm_class.resume(path, objective)
     assert (resumed.run().get_fitness(), resumed.best_solution_fitnesses) == reference
+
+
+def test_a_distributed_hill_climbing_splits_its_gamma_neighborhood_among_the_slices(ray_runtime, tmp_path):
+    from metagen.metaheuristics.gamma_schedules import GammaConfig, compute_gamma
+
+    path = tmp_path / "calls.txt"
+    schedule = GammaConfig(gamma_function="linear", minimum=0.5, maximum=0.8)
+    run = HillClimbing(_sphere_domain(), _counting_sphere(path), population_size=10, warmup_iterations=0,
+                       max_iterations=6, gamma_config=schedule, distributed=True, seed=0)
+    run.run()
+    counts = [10] + [record["evaluations"] for record in run.history]
+    for iteration, (before, after) in enumerate(zip(counts, counts[1:])):
+        wanted = round(compute_gamma(schedule, iteration=iteration, max_iterations=6, num_solutions=10) * 10)
+        assert abs((after - before) - wanted) <= run.distributed_slices
+    assert run.evaluations == _evaluations(path)
