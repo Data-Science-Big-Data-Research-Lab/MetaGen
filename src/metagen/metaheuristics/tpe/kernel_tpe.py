@@ -281,6 +281,10 @@ def _bounds(leaf: Union[Integer, Real]) -> Tuple[float, float, Optional[float]]:
     return float(min_value), float(max_value), (float(step) if step else None)
 
 
+def _is_log(leaf: Union[Integer, Real]) -> bool:
+    return bool(leaf.get_definition().log)
+
+
 def _kernels(values: Sequence[float], low: float, high: float, prior_weight: float) \
         -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
@@ -340,25 +344,36 @@ class _NumericModel:
     """The adaptive Parzen estimator of an integer or real variable, truncated to its domain."""
 
     def __init__(self, low: float, high: float, step: Optional[float], integer: bool, values: Sequence[Any],
-                 prior_weight: float) -> None:
-        self.low, self.high, self.step, self.integer = low, high, step, integer
-        self.mus, self.sigmas, self.weights = _kernels([float(v) for v in values], low, high, prior_weight)
+                 prior_weight: float, log: bool = False) -> None:
+        self.low, self.high, self.step, self.integer, self.log = low, high, step, integer, log
+        # On a logarithmic scale the kernels live on the logarithm; the Jacobian of the
+        # change of variable is the same for l(x) and g(x), so their ratio is unchanged.
+        def scale(value: float) -> float:
+            return math.log(value) if log else value
+
+        self.space_low, self.space_high = scale(low), scale(high)
+        self.mus, self.sigmas, self.weights = _kernels([scale(float(v)) for v in values], self.space_low,
+                                                       self.space_high, prior_weight)
         # Truncated to the domain, so a kernel spilling past the bounds does not undercount.
-        self.mass = np.maximum(norm.cdf(high, self.mus, self.sigmas) - norm.cdf(low, self.mus, self.sigmas), 1e-300)
+        self.mass = np.maximum(norm.cdf(self.space_high, self.mus, self.sigmas)
+                               - norm.cdf(self.space_low, self.mus, self.sigmas), 1e-300)
 
     def draw(self, leaf: Leaf) -> Any:
         rng = get_numpy_rng()
         component = int(rng.choice(len(self.mus), p=self.weights))
         for _ in range(20):
             drawn = rng.normal(self.mus[component], self.sigmas[component])
-            if self.low <= drawn <= self.high:
+            if self.space_low <= drawn <= self.space_high:
                 break
         else:
-            drawn = min(max(drawn, self.low), self.high)
+            drawn = min(max(drawn, self.space_low), self.space_high)
+        if self.log:
+            drawn = math.exp(drawn)
         return _snap(float(drawn), self.low, self.high, self.step, self.integer)
 
     def log_density(self, value: Any) -> float:
-        densities = self.weights * norm.pdf(float(value), self.mus, self.sigmas) / self.mass
+        point = math.log(float(value)) if self.log else float(value)
+        densities = self.weights * norm.pdf(point, self.mus, self.sigmas) / self.mass
         return float(np.log(max(densities.sum(), 1e-300)))
 
 
@@ -376,7 +391,7 @@ def _model(leaf: ModeledLeaf, values: Sequence[Any], prior_weight: float) -> _Mo
         _, categories = leaf.get_definition().get_attributes()
         return _CategoricalModel(categories, values, prior_weight)
     low, high, step = _bounds(leaf)
-    return _NumericModel(low, high, step, isinstance(leaf, Integer), values, prior_weight)
+    return _NumericModel(low, high, step, isinstance(leaf, Integer), values, prior_weight, log=_is_log(leaf))
 
 
 def _draw(leaf: ModeledLeaf, values: Sequence[Any], prior_weight: float) -> Any:

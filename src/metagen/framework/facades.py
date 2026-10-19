@@ -96,7 +96,8 @@ class Domain:
             self._connector.get_type(dict)))
         self._core: BaseDefinition = base_definition()
 
-    def define_integer(self, name: str, min_value: int, max_value: int, step: int | None = None):
+    def define_integer(self, name: str, min_value: int, max_value: int, step: int | None = None,
+                       log: bool = False):
         """ It defines an **INTEGER** variable receiving a name as its identifier, the minimum and maximum values that it will
         be able to have, and the step size to traverse the interval.
 
@@ -108,12 +109,17 @@ class Domain:
         :type min_value: int
         :type max_value: int
         :type step: int
+        :param log: Whether to search the variable on a logarithmic scale, defaults to False:
+            drawn, mutated, crossed and modeled on the logarithm of its value, so that each
+            order of magnitude weighs the same. It needs a positive minimum and no step.
+        :type log: bool
         """
         integer_definition = cast(type[IntegerDefinition], self._connector.get_definition(
             self._connector.get_type(int)))
-        self._core.define(name, integer_definition(min_value, max_value, step))
+        self._core.define(name, integer_definition(min_value, max_value, step, log=log))
 
-    def define_real(self, name: str, min_value: float, max_value: float, step: float | None = None):
+    def define_real(self, name: str, min_value: float, max_value: float, step: float | None = None,
+                    log: bool = False):
         """ It defines a **REAL** variable receiving a name as its identifier, the minimum and maximum values that it will be
         able to have, and the step size to traverse the interval.
 
@@ -125,10 +131,14 @@ class Domain:
         :type min_value: float
         :type max_value: float
         :type step: float
+        :param log: Whether to search the variable on a logarithmic scale, defaults to False:
+            drawn, mutated, crossed and modeled on the logarithm of its value, so that each
+            order of magnitude weighs the same. It needs a positive minimum and no step.
+        :type log: bool
         """
         real_definition = cast(type[RealDefinition], self._connector.get_definition(
             self._connector.get_type(float)))
-        self._core.define(name, real_definition(min_value, max_value, step))
+        self._core.define(name, real_definition(min_value, max_value, step, log=log))
 
     def define_categorical(self, name: str, categories: CatVal):
         """ It defines a **CATEGORICAL** variable receiving a name as its identifier, and a list with the categories that it
@@ -204,7 +214,7 @@ class Domain:
         self._core.define(name, base_definition())
 
     def define_integer_in_group(self, group: str, name: str, min_value: int, max_value: int,
-                                step: int | None = None):
+                                step: int | None = None, log: bool = False):
         """ It defines an **INTEGER** variable in an already defined group, receiving a name as its identifier, the minimum and maximum values that it will
         be able to have, and the step size to traverse the interval.
 
@@ -218,15 +228,19 @@ class Domain:
         :type min_value: int
         :type max_value: int
         :type step: int
+        :param log: Whether to search the variable on a logarithmic scale, defaults to False:
+            drawn, mutated, crossed and modeled on the logarithm of its value, so that each
+            order of magnitude weighs the same. It needs a positive minimum and no step.
+        :type log: bool
         """
         group_def: BaseDefinition = _get_group_definition(
             group, _lookup(self._core, group))
         integer_definition = cast(type[IntegerDefinition], self._connector.get_definition(
             self._connector.get_type(int)))
-        group_def.define(name, integer_definition(min_value, max_value, step))
+        group_def.define(name, integer_definition(min_value, max_value, step, log=log))
 
     def define_real_in_group(self, group: str, name: str, min_value: float, max_value: float,
-                             step: float | None = None):
+                             step: float | None = None, log: bool = False):
         """ It defines an **REAL** variable in an already defined group, receiving a name as its identifier, the minimum and maximum values that it will
         be able to have, and the step size to traverse the interval.
 
@@ -240,12 +254,16 @@ class Domain:
         :type min_value: float
         :type max_value: float
         :type step: float
+        :param log: Whether to search the variable on a logarithmic scale, defaults to False:
+            drawn, mutated, crossed and modeled on the logarithm of its value, so that each
+            order of magnitude weighs the same. It needs a positive minimum and no step.
+        :type log: bool
         """
         group_def: BaseDefinition = _get_group_definition(
             group, _lookup(self._core, group))
         real_definition = cast(type[RealDefinition], self._connector.get_definition(
             self._connector.get_type(float)))
-        group_def.define(name, real_definition(min_value, max_value, step))
+        group_def.define(name, real_definition(min_value, max_value, step, log=log))
 
     def define_categorical_in_group(self, group: str, name: str, categories: CatVal):
         """ It defines a **CATEGORICAL** variable in an already defined group, receiving a name as its identifier, and a list with the categories that it
@@ -328,7 +346,8 @@ class Domain:
         self._core.define(name, static_structure_definition(
             name, base_type, length))
 
-    def set_structure_to_integer(self, name: str, min_value: int, max_value: int, step: int | None = None):
+    def set_structure_to_integer(self, name: str, min_value: int, max_value: int, step: int | None = None,
+                                 log: bool = False):
         """ It defines an **INTEGER** as the base type for a Static or Dynamic Structure, receiving the name of the structure, the minimum and maximum values that the values will
         be able to have, and the step size to traverse the interval.
 
@@ -340,12 +359,16 @@ class Domain:
         :type min_value: int
         :type max_value: int
         :type step: int
+        :param log: Whether to search the variable on a logarithmic scale, defaults to False:
+            drawn, mutated, crossed and modeled on the logarithm of its value, so that each
+            order of magnitude weighs the same. It needs a positive minimum and no step.
+        :type log: bool
         """
         structure: BaseStructureDefinition = _get_structure_definition(
             name, _lookup(self._core, name))
         integer_definition = cast(type[IntegerDefinition], self._connector.get_definition(
             self._connector.get_type(int)))
-        structure.set_base(integer_definition(min_value, max_value, step))
+        structure.set_base(integer_definition(min_value, max_value, step, log=log))
 
     def set_structure_to_categorical(self, name: str, categories: CatVal):
         """ It defines an **CATEGORICAL** as the base type for a Static or Dynamic Structure, and a list with the categories that it
@@ -363,7 +386,7 @@ class Domain:
         structure.set_base(categorical_definition(categories))
 
     def set_structure_to_real(self, name: str, min_value: float, max_value: float,
-                              step: float | None = None):
+                              step: float | None = None, log: bool = False):
         """ It defines an **REAL** as the base type for a Static or Dynamic Structure, receiving the name of the structure, the minimum and maximum values that the values will
         be able to have, and the step size to traverse the interval.
 
@@ -375,12 +398,16 @@ class Domain:
         :type min_value: float
         :type max_value: float
         :type step: float
+        :param log: Whether to search the variable on a logarithmic scale, defaults to False:
+            drawn, mutated, crossed and modeled on the logarithm of its value, so that each
+            order of magnitude weighs the same. It needs a positive minimum and no step.
+        :type log: bool
         """
         structure: BaseStructureDefinition = _get_structure_definition(
             name, _lookup(self._core, name))
         real_definition = cast(type[RealDefinition], self._connector.get_definition(
             self._connector.get_type(float)))
-        structure.set_base(real_definition(min_value, max_value, step))
+        structure.set_base(real_definition(min_value, max_value, step, log=log))
 
     def set_structure_to_variable(self, name: str, var: str, remember: bool = False):
         """ It sets an already defined variable as the definition of the elements of a static or dynamic structure.

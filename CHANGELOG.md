@@ -13,6 +13,10 @@
   most one iteration.
   `evaluations`, `seconds` and `stop_reason` say what a run spent and what stopped it, and
   a run resumed from a checkpoint carries on with what it had spent.
+- **Logarithmic scale**: `define_real`, `define_integer`, their group variants and
+  `set_structure_to_real` / `set_structure_to_integer` take `log=True` for a variable that
+  spans orders of magnitude. The solution holds the value itself; the metaheuristics draw,
+  mutate, cross and model it on its logarithm. It needs a positive minimum and takes no step.
 - **Starting from known solutions**: every metaheuristic but CVOA takes `initial_solutions`,
   mappings from variable names to values, with any variable left out drawn at random. They
   take the place of as many solutions of the initial population, so the cost of a run does

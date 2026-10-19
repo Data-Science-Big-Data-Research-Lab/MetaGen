@@ -61,6 +61,20 @@ A **grid** covers values such as the multiples of a number, and a **permutation*
     domain.define_integer("even", 2, 20, 2)                  # 2, 4, 6 ... 20
     domain.define_permutation("route", [1, 2, 3, 4, 5, 6, 7, 8])
 
+A real or an integer that spans several orders of magnitude, such as a learning rate or a number of trees, is declared on a **logarithmic scale** with ``log=True``: it needs a positive minimum and takes no step. The solution holds the value itself, while the metaheuristics draw, mutate, cross and model it on its logarithm, so that every order of magnitude of the range is searched alike; on a linear scale almost every value drawn from ``[1e-5, 1e-1]`` would fall in its last order of magnitude. A ``RelativeAlteration`` of such a variable is a share of its orders of magnitude, and a number, a distance on the natural logarithm. The same argument is accepted by the definitions in groups and by ``set_structure_to_real`` and ``set_structure_to_integer``:
+
+.. code-block:: python
+
+    from metagen.framework import Domain, Solution
+    from metagen.framework.rng import set_seed
+
+    domain = Domain()
+    domain.define_real("learning_rate", 1e-5, 1e-1, log=True)
+    domain.define_integer("n_estimators", 10, 5000, log=True)
+    set_seed(0)
+    solution = Solution(domain)
+    print(round(solution["learning_rate"], 6), solution["n_estimators"])   # 0.023861 1097
+
 A **subset** is declared with its elements and, optionally, the fewest and the most of them a selection may hold, one and all of them by default. This one chooses between one and three features:
 
 .. code-block:: python
