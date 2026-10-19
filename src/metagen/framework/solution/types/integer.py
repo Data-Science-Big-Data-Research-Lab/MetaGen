@@ -71,6 +71,9 @@ class Integer(BaseType):
         Initialize the Integer variable with a random integer value in the defined ranges considering the step size.
         """
         _, min_value, max_value, step = self.get_definition().get_attributes()
+        if self.get_definition().log:
+            self.set(_log_draw(min_value, max_value))
+            return
         step = step or 1
         random_integer = get_rng().randrange(min_value, max_value + 1, step)
         self.set(random_integer)
@@ -84,7 +87,8 @@ class Integer(BaseType):
         :param alteration_limit: How far the mutation may move the current value. A
             number is an absolute amount; a :py:class:`~metagen.framework.alteration.RelativeAlteration`
             is a fraction of this variable's own range. If not provided, the
-            mutation can replace the current value with any within the domain.
+            mutation can replace the current value with any within the domain. On a
+            logarithmic scale both are measured on the natural logarithm of the value.
         :type alteration_limit: int or RelativeAlteration or None
         """
         # F-49: the draw included the current value, so on a two-valued domain half
@@ -94,6 +98,9 @@ class Integer(BaseType):
         # narrower than a step left the value alone: with RelativeAlteration(0.2) a
         # bit at 0 never flipped and an integer in [0, 4] could only go down.
         _, min_value, max_value, step = self.get_definition().get_attributes()
+        if self.get_definition().log:
+            self._mutate_on_log(min_value, max_value, alteration_limit)
+            return
         step = step or 1
         # The grid is anchored on the domain's minimum, captured before the window
         # narrows it (the same rule F-01 gave Real): a window such as [13, 27] over a
@@ -140,6 +147,28 @@ class Integer(BaseType):
             index = get_rng().randrange(grid_size)
         self.set(first + index * step)
 
+    def _mutate_on_log(self, min_value: int, max_value: int, alteration_limit: Any) -> None:
+        """
+        The mutation on a logarithmic scale: a new integer drawn on the logarithm within
+        the alteration limit, which reaches at least the neighboring integers, and never
+        the current value, as on a linear scale.
+        """
+        from .real import _log_window
+
+        current = self.get()
+        low_log, high_log = _log_window(current, min_value, max_value, alteration_limit)
+        low = max(min_value, min(current - 1, math.floor(math.exp(low_log))))
+        high = min(max_value, max(current + 1, math.ceil(math.exp(high_log))))
+        for _ in range(100):
+            drawn = _log_draw(low, high)
+            if drawn != current:
+                self.set(drawn)
+                return
+        # A window of two integers on a steep logarithm can keep drawing the current one;
+        # move to a neighbor then, which every window holds.
+        neighbors = [value for value in (current - 1, current + 1) if low <= value <= high]
+        self.set(neighbors[get_rng().randrange(len(neighbors))])
+
     def set(self, value: Any) -> None:
         """
         Sets the value of the Integer variable, after checking if the value is valid.
@@ -154,3 +183,10 @@ class Integer(BaseType):
         # so 1 into a real variable or a numpy scalar would otherwise be stored as it
         # came in. What the user reads back is always a native int.
         super().set(int(value))
+
+
+def _log_draw(min_value: int, max_value: int) -> int:
+    """An integer of [min_value, max_value] drawn uniformly on the logarithm, each integer
+    taking the stretch of the logarithm closer to it than to its neighbors."""
+    drawn = math.exp(get_rng().uniform(math.log(min_value - 0.5), math.log(max_value + 0.5)))
+    return min(max(int(round(drawn)), min_value), max_value)

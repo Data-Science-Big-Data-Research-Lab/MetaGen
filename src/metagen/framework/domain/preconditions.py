@@ -162,6 +162,13 @@ class Preconditions:
                 if step > avg:
                     raise ValueError(Messages.step(step, avg, "i"))
 
+    @staticmethod
+    def log_scale(min_value: float, step: float | None, log: bool):
+        if log and min_value <= 0:
+            raise ValueError(f"[DEFINITION error] A logarithmic scale needs a positive minimum, not {min_value}.")
+        if log and step is not None:
+            raise ValueError("[DEFINITION error] A logarithmic scale takes no step.")
+
     @final
     class Real:
         @staticmethod

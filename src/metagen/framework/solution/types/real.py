@@ -14,7 +14,8 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-from typing import Any, cast
+import math
+from typing import Any, Tuple, cast
 
 from metagen.framework.domain import RealDefinition
 
@@ -67,6 +68,10 @@ class Real(BaseType):
         Initialize the Real variable with a random float value in the defined ranges considering the step size.
         """
         _, min_value, max_value, step = self.get_definition().get_attributes()
+        if self.get_definition().log:
+            self.set(min(max(math.exp(get_rng().uniform(math.log(min_value), math.log(max_value))), min_value),
+                         max_value))
+            return
 
         # Delegated instead of rounding here: this used to skip the clipping that
         # _generate_numerical does, and could hand set() a value its own check()
@@ -80,10 +85,16 @@ class Real(BaseType):
         :param alteration_limit: How far the mutation may move the current value. A
             number is an absolute amount; a :py:class:`~metagen.framework.alteration.RelativeAlteration`
             is a fraction of this variable's own range. If not provided, the
-            mutation can replace the current value with any within the domain.
+            mutation can replace the current value with any within the domain. On a
+            logarithmic scale both are measured on the natural logarithm of the value.
         :type alteration_limit: float or RelativeAlteration or None
         """
         _, min_value, max_value, step = self.get_definition().get_attributes()
+        if self.get_definition().log:
+            low, high = _log_window(self.get(), min_value, max_value, alteration_limit)
+            self.set(min(max(math.exp(get_rng().uniform(low, high)), min_value), max_value))
+            return
+
         # Kept before the alteration limit narrows the interval: the grid belongs to
         # the domain, so anchoring it at a narrowed bound would put the mutated value
         # off the grid every other call (F-01).
@@ -118,3 +129,25 @@ class Real(BaseType):
         # so 1 into a real variable or a numpy scalar would otherwise be stored as it
         # came in. What the user reads back is always a native float.
         super().set(float(value))
+
+
+def _log_window(value: float, min_value: float, max_value: float, alteration_limit: Any) -> Tuple[float, float]:
+    """
+    The interval of the logarithm a mutation draws from, on a logarithmic scale: the
+    whole domain, or the current value's logarithm give or take the alteration limit,
+    itself on the logarithm (a ``RelativeAlteration`` is a share of the orders of
+    magnitude of the range).
+
+    :param value: The current value.
+    :param min_value: The minimum of the domain.
+    :param max_value: The maximum of the domain.
+    :param alteration_limit: A number, a ``RelativeAlteration`` or None.
+    :return: The lowest and highest logarithm.
+    """
+    low, high = math.log(min_value), math.log(max_value)
+    if isinstance(alteration_limit, RelativeAlteration):
+        alteration_limit = alteration_limit.of(low, high)
+    if alteration_limit is None:
+        return low, high
+    center = math.log(value)
+    return max(low, center - alteration_limit), min(high, center + alteration_limit)
