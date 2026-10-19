@@ -57,7 +57,7 @@ Which one to use
 Setting a budget
 ----------------
 
-Every metaheuristic but CVOA also takes ``max_evaluations``, the evaluations of the fitness function a run may make, warmup included, and ``timeout``, the seconds it may last. A run stops at whichever comes first: its own stopping criterion, such as ``max_iterations``, or one of the two limits, so to spend a budget whole give ``max_iterations`` a value it will not reach. The limits are checked between iterations, never in the middle of one, so a run goes past them by at most one iteration: one evaluation for |kernel_tpe|, a whole population for a genetic algorithm or |rs|. ``evaluations`` and ``seconds`` say what the run spent, and ``stop_reason`` what stopped it: ``"criterion"``, ``"max_evaluations"``, ``"timeout"`` or ``"request_stop"``.
+Every metaheuristic but CVOA also takes ``max_evaluations``, the evaluations of the fitness function a run may make, warmup included, and ``timeout``, the seconds it may last. Without ``max_iterations``, a budget is what stops the run: the limit of iterations is lifted, and |sa|, |tpe|, |kernel_tpe| and a |hc| with a ``gamma_config``, which plan their search over ``max_iterations`` (the cooling schedule, the gamma schedule), take as ``max_iterations`` the iterations that ``max_evaluations`` buys; with ``timeout`` alone they keep their default. Given ``max_iterations`` and a limit, the run stops at whichever comes first. The limits are checked between iterations, never in the middle of one, so a run goes past them by at most one iteration: one evaluation for |kernel_tpe|, a whole population for a genetic algorithm or |rs|. ``evaluations`` and ``seconds`` say what the run spent, and ``stop_reason`` what stopped it: ``"criterion"``, ``"max_evaluations"``, ``"timeout"`` or ``"request_stop"``.
 
 .. code-block:: python
 
@@ -71,13 +71,13 @@ Every metaheuristic but CVOA also takes ``max_evaluations``, the evaluations of 
     def fitness(solution):
         return (solution["x"] - 1.0) ** 2 + abs(solution["n"] - 42) / 10
 
-    search = KernelTPE(domain, fitness, population_size=10, warmup_iterations=0, max_iterations=10_000,
-                       max_evaluations=100, seed=0)
+    search = KernelTPE(domain, fitness, population_size=10, warmup_iterations=0, max_evaluations=100, seed=0)
     search.run()
     print(search.evaluations, search.stop_reason)   # 100 max_evaluations
+    print(search.max_iterations)                     # 90: the evaluations left after the 10 initial ones
 
     # A random search evaluates 29 individuals per iteration: it stops past the limit.
-    search = RandomSearch(domain, fitness, population_size=30, max_iterations=10_000, max_evaluations=100, seed=0)
+    search = RandomSearch(domain, fitness, population_size=30, max_evaluations=100, seed=0)
     search.run()
     print(search.evaluations, search.stop_reason)   # 117 max_evaluations
 

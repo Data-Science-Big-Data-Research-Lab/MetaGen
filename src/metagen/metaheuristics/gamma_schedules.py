@@ -29,7 +29,8 @@ def gamma_linear(iteration: int, max_iterations: int, minimum: float, maximum: f
     :param maximum: Maximum gamma value.
     :return: Computed gamma value.
     """
-    progress = iteration / max_iterations
+    # Capped: a run bounded by its budget may go past the iterations it planned for.
+    progress = min(1.0, iteration / max_iterations)
     gamma = minimum + (maximum - minimum) * (1 - progress)
     metagen_logger.debug(f"Linear gamma: iteration={iteration}, progress={progress}, gamma={gamma}")
     return gamma
@@ -45,7 +46,8 @@ def gamma_exponential(iteration: int, max_iterations: int, minimum: float, maxim
     :param alpha: Decay factor.
     :return: Computed gamma value.
     """
-    progress = iteration / max_iterations
+    # Capped: a run bounded by its budget may go past the iterations it planned for.
+    progress = min(1.0, iteration / max_iterations)
     gamma = minimum + (maximum - minimum) * math.exp(-alpha * progress)
     metagen_logger.debug(f"Exponential gamma: iteration={iteration}, progress={progress}, alpha={alpha}, gamma={gamma}")
     return gamma

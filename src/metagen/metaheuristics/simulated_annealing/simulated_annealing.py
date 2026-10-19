@@ -18,7 +18,7 @@ from metagen.framework import Domain, RelativeAlteration, Solution
 from metagen.metaheuristics.tools import random_exploration
 import math
 from copy import deepcopy
-from typing import Any, Optional, Callable, Tuple, List
+from typing import Any, Optional, Callable, Tuple, List, cast
 from metagen.metaheuristics.base import Metaheuristic
 from metagen.framework.rng import get_rng
 
@@ -136,7 +136,7 @@ class SA(Metaheuristic):
 
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
                  warmup_iterations: int = 5,
-                 max_iterations: int = 20,
+                 max_iterations: Optional[int] = None,
                  alteration_limit: Any = RelativeAlteration(0.2), initial_temp: float = 50.0,
                  cooling_rate: Optional[float] = None, neighbor_population_size: int = 5,
                  distributed=False, log_dir: Optional[str] = None,
@@ -150,8 +150,10 @@ class SA(Metaheuristic):
         :type domain: Domain
         :param fitness_function: Function to evaluate solutions
         :type fitness_function: Callable[[Solution], float]
-        :param max_iterations: Maximum number of iterations to run, defaults to 20
-        :type max_iterations: int, optional
+        :param max_iterations: Maximum number of iterations to run, defaults to 20. With
+            ``max_evaluations`` and no value, the iterations the budget buys, so that the
+            cooling schedule spans it; with ``timeout`` alone, 20
+        :type max_iterations: int or None, optional
         :param alteration_limit: How far a neighbor may move from the current solution,
             defaults to a fifth of each variable's own range
         :type alteration_limit: RelativeAlteration or float or None, optional
@@ -182,7 +184,12 @@ class SA(Metaheuristic):
                          distribution_model=distribution_model,
                          checkpoint=checkpoint, checkpoint_every=checkpoint_every,
                          history=history, max_evaluations=max_evaluations, timeout=timeout)
-        self.max_iterations = max_iterations
+        # The cooling schedule spans max_iterations, so a budget of evaluations becomes the
+        # iterations it buys after the warmup and the starting point.
+        # Never None here: an algorithm with a horizon always has one.
+        self.max_iterations: int = cast(int, self._iterations(
+            max_iterations, 20,
+            horizon=lambda budget: math.ceil((budget - (warmup_iterations + 1)) / neighbor_population_size)))
         self.alteration_limit = alteration_limit
         self.initial_temp = initial_temp
         self.current_temp = self.initial_temp
@@ -296,4 +303,4 @@ class SA(Metaheuristic):
         """
         Check if the algorithm should stop.
         """
-        return self.current_iteration >= self.max_iterations
+        return self._iterations_done()

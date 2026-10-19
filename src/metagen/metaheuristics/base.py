@@ -202,6 +202,9 @@ class Metaheuristic(ABC):
         if timeout is not None:
             self.timeout = float(cast(Any, timeout))
         self.stop_reason: Optional[str] = None
+        # The iterations the algorithm's own criterion allows, which _iterations() sets:
+        # None is no limit, for a run bounded by its budget alone.
+        self._iteration_limit: Optional[int] = None
 
         if distribution_model not in DISTRIBUTION_MODELS:
             raise ValueError(f"distribution_model must be one of {sorted(DISTRIBUTION_MODELS)}, "
@@ -621,6 +624,43 @@ class Metaheuristic(ABC):
                 ray.shutdown()
 
         return deepcopy(self._best_so_far())
+
+    def _iterations(self, max_iterations: Optional[int], default: int,
+                    horizon: Optional[Callable[[int], int]] = None) -> Optional[int]:
+        """
+        The ``max_iterations`` of an algorithm, and the limit of iterations its criterion
+        enforces, kept in ``_iteration_limit``. Given, it is both. Not given, without a
+        budget it is ``default``; with one, there is no limit of iterations. An algorithm
+        that also plans its search over ``max_iterations`` (a cooling or a gamma schedule)
+        passes ``horizon``, which turns ``max_evaluations`` into the iterations it buys:
+        that is its ``max_iterations`` then, and only the budget stops the run. With a
+        ``timeout`` alone it keeps ``default``, as limit and as horizon.
+
+        :param max_iterations: The iterations the user gave, or None.
+        :type max_iterations: int or None
+        :param default: The iterations without a budget.
+        :type default: int
+        :param horizon: The iterations ``max_evaluations`` buys, for an algorithm that plans
+            over its iterations.
+        :type horizon: Callable[[int], int], optional
+        :return: The ``max_iterations`` to keep: the limit, the horizon, or None.
+        :rtype: int or None
+        """
+        if max_iterations is not None or (self.max_evaluations is None and self.timeout is None):
+            chosen = default if max_iterations is None else max_iterations
+            self._iteration_limit = chosen
+            return chosen
+        self._iteration_limit = None
+        if horizon is None:
+            return None
+        if self.max_evaluations is None:
+            self._iteration_limit = default
+            return default
+        return max(1, horizon(self.max_evaluations))
+
+    def _iterations_done(self) -> bool:
+        """Whether the run has made the iterations its criterion allows."""
+        return self._iteration_limit is not None and self.current_iteration >= self._iteration_limit
 
     def _limit_reached(self) -> Optional[str]:
         """The budget the run has spent, ``"max_evaluations"`` or ``"timeout"``, or None."""

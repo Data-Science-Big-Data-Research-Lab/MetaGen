@@ -35,8 +35,8 @@ class RandomSearch(Metaheuristic):
     :type fitness_function: Callable[[Solution], float]
     :param population_size: The size of the population to maintain, defaults to 10
     :type population_size: int, optional
-    :param max_iterations: The maximum number of iterations to run, defaults to 20
-    :type max_iterations: int, optional
+    :param max_iterations: The maximum number of iterations to run, defaults to 20; with ``max_evaluations`` or ``timeout`` and no value, no limit
+    :type max_iterations: int or None, optional
     :param distributed: Whether to use distributed computation, defaults to False
     :type distributed: bool, optional
     :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
@@ -84,7 +84,7 @@ class RandomSearch(Metaheuristic):
         search = RandomSearch(domain, fitness_function, population_size=50, max_iterations=100)
         optimal_solution = search.run()
     """
-    def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float], population_size = 10, max_iterations: int = 20, distributed = False, log_dir: Optional[str] = None, seed: Optional[int] = None, distribution_model: str = "global",
+    def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float], population_size = 10, max_iterations: Optional[int] = None, distributed = False, log_dir: Optional[str] = None, seed: Optional[int] = None, distribution_model: str = "global",
                  checkpoint: Optional[str] = None, checkpoint_every: int = 1, history: Optional[str] = None,
                  max_evaluations: Optional[int] = None, timeout: Optional[float] = None) -> None:
         """
@@ -96,8 +96,8 @@ class RandomSearch(Metaheuristic):
         :type fitness_function: Callable[[Solution], float]
         :param population_size: The size of the population to maintain, defaults to 10
         :type population_size: int, optional
-        :param max_iterations: The maximum number of iterations to run, defaults to 20
-        :type max_iterations: int, optional
+        :param max_iterations: The maximum number of iterations to run, defaults to 20; with ``max_evaluations`` or ``timeout`` and no value, no limit
+        :type max_iterations: int or None, optional
         :param distributed: Whether to use distributed computation, defaults to False
         :type distributed: bool, optional
         :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
@@ -107,7 +107,7 @@ class RandomSearch(Metaheuristic):
                          distribution_model=distribution_model,
                          checkpoint=checkpoint, checkpoint_every=checkpoint_every,
                          history=history, max_evaluations=max_evaluations, timeout=timeout)
-        self.max_iterations = max_iterations
+        self.max_iterations = self._iterations(max_iterations, 20)
 
     def initialize(self, num_solutions=10) -> Tuple[List[Solution], Solution]:
         """
@@ -162,4 +162,4 @@ class RandomSearch(Metaheuristic):
         :return: True if the maximum number of iterations is reached, False otherwise
         :rtype: bool
         """
-        return self.current_iteration >= self.max_iterations
+        return self._iterations_done()

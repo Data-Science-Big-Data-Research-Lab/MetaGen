@@ -69,8 +69,10 @@ class KernelTPE(TPE):
     :type domain: Domain
     :param fitness_function: Function to evaluate solutions
     :type fitness_function: Callable[[Solution], float]
-    :param max_iterations: Iterations to run, one evaluation each, defaults to 100
-    :type max_iterations: int, optional
+    :param max_iterations: Iterations to run, one evaluation each, defaults to 100. With
+        ``max_evaluations`` and no value, the iterations the budget buys after the warmup
+        and the initialization; with ``timeout`` alone, 100
+    :type max_iterations: int or None, optional
     :param warmup_iterations: Rounds of random exploration before the search, each
         evaluating ``population_size`` solutions, defaults to 5
     :type warmup_iterations: int, optional
@@ -131,8 +133,10 @@ class KernelTPE(TPE):
     # on the mixture of kernels it wins 98 of 110 on the same 480 evaluations.
     # F-35: the length of a dynamic structure is not modeled, here or in TPE.
 
+    default_max_iterations = 100
+
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
-                 max_iterations: int = 100, warmup_iterations: int = 5, n_candidates: int = 24,
+                 max_iterations: Optional[int] = None, warmup_iterations: int = 5, n_candidates: int = 24,
                  prior_weight: float = 1.0, gamma_config: Optional[GammaConfig] = None,
                  population_size: int = 20, distributed: bool = False, log_dir: Optional[str] = None,
                  seed: Optional[int] = None, distribution_model: str = "global",
