@@ -74,7 +74,8 @@ class KernelTPE(TPE):
         and the initialization; with ``timeout`` alone, 100
     :type max_iterations: int or None, optional
     :param warmup_iterations: Rounds of random exploration before the search, each
-        evaluating ``population_size`` solutions, defaults to 5
+        evaluating ``population_size`` solutions, all of which join the history the
+        model is built on, defaults to 5
     :type warmup_iterations: int, optional
     :param n_candidates: Candidates drawn from the model of the best solutions per
         iteration, of which the best scoring one is evaluated, defaults to 24
@@ -134,6 +135,12 @@ class KernelTPE(TPE):
     # F-35: the length of a dynamic structure is not modeled, here or in TPE.
 
     default_max_iterations = 100
+
+    # Its history is never trimmed and every observation is a kernel, so the warmup's
+    # samples join it (F-53): on the behavior bench, 30 seeds, 296 -> 301 wins of 330
+    # against random sampling, better on Griewank and Schwefel and worse on none
+    # (metagen-auditoria/mediciones/f53/tabla.md).
+    keeps_warmup = True
 
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
                  max_iterations: Optional[int] = None, warmup_iterations: int = 5, n_candidates: int = 24,
