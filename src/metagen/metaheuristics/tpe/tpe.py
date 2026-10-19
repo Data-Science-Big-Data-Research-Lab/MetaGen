@@ -117,8 +117,8 @@ class TPE(Metaheuristic):
             warmup and the initialization; with ``timeout`` alone, 50
         :type max_iterations: int or None, optional
         :param warmup_iterations: Rounds of random exploration before the search, each
-            evaluating ``population_size`` solutions; their best seeds the model,
-            defaults to 10
+            evaluating ``population_size`` solutions; their best is kept as the best
+            of the run so far, defaults to 10
         :type warmup_iterations: int, optional
         :param candidate_pool_size: Solutions evaluated per iteration, defaults to 24
         :type candidate_pool_size: int, optional
@@ -135,7 +135,12 @@ class TPE(Metaheuristic):
         """
         # F-47: population_size used to be inherited from the base class and could not
         # be set, and the docstring said it was 10. The warmup pays for itself: on the
-        # behavior bench, 78 wins of 110 with warmup 5, 66 with 2 and 66 with 0.
+        # behavior bench, 78 wins of 110 with warmup 5, 66 with 2 and 66 with 0. It pays
+        # through the best solution it hands on, not through the model, which never sees
+        # its samples (F-53). Letting them into TPE's history was measured and left out:
+        # 234 wins of 330 against random sampling before and after, 30 seeds, worse on
+        # Ackley (p = 0.002), and TPE is the one the published article evaluates.
+        # KernelTPE, which keeps its whole history, does take them in.
         # TPE needs a domain wired to its own connector, which replaces the solution
         # and type classes. Rewiring the one it was given left it modified for good,
         # so comparing several metaheuristics in a loop depended on the order they

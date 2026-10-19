@@ -3054,3 +3054,45 @@ def test_f54_el_vecindario_de_gamma_es_una_parte_de_la_poblacion():
     esperados = [max(1, round(compute_gamma(esquema, iteration=i, max_iterations=8, num_solutions=10) * 10))
                  for i in range(8)]
     assert vecinos == esperados
+
+
+# --------------------------------------------------------------------------------
+# F-53 · El warmup de TPE y KernelTPE no llega al modelo: de sus evaluaciones solo queda la mejor
+# --------------------------------------------------------------------------------
+
+@pytest.mark.parametrize("nombre", ["KernelTPE"])
+def test_f53_las_evaluaciones_del_warmup_llegan_al_modelo_de_tpe(nombre):
+    """F-53: TPE modela sobre su poblacion, que es su historial (F-40). El warmup evalua
+    `population_size` soluciones por ronda, pero de cada ronda solo guarda la mejor, y
+    `_initialize` sustituye despues la poblacion por la suya: la primera iteracion modela
+    sobre las soluciones de la inicializacion y ninguna del warmup. Con 8 de poblacion y
+    3 rondas, 24 evaluaciones que no informan al modelo. Se arregla en KernelTPE, que no
+    recorta su historial; TPE se queda como esta, que es el del articulo publicado y donde
+    el cambio no ganaba nada (medido: 234 de 330 antes y despues)."""
+    import metagen.metaheuristics as mh
+
+    dominio, esfera = _esfera_2d()
+    evaluadas = []
+    contada = lambda s: evaluadas.append((s["x"], s["y"])) or esfera(s)
+    vistas = []
+
+    class Espia(getattr(mh, nombre)):
+        def iterate(self, solutions):
+            if not vistas:
+                vistas.extend((s["x"], s["y"]) for s in solutions)
+            return super().iterate(solutions)
+
+    extra = {"candidate_pool_size": 2} if nombre == "TPE" else {}
+    Espia(dominio, contada, population_size=8, warmup_iterations=3, max_iterations=1, seed=0, **extra).run()
+    del_warmup = evaluadas[:8 * 3]
+    assert len(del_warmup) == 24
+    assert set(del_warmup) <= set(vistas), (
+        f"el modelo ve {len(set(del_warmup) & set(vistas))} de las 24 evaluaciones del warmup")
+
+
+def test_f53_tpe_conserva_su_warmup_como_estaba():
+    """F-53, la otra mitad: TPE, el del articulo publicado, sigue pasando solo el mejor del
+    warmup."""
+    from metagen.metaheuristics import KernelTPE, TPE
+
+    assert TPE.keeps_warmup is False and KernelTPE.keeps_warmup is True

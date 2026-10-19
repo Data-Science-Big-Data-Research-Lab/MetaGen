@@ -180,6 +180,11 @@ class Metaheuristic(ABC):
     # Worker tasks are seeded from the driver since A-06.
     minimum_slice: int = 1
 
+    #: Whether every solution the warmup evaluates joins the population ``initialize``
+    #: builds, for an algorithm whose population is its model; otherwise the warmup only
+    #: hands on the best solution it found.
+    keeps_warmup: bool = False
+
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float], population_size=20,
                  warmup_iterations: int = 0, distributed=False,
                  log_dir: Optional[str] = None, seed: Optional[int] = None,
@@ -345,6 +350,10 @@ class Metaheuristic(ABC):
         else:
             population, best_individual = self.initialize(self.population_size)
 
+        # F-53: the warmup kept one solution per round and this replaced them all, so a
+        # model built on the population never saw what the warmup had evaluated.
+        if self.keeps_warmup:
+            population = self.current_solutions + population
         self.current_solutions = population
 
         # Merged rather than assigned: _warmup() runs first and may already hold a
@@ -373,16 +382,19 @@ class Metaheuristic(ABC):
                     metagen_logger.debug(
                         f'[WARMUP {warmup_step + 1}/{self.warmup_iterations}] Distributed warmup step.'
                     )
-                    _, best_candidate = distributed_random_exploration(self.domain, self.fitness_function,
+                    explored, best_candidate = distributed_random_exploration(self.domain, self.fitness_function,
                                                                        self.population_size)
                 else:
                     metagen_logger.debug(
                         f'[WARMUP {warmup_step + 1}/{self.warmup_iterations}] Warmup step.'
                     )
-                    _, best_candidate = random_exploration(self.domain, self.fitness_function, self.population_size)
+                    explored, best_candidate = random_exploration(self.domain, self.fitness_function, self.population_size)
 
-                # Store only the best solution found in each warmup iteration
-                self.current_solutions.append(deepcopy(best_candidate))
+                # Every solution for an algorithm that keeps the warmup, the best one otherwise.
+                if self.keeps_warmup:
+                    self.current_solutions.extend(explored)
+                else:
+                    self.current_solutions.append(deepcopy(best_candidate))
 
                 # Update the global best solution
                 if self.best_solution is None or best_candidate.get_fitness() < self.best_solution.get_fitness():
