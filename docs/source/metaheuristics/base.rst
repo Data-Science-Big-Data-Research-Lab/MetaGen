@@ -8,6 +8,17 @@ Base Metaheuristic
     :show-inheritance:
 
 
+Racing
+========================
+
+A fitness function that yields the value of each of its steps can be evaluated with racing,
+which stops a candidate as soon as it is significantly worse than the population; see
+:doc:`../choosing/index`.
+
+.. autoclass:: metagen.metaheuristics.racing.Racing
+    :members: eliminates
+
+
 
 
 Reproducibility
