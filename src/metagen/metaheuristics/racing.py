@@ -58,7 +58,7 @@ class Racing:
     :type alpha: float, optional
     :raises ValueError: if ``first_steps`` is below 2 or ``alpha`` is not between 0 and 1.
     """
-    # Chosen by simulating the race on recorded runs (metagen-auditoria/optuna/racing/):
+    # Chosen by simulating the race on recorded runs (metagen-auditoria):
     # against the starting population, Friedman from step 3 at 0.05 lost the best value of
     # no run of 60 (an MLP with ten-fold cross-validation and a decision tree, GA,
     # RandomSearch and TPE) while skipping 21 to 49 % of the steps on the MLP; at 0.10 it

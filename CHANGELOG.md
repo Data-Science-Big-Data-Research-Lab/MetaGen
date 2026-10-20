@@ -1,6 +1,10 @@
 # Changelog
 
-## Unreleased
+## 1.3.0
+
+MetaGen 1.3.0 adds a budget of evaluations or seconds to every run, racing to stop the
+evaluation of candidates worse than the population, a logarithmic scale for integers and
+reals, and starting a run from known solutions.
 
 ### New
 
