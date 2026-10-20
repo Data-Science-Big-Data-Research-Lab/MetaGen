@@ -13,7 +13,15 @@ from metagen.metaheuristics.tpe.subset_model import SubsetModel
 
 def sample_from_values(tpe_type, best_values, worst_values):
     _, min_value, max_value, step = tpe_type.get_definition().get_attributes()
-    step = step or 1
+    if tpe_type.get_definition().log:
+        # On a logarithmic scale the model is fitted and sampled on the logarithms.
+        drawn = np.exp(_sample(np.log(tpe_type.value), np.log(best_values), np.log(worst_values),
+                               np.log(min_value), np.log(max_value)))
+        return float(min(max(drawn, min_value), max_value))
+    return _sample(tpe_type.value, best_values, worst_values, min_value, max_value)
+
+
+def _sample(current, best_values, worst_values, min_value, max_value):
 
     mu_best, sigma_best = norm.fit(best_values)
     mu_worst, sigma_worst = norm.fit(worst_values)
@@ -22,8 +30,8 @@ def sample_from_values(tpe_type, best_values, worst_values):
 
     if sigma_best > 0 and sigma_worst > 0:
 
-        p_best = norm.pdf(tpe_type.value, mu_best, sigma_best)
-        p_worst = norm.pdf(tpe_type.value, mu_worst, sigma_worst)
+        p_best = norm.pdf(current, mu_best, sigma_best)
+        p_worst = norm.pdf(current, mu_worst, sigma_worst)
     
         if p_best / (p_best + p_worst + 1e-16) > get_numpy_rng().random():
             value = np.clip(get_numpy_rng().normal(mu_best, sigma_best), min_value, max_value).item()

@@ -5,7 +5,7 @@ import ray
 
 from metagen.framework import Domain, Solution
 from metagen.framework.rng import set_seed, spawn_seed
-from metagen.metaheuristics.tools import random_exploration
+from metagen.metaheuristics.tools import Counts, add_calls, calls_of, random_exploration
 
 
 @ray.remote
@@ -16,10 +16,16 @@ def call_distributed(seed: int, function: Callable, *args: Any, **kargs: Any) ->
     The worker is another process with its own generator state, so it is seeded
     here to make a distributed run reproducible. The seed comes from spawn_seed() in
     the driver, so the driver's seed decides it.
+
+    :return: What the method returns, and the evaluations of the fitness it made, which
+        the worker counts on its copy of the algorithm and the driver adds to its own.
     """
     # A-06: without the seed no distributed run was reproducible.
     set_seed(seed)
-    return function(*args, **kargs)
+    fitness_function = getattr(getattr(function, "__self__", None), "fitness_function", None)
+    before = calls_of(fitness_function) if fitness_function is not None else Counts()
+    result = function(*args, **kargs)
+    return result, (calls_of(fitness_function) - before if fitness_function is not None else Counts())
 
 
 def assign_load_equally(neighbor_population_size: int, minimum_chunk: int = 1) -> List[int]:
@@ -57,9 +63,11 @@ def assign_load_equally(neighbor_population_size: int, minimum_chunk: int = 1) -
 
 @ray.remote
 def remote_random_exploration(seed: int, domain: Domain, fitness_function: Callable[[Solution], float],
-                              num_solutions: int) -> Tuple[List[Solution], Solution]:
+                              num_solutions: int) -> Tuple[List[Solution], Solution, Counts]:
     set_seed(seed)
-    return random_exploration(domain, fitness_function, num_solutions)
+    before = calls_of(fitness_function)
+    population, best = random_exploration(domain, fitness_function, num_solutions)
+    return population, best, calls_of(fitness_function) - before
 
 
 def distributed_random_exploration(domain: Domain, fitness_function: Callable[[Solution], float], num_solutions: int) \
@@ -71,6 +79,7 @@ def distributed_random_exploration(domain: Domain, fitness_function: Callable[[S
         futures.append(remote_random_exploration.remote(spawn_seed(), domain, fitness_function, count))
 
     remote_results = ray.get(futures)
+    add_calls(fitness_function, sum(result[2] for result in remote_results))
     population = [individual for subpopulation in remote_results for individual in subpopulation[0]]
     best_individual = min([result[1] for result in remote_results], key=lambda sol: sol.get_fitness())
 

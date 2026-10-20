@@ -18,6 +18,7 @@
 import heapq
 import json
 import math
+import numbers
 import os
 import pickle
 import statistics
@@ -26,14 +27,15 @@ from abc import ABC, abstractmethod
 from importlib import metadata
 
 from .import_helper import is_package_installed
-from typing import Any, Dict, List, Tuple, Optional, Callable, cast
+from typing import Any, Dict, List, Mapping, Sequence, Tuple, Optional, Callable, cast
 from metagen.framework import Domain, Solution
 from metagen.framework import rng as rng_state
 from metagen.framework.rng import get_rng, set_seed, spawn_seed
 from copy import deepcopy
 
 from metagen.logging.metagen_logger import metagen_logger
-from metagen.metaheuristics.tools import random_exploration
+from metagen.metaheuristics.racing import Racing
+from metagen.metaheuristics.tools import CountingFitness, add_calls, random_exploration, solution_class
 
 IS_RAY_INSTALLED = is_package_installed("ray")
 
@@ -50,18 +52,6 @@ if IS_RAY_INSTALLED:
 #: often to save, which the resumed run is given again.
 _NOT_CHECKPOINTED = frozenset({"fitness_function", "logger", "checkpoint", "checkpoint_every",
                                "_stop_requested"})
-
-
-class _CountingFitness:
-    """The fitness function of a run, counting its calls on the driver for the history."""
-
-    def __init__(self, function: Callable[[Solution], float]) -> None:
-        self.function = function
-        self.calls = 0
-
-    def __call__(self, solution: Solution) -> float:
-        self.calls += 1
-        return self.function(solution)
 
 
 def _package_version() -> str:
@@ -143,6 +133,33 @@ class Metaheuristic(ABC):
         which ``pandas.read_json(history, lines=True)`` reads as a table. None, the
         default, writes nothing; the records are in ``history`` either way.
     :type history: str or None, optional
+    :param max_evaluations: Stop once the run has evaluated the fitness at least this many
+        times, warmup included. None, the default, sets no limit.
+    :type max_evaluations: int or None, optional
+    :param timeout: Stop once the run has lasted at least this many seconds. None, the
+        default, sets no limit.
+    :type timeout: float or None, optional
+    :param initial_solutions: Solutions to start from, such as a configuration known to
+        work: each a mapping from variable names to values, with any variable left out
+        drawn at random. They take the place of as many solutions of the initial
+        population, so the cost of the run does not change, and count as any other: the
+        best of the run may be one of them. At most ``population_size`` of them. None, the
+        default, starts from random solutions only.
+    :type initial_solutions: Sequence[Mapping[str, Any]] or None, optional
+    :param racing: Stop evaluating a candidate as soon as it is significantly worse than
+        the population, for a fitness function that yields its steps one at a time; see
+        :py:class:`~metagen.metaheuristics.racing.Racing`. None, the default, evaluates
+        every candidate whole. With it, ``max_evaluations`` counts the steps taken: a
+        candidate stopped after 3 of 10 spends 0.3 of an evaluation.
+    :type racing: Racing or None, optional
+
+    The run stops at whichever comes first: the algorithm's own stopping criterion,
+    ``max_evaluations``, ``timeout`` or :py:meth:`request_stop`. The limits are checked
+    after each round of the warmup, after the initialization and at the end of every
+    iteration, never in the middle of one, so a run may go past them by up to one round
+    of the warmup, the initial population or one iteration; ``stop_reason``
+    says which one stopped it, and ``evaluations`` and ``seconds`` what it spent. A run
+    resumed from a checkpoint carries on with what it had spent.
 
     :ivar domain: The problem domain.
     :vartype domain: Domain
@@ -163,24 +180,74 @@ class Metaheuristic(ABC):
     :ivar best_solution_fitnesses: List of fitness values of the best solutions per iteration.
     :vartype best_solution_fitnesses: List[float]
     :ivar history: One record per iteration: ``iteration``; ``evaluations``, counted from
-        the start of the run, warmup included, or None in a distributed run, whose
-        evaluations happen in the workers; ``seconds`` since the start; ``best``, the
+        the start of the run, warmup included, those of the workers too in a distributed
+        run; ``seconds`` since the start; ``best``, the
         best fitness so far; the ``iteration_best``, ``mean``, ``std`` and ``worst``
         fitness of the population and its ``population_size``; and ``best_solution``,
         the values of the best solution so far.
     :vartype history: List[dict]
+    :ivar stop_reason: What stopped the last run: ``"criterion"``, the algorithm's own,
+        ``"max_evaluations"``, ``"timeout"`` or ``"request_stop"``; None before any run.
+    :vartype stop_reason: Optional[str]
     """
 
     # minimum_slice exists since F-46: islands of one individual crashed GA and Memetic.
     # Worker tasks are seeded from the driver since A-06.
     minimum_slice: int = 1
 
+    #: Whether every solution the warmup evaluates joins the population ``initialize``
+    #: builds, for an algorithm whose population is its model; otherwise the warmup only
+    #: hands on the best solution it found.
+    keeps_warmup: bool = False
+
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float], population_size=20,
                  warmup_iterations: int = 0, distributed=False,
                  log_dir: Optional[str] = None, seed: Optional[int] = None,
                  distribution_model: str = "global", checkpoint: Optional[str] = None,
-                 checkpoint_every: int = 1, history: Optional[str] = None) -> None:
+                 checkpoint_every: int = 1, history: Optional[str] = None,
+                 max_evaluations: Optional[int] = None, timeout: Optional[float] = None,
+                 initial_solutions: Optional[Sequence[Mapping[str, Any]]] = None,
+                 racing: Optional[Racing] = None) -> None:
         super().__init__()
+
+        if max_evaluations is not None and (isinstance(max_evaluations, bool)
+                                            or not isinstance(max_evaluations, numbers.Integral)
+                                            or max_evaluations < 1):
+            raise ValueError(f"max_evaluations must be a positive integer or None, not {max_evaluations!r}")
+        if timeout is not None and (isinstance(timeout, bool) or not isinstance(timeout, numbers.Real)
+                                    or not math.isfinite(timeout) or timeout <= 0):
+            raise ValueError(f"timeout must be a positive number of seconds or None, not {timeout!r}")
+        self.max_evaluations: Optional[int] = None
+        if max_evaluations is not None:
+            self.max_evaluations = int(cast(Any, max_evaluations))
+        self.timeout: Optional[float] = None
+        if timeout is not None:
+            self.timeout = float(cast(Any, timeout))
+        self.stop_reason: Optional[str] = None
+        if racing is not None and not isinstance(racing, Racing):
+            raise ValueError(f"racing must be a Racing or None, not {racing!r}")
+        self.racing = racing
+        # The steps a whole evaluation takes, for a fitness function that yields them, and
+        # the steps taken so far: what max_evaluations counts then.
+        self._step_count: Optional[int] = None
+        self._steps = 0
+        # Checked here, against the domain, without drawing anything: the solutions are
+        # built in run(), once the seed is set, so that the variables left out are drawn
+        # from the seeded generators.
+        self.initial_solutions: List[Dict[str, Any]] = [dict(values) for values in initial_solutions or []]
+        if len(self.initial_solutions) > population_size:
+            raise ValueError(f"{type(self).__name__} takes at most population_size={population_size} initial "
+                             f"solutions, not {len(self.initial_solutions)}.")
+        core = domain.get_core()
+        for index, values in enumerate(self.initial_solutions):
+            for name, value in values.items():
+                if not core.is_variable(name):
+                    raise ValueError(f"Initial solution {index}: {name!r} is not a variable of the domain.")
+                if not core.check(name, value):
+                    raise ValueError(f"Initial solution {index}: {value!r} is not a valid value of {name!r}.")
+        # The iterations the algorithm's own criterion allows, which _iterations() sets:
+        # None is no limit, for a run bounded by its budget alone.
+        self._iteration_limit: Optional[int] = None
 
         if distribution_model not in DISTRIBUTION_MODELS:
             raise ValueError(f"distribution_model must be one of {sorted(DISTRIBUTION_MODELS)}, "
@@ -247,7 +314,8 @@ class Metaheuristic(ABC):
         # after whatever _warmup() left behind, which is one entry per warmup
         # round and has nothing to do with the population being built (F-03).
         if self.current_iteration == -1:
-            distribution = assign_load_equally(self.population_size, self.minimum_slice)
+            distribution = assign_load_equally(self.population_size - len(self.initial_solutions),
+                                               self.minimum_slice)
         else:
             distribution = assign_load_equally(
                 len(self.current_solutions) if len(self.current_solutions) > 0 else self.population_size,
@@ -277,7 +345,10 @@ class Metaheuristic(ABC):
             else:
                 futures.append(call_distributed.remote(spawn_seed(), method, count))
 
-        remote_results = ray.get(futures)
+        answers = ray.get(futures)
+        # Each worker evaluates on a copy of the fitness function and says how many.
+        add_calls(self.fitness_function, sum(calls for _, calls in answers))
+        remote_results = [result for result, _ in answers]
         offspring = [individual for subpopulation in remote_results for individual in subpopulation[0]]
         best_individual = min([result[1] for result in remote_results], key=lambda sol: sol.get_fitness())
 
@@ -310,14 +381,29 @@ class Metaheuristic(ABC):
         :return: A tuple containing the population and the best individual.
         :rtype: Tuple[List[Solution], Solution]
         """
-        if self.distributed:
-            if not IS_RAY_INSTALLED:
-                raise ImportError("Ray must be installed to use distributed initialization")
+        given = self._initial_population()
+        drawn = self.population_size - len(given)
+        population: List[Solution] = []
+        best_individual: Optional[Solution] = None
+        if drawn > 0:
+            if self.distributed:
+                if not IS_RAY_INSTALLED:
+                    raise ImportError("Ray must be installed to use distributed initialization")
+                population, best_individual = self._launch_distributed_method(self.initialize)
+            else:
+                population, best_individual = self.initialize(drawn)
+        # What initialize returns as its best is kept (HillClimbing returns its starting
+        # point), and only an initial solution better than it takes its place.
+        for solution in given:
+            if best_individual is None or solution.get_fitness() < best_individual.get_fitness():
+                best_individual = solution
+        assert best_individual is not None
+        population = given + population
 
-            population, best_individual = self._launch_distributed_method(self.initialize)
-        else:
-            population, best_individual = self.initialize(self.population_size)
-
+        # F-53: the warmup kept one solution per round and this replaced them all, so a
+        # model built on the population never saw what the warmup had evaluated.
+        if self.keeps_warmup:
+            population = self.current_solutions + population
         self.current_solutions = population
 
         # Merged rather than assigned: _warmup() runs first and may already hold a
@@ -328,13 +414,28 @@ class Metaheuristic(ABC):
 
         return population, best_individual
 
-    def _warmup(self) -> None:
+    def _initial_population(self) -> List[Solution]:
+        """The initial solutions given to the constructor, built and evaluated."""
+        given = []
+        for values in self.initial_solutions:
+            solution = solution_class(self.domain)(self.domain, connector=self.domain.get_connector())
+            for name, value in values.items():
+                solution.set(name, value)
+            solution.evaluate(self.fitness_function)
+            given.append(solution)
+        return given
+
+    def _warmup(self, limit_reached: Optional[Callable[[], Optional[str]]] = None) -> None:
         """
         Executes the warmup phase before the main optimization loop.
 
         Generates `warmup_iterations` random solutions and updates the best solution found.
         This step ensures a good initial exploration of the search space before starting
         the main optimization process.
+
+        :param limit_reached: Called after each round; the warmup ends early once it returns
+            a reason, so that a budget smaller than the warmup is not exceeded by all of it.
+        :type limit_reached: Callable[[], Optional[str]], optional
         """
         if self.warmup_iterations > 0:
             metagen_logger.info(f"Starting warmup phase with {self.warmup_iterations} iterations.")
@@ -346,20 +447,26 @@ class Metaheuristic(ABC):
                     metagen_logger.debug(
                         f'[WARMUP {warmup_step + 1}/{self.warmup_iterations}] Distributed warmup step.'
                     )
-                    _, best_candidate = distributed_random_exploration(self.domain, self.fitness_function,
+                    explored, best_candidate = distributed_random_exploration(self.domain, self.fitness_function,
                                                                        self.population_size)
                 else:
                     metagen_logger.debug(
                         f'[WARMUP {warmup_step + 1}/{self.warmup_iterations}] Warmup step.'
                     )
-                    _, best_candidate = random_exploration(self.domain, self.fitness_function, self.population_size)
+                    explored, best_candidate = random_exploration(self.domain, self.fitness_function, self.population_size)
 
-                # Store only the best solution found in each warmup iteration
-                self.current_solutions.append(deepcopy(best_candidate))
+                # Every solution for an algorithm that keeps the warmup, the best one otherwise.
+                if self.keeps_warmup:
+                    self.current_solutions.extend(explored)
+                else:
+                    self.current_solutions.append(deepcopy(best_candidate))
 
                 # Update the global best solution
                 if self.best_solution is None or best_candidate.get_fitness() < self.best_solution.get_fitness():
                     self.best_solution = deepcopy(best_candidate)
+
+                if limit_reached is not None and limit_reached() is not None:
+                    break
 
 
             metagen_logger.info(f"Warmup phase completed. Proceeding to optimization.")
@@ -371,6 +478,13 @@ class Metaheuristic(ABC):
         :return: A tuple containing the population and the best individual.
         :rtype: Tuple[List[Solution], Solution]
         """
+        if self.racing is not None and isinstance(self.fitness_function, CountingFitness):
+            # The candidates of this iteration race against the population it starts from.
+            step_count = self.fitness_function.step_count
+            self.fitness_function.references = [
+                getattr(solution, "step_values") for solution in self.current_solutions
+                if not getattr(solution, "raced_out", False)
+                and len(getattr(solution, "step_values", ())) == step_count]
         if self.distributed:
             if not IS_RAY_INSTALLED:
                     raise ImportError("Ray must be installed to use distributed initialization")
@@ -379,6 +493,11 @@ class Metaheuristic(ABC):
             population, best_individual = self.iterate(self.current_solutions)
 
         self.current_solutions = population
+
+        # A candidate stopped by the race has an estimated fitness: never the best of the run.
+        if getattr(best_individual, "raced_out", False):
+            whole = [solution for solution in population if not getattr(solution, "raced_out", False)]
+            best_individual = min(whole, key=Solution.get_fitness) if whole else self._best_so_far()
 
         # Merged, not assigned, the same way _initialize does since F-03. Assigning
         # made elitism the responsibility of each subclass: one that returns the best
@@ -509,6 +628,7 @@ class Metaheuristic(ABC):
             :py:meth:`request_stop` stopped the run.
         :rtype: Solution
         """
+        self.stop_reason = None
         resuming = self.checkpoint is not None and os.path.exists(self.checkpoint)
         if resuming:
             self._restore(self._read_checkpoint(cast(str, self.checkpoint)))
@@ -523,14 +643,23 @@ class Metaheuristic(ABC):
         else:
             self.history = []
             self._evaluations = 0
+            self._steps = 0
             self._seconds = 0.0
             if self.history_file is not None and os.path.exists(self.history_file):
                 os.remove(self.history_file)
         # Counted on the driver: the history's evaluations, from where a resumed run
         # left them.
-        counted = _CountingFitness(self.fitness_function)
+        counted = CountingFitness(self.fitness_function, racing=self.racing, step_count=self._step_count)
         self.fitness_function = counted
         evaluations_before, seconds_before, started = self._evaluations, self._seconds, time.perf_counter()
+        steps_before = self._steps
+
+        def account() -> Optional[str]:
+            """Bring what the run has spent up to date, and say which limit it reached."""
+            self._evaluations = evaluations_before + counted.calls
+            self._steps, self._step_count = steps_before + counted.steps, counted.step_count
+            self._seconds = seconds_before + time.perf_counter() - started
+            return self._limit_reached()
 
         # Remembered so that only the run() that started Ray stops it. Shutting it
         # down unconditionally took the runtime away from a cluster the user had
@@ -544,21 +673,31 @@ class Metaheuristic(ABC):
             if not resuming:
                 self.pre_execution()
 
-                self._warmup()
+                # A budget is also checked between the rounds of the warmup, which can
+                # cost more than a small budget on its own (TPE's defaults are 200
+                # evaluations); the initial population is always evaluated whole.
+                self._warmup(account)
 
                 self._initialize()
 
                 self.current_iteration = 0
+                account()
 
-            while not self.stopping_criterion():
+            while True:
+                # Checked between iterations only, where the state is consistent: the
+                # same point the checkpoint is saved at, so a resumed run stops where
+                # an uninterrupted one would.
+                reason = "criterion" if self.stopping_criterion() else self._limit_reached()
+                if reason is not None:
+                    self.stop_reason = reason
+                    break
                 self.pre_iteration()
 
                 self._iterate()
 
                 self.post_iteration()
 
-                self._evaluations = evaluations_before + counted.calls
-                self._seconds = seconds_before + time.perf_counter() - started
+                account()
                 self._record_history()
 
                 self.current_iteration += 1
@@ -570,6 +709,7 @@ class Metaheuristic(ABC):
                         self._stop_requested or self.current_iteration % self.checkpoint_every == 0):
                     self._write_checkpoint()
                 if self._stop_requested:
+                    self.stop_reason = "request_stop"
                     if self.logger:
                         self.logger.writer.flush()
                     return deepcopy(self._best_so_far())
@@ -587,6 +727,78 @@ class Metaheuristic(ABC):
 
         return deepcopy(self._best_so_far())
 
+    def _iterations(self, max_iterations: Optional[int], default: int,
+                    horizon: Optional[Callable[[int], int]] = None) -> Optional[int]:
+        """
+        The ``max_iterations`` of an algorithm, and the limit of iterations its criterion
+        enforces, kept in ``_iteration_limit``. Given, it is both. Not given, without a
+        budget it is ``default``; with one, there is no limit of iterations. An algorithm
+        that also plans its search over ``max_iterations`` (a cooling or a gamma schedule)
+        passes ``horizon``, which turns ``max_evaluations`` into the iterations it buys:
+        that is its ``max_iterations`` then, and only the budget stops the run. With a
+        ``timeout`` alone it keeps ``default``, as limit and as horizon.
+
+        :param max_iterations: The iterations the user gave, or None.
+        :type max_iterations: int or None
+        :param default: The iterations without a budget.
+        :type default: int
+        :param horizon: The iterations ``max_evaluations`` buys, for an algorithm that plans
+            over its iterations.
+        :type horizon: Callable[[int], int], optional
+        :return: The ``max_iterations`` to keep: the limit, the horizon, or None.
+        :rtype: int or None
+        """
+        if max_iterations is not None or (self.max_evaluations is None and self.timeout is None):
+            chosen = default if max_iterations is None else max_iterations
+            self._iteration_limit = chosen
+            return chosen
+        self._iteration_limit = None
+        if horizon is None:
+            return None
+        if self.max_evaluations is None:
+            self._iteration_limit = default
+            return default
+        return max(1, horizon(self.max_evaluations))
+
+    def _iterations_done(self) -> bool:
+        """Whether the run has made the iterations its criterion allows."""
+        return self._iteration_limit is not None and self.current_iteration >= self._iteration_limit
+
+    def _limit_reached(self) -> Optional[str]:
+        """The budget the run has spent, ``"max_evaluations"`` or ``"timeout"``, or None."""
+        if self.max_evaluations is not None and self._spent() >= self.max_evaluations:
+            return "max_evaluations"
+        if self.timeout is not None and self._seconds >= self.timeout:
+            return "timeout"
+        return None
+
+    def _spent(self) -> float:
+        """The evaluations a budget counts: whole ones, or steps over the steps of one for a
+        fitness function that yields them, so that a candidate stopped early spends less."""
+        if self._step_count:
+            return self._steps / self._step_count
+        return self._evaluations
+
+    @property
+    def evaluations(self) -> int:
+        """
+        The evaluations of the fitness the last run made, warmup included.
+
+        :return: The count.
+        :rtype: int
+        """
+        return self._evaluations
+
+    @property
+    def seconds(self) -> float:
+        """
+        The seconds the last run lasted.
+
+        :return: The seconds.
+        :rtype: float
+        """
+        return self._seconds
+
     def _record_history(self) -> None:
         """
         Add the record of the iteration just completed to ``history``, and to the
@@ -597,7 +809,8 @@ class Metaheuristic(ABC):
         best = self._best_so_far()
         record = {
             "iteration": self.current_iteration,
-            "evaluations": None if self.distributed else self._evaluations,
+            "evaluations": self._evaluations,
+            **({"steps": self._steps} if self._step_count else {}),
             "seconds": self._seconds,
             "best": best.get_fitness(),
             "iteration_best": min(finite) if finite else None,

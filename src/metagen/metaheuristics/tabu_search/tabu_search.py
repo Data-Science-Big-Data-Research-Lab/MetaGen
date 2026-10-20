@@ -16,10 +16,11 @@
 """
 from collections import deque
 from copy import deepcopy
-from typing import Any, Callable, Deque, List, Optional, Tuple
+from typing import Any, Callable, Deque, List, Optional, Tuple, Mapping, Sequence
 
 from metagen.framework import Domain, RelativeAlteration, Solution
 from metagen.framework.solution.types import Integer, Real
+from metagen.metaheuristics.racing import Racing
 from metagen.metaheuristics.base import Metaheuristic
 from metagen.metaheuristics.tools import solution_class
 
@@ -60,8 +61,8 @@ class TabuSearch(Metaheuristic):
     :param warmup_iterations: Rounds of random exploration before the search, each
         evaluating ``population_size`` solutions, defaults to 5
     :type warmup_iterations: int, optional
-    :param max_iterations: Iterations to run, defaults to 20
-    :type max_iterations: int, optional
+    :param max_iterations: Iterations to run, defaults to 20; with ``max_evaluations`` or ``timeout`` and no value, no limit
+    :type max_iterations: int or None, optional
     :param tabu_size: How many of the latest visited solutions stay tabu, defaults to 10
     :type tabu_size: int, optional
     :param tabu_radius: How close to a visited solution a neighbor has to be, on every
@@ -94,6 +95,18 @@ class TabuSearch(Metaheuristic):
     :param history: File the run writes its history to, one JSON line per iteration;
         None, the default, writes nothing. See :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
     :type history: str or None, optional
+    :param max_evaluations: Stop once the run has evaluated the fitness at least this
+        many times; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type max_evaluations: int or None, optional
+    :param timeout: Stop once the run has lasted at least this many seconds; see
+        :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type timeout: float or None, optional
+    :param initial_solutions: Solutions to start from, each a mapping from variable names to
+        values; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type initial_solutions: Sequence[Mapping[str, Any]] or None, optional
+    :param racing: Stop evaluating a candidate as soon as it is significantly worse than the
+        population; see :py:class:`~metagen.metaheuristics.racing.Racing`.
+    :type racing: Racing or None, optional
     :param seed: Seed for MetaGen's generators, defaults to None
     :type seed: int or None, optional
 
@@ -126,17 +139,20 @@ class TabuSearch(Metaheuristic):
     # itself matters little on those landscapes; HillClimbing scores 96.
 
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
-                 population_size: int = 10, warmup_iterations: int = 5, max_iterations: int = 20,
+                 population_size: int = 10, warmup_iterations: int = 5, max_iterations: Optional[int] = None,
                  tabu_size: int = 10, tabu_radius: Any = RelativeAlteration(0.02),
                  alteration_limit: Any = RelativeAlteration(0.2), distributed: bool = False,
                  log_dir: Optional[str] = None, seed: Optional[int] = None,
                  distribution_model: str = "global",
-                 checkpoint: Optional[str] = None, checkpoint_every: int = 1, history: Optional[str] = None):
+                 checkpoint: Optional[str] = None, checkpoint_every: int = 1, history: Optional[str] = None,
+                 max_evaluations: Optional[int] = None, timeout: Optional[float] = None,
+                 initial_solutions: Optional[Sequence[Mapping[str, Any]]] = None, racing: Optional[Racing] = None):
         super().__init__(domain, fitness_function, population_size, warmup_iterations, distributed, log_dir,
                          seed=seed, distribution_model=distribution_model,
                          checkpoint=checkpoint, checkpoint_every=checkpoint_every,
-                         history=history)
-        self.max_iterations = max_iterations
+                         history=history, max_evaluations=max_evaluations, timeout=timeout,
+                         initial_solutions=initial_solutions, racing=racing)
+        self.max_iterations = self._iterations(max_iterations, 20)
         self.tabu_size = tabu_size
         self.tabu_radius: Any = tabu_radius
         self.alteration_limit: Any = alteration_limit
@@ -214,7 +230,7 @@ class TabuSearch(Metaheuristic):
         return offspring
 
     def stopping_criterion(self) -> bool:
-        return self.current_iteration >= self.max_iterations
+        return self._iterations_done()
 
     def is_tabu(self, solution: Solution) -> bool:
         """

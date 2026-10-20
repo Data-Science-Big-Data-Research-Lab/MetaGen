@@ -131,7 +131,8 @@ def test_one_evaluation_per_iteration_and_the_history_is_never_trimmed():
     search = KernelTPE(_domain(), counting, population_size=6, warmup_iterations=1, max_iterations=9, seed=0)
     search.run()
     assert len(calls) == 6 * 2 + 9
-    assert len(search.current_solutions) == 6 + 9
+    # The warmup's samples are part of it too: every evaluated solution.
+    assert len(search.current_solutions) == len(calls) == 6 * 2 + 9
 
 
 def test_it_finds_the_categorical_and_the_integer_that_matter():

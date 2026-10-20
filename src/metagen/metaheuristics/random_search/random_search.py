@@ -15,9 +15,10 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 from metagen.framework import Domain, Solution
+from metagen.metaheuristics.racing import Racing
 from metagen.metaheuristics.tools import random_exploration
 from metagen.metaheuristics.base import Metaheuristic
-from typing import Optional, List, Tuple, Callable
+from typing import Optional, List, Tuple, Callable, Any, Mapping, Sequence
 from copy import deepcopy
 
 
@@ -35,8 +36,8 @@ class RandomSearch(Metaheuristic):
     :type fitness_function: Callable[[Solution], float]
     :param population_size: The size of the population to maintain, defaults to 10
     :type population_size: int, optional
-    :param max_iterations: The maximum number of iterations to run, defaults to 20
-    :type max_iterations: int, optional
+    :param max_iterations: The maximum number of iterations to run, defaults to 20; with ``max_evaluations`` or ``timeout`` and no value, no limit
+    :type max_iterations: int or None, optional
     :param distributed: Whether to use distributed computation, defaults to False
     :type distributed: bool, optional
     :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
@@ -58,6 +59,18 @@ class RandomSearch(Metaheuristic):
     :param history: File the run writes its history to, one JSON line per iteration;
         None, the default, writes nothing. See :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
     :type history: str or None, optional
+    :param max_evaluations: Stop once the run has evaluated the fitness at least this
+        many times; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type max_evaluations: int or None, optional
+    :param timeout: Stop once the run has lasted at least this many seconds; see
+        :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type timeout: float or None, optional
+    :param initial_solutions: Solutions to start from, each a mapping from variable names to
+        values; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type initial_solutions: Sequence[Mapping[str, Any]] or None, optional
+    :param racing: Stop evaluating a candidate as soon as it is significantly worse than the
+        population; see :py:class:`~metagen.metaheuristics.racing.Racing`.
+    :type racing: Racing or None, optional
 
     :ivar max_iterations: Maximum number of iterations to run
     :vartype max_iterations: int
@@ -78,8 +91,10 @@ class RandomSearch(Metaheuristic):
         search = RandomSearch(domain, fitness_function, population_size=50, max_iterations=100)
         optimal_solution = search.run()
     """
-    def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float], population_size = 10, max_iterations: int = 20, distributed = False, log_dir: Optional[str] = None, seed: Optional[int] = None, distribution_model: str = "global",
-                 checkpoint: Optional[str] = None, checkpoint_every: int = 1, history: Optional[str] = None) -> None:
+    def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float], population_size = 10, max_iterations: Optional[int] = None, distributed = False, log_dir: Optional[str] = None, seed: Optional[int] = None, distribution_model: str = "global",
+                 checkpoint: Optional[str] = None, checkpoint_every: int = 1, history: Optional[str] = None,
+                 max_evaluations: Optional[int] = None, timeout: Optional[float] = None,
+                 initial_solutions: Optional[Sequence[Mapping[str, Any]]] = None, racing: Optional[Racing] = None) -> None:
         """
         Initialize the RandomSearch algorithm.
 
@@ -89,8 +104,8 @@ class RandomSearch(Metaheuristic):
         :type fitness_function: Callable[[Solution], float]
         :param population_size: The size of the population to maintain, defaults to 10
         :type population_size: int, optional
-        :param max_iterations: The maximum number of iterations to run, defaults to 20
-        :type max_iterations: int, optional
+        :param max_iterations: The maximum number of iterations to run, defaults to 20; with ``max_evaluations`` or ``timeout`` and no value, no limit
+        :type max_iterations: int or None, optional
         :param distributed: Whether to use distributed computation, defaults to False
         :type distributed: bool, optional
         :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
@@ -99,8 +114,9 @@ class RandomSearch(Metaheuristic):
         super().__init__(domain, fitness_function, population_size, distributed=distributed, log_dir=log_dir, seed=seed,
                          distribution_model=distribution_model,
                          checkpoint=checkpoint, checkpoint_every=checkpoint_every,
-                         history=history)
-        self.max_iterations = max_iterations
+                         history=history, max_evaluations=max_evaluations, timeout=timeout,
+                         initial_solutions=initial_solutions, racing=racing)
+        self.max_iterations = self._iterations(max_iterations, 20)
 
     def initialize(self, num_solutions=10) -> Tuple[List[Solution], Solution]:
         """
@@ -155,4 +171,4 @@ class RandomSearch(Metaheuristic):
         :return: True if the maximum number of iterations is reached, False otherwise
         :rtype: bool
         """
-        return self.current_iteration >= self.max_iterations
+        return self._iterations_done()

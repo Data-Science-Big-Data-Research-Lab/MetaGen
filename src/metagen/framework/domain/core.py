@@ -88,6 +88,9 @@ class IntegerDefinition(Base):
     :type max_value: int
     :param step: The step value for the integer type. Defaults to None if not provided.
     :type step: int or None
+    :param log: Whether to search the integer on a logarithmic scale, defaults to False; it
+        needs a positive minimum and no step.
+    :type log: bool
 
     :raises ValueError: If the `min_value`, `max_value` or `step` values do not meet the integer range requirements.
 
@@ -99,7 +102,7 @@ class IntegerDefinition(Base):
     :rtype: IntegerDefinition
     """
 
-    def __init__(self, min_value: int, max_value: int, step: int | None = None):
+    def __init__(self, min_value: int, max_value: int, step: int | None = None, log: bool = False):
         """
         Initializes an instance of the IntegerDefinition class with the provided minimum, maximum and step values.
 
@@ -109,14 +112,30 @@ class IntegerDefinition(Base):
         :type max_value: int
         :param step: The step value for the integer type. Defaults to None if not provided.
         :type step: int or None
+        :param log: Whether to search the integer on a logarithmic scale, defaults to False.
+        :type log: bool
 
         :raises ValueError: If the `min_value`, `max_value` or `step` values do not meet the integer range requirements.
         """
         Preconditions.Integer.range(min_value, max_value, step)
+        Preconditions.log_scale(min_value, step, log)
         Base.__init__(self, I)
         self.__min_value: int = min_value
         self.__max_value: int = max_value
         self.__step: int | None = step
+        self.__log: bool = bool(log)
+
+    @property
+    def log(self) -> bool:
+        """
+        Whether the variable is searched on a logarithmic scale: drawn, mutated, crossed
+        and modeled on the logarithm of its value, so that each order of magnitude of
+        the range weighs the same.
+
+        :return: True on a logarithmic scale.
+        :rtype: bool
+        """
+        return self.__log
 
     def get_attributes(self) -> IntAttr:
         """
@@ -158,7 +177,7 @@ class IntegerDefinition(Base):
         """
         return "[" + super().get_type() + "] " + "{Minimum = " + str(self.__min_value) + \
             ", Maximum = " + str(self.__max_value) + \
-            ", Step = " + str(self.__step) + "}"
+            ", Step = " + str(self.__step) + (", Log" if self.__log else "") + "}"
 
 
 class RealDefinition(Base):
@@ -171,6 +190,9 @@ class RealDefinition(Base):
     :type max_value: float
     :param step: The step value for the real number type. Defaults to None if not provided.
     :type step: float or None
+    :param log: Whether to search the real on a logarithmic scale, defaults to False; it
+        needs a positive minimum and no step.
+    :type log: bool
 
     :raises ValueError: If the `min_value`, `max_value` or `step` values do not meet the real number range requirements.
 
@@ -182,7 +204,7 @@ class RealDefinition(Base):
     :rtype: RealDefinition
     """
 
-    def __init__(self, min_value: float, max_value: float, step: float | None = None):
+    def __init__(self, min_value: float, max_value: float, step: float | None = None, log: bool = False):
         """
         Initializes an instance of the RealDefinition class with the provided minimum, maximum and step values.
 
@@ -192,14 +214,30 @@ class RealDefinition(Base):
         :type max_value: float
         :param step: The step value for the real number type. Defaults to None if not provided.
         :type step: float or None
+        :param log: Whether to search the real on a logarithmic scale, defaults to False.
+        :type log: bool
 
         :raises ValueError: If the `min_value`, `max_value` or `step` values do not meet the real number range requirements.
         """
         Preconditions.Real.range(min_value, max_value, step)
+        Preconditions.log_scale(min_value, step, log)
         Base.__init__(self, R)
         self.__min_value: float = min_value
         self.__max_value: float = max_value
         self.__step: float | None = step
+        self.__log: bool = bool(log)
+
+    @property
+    def log(self) -> bool:
+        """
+        Whether the variable is searched on a logarithmic scale: drawn, mutated, crossed
+        and modeled on the logarithm of its value, so that each order of magnitude of
+        the range weighs the same.
+
+        :return: True on a logarithmic scale.
+        :rtype: bool
+        """
+        return self.__log
 
     def get_attributes(self) -> RealAttr:
         """
@@ -241,7 +279,7 @@ class RealDefinition(Base):
         """
         return "[" + super().get_type() + "] " + "{Minimum = " + str(self.__min_value) + \
             ", Maximum = " + str(self.__max_value) + \
-            ", Step = " + str(self.__step) + "}"
+            ", Step = " + str(self.__step) + (", Log" if self.__log else "") + "}"
 
 
 class CategoricalDefinition(Base):

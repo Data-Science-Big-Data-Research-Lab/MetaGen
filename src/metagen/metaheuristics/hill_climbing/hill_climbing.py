@@ -1,8 +1,9 @@
 from collections import deque
 from metagen.framework import Domain, RelativeAlteration, Solution
 from collections.abc import Callable
-from typing import Any, List, Tuple, Deque, Optional
+from typing import Any, List, Tuple, Deque, Optional, Mapping, Sequence
 
+from metagen.metaheuristics.racing import Racing
 from metagen.metaheuristics.tools import local_search_with_tabu, solution_class
 from metagen.metaheuristics.base import Metaheuristic
 from copy import deepcopy
@@ -67,6 +68,18 @@ class HillClimbing(Metaheuristic):
     :param history: File the run writes its history to, one JSON line per iteration;
         None, the default, writes nothing. See :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
     :type history: str or None, optional
+    :param max_evaluations: Stop once the run has evaluated the fitness at least this
+        many times; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type max_evaluations: int or None, optional
+    :param timeout: Stop once the run has lasted at least this many seconds; see
+        :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type timeout: float or None, optional
+    :param initial_solutions: Solutions to start from, each a mapping from variable names to
+        values; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type initial_solutions: Sequence[Mapping[str, Any]] or None, optional
+    :param racing: Stop evaluating a candidate as soon as it is significantly worse than the
+        population; see :py:class:`~metagen.metaheuristics.racing.Racing`.
+    :type racing: Racing or None, optional
 
     :ivar max_iterations: Maximum number of iterations to run
     :vartype max_iterations: int
@@ -100,11 +113,13 @@ class HillClimbing(Metaheuristic):
 
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
                  population_size: int = 10, warmup_iterations:int = 5,
-                 max_iterations: int = 20, tabu_size: int = 5,
+                 max_iterations: Optional[int] = None, tabu_size: int = 5,
                  alteration_limit: Any = RelativeAlteration(0.2),
                  gamma_config: Optional[GammaConfig] = None, distributed=False, log_dir: Optional[str] = None,
                  seed: Optional[int] = None, distribution_model: str = "global",
-                 checkpoint: Optional[str] = None, checkpoint_every: int = 1, history: Optional[str] = None):
+                 checkpoint: Optional[str] = None, checkpoint_every: int = 1, history: Optional[str] = None,
+                 max_evaluations: Optional[int] = None, timeout: Optional[float] = None,
+                 initial_solutions: Optional[Sequence[Mapping[str, Any]]] = None, racing: Optional[Racing] = None):
         """
         Initialize the hill climbing algorithm.
 
@@ -114,8 +129,11 @@ class HillClimbing(Metaheuristic):
         :type fitness_function: Callable[[Solution], float]
         :param population_size: Size of the population (neighborhood) to maintain, defaults to 10
         :type population_size: int, optional
-        :param max_iterations: Maximum number of iterations to run, defaults to 20
-        :type max_iterations: int, optional
+        :param max_iterations: Maximum number of iterations to run, defaults to 20. With
+            ``max_evaluations`` or ``timeout`` and no value, no limit; with a
+            ``gamma_config``, whose schedule spans ``max_iterations``, the iterations
+            ``max_evaluations`` buys, and 20 with ``timeout`` alone
+        :type max_iterations: int or None, optional
         :param tabu_size: Maximum size of the tabu list, defaults to 5
         :type tabu_size: int, optional
         :param alteration_limit: How far a neighbor may move from the current solution,
@@ -129,8 +147,17 @@ class HillClimbing(Metaheuristic):
         super().__init__(domain, fitness_function, population_size, warmup_iterations, distributed, log_dir, seed=seed,
                          distribution_model=distribution_model,
                          checkpoint=checkpoint, checkpoint_every=checkpoint_every,
-                         history=history)
-        self.max_iterations = max_iterations
+                         history=history, max_evaluations=max_evaluations, timeout=timeout,
+                         initial_solutions=initial_solutions, racing=racing)
+        # Only a gamma schedule plans over max_iterations: then a budget of evaluations
+        # becomes the iterations it buys, each costing the share of the neighbors the
+        # schedule gives it.
+        start = population_size * (warmup_iterations + 1)
+        horizon: Optional[Callable[[int], int]] = None
+        if gamma_config is not None:
+            schedule = gamma_config
+            horizon = lambda budget: _gamma_horizon(schedule, population_size, budget - start)  # noqa: E731
+        self.max_iterations = self._iterations(max_iterations, 20, horizon=horizon)
         self.tabu_size = tabu_size
         self.tabu_list:Deque[Solution] = deque(maxlen=tabu_size)
         self.alteration_limit: Any = alteration_limit
@@ -169,12 +196,15 @@ class HillClimbing(Metaheuristic):
         :return: A tuple containing the new neighborhood solutions and the best solution found
         :rtype: Tuple[List[Solution], Solution]
         """
-        # The neighborhood is the whole population, or the share of it a gamma schedule gives.
+        # The neighborhood is the whole population, or the share of population_size a gamma
+        # schedule gives, split among the slices of a distributed run. The share used to be
+        # taken of `solutions`, which is the previous neighborhood: it shrank every iteration
+        # down to a single neighbor (F-54).
 
         if self.gamma_config:
             gamma = compute_gamma(self.gamma_config, iteration=self.current_iteration,
-                                  max_iterations=self.max_iterations, num_solutions=max(1, len(solutions)))
-            l = max(1, round(gamma * len(solutions)))  # at least one neighbor
+                                  max_iterations=self.max_iterations, num_solutions=self.population_size)
+            l = max(1, round(gamma * self.population_size / self.distributed_slices))  # at least one neighbor
         else:
             l = max(1, len(solutions))  # at least one neighbor
 
@@ -220,4 +250,35 @@ class HillClimbing(Metaheuristic):
         :return: True if the maximum number of iterations is reached, False otherwise
         :rtype: bool
         """
-        return self.current_iteration >= self.max_iterations
+        return self._iterations_done()
+
+
+def _gamma_horizon(gamma_config: GammaConfig, population_size: int, evaluations: int) -> int:
+    """
+    The fewest iterations whose neighbors add up to ``evaluations``, under a gamma
+    schedule planned over those same iterations: each iteration evaluates the share of
+    ``population_size`` the schedule gives, at least one.
+
+    :param gamma_config: The gamma schedule.
+    :type gamma_config: GammaConfig
+    :param population_size: The neighbors of a whole iteration.
+    :type population_size: int
+    :param evaluations: The evaluations to fill.
+    :type evaluations: int
+    :return: The iterations, at least 1.
+    :rtype: int
+    """
+    def cost(horizon: int) -> int:
+        return sum(max(1, round(compute_gamma(gamma_config, iteration=iteration, max_iterations=horizon,
+                                              num_solutions=population_size) * population_size))
+                   for iteration in range(horizon))
+
+    # Every iteration costs at least one evaluation, so the answer is at most evaluations.
+    low, high = 1, max(1, evaluations)
+    while low < high:
+        middle = (low + high) // 2
+        if cost(middle) >= evaluations:
+            high = middle
+        else:
+            low = middle + 1
+    return low

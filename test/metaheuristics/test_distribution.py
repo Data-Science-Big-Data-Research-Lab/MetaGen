@@ -226,12 +226,27 @@ def test_a_distributed_run_resumes_from_its_checkpoint(ray_runtime, tmp_path, mo
     assert (resumed.run().get_fitness(), resumed.best_solution_fitnesses) == reference
 
 
-def test_a_distributed_history_does_not_count_the_evaluations_of_the_workers(ray_runtime):
-    algorithm = GA(_sphere_domain(GAConnector()), _sphere_for_the_workers(), population_size=8,
-                   max_iterations=3, distributed=True, seed=4)
-    algorithm.run()
-    assert [record["iteration"] for record in algorithm.history] == [0, 1, 2]
-    assert all(record["evaluations"] is None for record in algorithm.history)
+@pytest.mark.parametrize("algorithm", [RandomSearch, GA, Memetic, TPE], ids=lambda algorithm: algorithm.__name__)
+def test_a_distributed_run_counts_the_evaluations_of_the_workers(ray_runtime, tmp_path, algorithm):
+    path = tmp_path / "calls.txt"
+    connector = GAConnector() if algorithm in (GA, Memetic) else None
+    extra = {"distribution_level": 2} if algorithm is Memetic else {}
+    run = algorithm(_sphere_domain(connector), _counting_sphere(path), population_size=8, max_iterations=3,
+                    distributed=True, seed=4, **extra)
+    run.run()
+    assert [record["iteration"] for record in run.history] == [0, 1, 2]
+    assert run.evaluations == run.history[-1]["evaluations"] == _evaluations(path)
+
+
+def test_a_distributed_run_stops_within_one_iteration_of_its_evaluations(ray_runtime, tmp_path):
+    path = tmp_path / "calls.txt"
+    run = GA(_sphere_domain(GAConnector()), _counting_sphere(path), population_size=8, max_iterations=10_000,
+             max_evaluations=60, distributed=True, seed=4)
+    run.run()
+    counts = [0] + [record["evaluations"] for record in run.history]
+    step = max(later - earlier for earlier, later in zip(counts, counts[1:]))
+    assert run.stop_reason == "max_evaluations"
+    assert 60 <= run.evaluations == _evaluations(path) < 60 + step
 
 
 def _new_features_objective_for_the_workers():
@@ -282,3 +297,54 @@ def test_the_new_variable_kinds_run_distributed_and_resume(ray_runtime, algorith
     monkeypatch.undo()
     resumed = algorithm_class.resume(path, objective)
     assert (resumed.run().get_fitness(), resumed.best_solution_fitnesses) == reference
+
+
+def test_a_distributed_hill_climbing_splits_its_gamma_neighborhood_among_the_slices(ray_runtime, tmp_path):
+    from metagen.metaheuristics.gamma_schedules import GammaConfig, compute_gamma
+
+    path = tmp_path / "calls.txt"
+    schedule = GammaConfig(gamma_function="linear", minimum=0.5, maximum=0.8)
+    run = HillClimbing(_sphere_domain(), _counting_sphere(path), population_size=10, warmup_iterations=0,
+                       max_iterations=6, gamma_config=schedule, distributed=True, seed=0)
+    run.run()
+    counts = [10] + [record["evaluations"] for record in run.history]
+    for iteration, (before, after) in enumerate(zip(counts, counts[1:])):
+        wanted = round(compute_gamma(schedule, iteration=iteration, max_iterations=6, num_solutions=10) * 10)
+        assert abs((after - before) - wanted) <= run.distributed_slices
+    assert run.evaluations == _evaluations(path)
+
+
+def test_a_distributed_run_starts_from_its_initial_solutions_at_the_same_cost(ray_runtime, tmp_path):
+    def run(name, initial):
+        path = tmp_path / f"{name}.txt"
+        algorithm = GA(_sphere_domain(GAConnector()), _counting_sphere(path), population_size=8, max_iterations=2,
+                       distributed=True, seed=4, initial_solutions=initial)
+        best = algorithm.run()
+        return best, _evaluations(path)
+
+    _, without = run("without", None)
+    best, given = run("given", [{"x": 0.0, "y": 0.0}])
+    assert given == without
+    assert best.get_fitness() == 0.0
+
+
+def _yielding_sphere_for_the_workers():
+    def folds(solution):
+        base = solution["x"] ** 2 + solution["y"] ** 2
+        for fold in range(10):
+            yield base + 0.1 * fold
+    return folds
+
+
+def test_a_distributed_run_races_its_candidates_and_counts_their_steps(ray_runtime):
+    from metagen.metaheuristics import Racing
+
+    plain = RandomSearch(_sphere_domain(), _yielding_sphere_for_the_workers(), population_size=10, max_iterations=4,
+                         distributed=True, seed=4)
+    plain.run()
+    raced = RandomSearch(_sphere_domain(), _yielding_sphere_for_the_workers(), population_size=10, max_iterations=4,
+                         distributed=True, seed=4, racing=Racing())
+    best = raced.run()
+    assert plain.history[-1]["steps"] == 10 * plain.evaluations
+    assert raced.history[-1]["steps"] < plain.history[-1]["steps"]
+    assert best.raced_out is False

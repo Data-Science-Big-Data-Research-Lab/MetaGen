@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
+import math
 from copy import deepcopy
 from typing import Any, Protocol, Tuple, List, cast
 
@@ -106,6 +107,16 @@ class GAReal(types.Real):
         # (P-11). types.Real has the same three errors and no cast, for now.
         definition = cast(RealDefinition, self.get_definition())
         _, min_value, max_value, step = definition.get_attributes()
+        if definition.log:
+            # On a logarithmic scale the parents are blended on their logarithms.
+            left, right = blend_interval(math.log(self.get()), math.log(other.get()),
+                                         math.log(min_value), math.log(max_value))
+            log_children = []
+            for _ in range(2):
+                child = GAReal(definition, connector=self.connector)
+                child.set(min(max(math.exp(get_rng().uniform(left, right)), min_value), max_value))
+                log_children.append(child)
+            return log_children[0], log_children[1]
         left, right = blend_interval(self.get(), other.get(), min_value, max_value)
 
         children = []
@@ -141,6 +152,15 @@ class GAInteger(types.Integer):
         """
         definition = cast(IntegerDefinition, self.get_definition())
         _, min_value, max_value, step = definition.get_attributes()
+        if definition.log:
+            left, right = blend_interval(math.log(self.get()), math.log(other.get()),
+                                         math.log(min_value), math.log(max_value))
+            log_children = []
+            for _ in range(2):
+                child = GAInteger(definition, connector=self.connector)
+                child.set(min(max(int(round(math.exp(get_rng().uniform(left, right)))), min_value), max_value))
+                log_children.append(child)
+            return log_children[0], log_children[1]
         left, right = blend_interval(self.get(), other.get(), min_value, max_value)
 
         children = []

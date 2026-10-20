@@ -53,6 +53,96 @@ Which one to use
 
 **The warmup is part of the budget.** Several metaheuristics sample the domain at random for a few rounds before the search starts, and those evaluations cost the same as any other: with its defaults ``HillClimbing`` spends ``population_size × (warmup_iterations + 1)`` evaluations before its first iteration, and ``TPE`` spends 220. When the fitness function takes seconds or minutes, check that figure first and lower ``warmup_iterations`` or ``population_size`` if needed.
 
+
+Setting a budget
+----------------
+
+Every metaheuristic but CVOA also takes ``max_evaluations``, the evaluations of the fitness function a run may make, warmup included, and ``timeout``, the seconds it may last. Without ``max_iterations``, a budget is what stops the run: the limit of iterations is lifted, and |sa|, |tpe|, |kernel_tpe| and a |hc| with a ``gamma_config``, which plan their search over ``max_iterations`` (the cooling schedule, the gamma schedule), take as ``max_iterations`` the iterations that ``max_evaluations`` buys; with ``timeout`` alone they keep their default. Given ``max_iterations`` and a limit, the run stops at whichever comes first. The limits are checked between the rounds of the warmup and between iterations, never in the middle of one, so a run goes past them by at most one of those steps: a round of the warmup, the initial population, which is always evaluated whole, or one iteration, that is one evaluation for |kernel_tpe| and a whole population for a genetic algorithm or |rs|. ``evaluations`` and ``seconds`` say what the run spent, and ``stop_reason`` what stopped it: ``"criterion"``, ``"max_evaluations"``, ``"timeout"`` or ``"request_stop"``.
+
+.. code-block:: python
+
+    from metagen.framework import Domain
+    from metagen.metaheuristics import KernelTPE, RandomSearch
+
+    domain = Domain()
+    domain.define_real("x", -5.0, 5.0)
+    domain.define_integer("n", 1, 100)
+
+    def fitness(solution):
+        return (solution["x"] - 1.0) ** 2 + abs(solution["n"] - 42) / 10
+
+    search = KernelTPE(domain, fitness, population_size=10, warmup_iterations=0, max_evaluations=100, seed=0)
+    search.run()
+    print(search.evaluations, search.stop_reason)   # 100 max_evaluations
+    print(search.max_iterations)                     # 90: the evaluations left after the 10 initial ones
+
+    # A random search evaluates 29 individuals per iteration: it stops past the limit.
+    search = RandomSearch(domain, fitness, population_size=30, max_evaluations=100, seed=0)
+    search.run()
+    print(search.evaluations, search.stop_reason)   # 117 max_evaluations
+
+A run resumed from a checkpoint (see :doc:`../pausing_and_resuming/index`) carries on with what it had spent, so it stops where an uninterrupted run would. In a distributed run the evaluations of the workers count too.
+
+
+Stopping bad evaluations early: racing
+--------------------------------------
+
+When evaluating a solution takes steps, such as the folds of a cross-validation, a fitness function can **yield** the value of each step instead of returning one number: its value is then the mean of its steps, all of them in the same order for every solution. With ``racing=Racing()`` a candidate stops as soon as it is significantly worse than the population its iteration started from, as F-race and irace do (Birattari et al., 2002; López-Ibáñez et al., 2016): after each step from ``first_steps`` on (3 by default), a Friedman test over the candidate and the population, followed by Conover's comparison against the best of them, decides at level ``alpha`` (0.05 by default) whether it gets more steps. The initial population is evaluated whole.
+
+.. code-block:: python
+
+    from sklearn.datasets import load_breast_cancer
+    from sklearn.model_selection import StratifiedKFold
+    from sklearn.tree import DecisionTreeClassifier
+
+    from metagen.framework import Domain
+    from metagen.metaheuristics import Racing, RandomSearch
+
+    X, y = load_breast_cancer(return_X_y=True)
+    folds = list(StratifiedKFold(10, shuffle=True, random_state=0).split(X, y))
+
+    domain = Domain()
+    domain.define_integer("max_depth", 1, 20)
+    domain.define_integer("min_samples_leaf", 1, 60)
+
+    def fitness(solution):
+        for train, test in folds:                       # one error rate per fold
+            model = DecisionTreeClassifier(max_depth=solution["max_depth"],
+                                           min_samples_leaf=solution["min_samples_leaf"],
+                                           random_state=0).fit(X[train], y[train])
+            yield 1.0 - model.score(X[test], y[test])
+
+    search = RandomSearch(domain, fitness, population_size=20, max_iterations=5, racing=Racing(), seed=0)
+    best = search.run()
+    print(search.evaluations, search.history[-1]["steps"])   # 115 817: 817 folds of the 1150 of evaluating every candidate whole
+    print(round(best.get_fitness(), 4), best.raced_out)        # 0.0633 False
+
+A candidate stopped early is marked with ``raced_out`` and is never the best solution of a run; its fitness is its mean over the steps it took, corrected by how the mean of the population changes from those steps to all of them. Every solution keeps its values per step in ``step_values``, and the history records the steps taken. With racing, ``max_evaluations`` counts the steps: a candidate stopped after 3 of 10 spends 0.3 of an evaluation.
+
+Starting from known solutions
+-----------------------------
+
+``initial_solutions`` starts a run from solutions known beforehand, such as the configuration of an earlier study or the defaults of a library: each a mapping from variable names to values, with any variable left out drawn at random. They take the place of as many solutions of the initial population, so the cost of the run does not change, and they count as any other: the best of the run may be one of them. A metaheuristic takes at most ``population_size`` of them, and a value that does not fit the domain raises an error when the metaheuristic is built.
+
+.. code-block:: python
+
+    from metagen.framework import Domain
+    from metagen.metaheuristics import KernelTPE
+
+    domain = Domain()
+    domain.define_real("x", -5.0, 5.0)
+    domain.define_integer("n", 1, 100)
+
+    def fitness(solution):
+        return (solution["x"] - 1.0) ** 2 + abs(solution["n"] - 42) / 10
+
+    known = [{"x": 1.0, "n": 40}, {"n": 45}]           # x of the second one is drawn
+    search = KernelTPE(domain, fitness, population_size=10, max_evaluations=100,
+                       initial_solutions=known, seed=0)
+    search.run()
+    print(search.best_solution_fitnesses[0])   # 0.2: the first known solution is the best to start from
+    print(search.evaluations)                  # 100
+
 Running CVOA
 ------------
 

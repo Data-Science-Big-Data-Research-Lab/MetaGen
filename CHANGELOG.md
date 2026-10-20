@@ -1,5 +1,47 @@
 # Changelog
 
+## 1.3.0
+
+MetaGen 1.3.0 adds a budget of evaluations or seconds to every run, racing to stop the
+evaluation of candidates worse than the population, a logarithmic scale for integers and
+reals, and starting a run from known solutions.
+
+### New
+
+- **A budget for any run**: every metaheuristic but CVOA takes `max_evaluations`, the
+  evaluations of the fitness function a run may make, warmup included, and `timeout`, the
+  seconds it may last. Without `max_iterations`, a budget is what stops the run, and the
+  metaheuristics that plan over their iterations (SA, TPE, KernelTPE, and HillClimbing with
+  a gamma schedule) plan over the iterations `max_evaluations` buys; with both, the first
+  reached stops it. The limits are checked between the rounds of the warmup and between
+  iterations, so a run goes past one by at most a round of the warmup, the initial
+  population or one iteration.
+  `evaluations`, `seconds` and `stop_reason` say what a run spent and what stopped it, and
+  a run resumed from a checkpoint carries on with what it had spent.
+- **Racing**: a fitness function can yield the value of each of its steps, such as the folds
+  of a cross-validation, and with `racing=Racing()` every metaheuristic but CVOA stops
+  evaluating a candidate as soon as a Friedman test, followed by Conover's comparison, finds
+  it significantly worse than the population its iteration started from, as F-race and irace
+  do. A candidate stopped early is marked and is never the best of a run, and
+  `max_evaluations` counts the steps taken.
+- **Logarithmic scale**: `define_real`, `define_integer`, their group variants and
+  `set_structure_to_real` / `set_structure_to_integer` take `log=True` for a variable that
+  spans orders of magnitude. The solution holds the value itself; the metaheuristics draw,
+  mutate, cross and model it on its logarithm. It needs a positive minimum and takes no step.
+- **Starting from known solutions**: every metaheuristic but CVOA takes `initial_solutions`,
+  mappings from variable names to values, with any variable left out drawn at random. They
+  take the place of as many solutions of the initial population, so the cost of a run does
+  not change.
+- **Distributed runs count the evaluations of their workers**: the history of a run on Ray
+  records them, as a sequential run does.
+
+### Changes
+
+- **KernelTPE models on its whole warmup**: every solution its warmup evaluates joins the
+  history its model is built on, so a run with a warmup gives different results.
+- **HillClimbing with a gamma schedule** evaluates, each iteration, the share of
+  `population_size` the schedule gives, split among the slices of a distributed run.
+
 ## 1.2.0
 
 MetaGen 1.2.0 adds subsets to the search spaces: a selection of some of a set of elements,

@@ -3,8 +3,10 @@ from collections import Counter
 
 from scipy.optimize import minimize
 
+from metagen.metaheuristics.racing import Racing
 from metagen.metaheuristics.base import Metaheuristic
-from typing import Callable, List, Tuple, Optional, cast
+import math
+from typing import Callable, List, Tuple, Optional, cast, Any, Mapping, Sequence
 import numpy as np
 from scipy.stats import norm
 from metagen.framework import Domain, Solution
@@ -59,6 +61,18 @@ class TPE(Metaheuristic):
     :param history: File the run writes its history to, one JSON line per iteration;
         None, the default, writes nothing. See :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
     :type history: str or None, optional
+    :param max_evaluations: Stop once the run has evaluated the fitness at least this
+        many times; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type max_evaluations: int or None, optional
+    :param timeout: Stop once the run has lasted at least this many seconds; see
+        :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type timeout: float or None, optional
+    :param initial_solutions: Solutions to start from, each a mapping from variable names to
+        values; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type initial_solutions: Sequence[Mapping[str, Any]] or None, optional
+    :param racing: Stop evaluating a candidate as soon as it is significantly worse than the
+        population; see :py:class:`~metagen.metaheuristics.racing.Racing`.
+    :type racing: Racing or None, optional
 
     :ivar max_iterations: Maximum number of iterations
     :vartype max_iterations: int
@@ -82,12 +96,17 @@ class TPE(Metaheuristic):
         optimal_solution = search.run()
     """
 
+    #: The iterations of a run that sets no budget and no max_iterations.
+    default_max_iterations: int = 50
+
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
-                 max_iterations: int = 50, warmup_iterations:int = 10, candidate_pool_size: int = 24,
+                 max_iterations: Optional[int] = None, warmup_iterations:int = 10, candidate_pool_size: int = 24,
                  gamma_config: Optional[GammaConfig] = None, distributed=False, log_dir: Optional[str] = None,
                  seed: Optional[int] = None, population_size: int = 20,
                  distribution_model: str = "global",
-                 checkpoint: Optional[str] = None, checkpoint_every: int = 1, history: Optional[str] = None) -> None:
+                 checkpoint: Optional[str] = None, checkpoint_every: int = 1, history: Optional[str] = None,
+                 max_evaluations: Optional[int] = None, timeout: Optional[float] = None,
+                 initial_solutions: Optional[Sequence[Mapping[str, Any]]] = None, racing: Optional[Racing] = None) -> None:
         """
         Initialize the TPE algorithm.
 
@@ -101,11 +120,13 @@ class TPE(Metaheuristic):
         :type domain: Domain
         :param fitness_function: Function to evaluate solutions
         :type fitness_function: Callable[[Solution], float]
-        :param max_iterations: Maximum number of iterations to run, defaults to 50
-        :type max_iterations: int, optional
+        :param max_iterations: Maximum number of iterations to run, defaults to 50. With
+            ``max_evaluations`` and no value, the iterations the budget buys after the
+            warmup and the initialization; with ``timeout`` alone, 50
+        :type max_iterations: int or None, optional
         :param warmup_iterations: Rounds of random exploration before the search, each
-            evaluating ``population_size`` solutions; their best seeds the model,
-            defaults to 10
+            evaluating ``population_size`` solutions; their best is kept as the best
+            of the run so far, defaults to 10
         :type warmup_iterations: int, optional
         :param candidate_pool_size: Solutions evaluated per iteration, defaults to 24
         :type candidate_pool_size: int, optional
@@ -122,7 +143,12 @@ class TPE(Metaheuristic):
         """
         # F-47: population_size used to be inherited from the base class and could not
         # be set, and the docstring said it was 10. The warmup pays for itself: on the
-        # behavior bench, 78 wins of 110 with warmup 5, 66 with 2 and 66 with 0.
+        # behavior bench, 78 wins of 110 with warmup 5, 66 with 2 and 66 with 0. It pays
+        # through the best solution it hands on, not through the model, which never sees
+        # its samples (F-53). Letting them into TPE's history was measured and left out:
+        # 234 wins of 330 against random sampling before and after, 30 seeds, worse on
+        # Ackley (p = 0.002), and TPE is the one the published article evaluates.
+        # KernelTPE, which keeps its whole history, does take them in.
         # TPE needs a domain wired to its own connector, which replaces the solution
         # and type classes. Rewiring the one it was given left it modified for good,
         # so comparing several metaheuristics in a loop depended on the order they
@@ -134,9 +160,15 @@ class TPE(Metaheuristic):
                          warmup_iterations=warmup_iterations, distributed=distributed, log_dir=log_dir, seed=seed,
                          distribution_model=distribution_model,
                          checkpoint=checkpoint, checkpoint_every=checkpoint_every,
-                         history=history)
+                         history=history, max_evaluations=max_evaluations, timeout=timeout,
+                         initial_solutions=initial_solutions, racing=racing)
 
-        self.max_iterations = max_iterations
+        # The gamma schedule and the size of the history are planned over max_iterations,
+        # so a budget of evaluations becomes the iterations it buys.
+        start = population_size * (warmup_iterations + 1)
+        self.max_iterations: int = cast(int, self._iterations(
+            max_iterations, self.default_max_iterations,
+            horizon=lambda budget: math.ceil((budget - start) / candidate_pool_size)))
         self.candidate_pool_size = candidate_pool_size
         self.gamma_config = gamma_config if gamma_config else GammaConfig(gamma_function="sampled_based")
 
@@ -268,7 +300,7 @@ class TPE(Metaheuristic):
         :return: True if the maximum number of iterations is reached, False otherwise
         :rtype: bool
         """
-        return self.current_iteration >= self.max_iterations
+        return self._iterations_done()
 
     def post_iteration(self) -> None:
         """Additional processing after each generation"""

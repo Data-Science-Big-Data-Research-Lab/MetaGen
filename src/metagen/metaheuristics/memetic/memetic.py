@@ -1,8 +1,9 @@
 import heapq
 from copy import deepcopy
-from typing import Any, Optional, Callable, Tuple, List, cast
+from typing import Any, Optional, Callable, Tuple, List, cast, Mapping, Sequence
 
 from metagen.framework import Domain, RelativeAlteration, Solution
+from metagen.metaheuristics.racing import Racing
 from metagen.metaheuristics.tools import random_exploration
 from metagen.metaheuristics.base import Metaheuristic
 from metagen.metaheuristics.genetic import GASolution
@@ -29,7 +30,7 @@ class Memetic(Metaheuristic):
     :param domain: The problem domain
     :param fitness_function: The fitness function to optimize
     :param population_size: The population size, defaults to 10
-    :param max_iterations: The maximum number of iterations, defaults to 20
+    :param max_iterations: The maximum number of iterations, defaults to 20; with ``max_evaluations`` or ``timeout`` and no value, no limit
     :param mutation_rate: The mutation rate, defaults to 0.1
     :param tournament_size: How many individuals compete to become a parent, defaults to 2
     :param neighbor_population_size: The size of neighborhood in local search, defaults to 10
@@ -45,7 +46,7 @@ class Memetic(Metaheuristic):
     :type domain: :py:class:`~metagen.framework.Domain`
     :type fitness_function: Callable[[:py:class:`~metagen.framework.Solution`], float]
     :type population_size: int
-    :type max_iterations: int
+    :type max_iterations: int or None
     :type mutation_rate: float
     :type tournament_size: int
     :type neighbor_population_size: int
@@ -70,6 +71,18 @@ class Memetic(Metaheuristic):
     :param history: File the run writes its history to, one JSON line per iteration;
         None, the default, writes nothing. See :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
     :type history: str or None, optional
+    :param max_evaluations: Stop once the run has evaluated the fitness at least this
+        many times; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type max_evaluations: int or None, optional
+    :param timeout: Stop once the run has lasted at least this many seconds; see
+        :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type timeout: float or None, optional
+    :param initial_solutions: Solutions to start from, each a mapping from variable names to
+        values; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type initial_solutions: Sequence[Mapping[str, Any]] or None, optional
+    :param racing: Stop evaluating a candidate as soon as it is significantly worse than the
+        population; see :py:class:`~metagen.metaheuristics.racing.Racing`.
+    :type racing: Racing or None, optional
     :type distribution_level: int
 
     **Code example**
@@ -100,7 +113,7 @@ class Memetic(Metaheuristic):
 
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
                  population_size: int = 10,
-                 max_iterations: int = 20, mutation_rate: float = 0.1,
+                 max_iterations: Optional[int] = None, mutation_rate: float = 0.1,
                  tournament_size: int = 2,
                  neighbor_population_size: int = 10,
                  alteration_limit: Any = RelativeAlteration(0.2),
@@ -108,19 +121,22 @@ class Memetic(Metaheuristic):
                  distribution_level: int = 0, seed: Optional[int] = None,
                  distribution_model: str = "global",
                  checkpoint: Optional[str] = None, checkpoint_every: int = 1, history: Optional[str] = None,
+                 max_evaluations: Optional[int] = None, timeout: Optional[float] = None,
+                 initial_solutions: Optional[Sequence[Mapping[str, Any]]] = None, racing: Optional[Racing] = None,
                  mutation_alteration_limit: Any = None) -> None:
         """Initialize the Memetic Algorithm with the given parameters."""
         super().__init__(domain, fitness_function, population_size=population_size, distributed=distributed, log_dir=log_dir, seed=seed,
                          distribution_model=distribution_model,
                          checkpoint=checkpoint, checkpoint_every=checkpoint_every,
-                         history=history)
+                         history=history, max_evaluations=max_evaluations, timeout=timeout,
+                         initial_solutions=initial_solutions, racing=racing)
 
         # Fails here, with a message that says what to do, instead of dying on
         # the first iteration with AttributeError: no attribute 'crossover' (A-07).
         require_crossover(domain, "Memetic")
 
         self.mutation_rate = mutation_rate
-        self.max_generations = max_iterations
+        self.max_generations = self._iterations(max_iterations, 20)
         self.tournament_size = tournament_size
         self.neighbor_population_size = neighbor_population_size
         self.alteration_limit = alteration_limit
@@ -195,4 +211,4 @@ class Memetic(Metaheuristic):
         :return: True if the stopping criterion is met, False otherwise
         :rtype: bool
         """
-        return self.current_iteration >= self.max_generations
+        return self._iterations_done()
