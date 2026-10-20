@@ -155,8 +155,9 @@ class Metaheuristic(ABC):
 
     The run stops at whichever comes first: the algorithm's own stopping criterion,
     ``max_evaluations``, ``timeout`` or :py:meth:`request_stop`. The limits are checked
-    after the warmup and the initialization and at the end of every iteration, never in
-    the middle of one, so a run may go past them by up to one iteration; ``stop_reason``
+    after each round of the warmup, after the initialization and at the end of every
+    iteration, never in the middle of one, so a run may go past them by up to one round
+    of the warmup, the initial population or one iteration; ``stop_reason``
     says which one stopped it, and ``evaluations`` and ``seconds`` what it spent. A run
     resumed from a checkpoint carries on with what it had spent.
 
@@ -424,13 +425,17 @@ class Metaheuristic(ABC):
             given.append(solution)
         return given
 
-    def _warmup(self) -> None:
+    def _warmup(self, limit_reached: Optional[Callable[[], Optional[str]]] = None) -> None:
         """
         Executes the warmup phase before the main optimization loop.
 
         Generates `warmup_iterations` random solutions and updates the best solution found.
         This step ensures a good initial exploration of the search space before starting
         the main optimization process.
+
+        :param limit_reached: Called after each round; the warmup ends early once it returns
+            a reason, so that a budget smaller than the warmup is not exceeded by all of it.
+        :type limit_reached: Callable[[], Optional[str]], optional
         """
         if self.warmup_iterations > 0:
             metagen_logger.info(f"Starting warmup phase with {self.warmup_iterations} iterations.")
@@ -459,6 +464,9 @@ class Metaheuristic(ABC):
                 # Update the global best solution
                 if self.best_solution is None or best_candidate.get_fitness() < self.best_solution.get_fitness():
                     self.best_solution = deepcopy(best_candidate)
+
+                if limit_reached is not None and limit_reached() is not None:
+                    break
 
 
             metagen_logger.info(f"Warmup phase completed. Proceeding to optimization.")
@@ -646,6 +654,13 @@ class Metaheuristic(ABC):
         evaluations_before, seconds_before, started = self._evaluations, self._seconds, time.perf_counter()
         steps_before = self._steps
 
+        def account() -> Optional[str]:
+            """Bring what the run has spent up to date, and say which limit it reached."""
+            self._evaluations = evaluations_before + counted.calls
+            self._steps, self._step_count = steps_before + counted.steps, counted.step_count
+            self._seconds = seconds_before + time.perf_counter() - started
+            return self._limit_reached()
+
         # Remembered so that only the run() that started Ray stops it. Shutting it
         # down unconditionally took the runtime away from a cluster the user had
         # connected to, or from the other metaheuristics in a comparison (F-21).
@@ -658,14 +673,15 @@ class Metaheuristic(ABC):
             if not resuming:
                 self.pre_execution()
 
-                self._warmup()
+                # A budget is also checked between the rounds of the warmup, which can
+                # cost more than a small budget on its own (TPE's defaults are 200
+                # evaluations); the initial population is always evaluated whole.
+                self._warmup(account)
 
                 self._initialize()
 
                 self.current_iteration = 0
-                self._evaluations = evaluations_before + counted.calls
-                self._steps, self._step_count = steps_before + counted.steps, counted.step_count
-                self._seconds = seconds_before + time.perf_counter() - started
+                account()
 
             while True:
                 # Checked between iterations only, where the state is consistent: the
@@ -681,9 +697,7 @@ class Metaheuristic(ABC):
 
                 self.post_iteration()
 
-                self._evaluations = evaluations_before + counted.calls
-                self._steps, self._step_count = steps_before + counted.steps, counted.step_count
-                self._seconds = seconds_before + time.perf_counter() - started
+                account()
                 self._record_history()
 
                 self.current_iteration += 1

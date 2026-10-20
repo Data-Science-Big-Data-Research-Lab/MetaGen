@@ -13,8 +13,9 @@ reals, and starting a run from known solutions.
   seconds it may last. Without `max_iterations`, a budget is what stops the run, and the
   metaheuristics that plan over their iterations (SA, TPE, KernelTPE, and HillClimbing with
   a gamma schedule) plan over the iterations `max_evaluations` buys; with both, the first
-  reached stops it. The limits are checked between iterations, so a run goes past one by at
-  most one iteration.
+  reached stops it. The limits are checked between the rounds of the warmup and between
+  iterations, so a run goes past one by at most a round of the warmup, the initial
+  population or one iteration.
   `evaluations`, `seconds` and `stop_reason` say what a run spent and what stopped it, and
   a run resumed from a checkpoint carries on with what it had spent.
 - **Racing**: a fitness function can yield the value of each of its steps, such as the folds
