@@ -307,8 +307,10 @@ def test_names_that_are_not_text_or_numbers_are_kept_as_their_text(tmp_path):
     assert [row[3] for row in rows[1:1 + len(first.genes)]] == [genes[position] for position in first.genes]
 
 
-def test_a_result_saved_before_the_later_options_reads_with_their_defaults(tmp_path):
-    trigen = TriGen(CUBE, **SETTINGS)
+def test_a_result_saved_before_the_later_options_reads_with_the_values_it_ran_with(tmp_path):
+    # A file of then ran with what the options came to default to, and with the hierarchy
+    # by coordinates, its default until the hierarchy by cells took its place.
+    trigen = TriGen(CUBE, **{**SETTINGS, "hierarchy": "coordinates"})
     trigen.run()
     path = tmp_path / "run.json"
     trigen.save(str(path))

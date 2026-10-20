@@ -50,7 +50,7 @@ class TriGen:
     :py:class:`~metagen.metaheuristics.trigen.trigen_ga.TriGenGA`, and what is found
     shapes the searches that follow in two ways: the fitness penalizes repeating the
     coordinates of the triclusters found (see :py:class:`TriclusterFitness`), and every
-    search after the first starts mostly from the least explored coordinates.
+    search after the first starts mostly from what they have explored least (``hierarchy``).
 
     Each search returns the best tricluster of its last population that is not one
     already found. When the whole population repeats triclusters already found, it
@@ -149,7 +149,7 @@ class TriGen:
     :param hierarchy: What the searches after the first start from, ``"coordinates"``,
         the genes, conditions and times the triclusters found hold least, or ``"cells"``,
         the conditions and times they hold least and the genes with the fewest of their
-        cells in them, defaults to ``"coordinates"``.
+        cells in them, defaults to ``"cells"``.
     :type hierarchy: str, optional
     :raises ValueError: if a parameter is out of its range.
     """
@@ -162,7 +162,7 @@ class TriGen:
                  seed: Optional[int] = None, history: Optional[str] = None,
                  growth: Growth = "fitness", scoring: Scoring = "weighted",
                  pruning: Optional[bool] = None, shuffle_genes: bool = False,
-                 overlap: Overlap = "coordinates", hierarchy: Hierarchy = "coordinates") -> None:
+                 overlap: Overlap = "coordinates", hierarchy: Hierarchy = "cells") -> None:
         # The defaults of the search were chosen by measurement (C7,
         # metagen-auditoria/trigen/c7/informe_c7.md): a grid of populations and generations,
         # then of selection and mutation rates, over planted cubes, 30 seeds each. A

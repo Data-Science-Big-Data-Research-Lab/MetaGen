@@ -320,8 +320,12 @@ def test_by_cells_a_run_is_reproducible_and_counts_the_cells_it_found():
     assert trigen.hierarchy.cells.sum() == sum(math.prod(tricluster.size) for tricluster in first)
     assert all("overlap_cells" in record["terms"] for record in trigen.history)
     default = _trigen()
-    assert (default.fitness.overlap, default.hierarchy_kind) == ("coordinates", "coordinates")
-    assert default.hierarchy.cells is None
+    assert (default.fitness.overlap, default.hierarchy_kind) == ("coordinates", "cells")
+    default.run()
+    assert default.hierarchy.cells is not None
+    by_coordinates = _trigen(hierarchy="coordinates")
+    by_coordinates.run()
+    assert by_coordinates.hierarchy.cells is None
 
 
 def test_by_cells_shuffled_runs_count_the_cells_at_the_positions_of_the_cube():

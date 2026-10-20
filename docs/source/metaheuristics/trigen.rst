@@ -3,14 +3,14 @@
 TriGen
 ======
 
-TriGen finds triclusters: blocks of a three-dimensional dataset, some genes under some conditions at some times, whose values behave alike. It is a genetic algorithm that finds them one after another, each with a search of its own, and what it has found shapes the searches that follow: the fitness penalizes repeating the coordinates of the triclusters found, and every search after the first starts mostly from the least explored genes, conditions and times. The data, the measures and the qualities it works with are in :doc:`../triclustering/index`.
+TriGen finds triclusters: blocks of a three-dimensional dataset, some genes under some conditions at some times, whose values behave alike. It is a genetic algorithm that finds them one after another, each with a search of its own, and what it has found shapes the searches that follow: the fitness penalizes repeating the coordinates of the triclusters found, and every search after the first starts mostly from what they have explored least: the conditions and times they hold least and, in them, the genes with the fewest of their cells. The data, the measures and the qualities it works with are in :doc:`../triclustering/index`.
 
 How it searches
 ---------------
 
 A tricluster is three subsets, of the genes, the conditions and the times of the cube, each between a smallest and a largest size. Each search runs a genetic algorithm over them:
 
-* **The initial population** mixes triclusters drawn at random, blocks of consecutive positions and, after the first search, triclusters drawn from the least explored coordinates.
+* **The initial population** mixes triclusters drawn at random, blocks of consecutive positions and, after the first search, triclusters drawn from what the triclusters found have explored least (see `Counting what was found by cells`_).
 * **Each generation** selects a share of the population (``selection_rate``) by groups: the population is split at random into three groups, the best of each is selected, and then the best left in a group drawn at random. The selected pass on untouched and are the only parents. The rest of the population is bred from pairs of them, crossing the genes, the conditions and the times each at one point, and each child mutates, with probability ``mutation_probability``, by adding, removing or changing one coordinate.
 * **The fitness**, :py:class:`~metagen.metaheuristics.TriclusterFitness`, is minimized. By default it is a weighted mean of a quality term (MSL by default), of the size of each dimension, larger being better, and of how much each dimension repeats the triclusters already found; with ``scoring="significance"`` it is the significance of the tricluster instead (see `Scoring by significance`_).
 
@@ -34,13 +34,13 @@ Finding planted triclusters
     trigen = TriGen(cube, n_triclusters=2, generations=50, population_size=100,
                     min_sizes=(5, 2, 3), max_sizes=(30, 6, 8), seed=0)
     found = trigen.run()
-    print([tricluster.size for tricluster in found])                    # [(16, 4, 5), (15, 2, 5)]
-    print([round(tricluster.fitness, 3) for tricluster in found])       # [0.075, 0.151]
-    print([round(triq(cube, tricluster), 3) for tricluster in found])   # [0.994, 0.915]
+    print([tricluster.size for tricluster in found])                    # [(16, 4, 5), (18, 2, 3)]
+    print([round(tricluster.fitness, 3) for tricluster in found])       # [0.075, 0.211]
+    print([round(triq(cube, tricluster), 3) for tricluster in found])   # [0.994, 0.846]
     # The share of the cells found that belong to a planted tricluster.
-    print(round(relevance(found, planted, cell_precision), 3))          # 0.933
+    print(round(relevance(found, planted, cell_precision), 3))          # 0.833
     # How much of each planted tricluster is found, on average.
-    print(round(recovery(found, planted), 3))                           # 0.599
+    print(round(recovery(found, planted), 3))                           # 0.471
 
 Each tricluster keeps the fitness it had when it was found, against the triclusters found before it. ``trigen.history`` holds, per search, the tricluster, every term of its fitness, the evaluations and seconds it took and the evaluations its growth took; with ``history="trigen.jsonl"`` it is also written to a file, a line per search. ``trigen.hierarchy`` counts how many triclusters found hold each gene, condition and time.
 
@@ -60,16 +60,16 @@ The search is not blind to the order of the genes in the cube: the initial popul
     trigen = TriGen(cube, n_triclusters=2, generations=50, population_size=100,
                     min_sizes=(5, 2, 3), max_sizes=(30, 6, 8), shuffle_genes=True, seed=0)
     found = trigen.run()
-    print([tricluster.size for tricluster in found])     # [(18, 4, 5), (14, 2, 4)]
+    print([tricluster.size for tricluster in found])     # [(18, 4, 5), (15, 2, 3)]
     print(found[0].genes[:5])                            # (2, 10, 20, 28, 30)
-    print(round(recovery(found, planted), 3))            # 0.624
+    print(round(recovery(found, planted), 3))            # 0.557
 
 The fitness and the terms of each tricluster are those of the order its run saw; with ``views="time"`` they do not depend on the order. A seed reproduces the order, and a saved run keeps the option, so ``TriGenResult.trigen(cube)`` runs it again in the same order.
 
 Counting what was found by cells
 --------------------------------
 
-By default, what the triclusters found have taken is counted by coordinates, dimension by dimension: the overlap of the weighted fitness is the share of the genes, of the conditions and of the times of a tricluster that the triclusters found hold, and the searches after the first start from the genes, conditions and times they hold least. A tricluster with the genes of one found, in other times, then counts as a repeat, although it shares none of its cells. Two options count by cells instead. ``overlap="cells"`` makes the overlap the share of the cells of a tricluster that a tricluster found holds, weighted by the three overlap weights together. ``hierarchy="cells"`` makes the searches after the first start from the conditions and times held least and, in them, from the genes with the fewest cells held:
+What the triclusters found have taken can be counted by coordinates, dimension by dimension, or by cells. The searches after the first start, by default, from the conditions and times the triclusters found hold least and, in them, from the genes with the fewest cells held, ``hierarchy="cells"``; with ``hierarchy="coordinates"`` they start from the genes, conditions and times held least in the whole cube. The overlap of the weighted fitness is, by default, the share of the genes, of the conditions and of the times of a tricluster that the triclusters found hold, so that a tricluster with the genes of one found, in other times, counts as a repeat although it shares none of its cells; ``overlap="cells"`` makes it the share of the cells of a tricluster that a tricluster found holds, weighted by the three overlap weights together:
 
 .. code-block:: python
 
@@ -107,10 +107,10 @@ With the significance, growing by the fitness also prunes by default (``pruning`
     trigen = TriGen(cube, n_triclusters=2, generations=50, population_size=100, min_sizes=(5, 2, 3),
                     scoring="significance", seed=0)
     found = trigen.run()
-    print([tricluster.size for tricluster in found])                # [(20, 4, 6), (18, 3, 5)]
-    print([round(record["terms"]["z"], 1) for record in trigen.history])   # [40.2, 21.9]
-    print(round(relevance(found, planted, cell_precision), 3))      # 0.741
-    print(round(recovery(found, planted), 3))                       # 0.678
+    print([tricluster.size for tricluster in found])                # [(20, 4, 6), (15, 3, 5)]
+    print([round(record["terms"]["z"], 1) for record in trigen.history])   # [40.2, 29.5]
+    print(round(relevance(found, planted, cell_precision), 3))      # 1.0
+    print(round(recovery(found, planted), 3))                       # 1.0
 
 The significance measures how unlikely a coherence is, not how strong: on data where many genes follow a broad, weak common trend, it can favor large triclusters of moderate coherence over small, tightly coherent ones. The model of chance is fitted at the start of each run from random triclusters, drawn with MetaGen's generator, so a seed reproduces it; it takes about two thousand evaluations of the quality measure. It follows MSL, the default quality, closely; with MSR3D it can be off by a few deviations at some sizes, so MSL is the measure to use with the significance.
 
@@ -163,9 +163,9 @@ Runs with different seeds may find different triclusters. :py:func:`~metagen.tri
 
     real = stability([trigen.result() for trigen in runs])
     threshold = max(found.stability for run in stability([trigen.result() for trigen in nulls]) for found in run)
-    print([found.stability > threshold for found in real[0]])          # [True, False, True]
+    print([found.stability > threshold for found in real[0]])          # [True, True, False]
     core = real[0][0].core
-    print(len(core), len(set(core) & set(planted[0].genes)))           # 20 19
+    print(len(core), len(set(core) & set(planted[0].genes)))           # 21 19
 
 The runs are compared by the names of the genes, so they may search the genes in orders of their own, as ``shuffle_genes`` does. ``stability`` also takes the runs as lists of the gene names of their triclusters, with the number of genes of the data as ``population``.
 
