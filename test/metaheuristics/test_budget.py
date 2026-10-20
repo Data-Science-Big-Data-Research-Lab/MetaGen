@@ -1,8 +1,8 @@
 """
-The budget of a run: ``max_evaluations`` and ``timeout``, checked after the warmup and
-the initialization and at the end of every iteration, so that a run goes past them by at
-most one iteration, stops where an uninterrupted run would after a resume, and says what
-stopped it.
+The budget of a run: ``max_evaluations`` and ``timeout``, checked after each round of the
+warmup, after the initialization and at the end of every iteration, so that a run goes past
+them by at most one of those, stops where an uninterrupted run would after a resume, and
+says what stopped it.
 """
 import time
 
@@ -71,6 +71,35 @@ def test_a_budget_spent_by_the_start_runs_no_iteration():
     assert run.stop_reason == "max_evaluations"
     assert run.history == [] and run.evaluations == 30
     assert best.get_fitness() == run.best_solution.get_fitness()
+
+
+@pytest.mark.parametrize("algorithm", [TPE, KernelTPE], ids=lambda algorithm: algorithm.__name__)
+def test_a_budget_smaller_than_the_warmup_ends_it_early(algorithm):
+    # Ten rounds of 20 for TPE and five for KernelTPE by default: three rounds reach 60, and
+    # the initial population of 20 is evaluated whole.
+    calls = []
+    run = algorithm(_domain(algorithm), lambda solution: calls.append(1) or _sphere(solution), max_evaluations=60, seed=0)
+    best = run.run()
+    assert run.stop_reason == "max_evaluations" and run.evaluations == len(calls) == 80
+    assert best.get_fitness() == min(run.best_solution_fitnesses or [best.get_fitness()])
+
+
+def test_a_budget_larger_than_the_warmup_runs_all_of_it():
+    calls = []
+    TPE(_domain(TPE), lambda solution: calls.append(1) or _sphere(solution), max_evaluations=230,
+        max_iterations=1, seed=0).run()
+    assert len(calls) == 200 + 20 + 24
+
+
+def test_a_timeout_ends_the_warmup_early():
+    def slow(solution) -> float:
+        time.sleep(0.01)
+        return _sphere(solution)
+
+    run = TPE(_domain(TPE), slow, timeout=0.3, seed=0)
+    run.run()
+    assert run.stop_reason == "timeout" and run.history == []
+    assert run.evaluations < 200, "the warmup alone is 200 evaluations of 10 ms"
 
 
 def test_a_run_stops_within_one_iteration_of_its_time():
