@@ -156,8 +156,9 @@ def test_a_file_that_is_not_a_result_is_rejected(tmp_path, content):
 
 def test_a_later_version_of_the_format_asks_for_an_update(tmp_path):
     path = tmp_path / "run.json"
-    path.write_text('{"format": "metagen-trigen", "version": 2}')
-    with pytest.raises(ValueError, match="version 2.*update MetaGen"):
+    from metagen.metaheuristics.trigen.results import VERSION
+    path.write_text(f'{{"format": "metagen-trigen", "version": {VERSION + 1}}}')
+    with pytest.raises(ValueError, match=f"version {VERSION + 1}.*update MetaGen"):
         TriGenResult.load(str(path))
 
 
@@ -342,3 +343,23 @@ def test_a_shuffled_run_is_saved_and_run_again_as_it_was(tmp_path):
     result = TriGenResult.load(path)
     assert result.configuration["shuffle_genes"] is True
     assert result.matches(CUBE) and result.trigen(CUBE).run() == result.triclusters == trigen.triclusters
+
+
+def test_a_tricluster_that_is_not_a_cube_keeps_its_cells_in_the_file(tmp_path):
+    import dataclasses
+    result = _run().result()
+    path = tmp_path / "cubes.json"
+    result.save(str(path))
+    assert _strict(path)["version"] == 1, "a result of cubes is written as it always was"
+    steps = Tricluster.from_cells([0, 1, 2, 3], [0, 1, 1, 2], [0, 1, 2, 3], fitness=0.5)
+    names = {axis: [[CUBE.genes, CUBE.conditions, CUBE.times][index][position] for position in positions]
+             for index, (axis, positions) in enumerate(zip(("genes", "conditions", "times"),
+                                                          (steps.genes, steps.conditions, steps.times)))}
+    mixed = dataclasses.replace(result, triclusters=result.triclusters[:1] + [steps],
+                                names=result.names[:1] + [names], terms=result.terms[:2])
+    path = tmp_path / "mixed.json"
+    mixed.save(str(path))
+    assert _strict(path)["version"] == 2
+    again = TriGenResult.load(str(path))
+    assert again.triclusters == mixed.triclusters and not again.triclusters[1].is_cube
+    assert again.triclusters[1].fitness == 0.5

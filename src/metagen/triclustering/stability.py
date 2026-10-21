@@ -118,6 +118,8 @@ def _runs(runs: Sequence[Any], population: Optional[int]) -> Tuple[List[List[Any
         if hasattr(run, "names") and hasattr(run, "data"):
             if population is None:
                 population = int(run.data["shape"][0])
+            for tricluster in getattr(run, "triclusters", ()):
+                tricluster.require_cube("Stability")
             found = [names["genes"] for names in run.names]
         else:
             found = list(run)

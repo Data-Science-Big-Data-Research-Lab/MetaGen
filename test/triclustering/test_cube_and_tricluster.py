@@ -212,3 +212,96 @@ def test_a_tricluster_comes_from_a_solution_of_three_subsets():
 def test_the_repr_is_readable():
     assert repr(Cube(_values((3, 2, 4)))) == "Cube(3 genes, 2 conditions, 4 times)"
     assert "genes=(1, 2)" in repr(Tricluster([2, 1], [0, 1], [0, 1]))
+
+
+# --- triclusters of any shape ----------------------------------------------------
+
+def _free(seed=0, shape=(6, 4, 5), count=12):
+    """A set of cells drawn at random, few enough that it is not a cube."""
+    rng = np.random.default_rng(seed)
+    flat = rng.choice(int(np.prod(shape)), size=count, replace=False)
+    return Tricluster.from_cells(*np.unravel_index(flat, shape))
+
+
+def test_cells_that_make_up_a_cube_are_that_cube():
+    cube = Tricluster([4, 1, 3], [0, 2], [1, 2, 3])
+    genes, conditions, times = cube.cells()
+    order = np.random.default_rng(0).permutation(cube.n_cells)
+    again = Tricluster.from_cells(genes[order], conditions[order], times[order])
+    assert again.is_cube and again == cube and hash(again) == hash(cube)
+    assert (again.genes, again.conditions, again.times) == ((1, 3, 4), (0, 2), (1, 2, 3))
+
+
+def test_a_cube_keeps_the_hash_of_its_three_lists():
+    cube = Tricluster([4, 1, 3], [0, 2], [1, 2, 3])
+    assert hash(cube) == hash((cube.genes, cube.conditions, cube.times))
+
+
+def test_a_tricluster_of_any_shape_keeps_its_cells_sorted():
+    steps = Tricluster.from_cells([2, 0, 1], [0, 0, 0], [2, 0, 1])
+    assert not steps.is_cube and steps.n_cells == 3
+    assert (steps.genes, steps.conditions, steps.times) == ((0, 1, 2), (0,), (0, 1, 2))
+    assert [column.tolist() for column in steps.cells()] == [[0, 1, 2], [0, 0, 0], [0, 1, 2]]
+    assert steps == Tricluster.from_cells([0, 1, 2], [0, 0, 0], [0, 1, 2])
+    assert steps != Tricluster([0, 1, 2], [0, 1], [0, 1, 2])
+
+
+@pytest.mark.parametrize("seed", range(6))
+def test_the_cells_two_triclusters_share_are_counted_as_a_direct_count(seed):
+    rng = np.random.default_rng(seed)
+    shape = (6, 4, 5)
+    cubes = [Tricluster(rng.choice(6, 3, replace=False), rng.choice(4, 2, replace=False),
+                        rng.choice(5, 3, replace=False)) for _ in range(2)]
+    triclusters = cubes + [_free(seed, shape), _free(seed + 10, shape, count=30)]
+    for first in triclusters:
+        for second in triclusters:
+            expected = int((first.mask(shape) & second.mask(shape)).sum())
+            assert first.shared_cells(second) == expected
+
+
+def test_the_mask_and_the_index_mark_its_cells():
+    values = _values()
+    for tricluster in (Tricluster([0, 2, 5], [1, 3], [0, 4]), _free(1)):
+        mask = tricluster.mask(values.shape)
+        assert int(mask.sum()) == tricluster.n_cells
+        assert sorted(values[tricluster.cell_index()].ravel().tolist()) == sorted(values[mask].tolist())
+
+
+@pytest.mark.parametrize("cells, message", [
+    (([0, 1], [0], [0, 1]), "a gene, a condition and a time each"),
+    (([0, 0], [1, 1], [2, 2]), "repeat"),
+    (([0], [0], [0]), "at least two cells"),
+    (([0, -1], [0, 0], [0, 0]), "non-negative"),
+])
+def test_cells_that_are_not_a_tricluster_are_refused(cells, message):
+    with pytest.raises(ValueError, match=message):
+        Tricluster.from_cells(*cells)
+
+
+def test_a_tricluster_of_any_shape_is_immutable_and_survives_pickle_and_deepcopy():
+    steps = _free(2)
+    assert pickle.loads(pickle.dumps(steps)) == steps and copy.deepcopy(steps) == steps
+    with pytest.raises(AttributeError):
+        steps.genes = (0, 1)
+    with pytest.raises(ValueError):
+        steps.cells()[0][0] = 3
+
+
+def test_what_is_only_defined_on_cubes_says_so():
+    from metagen.triclustering import coordinate_recall, msl
+    cube, steps = Cube(_values()), _free(3)
+    for call in (lambda: cube.subcube(steps), lambda: msl(cube, steps),
+                 lambda: coordinate_recall(steps, Tricluster([0, 1], [0, 1], [0, 1]))):
+        with pytest.raises(ValueError, match="defined for a tricluster that is a cube"):
+            call()
+
+
+def test_the_measures_by_cells_take_any_shape():
+    from metagen.triclustering import cell_jaccard, cell_precision, cell_recall
+    cube = Tricluster([0, 1, 2, 3], [0, 1], [0, 1])
+    genes, conditions, times = cube.cells()
+    half = Tricluster.from_cells(genes[:8], conditions[:8], times[:8])     # the cells of genes 0 and 1
+    assert not half.is_cube or half.size == (2, 2, 2)
+    assert cell_recall(half, cube) == 0.5 and cell_precision(half, cube) == 1.0 and cell_jaccard(half, cube) == 0.5
+    corner = Tricluster.from_cells([0, 0, 1], [0, 1, 0], [0, 0, 0])
+    assert cell_precision(corner, cube) == 1.0 and cell_recall(corner, cube) == 3 / 16

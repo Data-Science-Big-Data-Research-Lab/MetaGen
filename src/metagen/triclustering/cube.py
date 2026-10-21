@@ -237,8 +237,10 @@ class Cube:
         :type tricluster: Tricluster
         :return: An array with shape (its genes, its conditions, its times).
         :rtype: numpy.ndarray
-        :raises ValueError: if the tricluster does not fit in the cube.
+        :raises ValueError: if the tricluster does not fit in the cube, or is not a cube
+            itself.
         """
+        tricluster.require_cube("The subcube of a tricluster")
         tricluster.check(self)
         return self._values[np.ix_(tricluster.genes, tricluster.conditions, tricluster.times)]
 

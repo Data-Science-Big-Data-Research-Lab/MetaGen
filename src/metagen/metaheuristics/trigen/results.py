@@ -37,7 +37,11 @@ if TYPE_CHECKING:
 
 #: The name and the version of the format a result is saved in.
 FORMAT = "metagen-trigen"
-VERSION = 1
+VERSION = 2
+
+# Version 2 adds the cells of a tricluster that is not a cube; a result whose triclusters
+# are all cubes is still written in version 1, as it was before.
+_CUBES_VERSION = 1
 
 #: The arguments of TriGen a result keeps: all but the cube and the history file.
 CONFIGURATION = ("n_triclusters", "generations", "population_size", "random_fraction", "selection_rate",
@@ -182,13 +186,15 @@ class TriGenResult:
         :param path: The file.
         :type path: str
         """
-        document = {"format": FORMAT, "version": VERSION, "provenance": self.provenance,
+        version = VERSION if any(not tricluster.is_cube for tricluster in self.triclusters) else _CUBES_VERSION
+        document = {"format": FORMAT, "version": version, "provenance": self.provenance,
                     "configuration": self.configuration, "data": self.data,
                     "triclusters": [
                         {"genes": list(tricluster.genes), "conditions": list(tricluster.conditions),
                          "times": list(tricluster.times), "gene_names": names["genes"],
                          "condition_names": names["conditions"], "time_names": names["times"],
-                         "fitness": tricluster.fitness, "terms": terms}
+                         "fitness": tricluster.fitness, "terms": terms,
+                         **({} if tricluster.is_cube else {"cells": [column.tolist() for column in tricluster.cells()]})}
                         for tricluster, names, terms in zip(self.triclusters, self.names, self.terms)],
                     "searches": self.searches}
         text = json.dumps(_plain(document), indent=1, allow_nan=False) + "\n"
@@ -234,7 +240,9 @@ class TriGenResult:
         try:
             found = document["triclusters"]
             triclusters = [Tricluster(entry["genes"], entry["conditions"], entry["times"], fitness=entry["fitness"])
-                           for entry in found]
+                           if "cells" not in entry else
+                           Tricluster.from_cells(entry["cells"][0], entry["cells"][1], entry["cells"][2],
+                                                 fitness=entry["fitness"]) for entry in found]
             names = [{"genes": entry["gene_names"], "conditions": entry["condition_names"],
                       "times": entry["time_names"]} for entry in found]
             return cls(configuration=document["configuration"], provenance=document["provenance"],

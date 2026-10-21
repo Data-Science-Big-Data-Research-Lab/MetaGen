@@ -388,7 +388,7 @@ class TriclusterFitness:
             if current:
                 occupied = np.zeros(self.cube.shape, dtype=bool)
                 for tricluster in current:
-                    occupied[np.ix_(list(tricluster.genes), list(tricluster.conditions), list(tricluster.times))] = True
+                    occupied[tricluster.cell_index()] = True
             self._found_cells = (current, occupied)
         return self._found_cells[1]
 
@@ -405,7 +405,7 @@ class TriclusterFitness:
         occupied = self._cells_of_found()
         if occupied is None:
             return 0.0
-        return float(occupied[np.ix_(list(tricluster.genes), list(tricluster.conditions), list(tricluster.times))].mean())
+        return float(occupied[tricluster.cell_index()].mean())
 
     def terms(self, tricluster: Tricluster) -> Dict[str, float]:
         """
@@ -458,6 +458,8 @@ class TriclusterFitness:
 def _shared(tricluster: Tricluster, other: Tricluster) -> Optional[Tricluster]:
     """The tricluster of the coordinates two triclusters share, or None if they share
     fewer than two in a dimension."""
+    for one in (tricluster, other):
+        one.require_cube("The significance against the triclusters found")
     genes, conditions, times = (sorted(set(mine) & set(theirs)) for mine, theirs in
                                 zip((tricluster.genes, tricluster.conditions, tricluster.times),
                                     (other.genes, other.conditions, other.times)))

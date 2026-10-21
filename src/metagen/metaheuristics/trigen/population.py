@@ -60,7 +60,7 @@ class DataHierarchy:
             for position in positions:
                 levels[position] += 1
         if self.cells is not None:
-            self.cells[np.ix_(list(tricluster.genes), list(tricluster.conditions), list(tricluster.times))] += 1
+            self.cells[tricluster.cell_index()] += 1
 
     def draw(self, dimension: int, size: int) -> List[int]:
         """

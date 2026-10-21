@@ -119,8 +119,9 @@ def enrich(cube: Cube, tricluster: Tricluster, provider: EnrichmentProvider) -> 
     :type provider: EnrichmentProvider
     :return: The enrichment of its genes.
     :rtype: Enrichment
-    :raises ValueError: if the genes of the cube have no names.
+    :raises ValueError: if the genes of the cube have no names, or the tricluster is not a cube.
     """
+    tricluster.require_cube("An enrichment of the genes of a tricluster")
     tricluster.check(cube)
     if not all(isinstance(name, str) for name in cube.genes):
         raise ValueError("An enrichment needs the names of the genes: build the cube with Cube(values, genes=...).")

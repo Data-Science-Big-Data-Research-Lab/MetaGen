@@ -29,17 +29,12 @@ def _dimensions(tricluster: Tricluster) -> Tuple[set, set, set]:
 
 
 def _common_cells(first: Tricluster, second: Tricluster) -> int:
-    # A cell is common when its gene, condition and time all are: the product of the
-    # three intersections, without listing any cell.
-    common = 1
-    for mine, theirs in zip(_dimensions(first), _dimensions(second)):
-        common *= len(mine & theirs)
-    return common
+    # Between two cubes, the product of the three intersections, without listing any cell.
+    return first.shared_cells(second)
 
 
 def _cells(tricluster: Tricluster) -> int:
-    genes, conditions, times = tricluster.size
-    return genes * conditions * times
+    return tricluster.n_cells
 
 
 def cell_jaccard(first: Tricluster, second: Tricluster) -> float:
@@ -106,6 +101,8 @@ def coordinate_jaccard(first: Tricluster, second: Tricluster) -> float:
     :return: Their Jaccard index over coordinates.
     :rtype: float
     """
+    for tricluster in (first, second):
+        tricluster.require_cube("The Jaccard index over coordinates")
     pairs = list(zip(_dimensions(first), _dimensions(second)))
     return sum(len(a & b) for a, b in pairs) / sum(len(a | b) for a, b in pairs)
 
@@ -122,6 +119,8 @@ def coordinate_recall(found: Tricluster, planted: Tricluster) -> float:
     :return: The share, from 0 to 1.
     :rtype: float
     """
+    for tricluster in (found, planted):
+        tricluster.require_cube("The recall over coordinates")
     pairs = list(zip(_dimensions(found), _dimensions(planted)))
     return sum(len(a & b) for a, b in pairs) / sum(len(b) for _, b in pairs)
 

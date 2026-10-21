@@ -87,7 +87,7 @@ The four warnings of the raw table are the scale, the names of probes, the contr
 A tricluster
 ------------
 
-A :py:class:`~metagen.triclustering.Tricluster` is given by the positions of its genes, conditions and times, kept sorted. It needs at least two of each.
+A :py:class:`~metagen.triclustering.Tricluster` is a set of cells of a cube. Most are **cubes**, every combination of some genes, some conditions and some times, given by their positions, kept sorted, at least two of each; a cube keeps only its three lists. Any other set of cells is given cell by cell with ``Tricluster.from_cells``, and is kept as a cube when it makes up one. ``n_cells``, ``cells()``, ``mask(shape)`` and ``shared_cells(other)`` work for any shape; the measures of coherence and the subcube are defined for cubes.
 
 .. code-block:: python
 
@@ -99,6 +99,10 @@ A :py:class:`~metagen.triclustering.Tricluster` is given by the positions of its
     print(tricluster.size)                                  # (3, 2, 4)
     print(cube.subcube(tricluster).shape)                   # (3, 2, 4)
     print(tricluster.labels(cube)["conditions"])            # ('c1', 'c3')
+
+    # The same gene in three conditions, one time each: not a cube.
+    diagonal = Tricluster.from_cells(genes=[3, 3, 3], conditions=[0, 1, 2], times=[1, 2, 3])
+    print(diagonal.is_cube, diagonal.n_cells, diagonal.shared_cells(tricluster))     # False 3 2
 
 Measuring a tricluster
 ----------------------
