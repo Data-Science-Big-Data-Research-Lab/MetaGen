@@ -116,3 +116,22 @@ def test_with_no_sizes_the_cube_is_noise_alone():
     cube, planted = plant((20, 3, 4), [], seed=0)
     assert planted == [] and cube.shape == (20, 3, 4)
 
+
+
+@pytest.mark.parametrize("ordered", [("times",), ("conditions", "times"), ("genes", "times")])
+def test_a_tricluster_planted_in_a_dimension_with_order_holds_a_window(ordered):
+    from metagen.triclustering import msr3d
+    cube, planted = plant((60, 6, 10), [(10, 3, 4), (8, 2, 3), (12, 2, 5)], pattern="additive", seed=4,
+                          ordered=ordered)
+    for tricluster in planted:
+        for axis in ordered:
+            positions = getattr(tricluster, axis)
+            assert list(positions) == list(range(positions[0], positions[-1] + 1))
+        assert msr3d(cube, tricluster) == pytest.approx(0.0, abs=1e-12)
+    genes = [gene for tricluster in planted for gene in tricluster.genes]
+    assert len(genes) == len(set(genes)), "no two share a gene"
+
+
+def test_an_order_that_is_not_of_the_dimensions_is_refused_by_plant():
+    with pytest.raises(ValueError, match="ordered names dimensions"):
+        plant((20, 4, 4), [(4, 2, 2)], ordered=("days",))

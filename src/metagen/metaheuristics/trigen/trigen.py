@@ -155,6 +155,11 @@ class TriGen:
     :param shape: The shape of the triclusters, ``"cube"``, the only one for now: every
         combination of some genes, some conditions and some times.
     :type shape: str, optional
+    :param ordered: The dimensions whose positions have an order, by name (``"genes"``,
+        ``"conditions"``, ``"times"``), none by default. In a dimension with order a
+        tricluster holds a window, consecutive positions: the searches draw, cross, mutate
+        and grow windows there, and the model of chance of the significance draws windows.
+    :type ordered: Sequence[str], optional
     :raises ValueError: if a parameter is out of its range.
     """
 
@@ -166,7 +171,8 @@ class TriGen:
                  seed: Optional[int] = None, history: Optional[str] = None,
                  growth: Growth = "fitness", scoring: Scoring = "weighted",
                  pruning: Optional[bool] = None, shuffle_genes: bool = False,
-                 overlap: Overlap = "coordinates", hierarchy: Hierarchy = "cells", shape: str = "cube") -> None:
+                 overlap: Overlap = "coordinates", hierarchy: Hierarchy = "cells", shape: str = "cube",
+                 ordered: Sequence[str] = ()) -> None:
         # The defaults of the search were chosen by measurement (C7,
         # metagen-auditoria/trigen/c7/informe_c7.md): a grid of populations and generations,
         # then of selection and mutation rates, over planted cubes, 30 seeds each. A
@@ -189,8 +195,12 @@ class TriGen:
             raise ValueError(f"growth is 'fitness', 'quality' or None, not {growth!r}.")
         if hierarchy not in ("coordinates", "cells"):
             raise ValueError(f"hierarchy is 'coordinates' or 'cells', not {hierarchy!r}.")
+        if isinstance(ordered, str) or any(axis not in AXES for axis in ordered) or len(set(ordered)) != len(ordered):
+            raise ValueError(f"ordered names dimensions of {list(AXES)}, each once, not {ordered!r}.")
+        #: The dimensions with order, by name.
+        self.ordered: Tuple[str, ...] = tuple(axis for axis in AXES if axis in ordered)
         #: The shape of the triclusters it searches.
-        self.form: Shape = shape_named(shape)
+        self.form: Shape = shape_named(shape, [AXES.index(axis) for axis in self.ordered])
         self.cube = cube
         self.n_triclusters = n_triclusters
         self.generations = generations
@@ -357,7 +367,7 @@ class TriGen:
                 "size_reference": self.size_reference, "seed": self.seed, "growth": self.growth,
                 "scoring": self.fitness.scoring, "pruning": self.pruning,
                 "shuffle_genes": self.shuffle_genes, "overlap": self.fitness.overlap,
-                "hierarchy": self.hierarchy_kind, "shape": self.form.name})
+                "hierarchy": self.hierarchy_kind, "shape": self.form.name, "ordered": list(self.ordered)})
 
     def result(self, label: Optional[str] = None) -> TriGenResult:
         """

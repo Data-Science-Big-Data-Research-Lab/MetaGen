@@ -33,7 +33,7 @@ _PATTERNS = ("constant", "additive", "multiplicative")
 
 
 def plant(shape: Sequence[int], sizes: Sequence[Sequence[int]], pattern: Pattern = "additive",
-          noise: float = 0.0, seed: Optional[int] = None) -> Tuple[Cube, List[Tricluster]]:
+          noise: float = 0.0, seed: Optional[int] = None, ordered: Sequence[str] = ()) -> Tuple[Cube, List[Tricluster]]:
     """
     A cube of random values with triclusters planted in it, for trying out a
     triclustering on data whose answer is known.
@@ -73,6 +73,10 @@ def plant(shape: Sequence[int], sizes: Sequence[Sequence[int]], pattern: Pattern
     :type noise: float, optional
     :param seed: A seed for this cube alone, defaults to None.
     :type seed: int, optional
+    :param ordered: The dimensions, by name, in which each tricluster is planted on a
+        window, consecutive positions, every start as likely; none by default. The windows
+        of genes of two triclusters do not overlap, as their genes never do.
+    :type ordered: Sequence[str], optional
     :return: The cube, and the triclusters planted, in the order of ``sizes``.
     :rtype: Tuple[Cube, List[Tricluster]]
     :raises ValueError: if the shape or the sizes are not valid, the triclusters need more
@@ -90,18 +94,37 @@ def plant(shape: Sequence[int], sizes: Sequence[Sequence[int]], pattern: Pattern
         raise ValueError(f"pattern must be one of {list(_PATTERNS)}, not {pattern!r}.")
     if not (noise >= 0 and math.isfinite(noise)):
         raise ValueError(f"noise is a standard deviation, finite and not negative, not {noise}.")
+    if isinstance(ordered, str) or any(axis not in AXES for axis in ordered):
+        raise ValueError(f"ordered names dimensions of {list(AXES)}, not {ordered!r}.")
 
     # A generator of its own with a seed, so that the cube does not depend on anything
     # else drawn before; MetaGen's otherwise, never NumPy's global one.
     rng = np.random.default_rng(seed) if seed is not None else get_numpy_rng()
     values = rng.normal(size=dimensions)
-    genes = rng.permutation(dimensions[0])
+    if "genes" in ordered:
+        # The windows of genes go one after another, with the genes left over spread at
+        # random in the gaps before, between and after them.
+        free = dimensions[0] - sum(size[0] for size in wanted)
+        gaps = rng.multinomial(free, [1 / (len(wanted) + 1)] * (len(wanted) + 1)) if wanted else [free]
+        genes, cursor = np.empty(0, dtype=int), 0
+        for gap, size in zip(gaps, wanted):
+            genes = np.concatenate([genes, np.arange(cursor + gap, cursor + gap + size[0])])
+            cursor += gap + size[0]
+    else:
+        genes = rng.permutation(dimensions[0])
+
+    def positions_of(axis: str, extent: int, count: int) -> np.ndarray:
+        if axis in ordered:
+            first = int(rng.integers(0, extent - count + 1))
+            return np.arange(first, first + count)
+        return rng.choice(extent, size=count, replace=False)
+
     planted: List[Tricluster] = []
     start = 0
     for gene_count, condition_count, time_count in wanted:
         positions = (genes[start:start + gene_count],
-                     rng.choice(dimensions[1], size=condition_count, replace=False),
-                     rng.choice(dimensions[2], size=time_count, replace=False))
+                     positions_of("conditions", dimensions[1], condition_count),
+                     positions_of("times", dimensions[2], time_count))
         start += gene_count
         tricluster = Tricluster(*positions)
         block = _block(rng, pattern, tricluster.size)

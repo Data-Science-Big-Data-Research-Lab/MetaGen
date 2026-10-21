@@ -66,6 +66,27 @@ The search is not blind to the order of the genes in the cube: the initial popul
 
 The fitness and the terms of each tricluster are those of the order its run saw; with ``views="time"`` they do not depend on the order. A seed reproduces the order, and a saved run keeps the option, so ``TriGenResult.trigen(cube)`` runs it again in the same order.
 
+Dimensions with order
+---------------------
+
+For TriGen, by default, no dimension has an order: a tricluster holds any genes, any conditions and any times. When the positions of a dimension do have one, as the times of a time series do, ``ordered`` says so, and a tricluster then holds a **window** there, consecutive positions: the searches draw, cross, mutate and grow windows in that dimension, the hierarchy starts the later searches from the window least explored, and the model of chance of the significance draws windows. ``plant`` takes the same argument, to plant triclusters on windows:
+
+.. code-block:: python
+
+    from metagen.metaheuristics import TriGen
+    from metagen.triclustering import plant, recovery
+
+    cube, planted = plant((100, 6, 12), [(20, 3, 5), (15, 3, 4)], noise=0.05, seed=0, ordered=("times",))
+    print([tricluster.times for tricluster in planted])        # [(2, 3, 4, 5, 6), (4, 5, 6, 7)]
+
+    trigen = TriGen(cube, n_triclusters=2, generations=30, population_size=80, min_sizes=(5, 2, 3),
+                    max_sizes=(30, 6, 8), scoring="significance", ordered=("times",), seed=0)
+    found = trigen.run()
+    print([tricluster.times for tricluster in found])          # [(2, 3, 4, 5, 6), (2, 3, 4, 5, 6)]
+    print(round(recovery(found, planted), 3))                  # 0.5
+
+A saved run keeps the dimensions with order.
+
 Counting what was found by cells
 --------------------------------
 

@@ -65,22 +65,28 @@ class DataHierarchy:
         if self.cells is not None:
             self.cells[tricluster.cell_index()] += 1
 
-    def draw(self, dimension: int, size: int) -> List[int]:
+    def draw(self, dimension: int, size: int, window: bool = False) -> List[int]:
         """
         ``size`` positions of a dimension, the lowest levels first: a level with fewer
         positions than are still missing goes in whole, and from the level that has more
-        they are drawn at random.
+        they are drawn at random. With ``window``, ``size`` consecutive positions instead,
+        the window whose levels add up lowest, drawn at random among those that tie.
 
         :param dimension: 0 for the genes, 1 for the conditions, 2 for the times.
         :type dimension: int
         :param size: How many positions, at most the size of the dimension.
         :type size: int
+        :param window: Whether the positions are consecutive, defaults to False.
+        :type window: bool, optional
         :return: The positions, sorted.
         :rtype: List[int]
         """
+        if window:
+            return _lowest_window(self.levels[dimension], size)
         return _lowest(self.levels[dimension], size)
 
-    def draw_genes(self, conditions: Sequence[int], times: Sequence[int], size: int) -> List[int]:
+    def draw_genes(self, conditions: Sequence[int], times: Sequence[int], size: int,
+                   window: bool = False) -> List[int]:
         """
         ``size`` genes, those that the triclusters found hold the fewest cells of in some
         conditions and times first, drawn level by level as :py:meth:`draw` does. Without
@@ -92,13 +98,17 @@ class DataHierarchy:
         :type times: Sequence[int]
         :param size: How many genes, at most the number of genes.
         :type size: int
+        :param window: Whether the genes are consecutive, defaults to False: then the window
+            of genes whose cells held add up lowest.
+        :type window: bool, optional
         :return: The genes, sorted.
         :rtype: List[int]
         """
         if self.cells is None:
-            return self.draw(0, size)
+            return self.draw(0, size, window)
         held = self.cells[(slice(None),) + np.ix_(list(conditions), list(times))].sum(axis=(1, 2))
-        return _lowest([int(count) for count in held], size)
+        counts = [int(count) for count in held]
+        return _lowest_window(counts, size) if window else _lowest(counts, size)
 
 
 def _lowest(levels: Sequence[int], size: int) -> List[int]:
@@ -114,6 +124,21 @@ def _lowest(levels: Sequence[int], size: int) -> List[int]:
     return sorted(chosen)
 
 
+def _lowest_window(levels: Sequence[int], size: int) -> List[int]:
+    """``size`` consecutive positions whose levels add up lowest, the start drawn at random
+    among the windows that tie."""
+    sums = np.convolve(np.asarray(levels, dtype=np.int64), np.ones(size, dtype=np.int64), mode="valid")
+    starts = [int(start) for start in np.flatnonzero(sums == sums.min())]
+    start = starts[0] if len(starts) == 1 else get_rng().choice(starts)
+    return list(range(start, start + size))
+
+
+def _window(length: int, size: int) -> range:
+    """A window of ``size`` consecutive positions of ``length``, every start as likely."""
+    start = get_rng().randint(0, length - size)
+    return range(start, start + size)
+
+
 def _tricluster(parts: Sequence[Sequence[int]]) -> Tricluster:
     genes, conditions, times = parts
     return Tricluster(genes, conditions, times)
@@ -123,19 +148,25 @@ def _size(bounds: Tuple[int, int]) -> int:
     return get_rng().randint(bounds[0], bounds[1])
 
 
-def scattered(shape: Sequence[int], sizes: Sizes) -> Tricluster:
+def scattered(shape: Sequence[int], sizes: Sizes, ordered: Sequence[int] = ()) -> Tricluster:
     """
     A tricluster drawn at random: in each dimension, a size between its bounds, both
-    included, and that many positions from the whole dimension.
+    included, and that many positions from the whole dimension; in a dimension with order,
+    a window of that size, every start as likely.
 
     :param shape: The number of genes, conditions and times of the cube.
     :type shape: Sequence[int]
     :param sizes: The smallest and largest size of each dimension.
     :type sizes: Sizes
+    :param ordered: The dimensions with order, 0 for the genes, 1 for the conditions and 2
+        for the times; none by default.
+    :type ordered: Sequence[int], optional
     :return: The tricluster.
     :rtype: Tricluster
     """
-    return _tricluster([get_rng().sample(range(length), _size(bounds)) for length, bounds in zip(shape, sizes)])
+    return _tricluster([_window(length, _size(bounds)) if dimension in ordered
+                        else get_rng().sample(range(length), _size(bounds))
+                        for dimension, (length, bounds) in enumerate(zip(shape, sizes))])
 
 
 def block(shape: Sequence[int], sizes: Sizes) -> Tricluster:
@@ -159,7 +190,7 @@ def block(shape: Sequence[int], sizes: Sizes) -> Tricluster:
     return _tricluster(windows)
 
 
-def hierarchical(hierarchy: DataHierarchy, sizes: Sizes) -> Tricluster:
+def hierarchical(hierarchy: DataHierarchy, sizes: Sizes, ordered: Sequence[int] = ()) -> Tricluster:
     """
     A tricluster from the least explored coordinates: a size between its bounds in each
     dimension and that many positions of the lowest levels of the data hierarchy. With a
@@ -170,15 +201,19 @@ def hierarchical(hierarchy: DataHierarchy, sizes: Sizes) -> Tricluster:
     :type hierarchy: DataHierarchy
     :param sizes: The smallest and largest size of each dimension.
     :type sizes: Sizes
+    :param ordered: The dimensions with order, where the positions are a window, the one
+        least explored; none by default.
+    :type ordered: Sequence[int], optional
     :return: The tricluster.
     :rtype: Tricluster
     """
     if hierarchy.cells is None:
-        return _tricluster([hierarchy.draw(dimension, _size(bounds)) for dimension, bounds in enumerate(sizes)])
+        return _tricluster([hierarchy.draw(dimension, _size(bounds), dimension in ordered)
+                            for dimension, bounds in enumerate(sizes)])
     genes = _size(sizes[0])
-    conditions = hierarchy.draw(1, _size(sizes[1]))
-    times = hierarchy.draw(2, _size(sizes[2]))
-    return Tricluster(hierarchy.draw_genes(conditions, times, genes), conditions, times)
+    conditions = hierarchy.draw(1, _size(sizes[1]), 1 in ordered)
+    times = hierarchy.draw(2, _size(sizes[2]), 2 in ordered)
+    return Tricluster(hierarchy.draw_genes(conditions, times, genes, 0 in ordered), conditions, times)
 
 
 def initial_population(shape: Sequence[int], sizes: Sizes, hierarchy: DataHierarchy, first: bool,
