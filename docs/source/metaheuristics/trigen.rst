@@ -85,7 +85,7 @@ For TriGen, by default, no dimension has an order: a tricluster holds any genes,
     print([tricluster.times for tricluster in found])          # [(2, 3, 4, 5, 6), (2, 3, 4, 5, 6)]
     print(round(recovery(found, planted), 3))                  # 0.5
 
-A saved run keeps the dimensions with order.
+A window holds consecutive positions only: when the same genes and conditions follow a pattern in two stretches of time apart, a tricluster that holds both also holds the times between them. Without an order, the two stretches can be one tricluster on their times alone. A saved run keeps the dimensions with order.
 
 Counting what was found by cells
 --------------------------------
