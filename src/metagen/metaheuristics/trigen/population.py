@@ -17,12 +17,15 @@
 from __future__ import annotations
 
 import math
-from typing import List, Optional, Sequence, Tuple
+from typing import TYPE_CHECKING, List, Optional, Sequence, Tuple
 
 import numpy as np
 
 from metagen.framework.rng import get_rng
 from metagen.triclustering import Tricluster
+
+if TYPE_CHECKING:
+    from metagen.metaheuristics.trigen.shape import Shape
 
 #: The smallest and largest number of genes, conditions and times of a tricluster.
 Sizes = Tuple[Tuple[int, int], Tuple[int, int], Tuple[int, int]]
@@ -179,7 +182,7 @@ def hierarchical(hierarchy: DataHierarchy, sizes: Sizes) -> Tricluster:
 
 
 def initial_population(shape: Sequence[int], sizes: Sizes, hierarchy: DataHierarchy, first: bool,
-                       population_size: int, random_fraction: float) -> List[Tricluster]:
+                       population_size: int, random_fraction: float, form: Optional[Shape] = None) -> List[Tricluster]:
     """
     The triclusters a search starts from. The first search starts half from scattered
     triclusters and half from blocks of consecutive positions. Each later search draws
@@ -198,14 +201,19 @@ def initial_population(shape: Sequence[int], sizes: Sizes, hierarchy: DataHierar
     :type population_size: int
     :param random_fraction: The share drawn without the hierarchy in later searches.
     :type random_fraction: float
+    :param form: The shape of the triclusters, the cube by default.
+    :type form: Shape, optional
     :return: The triclusters, scattered first, then blocks, then hierarchical.
     :rtype: List[Tricluster]
     """
     unguided = population_size if first else exact_floor(random_fraction, population_size)
     scattered_count = unguided // 2
-    population = [scattered(shape, sizes) for _ in range(scattered_count)]
-    population += [block(shape, sizes) for _ in range(unguided - scattered_count)]
-    population += [hierarchical(hierarchy, sizes) for _ in range(population_size - unguided)]
+    if form is None:
+        from metagen.metaheuristics.trigen.shape import CubeShape
+        form = CubeShape()
+    population = [form.scattered(shape, sizes) for _ in range(scattered_count)]
+    population += [form.block(shape, sizes) for _ in range(unguided - scattered_count)]
+    population += [form.hierarchical(hierarchy, sizes) for _ in range(population_size - unguided)]
     return population
 
 

@@ -31,6 +31,7 @@ from metagen.metaheuristics.trigen.fitness import (NULL_SAMPLES, NULL_SIZES, Mea
                                                    SizeReference, TriclusterFitness)
 from metagen.metaheuristics.trigen.population import DataHierarchy, Sizes
 from metagen.metaheuristics.trigen.results import TriGenResult, _plain
+from metagen.metaheuristics.trigen.shape import Shape, grow, shape_named  # noqa: F401
 from metagen.metaheuristics.trigen.trigen_ga import TriGenGA, require_integer, validate
 from metagen.triclustering import Cube, Tricluster
 from metagen.triclustering.cube import AXES
@@ -151,6 +152,9 @@ class TriGen:
         the conditions and times they hold least and the genes with the fewest of their
         cells in them, defaults to ``"cells"``.
     :type hierarchy: str, optional
+    :param shape: The shape of the triclusters, ``"cube"``, the only one for now: every
+        combination of some genes, some conditions and some times.
+    :type shape: str, optional
     :raises ValueError: if a parameter is out of its range.
     """
 
@@ -162,7 +166,7 @@ class TriGen:
                  seed: Optional[int] = None, history: Optional[str] = None,
                  growth: Growth = "fitness", scoring: Scoring = "weighted",
                  pruning: Optional[bool] = None, shuffle_genes: bool = False,
-                 overlap: Overlap = "coordinates", hierarchy: Hierarchy = "cells") -> None:
+                 overlap: Overlap = "coordinates", hierarchy: Hierarchy = "cells", shape: str = "cube") -> None:
         # The defaults of the search were chosen by measurement (C7,
         # metagen-auditoria/trigen/c7/informe_c7.md): a grid of populations and generations,
         # then of selection and mutation rates, over planted cubes, 30 seeds each. A
@@ -185,6 +189,8 @@ class TriGen:
             raise ValueError(f"growth is 'fitness', 'quality' or None, not {growth!r}.")
         if hierarchy not in ("coordinates", "cells"):
             raise ValueError(f"hierarchy is 'coordinates' or 'cells', not {hierarchy!r}.")
+        #: The shape of the triclusters it searches.
+        self.form: Shape = shape_named(shape)
         self.cube = cube
         self.n_triclusters = n_triclusters
         self.generations = generations
@@ -195,7 +201,8 @@ class TriGen:
         self.sizes: Sizes = ((smallest[0], largest[0]), (smallest[1], largest[1]), (smallest[2], largest[2]))
         self._fitness_options: Dict[str, Any] = dict(measure=measure, views=views, flat_profiles=flat_profiles,
                                                      weights=weights, size_reference=size_reference,
-                                                     max_sizes=largest, scoring=scoring, overlap=overlap)
+                                                     max_sizes=largest, scoring=scoring, overlap=overlap,
+                                                     form=self.form)
         self.fitness = TriclusterFitness(cube, **self._fitness_options)
         # Growing is not part of the Java TriGen; it is the node addition of Cheng and
         # Church taken to three dimensions. Measured in the bench of phase 4b, 30 seeds
@@ -288,7 +295,7 @@ class TriGen:
             search = TriGenGA(fitness, self.sizes, hierarchy, first=index == 0,
                               population_size=self.population_size, generations=self.generations,
                               random_fraction=self.random_fraction, selection_rate=self.selection_rate,
-                              mutation_probability=self.mutation_probability)
+                              mutation_probability=self.mutation_probability, form=self.form)
             search.run()
             chosen = _choose(search, set(found))
             record: Dict[str, Any] = {"search": index, "evaluations": search._evaluations,
@@ -298,7 +305,7 @@ class TriGen:
             if chosen is not None and self.growth is not None:
                 score = fitness.evaluate if self.growth == "fitness" else fitness.quality
                 quality_only = self.growth == "quality"
-                grown, record["growth_evaluations"] = grow(
+                grown, record["growth_evaluations"] = self.form.grow(
                     chosen, score, self.sizes, cube.shape, pruning=self.pruning,
                     adding_genes=lambda base, genes: fitness.adding_genes(base, genes, quality_only=quality_only))
                 if grown not in found:
@@ -350,7 +357,7 @@ class TriGen:
                 "size_reference": self.size_reference, "seed": self.seed, "growth": self.growth,
                 "scoring": self.fitness.scoring, "pruning": self.pruning,
                 "shuffle_genes": self.shuffle_genes, "overlap": self.fitness.overlap,
-                "hierarchy": self.hierarchy_kind})
+                "hierarchy": self.hierarchy_kind, "shape": self.form.name})
 
     def result(self, label: Optional[str] = None) -> TriGenResult:
         """
@@ -379,86 +386,10 @@ class TriGen:
         self.result(label).save(path)
 
 
-def _tricluster(solution: Solution) -> Tricluster:
-    return Tricluster(solution["genes"], solution["conditions"], solution["times"])
-
-
-def grow(tricluster: Tricluster, score: Callable[[Tricluster], float], sizes: Sizes,
-         shape: Tuple[int, int, int], pruning: bool = False,
-         adding_genes: Optional[Callable[[Tricluster, List[int]], Optional[Any]]] = None) -> Tuple[Tricluster, int]:
-    """
-    Grow a tricluster one coordinate at a time: at each step, the gene, condition or time,
-    of a dimension below its largest size, that leaves the score lowest, as long as that
-    score is no higher than the current one. Ties go to the first dimension, then to the
-    first position.
-
-    With ``pruning``, each step also weighs removing a gene, condition or time from a
-    dimension above its smallest size, takes the addition or removal that leaves the score
-    lowest, and stops when none leaves it lower than the current one.
-
-    :param tricluster: The tricluster to grow.
-    :type tricluster: Tricluster
-    :param score: What to keep low, the lower the better.
-    :type score: Callable[[Tricluster], float]
-    :param sizes: The smallest and largest size of each dimension.
-    :type sizes: Sizes
-    :param shape: The shape of the cube.
-    :type shape: Tuple[int, int, int]
-    :param pruning: Whether a step may remove a coordinate, defaults to False.
-    :type pruning: bool, optional
-    :param adding_genes: What scores the tricluster with each of many genes added at once,
-        the same, but for rounding, as ``score`` on each, such as
-        :py:meth:`TriclusterFitness.adding_genes`; when it gives None, or without it, each
-        is scored with ``score``.
-    :type adding_genes: Callable, optional
-    :return: The grown tricluster, and how many triclusters were scored.
-    :rtype: Tuple[Tricluster, int]
-    """
-    parts = [list(tricluster.genes), list(tricluster.conditions), list(tricluster.times)]
-    current = score(tricluster)
-    evaluations = 1
-    while True:
-        best: Optional[Tuple[float, int, List[int]]] = None
-        for dimension in range(3):
-            low, high = sizes[dimension]
-            moves: List[List[int]] = []
-            if len(parts[dimension]) < high:
-                held = set(parts[dimension])
-                additions = [position for position in range(shape[dimension]) if position not in held]
-                values = (adding_genes(Tricluster(parts[0], parts[1], parts[2]), additions)
-                          if dimension == 0 and adding_genes is not None and additions else None)
-                if values is None:
-                    moves += [parts[dimension] + [position] for position in additions]
-                else:
-                    # The same choice as scoring them one by one: the first lowest that qualifies.
-                    evaluations += len(additions)
-                    qualifies = values < current if pruning else values <= current
-                    if qualifies.any():
-                        index = int(np.flatnonzero(qualifies)[np.argmin(values[qualifies])])
-                        if best is None or values[index] < best[0]:
-                            best = (float(values[index]), dimension, parts[dimension] + [additions[index]])
-            if pruning and len(parts[dimension]) > low:
-                moves += [[kept for kept in parts[dimension] if kept != removed] for removed in parts[dimension]]
-            for move in moves:
-                trial = list(parts)
-                trial[dimension] = move
-                value = score(Tricluster(trial[0], trial[1], trial[2]))
-                evaluations += 1
-                # Without pruning, a step that leaves the score equal is taken: it only adds.
-                # With pruning, only a step that lowers it, so that no step can undo another.
-                better = value < current if pruning else value <= current
-                if better and (best is None or value < best[0]):
-                    best = (value, dimension, move)
-        if best is None:
-            return Tricluster(parts[0], parts[1], parts[2]), evaluations
-        current = best[0]
-        parts[best[1]] = best[2]
-
-
 def _choose(search: TriGenGA, found: Set[Tricluster]) -> Optional[Tricluster]:
     """The best of the last population that is new; else the best new one evaluated."""
     for individual in sorted(search.current_solutions, key=Solution.get_fitness):
-        tricluster = _tricluster(individual)
+        tricluster = search.form.from_solution(individual)
         if tricluster not in found:
             return tricluster
     new = {tricluster: value for tricluster, value in search.evaluated.items() if tricluster not in found}

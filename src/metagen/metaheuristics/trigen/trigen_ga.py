@@ -19,33 +19,15 @@ from __future__ import annotations
 import numbers
 from typing import Any, Dict, List, Optional, Sequence, Tuple, cast
 
-from metagen.framework import Domain, Solution
+from metagen.framework import Solution
 from metagen.framework.rng import get_rng
 from metagen.metaheuristics.base import Metaheuristic
-from metagen.metaheuristics.genetic.genetic_tools import GAConnector, GASolution
-from metagen.metaheuristics.tools import solution_class
+from metagen.metaheuristics.genetic.genetic_tools import GASolution
 from metagen.metaheuristics.trigen.fitness import TriclusterFitness
 from metagen.metaheuristics.trigen.population import DataHierarchy, Sizes, exact_floor, initial_population
+from metagen.metaheuristics.trigen.shape import CubeShape, Shape, tricluster_domain  # noqa: F401
 from metagen.triclustering import Tricluster
 from metagen.triclustering.cube import AXES
-
-
-def tricluster_domain(shape: Sequence[int], sizes: Sizes) -> Domain:
-    """
-    The search space of a tricluster: three subsets, of the genes, the conditions and the
-    times of a cube, each between its smallest and largest size.
-
-    :param shape: The number of genes, conditions and times of the cube.
-    :type shape: Sequence[int]
-    :param sizes: The smallest and largest size of each dimension.
-    :type sizes: Sizes
-    :return: The domain, with the connector of the genetic algorithms.
-    :rtype: Domain
-    """
-    domain = Domain(GAConnector())
-    for axis, length, (smallest, largest) in zip(AXES, shape, sizes):
-        domain.define_subset(axis, list(range(length)), smallest, largest)
-    return domain
 
 
 def select_by_groups(population: Sequence[Solution], count: int) -> List[Solution]:
@@ -130,11 +112,15 @@ class TriGenGA(Metaheuristic):
     def __init__(self, fitness: TriclusterFitness, sizes: Sizes, hierarchy: DataHierarchy, first: bool,
                  population_size: int = 200, generations: int = 50, random_fraction: float = 0.2,
                  selection_rate: float = 0.5, mutation_probability: float = 0.1, seed: Optional[int] = None,
-                 checkpoint: Optional[str] = None, checkpoint_every: int = 1, history: Optional[str] = None) -> None:
+                 checkpoint: Optional[str] = None, checkpoint_every: int = 1, history: Optional[str] = None,
+                 form: Optional[Shape] = None) -> None:
         validate(population_size, generations, random_fraction, selection_rate, mutation_probability)
-        super().__init__(tricluster_domain(fitness.cube.shape, sizes), fitness, population_size=population_size,
+        form = CubeShape() if form is None else form
+        super().__init__(form.domain(fitness.cube.shape, sizes), fitness, population_size=population_size,
                          seed=seed, checkpoint=checkpoint, checkpoint_every=checkpoint_every, history=history)
         self.tricluster_fitness = fitness
+        #: The shape of the triclusters it searches.
+        self.form = form
         self.sizes = sizes
         self.hierarchy = hierarchy
         self.first = first
@@ -147,11 +133,7 @@ class TriGenGA(Metaheuristic):
         self.evaluated: Dict[Tricluster, float] = {}
 
     def _solution(self, tricluster: Tricluster) -> Solution:
-        solution = solution_class(self.domain)(self.domain, connector=self.domain.get_connector())
-        solution.set("genes", list(tricluster.genes))
-        solution.set("conditions", list(tricluster.conditions))
-        solution.set("times", list(tricluster.times))
-        return solution
+        return self.form.to_solution(tricluster, self.domain)
 
     def initialize(self, num_solutions: int = 10) -> Tuple[List[Solution], Solution]:
         """
@@ -164,7 +146,7 @@ class TriGenGA(Metaheuristic):
         """
         population = [self._solution(tricluster) for tricluster in
                       initial_population(self.tricluster_fitness.cube.shape, self.sizes, self.hierarchy, self.first,
-                                         num_solutions, self.random_fraction)]
+                                         num_solutions, self.random_fraction, form=self.form)]
         for individual in population:
             individual.evaluate(self.fitness_function)
         return population, min(population, key=Solution.get_fitness)
@@ -207,7 +189,7 @@ class TriGenGA(Metaheuristic):
 
     def _record(self, population: Sequence[Solution]) -> None:
         for individual in population:
-            tricluster = Tricluster(individual["genes"], individual["conditions"], individual["times"])
+            tricluster = self.form.from_solution(individual)
             self.evaluated.setdefault(tricluster, individual.get_fitness())
 
     def stopping_criterion(self) -> bool:

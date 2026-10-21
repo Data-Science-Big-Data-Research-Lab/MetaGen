@@ -17,7 +17,7 @@
 from __future__ import annotations
 
 import math
-from typing import Dict, List, Literal, Mapping, Optional, Sequence, Tuple
+from typing import TYPE_CHECKING, Dict, List, Literal, Mapping, Optional, Sequence, Tuple
 
 import numpy as np
 
@@ -27,6 +27,9 @@ from metagen.triclustering import Cube, Tricluster, lsl, msl, msr3d, triq
 from metagen.triclustering.cube import AXES
 from metagen.triclustering.measures import Views, _msl_adding_genes
 from metagen.triclustering.quality import FlatProfiles
+
+if TYPE_CHECKING:
+    from metagen.metaheuristics.trigen.shape import Shape
 
 #: The measure of coherence the fitness takes as its quality term.
 Measure = Literal["msl", "lsl", "msr3d", "msr3d_normalized", "triq"]
@@ -162,6 +165,9 @@ class TriclusterFitness:
         ``"cells"``, defaults to ``"coordinates"``. The significance already compares the
         cells two triclusters share, so it scores the same with either.
     :type overlap: str, optional
+    :param form: The shape of the triclusters, whose random ones make the model of chance
+        of the significance; the cube by default.
+    :type form: Shape, optional
     :raises ValueError: if an option is unknown, the weights are not the seven, or one is
         negative or not finite, the maximum sizes are missing or do not fit the cube, or
         weights are given with ``scoring="significance"``.
@@ -171,7 +177,7 @@ class TriclusterFitness:
                  flat_profiles: FlatProfiles = "exclude", weights: Optional[Mapping[str, float]] = None,
                  size_reference: SizeReference = "dataset", max_sizes: Optional[Sequence[int]] = None,
                  found: Optional[Sequence[Tricluster]] = None, scoring: Scoring = "weighted",
-                 overlap: Overlap = "coordinates") -> None:
+                 overlap: Overlap = "coordinates", form: Optional[Shape] = None) -> None:
         if scoring not in ("weighted", "significance"):
             raise ValueError(f"scoring must be 'weighted' or 'significance', not {scoring!r}.")
         if overlap not in ("coordinates", "cells"):
@@ -211,6 +217,10 @@ class TriclusterFitness:
         self.found: List[Tricluster] = list(found or [])
         self.scoring = scoring
         self.overlap = overlap
+        if form is None:
+            from metagen.metaheuristics.trigen.shape import CubeShape
+            form = CubeShape()
+        self.form = form
         # The fitted model of chance: coefficients of the mean and of the log deviation.
         self._chance: Optional[Tuple[np.ndarray, np.ndarray]] = None
         # The coordinates of the triclusters found as sets, built again only when the
@@ -229,7 +239,7 @@ class TriclusterFitness:
         :return: Its fitness, the lower the better.
         :rtype: float
         """
-        return self.evaluate(Tricluster(solution["genes"], solution["conditions"], solution["times"]))
+        return self.evaluate(self.form.from_solution(solution))
 
     def evaluate(self, tricluster: Tricluster) -> float:
         """
@@ -344,9 +354,7 @@ class TriclusterFitness:
         for size in sizes:
             values = []
             for _ in range(NULL_SAMPLES):
-                genes, conditions, times = (rng.choice(extent, count, replace=False)
-                                            for extent, count in zip(shape, size))
-                values.append(self.quality(Tricluster(genes, conditions, times)))
+                values.append(self.quality(self.form.chance(shape, size)))
             means.append(float(np.mean(values)))
             deviations.append(max(float(np.std(values)), 1e-12))
         design = np.column_stack([np.ones(len(sizes))] + [np.log([size[axis] for size in sizes]) for axis in range(3)])

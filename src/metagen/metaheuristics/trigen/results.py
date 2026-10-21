@@ -47,12 +47,13 @@ _CUBES_VERSION = 1
 CONFIGURATION = ("n_triclusters", "generations", "population_size", "random_fraction", "selection_rate",
                  "mutation_probability", "min_sizes", "max_sizes", "measure", "views", "flat_profiles", "weights",
                  "size_reference", "seed", "growth", "scoring", "pruning", "shuffle_genes", "overlap",
-                 "hierarchy")
+                 "hierarchy", "shape")
 
 
 # The options TriGen gained after the format was set, with the value a result saved before
 # them ran with.
-_LATER_OPTIONS: Dict[str, Any] = {"shuffle_genes": False, "overlap": "coordinates", "hierarchy": "coordinates"}
+_LATER_OPTIONS: Dict[str, Any] = {"shuffle_genes": False, "overlap": "coordinates", "hierarchy": "coordinates",
+                                  "shape": "cube"}
 
 
 @dataclass

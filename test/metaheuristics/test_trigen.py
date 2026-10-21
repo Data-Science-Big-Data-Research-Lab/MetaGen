@@ -139,6 +139,7 @@ def test_a_search_takes_the_best_new_one_of_its_last_population_before_anything_
     """The best new tricluster evaluated may have been lost from the population; the last
     population still comes first, and what the search evaluated is the fallback."""
     from types import SimpleNamespace
+    from metagen.metaheuristics.trigen.shape import CubeShape
     from metagen.metaheuristics.trigen.trigen import _choose
 
     class Individual(dict):
@@ -153,7 +154,7 @@ def test_a_search_takes_the_best_new_one_of_its_last_population_before_anything_
     in_population = Tricluster([2, 3], [0, 1], [0, 1])
     lost = Tricluster([4, 5], [0, 1], [0, 1])
     search = SimpleNamespace(current_solutions=[Individual(found, 0.1), Individual(in_population, 0.5)],
-                             evaluated={found: 0.1, in_population: 0.5, lost: 0.2})
+                             evaluated={found: 0.1, in_population: 0.5, lost: 0.2}, form=CubeShape())
     assert _choose(search, {found}) == in_population
     search.current_solutions = [Individual(found, 0.1)]
     assert _choose(search, {found}) == lost
@@ -219,7 +220,7 @@ def test_growth_starts_from_what_the_search_returns_and_lowers_its_fitness():
 
 
 def test_a_tricluster_that_grows_into_one_found_is_kept_as_returned(monkeypatch):
-    import metagen.metaheuristics.trigen.trigen as module
+    import metagen.metaheuristics.trigen.shape as module
     first = _trigen(growth=None, n_triclusters=1).run()[0]
     monkeypatch.setattr(module, "grow", lambda tricluster, *rest, **options: (first, 1))
     triclusters = _trigen(growth="fitness", n_triclusters=2).run()
@@ -299,15 +300,19 @@ def test_the_fitness_with_each_gene_added_at_once_is_that_of_each(scoring, quali
 @pytest.mark.parametrize("arguments", [{}, {"growth": "quality"}, {"scoring": "significance"},
                                        {"scoring": "significance", "pruning": False}, {"measure": "msr3d"}])
 def test_growing_with_every_gene_scored_at_once_finds_what_scoring_each_finds(arguments, monkeypatch):
-    import metagen.metaheuristics.trigen.trigen as module
+    import metagen.metaheuristics.trigen.shape as module
     fast = _trigen(**arguments).run()
     original = module.grow
 
+    calls = []
+
     def one_by_one(*given, adding_genes=None, **kwargs):
+        calls.append(1)
         return original(*given, **kwargs)
 
     monkeypatch.setattr(module, "grow", one_by_one)
     assert _trigen(**arguments).run() == fast
+    assert calls, "the growth went through the replacement"
 
 
 def test_by_cells_a_run_is_reproducible_and_counts_the_cells_it_found():
@@ -335,3 +340,30 @@ def test_by_cells_shuffled_runs_count_the_cells_at_the_positions_of_the_cube():
     for tricluster in found:
         assert trigen.hierarchy.cells[list(tricluster.genes)][:, list(tricluster.conditions)][
             :, :, list(tricluster.times)].min() >= 1
+
+
+def test_the_shape_is_the_cube_by_default_and_an_unknown_one_is_refused():
+    assert _trigen().form.name == "cube" and _trigen().configuration()["shape"] == "cube"
+    with pytest.raises(ValueError, match="shape is one of"):
+        _trigen(shape="sphere")
+
+
+def test_a_search_draws_grows_and_reads_its_triclusters_through_its_shape():
+    from metagen.metaheuristics.trigen.shape import CubeShape
+
+    calls = []
+
+    class Counted(CubeShape):
+        def __getattribute__(self, name):
+            if name in ("domain", "to_solution", "from_solution", "scattered", "block", "hierarchical", "grow",
+                        "chance"):
+                calls.append(name)
+            return super().__getattribute__(name)
+
+    trigen = _trigen(n_triclusters=2, scoring="significance")
+    trigen.form = Counted()
+    trigen.fitness.form = trigen.form
+    plain = _trigen(n_triclusters=2, scoring="significance").run()
+    assert trigen.run() == plain, "a shape that does what the cube does finds the same"
+    assert {"domain", "to_solution", "from_solution", "scattered", "block", "hierarchical", "grow",
+            "chance"} <= set(calls)
