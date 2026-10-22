@@ -16,6 +16,7 @@
 """
 from __future__ import annotations
 
+import math
 from abc import ABC, abstractmethod
 from functools import lru_cache
 from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Tuple, cast
@@ -88,6 +89,13 @@ class Shape(ABC):
     def chance_extents(self, shape: Sequence[int]) -> Tuple[int, ...]:
         """The largest of each part of :py:meth:`measured_size` in a cube of a shape."""
         return tuple(shape)
+
+    def size_shares(self, tricluster: Tricluster, references: Sequence[int]) -> Tuple[float, float, float]:
+        """The size of a tricluster in each dimension as a share of its reference, for the
+        size terms of the weighted fitness: for a cube, its genes, conditions and times."""
+        genes, conditions, times = (len(positions) / reference for positions, reference in
+                                    zip((tricluster.genes, tricluster.conditions, tricluster.times), references))
+        return genes, conditions, times
 
     def values(self, cube: Cube, tricluster: Tricluster) -> Optional[np.ndarray]:
         """The values the quality of a tricluster is measured on, as (series, 1, times),
@@ -389,6 +397,19 @@ class PrismShape(Shape):
 
     def chance_extents(self, shape: Sequence[int]) -> Tuple[int, ...]:
         return shape[0] * shape[1], shape[2]
+
+    def size_shares(self, tricluster: Tricluster, references: Sequence[int]) -> Tuple[float, float, float]:
+        """The genes and the conditions both take the side of a square of the area of the
+        surface, the square root of its share of the pixels of the plane of reference, as
+        a square takes its rows and its columns; the times take the share of the window."""
+        # By the rows and the columns it spans, as for a cube, the weighted fitness rewarded
+        # small surfaces strewn over a wide extent: 13 pixels over 6 x 6 where 150 were
+        # planted, and 0.574 of a rectangle the cube recovers at 0.875; by the share of the
+        # pixels itself, the reward is so small that the surfaces shrink to the fewest
+        # pixels (metagen-auditoria/trigen/c5/informe_c5_etapa3.md, 3).
+        pixels, times = self.measured_size(tricluster)
+        side = math.sqrt(pixels / (references[0] * references[1]))
+        return side, side, times / references[2]
 
     def values(self, cube: Cube, tricluster: Tricluster) -> Optional[np.ndarray]:
         pixels, times = prism_parts(tricluster)

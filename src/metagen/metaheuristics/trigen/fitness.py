@@ -81,6 +81,8 @@ class TriclusterFitness:
       scale of the data) or ``"triq"`` (1 − TRIQ).
     - :math:`1 - |X| / R_X` favors larger triclusters. :math:`R_X` is the size of that
       dimension in the cube, or, with ``size_reference="max"``, the largest size allowed.
+      For a prism, the genes and the conditions both take the side of a square of the area
+      of its surface, :math:`\\sqrt{n / (R_{genes} R_{conditions})}` for :math:`n` pixels.
     - :math:`O_X = \\sum_{s} |X \\cap X_s| / (|X| \\cdot |S|)` is the share of its
       coordinates that the triclusters already found, :math:`S`, hold, 0 while none has
       been found: it penalizes overlap.
@@ -441,8 +443,8 @@ class TriclusterFitness:
         """
         terms: Dict[str, float] = {"quality": self.quality(tricluster)}
         own = (tricluster.genes, tricluster.conditions, tricluster.times)
-        for axis, positions, reference in zip(AXES, own, self.references):
-            terms[axis] = len(positions) / reference
+        for axis, share in zip(AXES, self.form.size_shares(tricluster, self.references)):
+            terms[axis] = share
         found = self._sets_of_found()
         for index, (axis, positions) in enumerate(zip(AXES, own)):
             mine = set(positions)

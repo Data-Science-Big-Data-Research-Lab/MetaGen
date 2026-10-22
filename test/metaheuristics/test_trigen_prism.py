@@ -241,3 +241,14 @@ def test_planted_prisms_are_surfaces_that_share_no_pixel():
     assert not (pixels[0] & pixels[1] or pixels[0] & pixels[2] or pixels[1] & pixels[2])
     with pytest.raises(ValueError, match="pixels"):
         plant_prisms((4, 4, 5), [(10, 3), (10, 3)])
+
+
+def test_the_weighted_fitness_sizes_a_prism_by_the_side_of_its_area_not_by_the_rows_and_columns_it_spans():
+    fitness = TriclusterFitness(CUBE, views="time", form=PrismShape(pixels=(2, 40)))
+    line = prism([(x, 3) for x in range(8)], range(2, 6))                   # 8 pixels over 8 rows
+    square = prism([(x, y) for x in range(4) for y in range(4)], range(2, 6))   # 16 pixels over 4 rows
+    terms = fitness.terms(line)
+    assert terms["genes"] == terms["conditions"] == math.sqrt(8 / 256) and terms["times"] == 4 / 10
+    assert fitness.terms(square)["genes"] == math.sqrt(16 / 256) == 4 / 16    # a square: its side
+    cube = TriclusterFitness(CUBE).terms(Tricluster(range(4), range(4), range(2, 6)))
+    assert (cube["genes"], cube["conditions"]) == (4 / 16, 4 / 16)
