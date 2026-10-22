@@ -25,7 +25,7 @@ from metagen.framework import Solution
 from metagen.framework.rng import get_numpy_rng
 from metagen.triclustering import Cube, Tricluster, lsl, msl, msr3d, triq
 from metagen.triclustering.cube import AXES
-from metagen.triclustering.measures import Views, _msl_adding_genes
+from metagen.triclustering.measures import Views, _average_values, _line_angle, _msl_adding_genes, _segment_angles
 from metagen.triclustering.quality import FlatProfiles
 
 if TYPE_CHECKING:
@@ -166,11 +166,14 @@ class TriclusterFitness:
         cells two triclusters share, so it scores the same with either.
     :type overlap: str, optional
     :param form: The shape of the triclusters, whose random ones make the model of chance
-        of the significance; the cube by default.
+        of the significance; the cube by default. A prism is measured by its pixels as
+        series along its window, and the model of chance reads its size as its pixels and
+        its times.
     :type form: Shape, optional
     :raises ValueError: if an option is unknown, the weights are not the seven, or one is
         negative or not finite, the maximum sizes are missing or do not fit the cube, or
-        weights are given with ``scoring="significance"``.
+        weights are given with ``scoring="significance"``, or the quality cannot measure the
+        shape.
     """
 
     def __init__(self, cube: Cube, measure: Measure = "msl", views: Views = "distinct",
@@ -220,6 +223,7 @@ class TriclusterFitness:
         if form is None:
             from metagen.metaheuristics.trigen.shape import CubeShape
             form = CubeShape()
+        form.check_measure(measure, views)
         self.form = form
         # The fitted model of chance: coefficients of the mean and of the log deviation.
         self._chance: Optional[Tuple[np.ndarray, np.ndarray]] = None
@@ -261,6 +265,9 @@ class TriclusterFitness:
         :return: Its quality term.
         :rtype: float
         """
+        values = self.form.values(self.cube, tricluster)
+        if values is not None:
+            return _average_values(values, "time", True, _segment_angles if self.measure == "msl" else _line_angle)
         if self.measure == "msl":
             return msl(self.cube, tricluster, views=self.views, normalized=True)
         if self.measure == "lsl":
@@ -348,7 +355,8 @@ class TriclusterFitness:
         """
         rng = get_numpy_rng()
         shape = self.cube.shape
-        sizes = [tuple(int(round(math.exp(rng.uniform(math.log(2), math.log(extent))))) for extent in shape)
+        extents = self.form.chance_extents(shape)
+        sizes = [tuple(int(round(math.exp(rng.uniform(math.log(2), math.log(extent))))) for extent in extents)
                  for _ in range(NULL_SIZES)]
         means, deviations = [], []
         for size in sizes:
@@ -357,7 +365,8 @@ class TriclusterFitness:
                 values.append(self.quality(self.form.chance(shape, size)))
             means.append(float(np.mean(values)))
             deviations.append(max(float(np.std(values)), 1e-12))
-        design = np.column_stack([np.ones(len(sizes))] + [np.log([size[axis] for size in sizes]) for axis in range(3)])
+        design = np.column_stack([np.ones(len(sizes))] + [np.log([size[axis] for size in sizes])
+                                                          for axis in range(len(extents))])
         self._chance = (np.linalg.lstsq(design, np.array(means), rcond=None)[0],
                         np.linalg.lstsq(design, np.log(deviations), rcond=None)[0])
 
@@ -378,7 +387,7 @@ class TriclusterFitness:
             self.fit_chance()
         assert self._chance is not None
         mean, deviation = self._chance
-        row: np.ndarray = np.array([1.0, *np.log(tricluster.size)])
+        row: np.ndarray = np.array([1.0, *np.log(self.form.measured_size(tricluster))])
         value = self.quality(tricluster) if quality is None else quality
         return (float(row @ mean) - value) / float(np.exp(row @ deviation))
 
@@ -448,7 +457,7 @@ class TriclusterFitness:
             # the noise lowers O faster than it lowers z.
             terms["z"] = self.significance(tricluster, terms["quality"])
             terms["z_found"] = max([0.0] + [self.significance(shared) for shared in
-                                            (_shared(tricluster, found) for found in self.found)
+                                            (self.form.shared(tricluster, found) for found in self.found)
                                             if shared is not None])
             terms["fitness"] = -(terms["z"] - terms["z_found"])
             return terms
@@ -461,19 +470,6 @@ class TriclusterFitness:
             total += sum(weights[f"overlap_{axis}"] * terms[f"overlap_{axis}"] for axis in AXES)
         terms["fitness"] = total / sum(weights.values())
         return terms
-
-
-def _shared(tricluster: Tricluster, other: Tricluster) -> Optional[Tricluster]:
-    """The tricluster of the coordinates two triclusters share, or None if they share
-    fewer than two in a dimension."""
-    for one in (tricluster, other):
-        one.require_cube("The significance against the triclusters found")
-    genes, conditions, times = (sorted(set(mine) & set(theirs)) for mine, theirs in
-                                zip((tricluster.genes, tricluster.conditions, tricluster.times),
-                                    (other.genes, other.conditions, other.times)))
-    if min(len(genes), len(conditions), len(times)) < 2:
-        return None
-    return Tricluster(genes, conditions, times)
 
 
 def _cell_weight(weights: Mapping[str, float]) -> float:

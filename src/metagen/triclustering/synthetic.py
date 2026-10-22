@@ -135,6 +135,101 @@ def plant(shape: Sequence[int], sizes: Sequence[Sequence[int]], pattern: Pattern
     return Cube(values), planted
 
 
+def plant_prisms(shape: Sequence[int], sizes: Sequence[Sequence[int]], pattern: Pattern = "additive",
+                 noise: float = 0.0, seed: Optional[int] = None,
+                 neighborhood: int = 4) -> Tuple[Cube, List[Tricluster]]:
+    """
+    A cube of random values with prisms planted in it: surfaces of the plane of the first
+    two dimensions, one piece through their neighbors, each over a window of the times, as
+    fields through a season in a series of images.
+
+    The background is standard normal noise. Each size ``(pixels, times)`` in ``sizes``
+    plants one prism: a surface of that many pixels grown at random from a pixel drawn at
+    random, sharing no pixel with the others, over a window of that many times, every start
+    as likely. Its pixels follow the pattern of :py:func:`plant` along the window, as the
+    genes of a tricluster of one condition: with ``"additive"``,
+    :math:`\\mu + \\alpha_p + \\gamma_t`. ``noise`` is the standard deviation of normal noise
+    added inside the prisms.
+
+    With a ``seed``, the cube is drawn from a generator of its own seeded with it; without
+    one, from MetaGen's generator.
+
+    .. code-block:: python
+
+        from metagen.triclustering import plant_prisms
+
+        cube, planted = plant_prisms((40, 40, 12), [(50, 6), (30, 4)], seed=0)
+        print(cube.shape, [t.n_cells for t in planted])       # (40, 40, 12) [300, 120]
+
+    :param shape: The size of the plane, in its two dimensions, and the number of times.
+    :type shape: Sequence[int]
+    :param sizes: The pixels and the times of each prism to plant.
+    :type sizes: Sequence[Sequence[int]]
+    :param pattern: ``"constant"``, ``"additive"`` or ``"multiplicative"``, defaults to
+        ``"additive"``.
+    :type pattern: str, optional
+    :param noise: The standard deviation of the noise inside the prisms, defaults to 0.
+    :type noise: float, optional
+    :param seed: A seed for this cube alone, defaults to None.
+    :type seed: int, optional
+    :param neighborhood: The neighbors of a pixel, 4 or 8, defaults to 4.
+    :type neighborhood: int, optional
+    :return: The cube, and the prisms planted, in the order of ``sizes``.
+    :rtype: Tuple[Cube, List[Tricluster]]
+    :raises ValueError: if the shape or the sizes are not valid, the surfaces need more
+        pixels than the plane has, the pattern is unknown or the noise is negative or not
+        finite.
+    """
+    from metagen.triclustering.surface import grow_by
+
+    rows, columns, times = _counts("shape", shape)
+    wanted = []
+    for size in sizes:
+        pair = tuple(size)
+        if (len(pair) != 2 or any(isinstance(n, bool) or not isinstance(n, numbers.Integral) for n in pair)
+                or not 2 <= pair[0] <= rows * columns or not 2 <= pair[1] <= times):
+            raise ValueError(f"A prism is a number of pixels, from 2 to the {rows * columns} of the plane, and "
+                             f"of times, from 2 to {times}, not {size!r}.")
+        wanted.append((int(pair[0]), int(pair[1])))
+    if sum(pixels for pixels, _ in wanted) > rows * columns:
+        raise ValueError(f"The prisms need {sum(pixels for pixels, _ in wanted)} pixels and do not share any; "
+                         f"the plane has {rows * columns}.")
+    if neighborhood not in (4, 8):
+        raise ValueError(f"neighborhood is 4 or 8, not {neighborhood!r}.")
+    if pattern not in _PATTERNS:
+        raise ValueError(f"pattern must be one of {list(_PATTERNS)}, not {pattern!r}.")
+    if not (noise >= 0 and math.isfinite(noise)):
+        raise ValueError(f"noise is a standard deviation, finite and not negative, not {noise}.")
+
+    rng = np.random.default_rng(seed) if seed is not None else get_numpy_rng()
+    values = rng.normal(size=(rows, columns, times))
+    taken: set = set()
+    planted: List[Tricluster] = []
+    for count, length in wanted:
+        # A surface grown where it is boxed in by others may come out short; it is drawn
+        # again from another pixel.
+        for _ in range(1000):
+            free = [(x, y) for x in range(rows) for y in range(columns) if (x, y) not in taken]
+            start = free[int(rng.integers(0, len(free)))]
+            pixels = grow_by(start, count, (rows, columns), neighborhood, None, lambda pixel: float(rng.random()),
+                             blocked=frozenset(taken))
+            if len(pixels) == count:
+                break
+        else:
+            raise ValueError(f"No surface of {count} pixels fits among the ones planted before it.")
+        taken.update(pixels)
+        first = int(rng.integers(0, times - length + 1))
+        window = np.arange(first, first + length)
+        block = _block(rng, pattern, (count, 1, length))[:, 0, :]
+        if noise > 0:
+            block = block + rng.normal(scale=noise, size=block.shape)
+        held = np.asarray(pixels)
+        values[held[:, 0][:, None], held[:, 1][:, None], window[None, :]] = block
+        planted.append(Tricluster.from_cells(np.repeat(held[:, 0], length), np.repeat(held[:, 1], length),
+                                             np.tile(window, count)))
+    return Cube(values), planted
+
+
 def _block(rng: np.random.Generator, pattern: str, size: Tuple[int, int, int]) -> np.ndarray:
     genes, conditions, times = size
     if pattern == "constant":

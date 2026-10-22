@@ -69,6 +69,8 @@ Triclustering
 
 .. autofunction:: metagen.triclustering.plant
 
+.. autofunction:: metagen.triclustering.plant_prisms
+
 .. autofunction:: metagen.triclustering.null_cube
 
 .. autofunction:: metagen.triclustering.stability

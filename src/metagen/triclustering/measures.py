@@ -188,7 +188,12 @@ def _average(cube: Cube, tricluster: Tricluster, views: str, normalized: bool,
              angles: Callable[[np.ndarray], np.ndarray]) -> float:
     if views not in _VIEWS:
         raise ValueError(f"views must be one of {list(_VIEWS)}, not {views!r}.")
-    values = cube.subcube(tricluster)
+    return _average_values(cube.subcube(tricluster), views, normalized, angles)
+
+
+def _average_values(values: np.ndarray, views: str, normalized: bool,
+                    angles: Callable[[np.ndarray], np.ndarray]) -> float:
+    """:py:func:`_average` of values already taken out, (genes, conditions, times)."""
     chosen = _VIEWS[views]
     total = sum(weight * _view(angles(np.transpose(values, axes))) for axes, weight in chosen)
     result = total / sum(weight for _, weight in chosen)

@@ -47,13 +47,13 @@ _CUBES_VERSION = 1
 CONFIGURATION = ("n_triclusters", "generations", "population_size", "random_fraction", "selection_rate",
                  "mutation_probability", "min_sizes", "max_sizes", "measure", "views", "flat_profiles", "weights",
                  "size_reference", "seed", "growth", "scoring", "pruning", "shuffle_genes", "overlap",
-                 "hierarchy", "shape", "ordered")
+                 "hierarchy", "shape", "ordered", "neighborhood", "pixels")
 
 
 # The options TriGen gained after the format was set, with the value a result saved before
 # them ran with.
 _LATER_OPTIONS: Dict[str, Any] = {"shuffle_genes": False, "overlap": "coordinates", "hierarchy": "coordinates",
-                                  "shape": "cube", "ordered": []}
+                                  "shape": "cube", "ordered": [], "neighborhood": 4, "pixels": None}
 
 
 @dataclass
@@ -161,7 +161,10 @@ class TriGenResult:
                              "evaluations": record["evaluations"],
                              "growth_evaluations": record["growth_evaluations"], "seconds": record["seconds"]})
             if found is not None:
-                tricluster = Tricluster(found["genes"], found["conditions"], found["times"], fitness=record["fitness"])
+                tricluster = (Tricluster(found["genes"], found["conditions"], found["times"], fitness=record["fitness"])
+                              if "cells" not in found else
+                              Tricluster.from_cells(found["cells"][0], found["cells"][1], found["cells"][2],
+                                                    fitness=record["fitness"]))
                 triclusters.append(tricluster)
                 terms.append(dict(record["terms"]))
                 names.append({axis: [_plain(labels[position]) for position in positions] for axis, labels, positions in

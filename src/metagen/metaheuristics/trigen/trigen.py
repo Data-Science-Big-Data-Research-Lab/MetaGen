@@ -152,14 +152,28 @@ class TriGen:
         the conditions and times they hold least and the genes with the fewest of their
         cells in them, defaults to ``"cells"``.
     :type hierarchy: str, optional
-    :param shape: The shape of the triclusters, ``"cube"``, the only one for now: every
-        combination of some genes, some conditions and some times.
+    :param shape: The shape of the triclusters, defaults to ``"cube"``, every combination
+        of some genes, some conditions and some times. ``"prism"`` is a surface of the plane
+        of the genes and the conditions, pixels that are one piece through their neighbors,
+        held along a window of the times, as a field through a season in a series of
+        images: it needs the three dimensions in ``ordered``, ``views="time"`` and the
+        quality ``"msl"`` or ``"lsl"``, which measure its pixels as series along its window.
+        ``max_sizes`` bound the extent of its surface in the genes and the conditions, and
+        ``pixels`` its number of pixels.
     :type shape: str, optional
     :param ordered: The dimensions whose positions have an order, by name (``"genes"``,
         ``"conditions"``, ``"times"``), none by default. In a dimension with order a
         tricluster holds a window, consecutive positions: the searches draw, cross, mutate
         and grow windows there, and the model of chance of the significance draws windows.
     :type ordered: Sequence[str], optional
+    :param neighborhood: The neighbors of a pixel of a prism, 4 (those that share a side)
+        or 8 (a side or a corner), defaults to 4.
+    :type neighborhood: int, optional
+    :param pixels: The fewest and most pixels of the surface of a prism, defaults to the
+        pixels of rectangles of the smallest and the largest sizes of the genes and the
+        conditions. Each pixel is a step of what a search represents, so a bound well
+        below the plane keeps the search light.
+    :type pixels: Sequence[int], optional
     :raises ValueError: if a parameter is out of its range.
     """
 
@@ -172,7 +186,7 @@ class TriGen:
                  growth: Growth = "fitness", scoring: Scoring = "weighted",
                  pruning: Optional[bool] = None, shuffle_genes: bool = False,
                  overlap: Overlap = "coordinates", hierarchy: Hierarchy = "cells", shape: str = "cube",
-                 ordered: Sequence[str] = ()) -> None:
+                 ordered: Sequence[str] = (), neighborhood: int = 4, pixels: Optional[Sequence[int]] = None) -> None:
         # The defaults of the search were chosen by measurement (C7,
         # metagen-auditoria/trigen/c7/informe_c7.md): a grid of populations and generations,
         # then of selection and mutation rates, over planted cubes, 30 seeds each. A
@@ -199,8 +213,28 @@ class TriGen:
             raise ValueError(f"ordered names dimensions of {list(AXES)}, each once, not {ordered!r}.")
         #: The dimensions with order, by name.
         self.ordered: Tuple[str, ...] = tuple(axis for axis in AXES if axis in ordered)
+        if neighborhood not in (4, 8):
+            raise ValueError(f"neighborhood is 4 or 8, not {neighborhood!r}.")
+        self.neighborhood = int(neighborhood)
+        #: The fewest and most pixels of a prism; None for the other shapes.
+        self.pixels: Optional[Tuple[int, int]] = None
+        options: Dict[str, Any] = {}
+        if shape == "prism":
+            if shuffle_genes:
+                raise ValueError("A prism lies on the plane of the genes and the conditions in their order: "
+                                 "shuffle_genes does not apply.")
+            if pixels is None:
+                pixels = (smallest[0] * smallest[1], largest[0] * largest[1])
+            if isinstance(pixels, str) or len(pixels) != 2:
+                raise ValueError(f"pixels is the fewest and the most pixels of a prism, not {pixels!r}.")
+            for count in pixels:
+                require_integer("pixels", count)
+            self.pixels = (int(pixels[0]), int(pixels[1]))
+            options = dict(neighborhood=self.neighborhood, pixels=self.pixels, box=(largest[0], largest[1]))
+        elif pixels is not None:
+            raise ValueError("pixels bound the surface of a prism, shape='prism'.")
         #: The shape of the triclusters it searches.
-        self.form: Shape = shape_named(shape, [AXES.index(axis) for axis in self.ordered])
+        self.form: Shape = shape_named(shape, [AXES.index(axis) for axis in self.ordered], **options)
         self.cube = cube
         self.n_triclusters = n_triclusters
         self.generations = generations
@@ -326,7 +360,7 @@ class TriGen:
                 record["tricluster"] = None
             else:
                 terms = fitness.terms(chosen)
-                chosen = Tricluster(chosen.genes, chosen.conditions, chosen.times, fitness=terms["fitness"])
+                chosen = _with_fitness(chosen, terms["fitness"])
                 found.append(chosen)
                 fitness.found.append(chosen)
                 hierarchy.update(chosen)
@@ -335,6 +369,8 @@ class TriGen:
                                         chosen.times, fitness=terms["fitness"])
                 record["tricluster"] = {"genes": list(chosen.genes), "conditions": list(chosen.conditions),
                                         "times": list(chosen.times)}
+                if not chosen.is_cube:
+                    record["tricluster"]["cells"] = [column.tolist() for column in chosen.cells()]
                 record["sizes"] = list(chosen.size)
                 record["fitness"] = terms["fitness"]
                 record["terms"] = terms
@@ -367,7 +403,8 @@ class TriGen:
                 "size_reference": self.size_reference, "seed": self.seed, "growth": self.growth,
                 "scoring": self.fitness.scoring, "pruning": self.pruning,
                 "shuffle_genes": self.shuffle_genes, "overlap": self.fitness.overlap,
-                "hierarchy": self.hierarchy_kind, "shape": self.form.name, "ordered": list(self.ordered)})
+                "hierarchy": self.hierarchy_kind, "shape": self.form.name, "ordered": list(self.ordered),
+                "neighborhood": self.neighborhood, "pixels": None if self.pixels is None else list(self.pixels)})
 
     def result(self, label: Optional[str] = None) -> TriGenResult:
         """
@@ -394,6 +431,13 @@ class TriGen:
         :raises ValueError: if this TriGen has not run.
         """
         self.result(label).save(path)
+
+
+def _with_fitness(tricluster: Tricluster, fitness: float) -> Tricluster:
+    """The same tricluster, with a fitness."""
+    if tricluster.is_cube:
+        return Tricluster(tricluster.genes, tricluster.conditions, tricluster.times, fitness=fitness)
+    return Tricluster.from_cells(*tricluster.cells(), fitness=fitness)
 
 
 def _choose(search: TriGenGA, found: Set[Tricluster]) -> Optional[Tricluster]:

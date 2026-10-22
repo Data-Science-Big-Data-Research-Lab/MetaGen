@@ -23,10 +23,10 @@ from .quality import grq, peq, spq, triq
 from .recovery import (cell_jaccard, cell_precision, cell_recall, coordinate_jaccard, coordinate_recall,
                        recovery, relevance)
 from .stability import Stability, stability
-from .synthetic import null_cube, plant
+from .synthetic import null_cube, plant, plant_prisms
 from .tricluster import Tricluster
 
 __all__ = ["Cube", "Enrichment", "EnrichmentProvider", "GProfiler", "LocalGO", "Stability", "Term", "Tricluster",
            "bioq", "cell_jaccard", "cell_precision", "cell_recall", "coordinate_jaccard", "coordinate_recall",
-           "enrich", "grq", "lsl", "msl", "msr3d", "null_cube", "ontologizer_table", "peq", "plant", "purity",
+           "enrich", "grq", "lsl", "msl", "msr3d", "null_cube", "ontologizer_table", "peq", "plant", "plant_prisms", "purity",
            "recovery", "relevance", "spq", "stability", "triq"]

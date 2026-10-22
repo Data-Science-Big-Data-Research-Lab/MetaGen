@@ -87,6 +87,27 @@ For TriGen, by default, no dimension has an order: a tricluster holds any genes,
 
 A window holds consecutive positions only: when the same genes and conditions follow a pattern in two stretches of time apart, a tricluster that holds both also holds the times between them. Without an order, the two stretches can be one tricluster on their times alone. A saved run keeps the dimensions with order.
 
+Prisms
+------
+
+In a series of images, the first two dimensions are the rows and the columns of a plane and the third is the time, and a pattern is often a region of irregular outline through a stretch of time, such as a field through a season. A cube, even with the three dimensions in order, can only hold a rectangle of it. With ``shape="prism"`` a tricluster is a **prism**: a surface of the plane, pixels that are one piece through their neighbors, the 4 that share a side with each or, with ``neighborhood=8``, the 8 that share a side or a corner, held along a window of the times. The prism needs the three dimensions in ``ordered``, and it is measured by its pixels as series along its window, with ``views="time"`` and the quality ``"msl"`` or ``"lsl"``. ``max_sizes`` bound the extent of its surface in the rows and the columns, and ``pixels`` its number of pixels. :py:func:`~metagen.triclustering.plant_prisms` plants prisms of random outline:
+
+.. code-block:: python
+
+    from metagen.metaheuristics import TriGen
+    from metagen.triclustering import plant_prisms, recovery
+
+    cube, planted = plant_prisms((30, 30, 12), [(40, 6), (25, 5)], noise=0.05, seed=0)
+    print([tricluster.n_cells for tricluster in planted])      # [240, 125]
+
+    trigen = TriGen(cube, shape="prism", ordered=("genes", "conditions", "times"), views="time",
+                    n_triclusters=2, generations=20, population_size=60, min_sizes=(2, 2, 3),
+                    max_sizes=(15, 15, 8), pixels=(4, 80), scoring="significance", seed=0)
+    found = trigen.run()
+    print(round(recovery(found, planted), 3))                  # 0.63
+
+A search represents a prism by a seed pixel, steps of growth and a window: the surface starts at the seed, and each step adds one of the free neighbors around it, so every individual of a search is a prism and the crossover and the mutation of the genetic algorithm apply as they are. Growing adds a pixel of the frontier or a time at either end of the window, and, with ``pruning``, removes a pixel of the border that leaves the surface one piece, or a time at an end. The model of chance of the significance draws random prisms of the same number of pixels and times. Each pixel is a step of what a search represents, so ``pixels`` well below the size of the plane keep the searches light. A saved run keeps its prisms by their cells, and the shape, the neighborhood and the pixels with its configuration.
+
 Counting what was found by cells
 --------------------------------
 
