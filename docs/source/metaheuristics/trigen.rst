@@ -158,6 +158,24 @@ With the significance, growing by the fitness also prunes by default (``pruning`
 
 The significance measures how unlikely a coherence is, not how strong: on data where many genes follow a broad, weak common trend, it can favor large triclusters of moderate coherence over small, tightly coherent ones. The model of chance is fitted at the start of each run from random triclusters, drawn with MetaGen's generator, so a seed reproduces it; it takes about two thousand evaluations of the quality measure. It follows MSL, the default quality, closely; with MSR3D it can be off by a few deviations at some sizes, so MSL is the measure to use with the significance.
 
+Stopping by coverage
+--------------------
+
+By default a run makes ``n_triclusters`` searches. With ``stop="coverage"`` it goes on until its triclusters hold the ``coverage`` share of the genes, held by a tricluster in any conditions and times, or, with a prism, of the pixels of the plane, with ``cover="pixels"``, the default for a prism. ``n_triclusters`` is then the most it makes, and a search that finds nothing new also ends it. What no tricluster holds is the residue: the data no pattern found takes in. With the significance, ``noise_rule`` also ends the run when the last tricluster found is no better than noise, and leaves it out: ``"decline"`` when its significance not already found is below ``decline`` times that of the first, and ``"null"`` when it is no higher than the highest a short run of three searches finds in :py:func:`~metagen.triclustering.null_cube` of the data, made at the start. ``trigen.stop_reason`` says why the run ended, ``"coverage"``, ``"maximum"``, ``"exhausted"`` or ``"noise"``, and ``trigen.covered`` the share it holds:
+
+.. code-block:: python
+
+    from metagen.metaheuristics import TriGen
+    from metagen.triclustering import plant
+
+    cube, planted = plant((100, 8, 10), [(20, 3, 5), (20, 4, 4), (20, 3, 6)], noise=0.05, seed=0)
+    trigen = TriGen(cube, n_triclusters=10, generations=30, population_size=60, min_sizes=(5, 2, 3),
+                    scoring="significance", stop="coverage", coverage=0.6, noise_rule="decline", seed=0)
+    found = trigen.run()
+    print(len(found), trigen.stop_reason, round(trigen.covered, 2))      # 3 coverage 0.6
+
+The triclusters still share genes as the scoring allows. A saved run keeps the options, why it ended, the share it held and, with ``noise_rule="null"``, the threshold it found in the null cube.
+
 Saving a run
 ------------
 

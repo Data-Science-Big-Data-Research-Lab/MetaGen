@@ -31,14 +31,26 @@ from metagen.metaheuristics.trigen.fitness import (NULL_SAMPLES, NULL_SIZES, Mea
                                                    SizeReference, TriclusterFitness)
 from metagen.metaheuristics.trigen.population import DataHierarchy, Sizes
 from metagen.metaheuristics.trigen.results import TriGenResult, _plain
-from metagen.metaheuristics.trigen.shape import Shape, grow, shape_named  # noqa: F401
+from metagen.metaheuristics.trigen.shape import Shape, grow, prism_parts, shape_named  # noqa: F401
 from metagen.metaheuristics.trigen.trigen_ga import TriGenGA, require_integer, validate
-from metagen.triclustering import Cube, Tricluster
+from metagen.triclustering import Cube, Tricluster, null_cube
 from metagen.triclustering.cube import AXES
 from metagen.triclustering.measures import Views
 from metagen.triclustering.quality import FlatProfiles
 
 Growth = Optional[Literal["fitness", "quality"]]
+
+#: When a run ends: after a number of searches, or when the triclusters hold enough.
+Stop = Literal["count", "coverage"]
+
+#: What a run by coverage counts.
+Cover = Literal["genes", "pixels"]
+
+#: When a tricluster found is no better than noise.
+NoiseRule = Literal["null", "decline"]
+
+#: The searches of the short run in the null cube that sets the threshold of noise_rule="null".
+NOISE_PROBES = 3
 
 #: What the searches after the first start from: the coordinates or the cells least held.
 Hierarchy = Literal["coordinates", "cells"]
@@ -174,6 +186,28 @@ class TriGen:
         conditions. Each pixel is a step of what a search represents, so a bound well
         below the plane keeps the search light.
     :type pixels: Sequence[int], optional
+    :param stop: When the run ends, ``"count"`` (the default), after ``n_triclusters``
+        searches, or ``"coverage"``, when the triclusters found hold the ``coverage`` share of
+        the genes or of the pixels, when a search finds nothing new, when the ``noise_rule``
+        says the last one found is no better than noise (it is then left out), or at
+        ``n_triclusters``, which is then the most. What no tricluster holds is the
+        residue, and :py:attr:`stop_reason` says why the run ended.
+    :type stop: str, optional
+    :param cover: What ``stop="coverage"`` counts: ``"genes"``, held by a tricluster in any
+        conditions and times, or, with a prism, ``"pixels"``, held by its surface at any
+        time; by default the genes, and the pixels with a prism.
+    :type cover: str, optional
+    :param coverage: The share to hold with ``stop="coverage"``, defaults to 1.0, all.
+    :type coverage: float, optional
+    :param noise_rule: With ``stop="coverage"`` and ``scoring="significance"``, when a
+        tricluster found is no better than noise: None (the default), never; ``"null"``,
+        when its significance not already found is no higher than the highest a short run
+        finds in :py:func:`~metagen.triclustering.null_cube` of the data, run at the start;
+        ``"decline"``, when it is below ``decline`` times that of the first tricluster.
+    :type noise_rule: str, optional
+    :param decline: The share of the significance of the first tricluster below which
+        ``noise_rule="decline"`` stops, defaults to 0.5.
+    :type decline: float, optional
     :raises ValueError: if a parameter is out of its range.
     """
 
@@ -186,7 +220,9 @@ class TriGen:
                  growth: Growth = "fitness", scoring: Scoring = "weighted",
                  pruning: Optional[bool] = None, shuffle_genes: bool = False,
                  overlap: Overlap = "coordinates", hierarchy: Hierarchy = "cells", shape: str = "cube",
-                 ordered: Sequence[str] = (), neighborhood: int = 4, pixels: Optional[Sequence[int]] = None) -> None:
+                 ordered: Sequence[str] = (), neighborhood: int = 4, pixels: Optional[Sequence[int]] = None,
+                 stop: Stop = "count", cover: Optional[Cover] = None, coverage: float = 1.0,
+                 noise_rule: Optional[NoiseRule] = None, decline: float = 0.5) -> None:
         # The defaults of the search were chosen by measurement (C7,
         # metagen-auditoria/trigen/c7/informe_c7.md): a grid of populations and generations,
         # then of selection and mutation rates, over planted cubes, 30 seeds each. A
@@ -235,6 +271,25 @@ class TriGen:
             raise ValueError("pixels bound the surface of a prism, shape='prism'.")
         #: The shape of the triclusters it searches.
         self.form: Shape = shape_named(shape, [AXES.index(axis) for axis in self.ordered], **options)
+        if stop not in ("count", "coverage"):
+            raise ValueError(f"stop is 'count' or 'coverage', not {stop!r}.")
+        cover = cover if cover is not None else ("pixels" if shape == "prism" else "genes")
+        if cover not in ("genes", "pixels") or (cover == "pixels" and shape != "prism"):
+            raise ValueError(f"cover is 'genes' or, with shape='prism', 'pixels', not {cover!r}.")
+        if not 0.0 < coverage <= 1.0:
+            raise ValueError(f"coverage is a share in (0, 1], not {coverage}.")
+        if noise_rule not in (None, "null", "decline"):
+            raise ValueError(f"noise_rule is None, 'null' or 'decline', not {noise_rule!r}.")
+        if noise_rule is not None and (stop != "coverage" or scoring != "significance"):
+            raise ValueError("noise_rule applies to stop='coverage' with scoring='significance'.")
+        if not 0.0 < decline < 1.0:
+            raise ValueError(f"decline is a share in (0, 1), not {decline}.")
+        #: When a run ends and what it counts; see the parameters.
+        self.stop: Stop = stop
+        self.cover: Cover = cover
+        self.coverage = float(coverage)
+        self.noise_rule: Optional[NoiseRule] = noise_rule
+        self.decline = float(decline)
         self.cube = cube
         self.n_triclusters = n_triclusters
         self.generations = generations
@@ -290,6 +345,13 @@ class TriGen:
         self.history: List[Dict[str, Any]] = []
         #: How many of the triclusters found by the last run hold each gene, condition and time.
         self.hierarchy = DataHierarchy(cube.shape)
+        #: Why the last run ended: ``"count"``, ``"coverage"``, ``"maximum"``, ``"exhausted"`` or
+        #: ``"noise"``; None before any run.
+        self.stop_reason: Optional[str] = None
+        #: The share of the genes or pixels the triclusters of the last run hold.
+        self.covered = 0.0
+        #: The significance a tricluster has to exceed with ``noise_rule="null"``, from the last run.
+        self.noise_threshold: Optional[float] = None
 
     def run(self) -> List[Tricluster]:
         """
@@ -334,6 +396,12 @@ class TriGen:
                 self.started["chance_evaluations"] = NULL_SIZES * NULL_SAMPLES
         self.triclusters = []
         self.history = []
+        self.stop_reason, self.covered, self.noise_threshold = None, 0.0, None
+        if self.noise_rule == "null":
+            self.noise_threshold = self._threshold_in_noise()
+        held: Set[Any] = set()
+        total = self.cube.shape[0] if self.cover == "genes" else self.cube.shape[0] * self.cube.shape[1]
+        first_significance: Optional[float] = None
         found: List[Tricluster] = []
         for index in range(self.n_triclusters):
             search = TriGenGA(fitness, self.sizes, hierarchy, first=index == 0,
@@ -354,12 +422,27 @@ class TriGen:
                     adding_genes=lambda base, genes: fitness.adding_genes(base, genes, quality_only=quality_only))
                 if grown not in found:
                     chosen = grown
+            terms = fitness.terms(chosen) if chosen is not None else {}
+            if chosen is not None and self.stop == "coverage" and self.noise_rule is not None:
+                significance = -terms["fitness"]
+                noise = (significance <= (self.noise_threshold or 0.0) if self.noise_rule == "null"
+                         else first_significance is not None and significance < self.decline * first_significance)
+                if noise:
+                    record["tricluster"], record["left_out"] = None, {"significance": significance}
+                    self._write(record)
+                    self.stop_reason = "noise"
+                    break
+                if first_significance is None:
+                    first_significance = significance
             if chosen is None:
                 metagen_logger.warning(f"TriGen search {index} evaluated no tricluster that had not been found "
                                        f"already: the search space has run out of new ones.")
                 record["tricluster"] = None
+                if self.stop == "coverage":
+                    self._write(record)
+                    self.stop_reason = "exhausted"
+                    break
             else:
-                terms = fitness.terms(chosen)
                 chosen = _with_fitness(chosen, terms["fitness"])
                 found.append(chosen)
                 fitness.found.append(chosen)
@@ -378,12 +461,37 @@ class TriGen:
                 if fitness is not self.fitness:
                     self.fitness.found.append(chosen)
                 self.hierarchy.update(chosen)
-            self.history.append(record)
-            if self.history_file is not None:
-                with open(self.history_file, "a") as handle:
-                    handle.write(json.dumps(record) + "\n")
+                held |= set(chosen.genes) if self.cover == "genes" else set(prism_parts(chosen)[0])
+                self.covered = len(held) / total
+                record["covered"] = self.covered
+            self._write(record)
+            if self.stop == "coverage" and self.covered >= self.coverage:
+                self.stop_reason = "coverage"
+                break
+        if self.stop_reason is None:
+            self.stop_reason = "count" if self.stop == "count" else "maximum"
         self.finished = True
         return list(self.triclusters)
+
+    def _write(self, record: Dict[str, Any]) -> None:
+        self.history.append(record)
+        if self.history_file is not None:
+            with open(self.history_file, "a") as handle:
+                handle.write(json.dumps(record) + "\n")
+
+    def _threshold_in_noise(self) -> float:
+        """The highest significance not already found of the triclusters a short run finds in
+        the null cube of the data, drawn from the seeded generator."""
+        # Three searches with the configuration of the run: the search finds in noise
+        # triclusters as significant as in real data (metagen-auditoria/trigen/fase5d/
+        # informe_5d.md, 1), so the threshold is what a search finds there, not what a
+        # random tricluster scores.
+        null = null_cube(self.cube, seed=int(get_numpy_rng().integers(0, 2 ** 31)))
+        options = {**self.configuration(), "n_triclusters": NOISE_PROBES, "seed": None, "stop": "count",
+                   "noise_rule": None}
+        probe = TriGen(null, **options)
+        return max((-tricluster.fitness for tricluster in probe.run() if tricluster.fitness is not None),
+                   default=0.0)
 
     def configuration(self) -> Dict[str, Any]:
         """
@@ -404,7 +512,9 @@ class TriGen:
                 "scoring": self.fitness.scoring, "pruning": self.pruning,
                 "shuffle_genes": self.shuffle_genes, "overlap": self.fitness.overlap,
                 "hierarchy": self.hierarchy_kind, "shape": self.form.name, "ordered": list(self.ordered),
-                "neighborhood": self.neighborhood, "pixels": None if self.pixels is None else list(self.pixels)})
+                "neighborhood": self.neighborhood, "pixels": None if self.pixels is None else list(self.pixels),
+                "stop": self.stop, "cover": self.cover, "coverage": self.coverage, "noise_rule": self.noise_rule,
+                "decline": self.decline})
 
     def result(self, label: Optional[str] = None) -> TriGenResult:
         """

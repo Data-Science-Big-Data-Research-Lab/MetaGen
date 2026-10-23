@@ -47,13 +47,16 @@ _CUBES_VERSION = 1
 CONFIGURATION = ("n_triclusters", "generations", "population_size", "random_fraction", "selection_rate",
                  "mutation_probability", "min_sizes", "max_sizes", "measure", "views", "flat_profiles", "weights",
                  "size_reference", "seed", "growth", "scoring", "pruning", "shuffle_genes", "overlap",
-                 "hierarchy", "shape", "ordered", "neighborhood", "pixels")
+                 "hierarchy", "shape", "ordered", "neighborhood", "pixels", "stop", "cover", "coverage",
+                 "noise_rule", "decline")
 
 
 # The options TriGen gained after the format was set, with the value a result saved before
 # them ran with.
 _LATER_OPTIONS: Dict[str, Any] = {"shuffle_genes": False, "overlap": "coordinates", "hierarchy": "coordinates",
-                                  "shape": "cube", "ordered": [], "neighborhood": 4, "pixels": None}
+                                  "shape": "cube", "ordered": [], "neighborhood": 4, "pixels": None,
+                                  "stop": "count", "cover": "genes", "coverage": 1.0, "noise_rule": None,
+                                  "decline": 0.5}
 
 
 @dataclass
@@ -177,7 +180,10 @@ class TriGenResult:
                       "evaluations": sum(search["evaluations"] for search in searches),
                       "growth_evaluations": sum(search["growth_evaluations"] for search in searches),
                       "chance_evaluations": trigen.started["chance_evaluations"],
-                      "complete": len(trigen.history) == configuration["n_triclusters"] and trigen.finished}
+                      "complete": trigen.finished and (configuration["stop"] == "coverage"
+                                                       or len(trigen.history) == configuration["n_triclusters"]),
+                      "stop_reason": trigen.stop_reason if trigen.finished else None, "covered": trigen.covered,
+                      "noise_threshold": trigen.noise_threshold}
         data = {"shape": list(cube.shape), "sha256": cube.fingerprint, "label": label}
         return cls(configuration=dict(configuration), provenance=provenance, data=data, triclusters=triclusters,
                    names=names, terms=terms, searches=searches)
