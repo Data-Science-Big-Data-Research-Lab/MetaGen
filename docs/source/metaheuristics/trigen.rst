@@ -106,7 +106,9 @@ In a series of images, the first two dimensions are the rows and the columns of 
     found = trigen.run()
     print(round(recovery(found, planted), 3))                  # 0.63
 
-A search represents a prism by a seed pixel, steps of growth and a window: the surface starts at the seed, and each step adds one of the free neighbors around it, so every individual of a search is a prism and the crossover and the mutation of the genetic algorithm apply as they are. Growing adds a pixel of the frontier or a time at either end of the window, and, with ``pruning``, removes a pixel of the border that leaves the surface one piece, or a time at an end. The model of chance of the significance draws random prisms of the same number of pixels and times. Each pixel is a step of what a search represents, so ``pixels`` well below the size of the plane keep the searches light. A saved run keeps its prisms by their cells, and the shape, the neighborhood and the pixels with its configuration.
+Prisms are searched with ``scoring="significance"``, as in the example: its model of chance draws random prisms of the same pixels and times, so a surface scores by how unlikely its coherence is whatever its outline. The weighted fitness also takes a prism, and sizes it in the genes and the conditions by the side of a square of the area of its surface.
+
+A search represents a prism by a seed pixel, steps of growth and a window: the surface starts at the seed, and each step adds one of the free neighbors around it, so every individual of a search is a prism and the crossover and the mutation of the genetic algorithm apply as they are. Growing adds a pixel of the frontier or a time at either end of the window, and, with ``pruning``, removes a pixel of the border that leaves the surface one piece, or a time at an end. Each pixel is a step of what a search represents, so ``pixels`` well below the size of the plane keep the searches light. A saved run keeps its prisms by their cells, and the shape, the neighborhood and the pixels with its configuration.
 
 Counting what was found by cells
 --------------------------------
