@@ -123,6 +123,13 @@ class Tricluster:
         g, c, t = (column[order] for column in columns)
         if np.any((np.diff(g) == 0) & (np.diff(c) == 0) & (np.diff(t) == 0)):
             raise ValueError("The cells of a tricluster repeat.")
+        return cls._from_sorted_cells(g, c, t, fitness)
+
+    @classmethod
+    def _from_sorted_cells(cls, g: np.ndarray, c: np.ndarray, t: np.ndarray,
+                           fitness: Optional[float] = None) -> Tricluster:
+        """:py:meth:`from_cells` for cells already checked, at least two, none repeating, and
+        sorted by gene, then by condition, then by time."""
         projections = [np.unique(column) for column in (g, c, t)]
         if (all(len(positions) >= 2 for positions in projections)
                 and len(g) == math.prod(len(positions) for positions in projections)):

@@ -358,8 +358,9 @@ class PrismShape(Shape):
         while True:
             moves: List[Tuple[Set[plane.Pixel], int, int]] = []
             if len(surface) < high:
+                fits = _fits_in_box(surface, self.box)
                 moves += [(surface | {pixel}, start, end) for pixel in plane.frontier(surface, extent, self.neighborhood)
-                          if _in_box(surface, pixel, self.box)]
+                          if fits(pixel)]
             if pruning and len(surface) > low:
                 moves += [(surface - {pixel}, start, end)
                           for pixel in plane.removable(sorted(surface), extent, self.neighborhood)]
@@ -452,8 +453,15 @@ def prism(pixels: Sequence[plane.Pixel], times: Sequence[int], fitness: Optional
     """
     held = np.asarray(sorted(pixels), dtype=np.int64).reshape(-1, 2)
     span = np.asarray(list(times), dtype=np.int64)
-    return Tricluster.from_cells(np.repeat(held[:, 0], span.size), np.repeat(held[:, 1], span.size),
-                                 np.tile(span, len(held)), fitness=fitness)
+    g, c, t = np.repeat(held[:, 0], span.size), np.repeat(held[:, 1], span.size), np.tile(span, len(held))
+    # Growing a prism builds one for every move it weighs, hundreds of thousands in a run
+    # over a satellite tile, and checking and sorting the cells of each took more than
+    # scoring it: distinct pixels in raster order over increasing times are cells already
+    # sorted and distinct (metagen-auditoria/trigen/c5/informe_c5_etapa3_pastis.md, 2).
+    if (len(g) >= 2 and held.min() >= 0 and span.min() >= 0 and bool(np.all(np.diff(span) > 0))
+            and not bool(np.any(np.all(np.diff(held, axis=0) == 0, axis=1)))):
+        return Tricluster._from_sorted_cells(g, c, t, fitness)
+    return Tricluster.from_cells(g, c, t, fitness=fitness)
 
 
 def prism_parts(tricluster: Tricluster) -> Tuple[List[plane.Pixel], Tuple[int, ...]]:
@@ -478,12 +486,15 @@ def prism_parts(tricluster: Tricluster) -> Tuple[List[plane.Pixel], Tuple[int, .
     return list(zip(genes[::step].tolist(), conditions[::step].tolist())), times
 
 
-def _in_box(surface: Set[plane.Pixel], pixel: plane.Pixel, box: Optional[plane.Box]) -> bool:
+def _fits_in_box(surface: Set[plane.Pixel], box: Optional[plane.Box]) -> Callable[[plane.Pixel], bool]:
+    """Whether a pixel added to a surface keeps it within the box, with the extent of the
+    surface found once for all the pixels of its frontier."""
     if box is None:
-        return True
-    return all(max(max(held[axis] for held in surface), pixel[axis]) - min(min(held[axis] for held in surface),
-                                                                           pixel[axis]) < box[axis]
-               for axis in (0, 1))
+        return lambda pixel: True
+    low = [min(held[axis] for held in surface) for axis in (0, 1)]
+    high = [max(held[axis] for held in surface) for axis in (0, 1)]
+    return lambda pixel: all(max(high[axis], pixel[axis]) - min(low[axis], pixel[axis]) < box[axis]
+                             for axis in (0, 1))
 
 
 @lru_cache(maxsize=64)

@@ -103,6 +103,27 @@ def test_a_rectangle_over_a_window_is_a_cube():
         prism_parts(Tricluster.from_cells([0, 0, 1], [0, 0, 0], [0, 1, 0]))
 
 
+def test_a_prism_is_the_tricluster_its_cells_make():
+    draw = random.Random(5)
+    windows = [range(2, 6), range(0, 1), [7, 3, 5]]
+    for size, window in itertools.product((1, 2, 6, 25), windows):
+        surface = grow_by((4, 4), size, (12, 12), 4, None, lambda pixel: draw.random())
+        cells = [(x, y, t) for (x, y), t in itertools.product(surface, window)]
+        draw.shuffle(cells)
+        if len(cells) < 2:
+            with pytest.raises(ValueError, match="at least two cells"):
+                prism(surface, window)
+            continue
+        built, expected = prism(surface, window, fitness=-2), Tricluster.from_cells(*zip(*cells), fitness=-2)
+        assert (built.genes, built.conditions, built.times, built.fitness, built.is_cube) == (
+            expected.genes, expected.conditions, expected.times, expected.fitness, expected.is_cube)
+        for mine, theirs in zip(built.cells(), expected.cells()):
+            assert mine.dtype == theirs.dtype and np.array_equal(mine, theirs)
+            assert mine.flags.writeable == theirs.flags.writeable
+    with pytest.raises(ValueError, match="repeat"):
+        prism([(1, 1), (1, 1)], range(2))
+
+
 def test_the_crossover_and_the_mutation_give_prisms():
     set_seed(0)
     form = PrismShape(neighborhood=8, pixels=(4, 20), box=(6, 6))

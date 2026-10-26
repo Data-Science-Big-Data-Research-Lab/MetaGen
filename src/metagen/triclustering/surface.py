@@ -80,11 +80,12 @@ def connected(surface: Iterable[Pixel], neighborhood: int) -> bool:
 
 
 class _Growing:
-    """A surface as it grows from a seed: its pixels, its extent so far, and its frontier,
-    the free neighbors of its pixels, kept in raster order."""
+    """A surface as it grows from a seed: its pixels, its extent so far, and, if
+    ``ordered``, its frontier, the free neighbors of its pixels, kept in raster order."""
 
-    def __init__(self, seed: Pixel, extent: Tuple[int, int], neighborhood: int, box: Optional[Box]) -> None:
-        self.extent, self.neighborhood, self.box = extent, neighborhood, box
+    def __init__(self, seed: Pixel, extent: Tuple[int, int], neighborhood: int, box: Optional[Box],
+                 ordered: bool = True) -> None:
+        self.extent, self.neighborhood, self.box, self.ordered = extent, neighborhood, box, ordered
         self.held: Set[Pixel] = set()
         self.frontier: List[int] = []          # the pixels as x · columns + y, sorted
         self.on_frontier: Set[int] = set()
@@ -107,12 +108,14 @@ class _Growing:
 
     def add(self, pixel: Pixel) -> None:
         self.held.add(pixel)
+        for axis in (0, 1):
+            self.low[axis], self.high[axis] = min(self.low[axis], pixel[axis]), max(self.high[axis], pixel[axis])
+        if not self.ordered:
+            return
         key = self.key(pixel)
         if key in self.on_frontier:
             self.on_frontier.remove(key)
             del self.frontier[bisect.bisect_left(self.frontier, key)]
-        for axis in (0, 1):
-            self.low[axis], self.high[axis] = min(self.low[axis], pixel[axis]), max(self.high[axis], pixel[axis])
         for other in neighbors(pixel, self.extent, self.neighborhood):
             other_key = self.key(other)
             if other not in self.held and other_key not in self.on_frontier:
@@ -220,7 +223,9 @@ def grow_by(seed: Pixel, size: int, extent: Tuple[int, int], neighborhood: int, 
     :return: Its pixels, in raster order; fewer than ``size`` if no more fit.
     :rtype: Tuple[Pixel, ...]
     """
-    growing = _Growing(seed, extent, neighborhood, box)
+    # It keeps its own frontier by priority: the one in raster order is what decoding needs,
+    # and keeping it took nearly half of drawing a surface.
+    growing = _Growing(seed, extent, neighborhood, box, ordered=False)
     queue: List[Tuple[float, int]] = []
     seen: Dict[int, None] = {}
 
