@@ -1108,6 +1108,15 @@ def test_p07_los_csv_de_parametros_no_estan_ignorados():
     # test_parameters/ went away when the CSV-driven tests were inlined; the rule
     # now covers any CSV under test/, which is what the finding was about.
     candidato = "test/framework/nuevo_ejemplo.csv"
+    # Outside a git work tree, such as a copy made with git archive or an unpacked sdist,
+    # .gitignore has no effect and git cannot answer (it exits with 128): nothing to check.
+    try:
+        en_un_repo = subprocess.run(["git", "rev-parse", "--is-inside-work-tree"], cwd=raiz,
+                                    capture_output=True, text=True).returncode == 0
+    except FileNotFoundError:
+        en_un_repo = False
+    if not en_un_repo:
+        pytest.skip("needs a git work tree")
 
     resultado = subprocess.run(
         ["git", "check-ignore", "-q", candidato],

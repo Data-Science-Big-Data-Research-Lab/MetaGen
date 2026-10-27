@@ -3,6 +3,7 @@ found, with the fitness it had when it was found, reproducible from a seed."""
 import json
 import logging
 import math
+import os
 import subprocess
 import sys
 import textwrap
@@ -59,8 +60,10 @@ def test_the_same_seed_gives_the_same_triclusters_in_other_processes():
                        max_sizes=(12, 4, 5), seed=4).run()
         print([(t.genes, t.conditions, t.times, t.fitness) for t in found])
     """)
+    # Only the hash seed changes, and where MetaGen is found when it is not installed
+    found_at = {"PYTHONPATH": os.environ["PYTHONPATH"]} if "PYTHONPATH" in os.environ else {}
     outputs = {subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, check=True,
-                              env={"PYTHONHASHSEED": seed, "PATH": ""}).stdout
+                              env={"PYTHONHASHSEED": seed, "PATH": "", **found_at}).stdout
                for seed in ("0", "1", "2")}
     assert len(outputs) == 1
 
