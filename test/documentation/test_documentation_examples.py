@@ -123,16 +123,65 @@ def scratch(tmp_path, monkeypatch):
         signal.signal(signal.SIGUSR1, user_signal)
 
 
+@pytest.fixture
+def short_searches(monkeypatch):
+    """The examples that tune a model run with the smallest budget a random search takes:
+    what is checked is that their code runs, not what it finds."""
+    import metagen.metaheuristics as metaheuristics
+
+    class ShortRandomSearch(metaheuristics.RandomSearch):
+        def __init__(self, *args, **kwargs):
+            kwargs.setdefault("population_size", 2)
+            kwargs.setdefault("max_iterations", 1)
+            super().__init__(*args, **kwargs)
+
+    monkeypatch.setattr(metaheuristics, "RandomSearch", ShortRandomSearch)
+
+
 @pytest.mark.parametrize("page", [
     "domain/domain.rst",
     "metagen_in_action/working_with_solutions.rst",
     "choosing/index.rst",
     "triclustering/index.rst",
+    "index.rst",
+    "advanced_topics/interface.rst",
+    "metaheuristics/tpe.rst",
+    "metagen_in_action/duc/rs.rst",
+    "metagen_in_action/duc/sa.rst",
+    "metagen_in_action/suc/index.rst",
 ])
 def test_the_examples_of_the_page_run(page, scratch):
     blocks = _blocks((DOCS / page).read_text())
     assert blocks
     _run(blocks)
+
+
+@pytest.mark.parametrize("page", ["advanced_topics/extending_framework.rst", "advanced_topics/framework.rst"])
+def test_the_pages_written_as_one_script_run_as_one(page, scratch):
+    # Their first block holds the imports of the whole page, `from __future__ import
+    # annotations` among them, which only reaches the code compiled with it.
+    blocks = _blocks((DOCS / page).read_text())
+    assert blocks
+    exec(compile("\n\n".join(blocks), page, "exec"), {})
+
+
+def test_the_metaheuristic_types_page_prints_what_it_says(scratch):
+    namespace = {}
+    for code in _blocks((DOCS / "advanced_topics" / "metaheuristic_types.rst").read_text()):
+        _printed_as_commented(code, namespace)
+
+
+@pytest.mark.parametrize("page, needs", [("metagen_in_action/suc/scikit-learn.rst", "sklearn"),
+                                         ("metagen_in_action/suc/tensorflow.rst", "tensorflow")])
+def test_the_examples_that_tune_a_model_run(page, needs, scratch, short_searches):
+    pytest.importorskip(needs)
+    _run(_blocks((DOCS / page).read_text()))
+
+
+@pytest.mark.parametrize("page", ["distributed_execution/distributed.rst", "distributed_execution/special.rst"])
+def test_the_distributed_pages_run_on_ray(page, scratch):
+    pytest.importorskip("ray")
+    _run(_blocks((DOCS / page).read_text()))
 
 
 def test_the_performance_tracking_examples_run(scratch):

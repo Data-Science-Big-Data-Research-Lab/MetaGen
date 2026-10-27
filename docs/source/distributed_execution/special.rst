@@ -92,8 +92,10 @@ The launcher starts Ray if it is not running, and shuts it down afterwards only 
     def my_fitness_function(solution: Solution) -> float:
         return solution["x"] ** 2 + solution["y"] ** 2
 
-    my_strains = [StrainProperties("Strain#1", pandemic_duration=10),
-                  StrainProperties("Strain#2", pandemic_duration=10, p_travel=0.2)]
+    # Social distancing from the third iteration keeps a pandemic over a continuous
+    # domain short, as in "Running CVOA": on Ray, every carrier is a task.
+    my_strains = [StrainProperties("Strain#1", pandemic_duration=10, social_distancing=3),
+                  StrainProperties("Strain#2", pandemic_duration=10, social_distancing=3, p_travel=0.2)]
 
     best_solution = distributed_cvoa_launcher(strains=my_strains,
                                               domain=my_domain,

@@ -64,6 +64,9 @@ jobs:
       - name: Run the tests that need Ray
         run: pytest test/metaheuristics/test_extras.py test/metaheuristics/test_distribution.py test/regression -q -rxXs
 
+      - name: Run the documentation pages that need Ray
+        run: pytest test/documentation -k on_ray -q -rxXs
+
   types:
     name: mypy
     runs-on: ubuntu-latest
