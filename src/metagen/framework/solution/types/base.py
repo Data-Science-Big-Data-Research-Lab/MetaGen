@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import math
+from copy import deepcopy
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any
 from metagen.framework.rng import get_rng
@@ -89,6 +90,27 @@ class BaseType(ABC):
         Returns the definition or domain of the variable.
         """
         return self.__definition
+
+    def __deepcopy__(self, memo: dict[int, Any]) -> BaseType:
+        """
+        A copy of the variable whose value is copied and whose definition and connector
+        are this one's: they say what the variable may hold and how to build it, and are
+        shared already by every variable built from the same definition.
+
+        :param memo: What has been copied so far, as :py:func:`copy.deepcopy` keeps it.
+        :type memo: dict
+        :return: The copy.
+        :rtype: BaseType
+        """
+        # Copying them took most of the crossover of a long structure: each of its
+        # elements carried its own copy of the definition and of the connector, with its
+        # registry (metagen-auditoria/trigen/c5/informe_c5_etapa3_cruce.md).
+        copied = self.__class__.__new__(self.__class__)
+        memo[id(self)] = copied
+        for name, value in self.__dict__.items():
+            shared = name in ("_BaseType__definition", "connector")
+            copied.__dict__[name] = value if shared else deepcopy(value, memo)
+        return copied
 
     def get(self) -> Any:
         """

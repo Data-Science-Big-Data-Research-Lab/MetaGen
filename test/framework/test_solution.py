@@ -7,6 +7,7 @@ import math
 import pytest
 
 from metagen.framework.rng import set_seed
+from metagen.framework.solution.types.base import BaseType
 
 # (variable, value). A group value is a dict, and reads back as one (F-37).
 VALID = [
@@ -116,6 +117,18 @@ def test_a_fresh_solution_is_consistent_with_its_domain(full_domain, solution):
         # at any depth (F-37).
         assert solution.get(name) is variable
         assert full_domain.get_core().check(name, solution[name])
+
+
+def test_a_copy_shares_the_definitions_and_the_connector_and_nothing_else(solution):
+    twin = copy.deepcopy(solution)
+    for name, variable in solution.get_variables().items():
+        copied = twin.get(name)
+        assert copied is not variable and copied == variable
+        if isinstance(variable, BaseType):
+            assert copied.get_definition() is variable.get_definition()
+            assert copied.connector is variable.connector
+            if isinstance(variable.get(), list):
+                assert all(a is not b for a, b in zip(copied.get(), variable.get()))
 
 
 def test_a_copy_is_equal_until_it_is_mutated(solution):

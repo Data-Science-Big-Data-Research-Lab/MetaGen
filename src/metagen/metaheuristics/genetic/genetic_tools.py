@@ -381,6 +381,45 @@ def prefix_and_tails(first: GAStructure, second: GAStructure,
     return head1 + tail1, head2 + tail2
 
 
+def _draw_cuts(definition: DynamicStructureDefinition, length1: int, length2: int) -> Tuple[int, int] | None:
+    """
+    A pair of cut points drawn at random among those that give both children a valid
+    length, or None when there is none.
+
+    The pairs are counted in the order of the list of all of them, the first cut and
+    then the second ascending, and the one drawn is found by its position in it: the
+    same pair that listing them all and drawing one gives, from the same draw. The first
+    child is ``cut1 + length2 - cut2`` long and the second the rest of ``length1 +
+    length2``, so whether a pair fits depends on that length alone.
+    """
+    # Listing the pairs asked the definition about each of them: some 640 000 for two
+    # parents of 800 elements, which took most of a crossover
+    # (metagen-auditoria/trigen/c5/informe_c5_etapa3_cruce.md).
+    total = length1 + length2
+    valid = [_valid_length(definition, length) for length in range(total + 1)]
+    fits = [valid[length] and valid[total - length] for length in range(total + 1)]
+    below = [0]
+    for fit in fits:
+        below.append(below[-1] + fit)
+    # With a first cut at cut1, the first child is between cut1 and cut1 + length2 long
+    counts = [below[cut1 + length2 + 1] - below[cut1] for cut1 in range(length1 + 1)]
+    pairs = sum(counts)
+    if not pairs:
+        return None
+    position = get_rng().randrange(pairs)
+    for cut1, count in enumerate(counts):
+        if position < count:
+            break
+        position -= count
+    # The second cut ascending is the length of the first child descending
+    for cut2 in range(length2 + 1):
+        if fits[cut1 + length2 - cut2]:
+            if position == 0:
+                return cut1, cut2
+            position -= 1
+    raise AssertionError("the pairs counted for the first cut are there")
+
+
 def cut_and_splice(first: GAStructure, second: GAStructure,
                    definition: DynamicStructureDefinition) -> Tuple[list, list]:
     """
@@ -402,14 +441,11 @@ def cut_and_splice(first: GAStructure, second: GAStructure,
     # F-31: chosen over keeping the parents' lengths by measurement; the figures
     # are in the comment of prefix_and_tails.
     length1, length2 = len(first), len(second)
-    pairs = [(cut1, cut2)
-             for cut1 in range(length1 + 1) for cut2 in range(length2 + 1)
-             if _valid_length(definition, cut1 + length2 - cut2)
-             and _valid_length(definition, cut2 + length1 - cut1)]
-    if not pairs:
+    drawn = _draw_cuts(definition, length1, length2)
+    if drawn is None:
         return prefix_and_tails(first, second, definition)
 
-    cut1, cut2 = pairs[get_rng().randrange(len(pairs))]
+    cut1, cut2 = drawn
     shared = min(cut1, cut2)
     head1, head2 = first._recombine_prefix(second, shared)
     own1 = [deepcopy(first.get(i)) for i in range(shared, cut1)]
