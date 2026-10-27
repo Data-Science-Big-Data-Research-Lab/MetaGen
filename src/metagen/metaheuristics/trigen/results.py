@@ -48,7 +48,7 @@ CONFIGURATION = ("n_triclusters", "generations", "population_size", "random_frac
                  "mutation_probability", "min_sizes", "max_sizes", "measure", "views", "flat_profiles", "weights",
                  "size_reference", "seed", "growth", "scoring", "pruning", "shuffle_genes", "overlap",
                  "hierarchy", "shape", "ordered", "neighborhood", "pixels", "stop", "cover", "coverage",
-                 "noise_rule", "decline")
+                 "noise_rule", "decline", "patience")
 
 
 # The options TriGen gained after the format was set, with the value a result saved before
@@ -56,7 +56,7 @@ CONFIGURATION = ("n_triclusters", "generations", "population_size", "random_frac
 _LATER_OPTIONS: Dict[str, Any] = {"shuffle_genes": False, "overlap": "coordinates", "hierarchy": "coordinates",
                                   "shape": "cube", "ordered": [], "neighborhood": 4, "pixels": None,
                                   "stop": "count", "cover": "genes", "coverage": 1.0, "noise_rule": None,
-                                  "decline": 0.5}
+                                  "decline": 0.5, "patience": 1}
 
 
 @dataclass
@@ -96,8 +96,9 @@ class TriGenResult:
     :param triclusters: The triclusters found, in order, each with its fitness.
     :param names: For each tricluster, the names of its genes, conditions and times.
     :param terms: For each tricluster, the terms of its fitness.
-    :param searches: For each search, its progress, evaluations and seconds, and the index
-        of the tricluster it found, or None.
+    :param searches: For each search, its progress, evaluations and seconds, the index of
+        the tricluster it found, or None, and the significance of one the noise rule left
+        out.
     :raises ValueError: if the configuration is not that of a TriGen, or the names or the
         terms are not those of the triclusters.
     """
@@ -163,6 +164,8 @@ class TriGenResult:
                              "best_fitnesses": list(record["best_fitnesses"]),
                              "evaluations": record["evaluations"],
                              "growth_evaluations": record["growth_evaluations"], "seconds": record["seconds"]})
+            if "left_out" in record:
+                searches[-1]["left_out"] = dict(record["left_out"])
             if found is not None:
                 tricluster = (Tricluster(found["genes"], found["conditions"], found["times"], fitness=record["fitness"])
                               if "cells" not in found else

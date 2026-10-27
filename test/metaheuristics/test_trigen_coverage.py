@@ -39,15 +39,42 @@ def test_by_coverage_the_number_of_triclusters_is_the_most():
     assert len(trigen.run()) == 2 and trigen.stop_reason == "maximum" and trigen.covered < 1.0
 
 
-def test_the_decline_rule_leaves_out_the_first_tricluster_well_below_the_first():
+def test_the_decline_rule_leaves_out_the_first_tricluster_well_below_the_best_so_far():
     trigen = TriGen(CUBE, n_triclusters=6, stop="coverage", scoring="significance", noise_rule="decline",
                     decline=0.95, **SETTINGS)
     found = trigen.run()
     assert trigen.stop_reason == "noise"
-    first = -found[0].fitness
+    significances = [-t.fitness for t in found]
     left_out = trigen.history[-1]
-    assert left_out["tricluster"] is None and left_out["left_out"]["significance"] < 0.95 * first
-    assert all(-t.fitness >= 0.95 * first for t in found)
+    assert left_out["tricluster"] is None and left_out["left_out"]["significance"] < 0.95 * max(significances)
+    assert all(later >= 0.95 * max(significances[:i]) for i, later in enumerate(significances) if i)
+
+
+def test_with_patience_a_run_ends_after_that_many_left_out_in_a_row_and_keeps_them_out(tmp_path):
+    trigen = TriGen(CUBE, n_triclusters=8, stop="coverage", scoring="significance", noise_rule="decline",
+                    decline=0.95, **SETTINGS)
+    found = trigen.run()
+    left = [record["tricluster"] is None and "left_out" in record for record in trigen.history]
+    assert trigen.stop_reason == "noise" and left[-2:] == [True, True]
+    assert not any(left[i] and left[i + 1] for i in range(len(left) - 2))
+    assert any(left[i] and not left[i + 1] for i in range(len(left) - 1))
+    assert len(found) == left.count(False)
+    path = str(tmp_path / "run.json")
+    trigen.save(path)
+    result = TriGenResult.load(path)
+    saved = [search["left_out"]["significance"] for search in result.searches if "left_out" in search]
+    assert saved == [record["left_out"]["significance"] for record in trigen.history if "left_out" in record]
+    again = result.trigen(CUBE)
+    assert again.run() == found and again.patience == 2
+
+
+def test_a_patience_of_one_ends_at_the_first_left_out():
+    options = dict(n_triclusters=8, stop="coverage", scoring="significance", noise_rule="decline", decline=0.95,
+                   **SETTINGS)
+    trigen = TriGen(CUBE, patience=1, **options)
+    found = trigen.run()
+    assert trigen.history[-1]["tricluster"] is None and len(trigen.history) == len(found) + 1
+    assert TriGen(CUBE, **options).run() != found
 
 
 def test_the_null_rule_takes_its_threshold_from_a_run_in_the_null_cube_and_reproduces(tmp_path):
@@ -80,10 +107,11 @@ def test_a_file_saved_before_these_options_reads_as_a_run_by_count(tmp_path):
     path = str(tmp_path / "old.json")
     trigen.save(path)
     document = json.load(open(path))
-    for name in ("stop", "cover", "coverage", "noise_rule", "decline"):
+    for name in ("stop", "cover", "coverage", "noise_rule", "decline", "patience"):
         del document["configuration"][name]
     json.dump(document, open(path, "w"))
     assert TriGenResult.load(path).configuration["stop"] == "count"
+    assert TriGenResult.load(path).configuration["patience"] == 1
 
 
 @pytest.mark.parametrize("change, message", [
@@ -95,6 +123,7 @@ def test_a_file_saved_before_these_options_reads_as_a_run_by_count(tmp_path):
     ({"stop": "coverage", "noise_rule": "null"}, "scoring='significance'"),
     ({"stop": "coverage", "scoring": "significance", "noise_rule": "z"}, "None, 'null' or 'decline'"),
     ({"decline": 1.0}, "share in"),
+    ({"stop": "coverage", "scoring": "significance", "noise_rule": "null", "patience": 0}, "at least 1"),
 ])
 def test_what_a_stop_cannot_be_is_refused(change, message):
     with pytest.raises(ValueError, match=message):

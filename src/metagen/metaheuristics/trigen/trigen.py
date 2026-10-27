@@ -189,8 +189,8 @@ class TriGen:
     :param stop: When the run ends, ``"count"`` (the default), after ``n_triclusters``
         searches, or ``"coverage"``, when the triclusters found hold the ``coverage`` share of
         the genes or of the pixels, when a search finds nothing new, when the ``noise_rule``
-        says the last one found is no better than noise (it is then left out), or at
-        ``n_triclusters``, which is then the most. What no tricluster holds is the
+        leaves out ``patience`` triclusters in a row as no better than noise, or after
+        ``n_triclusters`` searches, which are then the most. What no tricluster holds is the
         residue, and :py:attr:`stop_reason` says why the run ended.
     :type stop: str, optional
     :param cover: What ``stop="coverage"`` counts: ``"genes"``, held by a tricluster in any
@@ -203,11 +203,16 @@ class TriGen:
         tricluster found is no better than noise: None (the default), never; ``"null"``,
         when its significance not already found is no higher than the highest a short run
         finds in :py:func:`~metagen.triclustering.null_cube` of the data, run at the start;
-        ``"decline"``, when it is below ``decline`` times that of the first tricluster.
+        ``"decline"``, when it is below ``decline`` times that of the most significant
+        tricluster found so far.
     :type noise_rule: str, optional
-    :param decline: The share of the significance of the first tricluster below which
-        ``noise_rule="decline"`` stops, defaults to 0.5.
+    :param decline: The share of the significance of the most significant tricluster found
+        so far below which ``noise_rule="decline"`` leaves one out, defaults to 0.5.
     :type decline: float, optional
+    :param patience: How many triclusters in a row the ``noise_rule`` leaves out before
+        the run ends, defaults to 2. One left out still counts as found, so the next
+        search looks elsewhere.
+    :type patience: int, optional
     :raises ValueError: if a parameter is out of its range.
     """
 
@@ -222,7 +227,7 @@ class TriGen:
                  overlap: Overlap = "coordinates", hierarchy: Hierarchy = "cells", shape: str = "cube",
                  ordered: Sequence[str] = (), neighborhood: int = 4, pixels: Optional[Sequence[int]] = None,
                  stop: Stop = "count", cover: Optional[Cover] = None, coverage: float = 1.0,
-                 noise_rule: Optional[NoiseRule] = None, decline: float = 0.5) -> None:
+                 noise_rule: Optional[NoiseRule] = None, decline: float = 0.5, patience: int = 2) -> None:
         # The defaults of the search were chosen by measurement (C7,
         # metagen-auditoria/trigen/c7/informe_c7.md): a grid of populations and generations,
         # then of selection and mutation rates, over planted cubes, 30 seeds each. A
@@ -284,12 +289,21 @@ class TriGen:
             raise ValueError("noise_rule applies to stop='coverage' with scoring='significance'.")
         if not 0.0 < decline < 1.0:
             raise ValueError(f"decline is a share in (0, 1), not {decline}.")
+        # A patience of 2 by default: measured in the Mac over 30 seeds (metagen-auditoria/trigen/
+        # parada/etapa1/informe_parada_etapa1.md, 7), the null rule recovers 0.59 of ten planted
+        # modules instead of 0.45 with 1, as much as the decline rule with half its noise, at the
+        # price of 2.1 triclusters of noise in a cube with nothing instead of 0.8; with 3 the
+        # relevance starts to fall.
+        require_integer("patience", patience)
+        if patience < 1:
+            raise ValueError(f"patience is at least 1, not {patience}.")
         #: When a run ends and what it counts; see the parameters.
         self.stop: Stop = stop
         self.cover: Cover = cover
         self.coverage = float(coverage)
         self.noise_rule: Optional[NoiseRule] = noise_rule
         self.decline = float(decline)
+        self.patience = patience
         self.cube = cube
         self.n_triclusters = n_triclusters
         self.generations = generations
@@ -401,7 +415,8 @@ class TriGen:
             self.noise_threshold = self._threshold_in_noise()
         held: Set[Any] = set()
         total = self.cube.shape[0] if self.cover == "genes" else self.cube.shape[0] * self.cube.shape[1]
-        first_significance: Optional[float] = None
+        best_significance: Optional[float] = None
+        left_out = 0
         found: List[Tricluster] = []
         for index in range(self.n_triclusters):
             search = TriGenGA(fitness, self.sizes, hierarchy, first=index == 0,
@@ -426,14 +441,27 @@ class TriGen:
             if chosen is not None and self.stop == "coverage" and self.noise_rule is not None:
                 significance = -terms["fitness"]
                 noise = (significance <= (self.noise_threshold or 0.0) if self.noise_rule == "null"
-                         else first_significance is not None and significance < self.decline * first_significance)
+                         else best_significance is not None and significance < self.decline * best_significance)
                 if noise:
                     record["tricluster"], record["left_out"] = None, {"significance": significance}
                     self._write(record)
-                    self.stop_reason = "noise"
-                    break
-                if first_significance is None:
-                    first_significance = significance
+                    left_out += 1
+                    if left_out >= self.patience:
+                        self.stop_reason = "noise"
+                        break
+                    # Stopping at the first one left out cut what came after it: in the bench
+                    # of stage 1, every tricluster above the threshold of the null rule was a
+                    # planted one, also after one below it
+                    # (metagen-auditoria/trigen/parada/etapa1/informe_parada_etapa1.md, 2).
+                    # The one left out still counts as found, or the next search goes back to it.
+                    passed = _with_fitness(chosen, terms["fitness"])
+                    found.append(passed)
+                    fitness.found.append(passed)
+                    hierarchy.update(passed)
+                    continue
+                left_out = 0
+                best_significance = significance if best_significance is None else max(best_significance,
+                                                                                       significance)
             if chosen is None:
                 metagen_logger.warning(f"TriGen search {index} evaluated no tricluster that had not been found "
                                        f"already: the search space has run out of new ones.")
@@ -488,7 +516,7 @@ class TriGen:
         # random tricluster scores.
         null = null_cube(self.cube, seed=int(get_numpy_rng().integers(0, 2 ** 31)))
         options = {**self.configuration(), "n_triclusters": NOISE_PROBES, "seed": None, "stop": "count",
-                   "noise_rule": None}
+                   "noise_rule": None, "patience": 1}
         probe = TriGen(null, **options)
         return max((-tricluster.fitness for tricluster in probe.run() if tricluster.fitness is not None),
                    default=0.0)
@@ -514,7 +542,7 @@ class TriGen:
                 "hierarchy": self.hierarchy_kind, "shape": self.form.name, "ordered": list(self.ordered),
                 "neighborhood": self.neighborhood, "pixels": None if self.pixels is None else list(self.pixels),
                 "stop": self.stop, "cover": self.cover, "coverage": self.coverage, "noise_rule": self.noise_rule,
-                "decline": self.decline})
+                "decline": self.decline, "patience": self.patience})
 
     def result(self, label: Optional[str] = None) -> TriGenResult:
         """
