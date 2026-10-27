@@ -2,12 +2,13 @@ from datetime import timedelta
 from time import time
 from typing import Any, Callable, List, Optional, cast
 
-from metagen.metaheuristics.import_helper import is_package_installed
-
-if is_package_installed("ray"):
+# Imported, not asked about: the documentation is built with Ray mocked, which is found
+# without a file, and is_package_installed answered no, so autodoc could not import the
+# launcher. Whether the package exports it is still decided in cvoa/__init__.py.
+try:
     import ray
-else:
-    raise ImportError("Ray is not installed. Please install it to use distributed CVOA.")
+except ImportError as error:
+    raise ImportError("Ray is not installed. Please install it to use distributed CVOA.") from error
 
 from metagen.framework import Domain, Solution
 from metagen.framework.rng import set_seed, spawn_seed

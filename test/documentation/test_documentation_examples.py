@@ -178,6 +178,32 @@ def test_the_examples_that_tune_a_model_run(page, needs, scratch, short_searches
     _run(_blocks((DOCS / page).read_text()))
 
 
+def _import_the_distributed_launcher_with(ray: str):
+    """Import the launcher in a new process, with ``sys.modules["ray"]`` set to ``ray``."""
+    import subprocess
+    import sys
+    code = textwrap.dedent(f"""
+        import importlib.machinery, sys, types
+        sys.modules["ray"] = {ray}
+        from metagen.metaheuristics.cvoa.distributed_launcher import distributed_cvoa_launcher
+        print(bool(distributed_cvoa_launcher.__doc__))
+    """)
+    return subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
+
+
+def test_the_reference_documents_the_distributed_launcher_with_ray_mocked():
+    # The documentation is built with Ray mocked: a module with no file, as Sphinx makes it
+    done = _import_the_distributed_launcher_with(
+        'types.ModuleType("ray"); sys.modules["ray"].remote = lambda f: f; '
+        'sys.modules["ray"].__spec__ = importlib.machinery.ModuleSpec("ray", None)')
+    assert done.returncode == 0 and done.stdout.strip() == "True", done.stderr
+
+
+def test_without_ray_the_distributed_launcher_says_so():
+    done = _import_the_distributed_launcher_with("None")
+    assert done.returncode != 0 and "Ray is not installed" in done.stderr
+
+
 @pytest.mark.parametrize("page", ["distributed_execution/distributed.rst", "distributed_execution/special.rst"])
 def test_the_distributed_pages_run_on_ray(page, scratch):
     pytest.importorskip("ray")
