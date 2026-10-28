@@ -434,7 +434,9 @@ class TriGen:
                 quality_only = self.growth == "quality"
                 grown, record["growth_evaluations"] = self.form.grow(
                     chosen, score, self.sizes, cube.shape, pruning=self.pruning,
-                    adding_genes=lambda base, genes: fitness.adding_genes(base, genes, quality_only=quality_only))
+                    adding_genes=lambda base, genes: fitness.adding_genes(base, genes, quality_only=quality_only),
+                    moving_pixels=lambda base, added, removed: fitness.moving_pixels(base, added, removed,
+                                                                                     quality_only=quality_only))
                 if grown not in found:
                     chosen = grown
             terms = fitness.terms(chosen) if chosen is not None else {}

@@ -295,3 +295,65 @@ def test_the_weighted_fitness_sizes_a_prism_by_the_side_of_its_area_not_by_the_r
     assert fitness.terms(square)["genes"] == math.sqrt(16 / 256) == 4 / 16    # a square: its side
     cube = TriclusterFitness(CUBE).terms(Tricluster(range(4), range(4), range(2, 6)))
     assert (cube["genes"], cube["conditions"]) == (4 / 16, 4 / 16)
+
+
+def _growing_fitness(measure):
+    set_seed(0)
+    fitness = TriclusterFitness(CUBE, measure=measure, views="time", scoring="significance",
+                                form=PrismShape(pixels=(4, 30)))
+    fitness.fit_chance()
+    # A prism found over half the planted one, so that growing over the other half meets it
+    pixels, times = prism_parts(PLANTED[0])
+    fitness.found = [prism(pixels[:len(pixels) // 2], times)]
+    return fitness, pixels, times
+
+
+@pytest.mark.parametrize("measure", ["msl", "lsl"])
+@pytest.mark.parametrize("quality_only", [False, True])
+def test_scoring_every_pixel_together_grows_the_same_prism_as_scoring_each(measure, quality_only):
+    fitness, pixels, times = _growing_fitness(measure)
+    score = fitness.quality if quality_only else fitness.evaluate
+    form = PrismShape(pixels=(4, 30))
+    sizes = ((2, 8), (2, 8), (3, 7))
+    for start in (prism(pixels[-4:], times), prism([(0, 0), (0, 1), (1, 1), (1, 0)], range(2, 6))):
+        for pruning in (False, True):
+            alone = form.grow(start, score, sizes, CUBE.shape, pruning=pruning)
+            together = form.grow(start, score, sizes, CUBE.shape, pruning=pruning,
+                                 moving_pixels=lambda base, added, removed: fitness.moving_pixels(
+                                     base, added, removed, quality_only=quality_only))
+            assert together == alone and score(together[0]) == score(alone[0])
+            # Values off by as much as their bound, which a large one makes the rounding
+            # of: the moves they could make the lowest are scored on their own
+            noise = np.random.default_rng(3)
+
+            def rough(base, added, removed):
+                more, fewer, _ = fitness.moving_pixels(base, added, removed, quality_only=quality_only)
+                return (more + noise.uniform(-0.05, 0.05, len(more)), fewer + noise.uniform(-0.05, 0.05, len(fewer)),
+                        0.05)
+
+            assert form.grow(start, score, sizes, CUBE.shape, pruning=pruning, moving_pixels=rough) == alone
+
+
+@pytest.mark.parametrize("measure", ["msl", "lsl"])
+def test_the_pixels_scored_together_are_within_their_bound_of_scoring_each(measure):
+    fitness, pixels, times = _growing_fitness(measure)
+    form = fitness.form
+    draw = random.Random(2)
+    for _ in range(20):
+        count = draw.randint(4, 25)
+        surface = grow_by((draw.randrange(16), draw.randrange(16)), count, (16, 16), 4, None, lambda pixel: draw.random())
+        first = draw.randrange(0, 6)
+        window = range(first, first + draw.randint(2, 4))
+        base = prism(surface, window)
+        added = [pixel for pixel in sorted({other for one in surface for other in neighbors(one, (16, 16), 4)})
+                 if pixel not in surface]
+        removed = removable(sorted(surface), (16, 16), 4)
+        for quality_only, score in ((False, fitness.evaluate), (True, fitness.quality)):
+            more, fewer, bound = fitness.moving_pixels(base, added, removed, quality_only=quality_only)
+            each = ([score(prism(sorted(set(surface) | {pixel}), window)) for pixel in added]
+                    + [score(prism(sorted(set(surface) - {pixel}), window)) for pixel in removed])
+            assert bound < 1e-9
+            assert all(abs(value - one) <= bound for value, one in zip(list(more) + list(fewer), each))
+    weighted = TriclusterFitness(CUBE, views="time", form=form)
+    assert weighted.moving_pixels(prism(pixels, times), [], []) is None
+    assert weighted.moving_pixels(prism(pixels, times), [], [], quality_only=True) is not None

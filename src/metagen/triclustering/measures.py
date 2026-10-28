@@ -347,3 +347,55 @@ def _pair_sums_each(values: np.ndarray, axis: int) -> np.ndarray:
     weights = (2 * np.arange(n) - n + 1).reshape(shape)
     totals = (ordered * weights).reshape(values.shape[0], -1).sum(axis=1)
     return np.maximum(totals, 0.0)
+
+
+# --- The quality of a prism with each of many pixels added or taken out, at once -----------
+
+def _prism_moves(values: np.ndarray, added: np.ndarray, removed: Sequence[int],
+                 angles: Callable[[np.ndarray], np.ndarray]) -> Tuple[np.ndarray, np.ndarray, float]:
+    """
+    The quality of a prism, normalized with the times on the X axis, with each of some
+    pixels added to it and with each of some of its pixels taken out, at once, and a bound
+    on how far each value is, by rounding, from measuring that prism on its own.
+
+    The pairs of a pixel's series with the others are summed from the angles of the prism
+    sorted per segment and their prefix sums, as :py:func:`_msl_adding_genes` does with a
+    gene, and added to or taken from the pairs of the prism.
+
+    :param values: The prism's values, (pixels, 1, times), as its shape gives them.
+    :param added: The values of the pixels to add, (candidates, 1, times).
+    :param removed: The positions, among the prism's pixels, of those to take out.
+    :param angles: :py:func:`_segment_angles` or :py:func:`_line_angle`.
+    :return: The qualities with each added, with each taken out, and the bound.
+    """
+    current = angles(np.transpose(values, (0, 2, 1)))[:, :, 0]           # (pixels, segments)
+    count, segments = current.shape
+    ordered = np.sort(current, axis=0)
+    prefix = np.concatenate([np.zeros((1, segments)), np.cumsum(ordered, axis=0)], axis=0)
+    total = float((ordered * (2 * np.arange(count) - count + 1)[:, None]).sum())
+
+    def against(others: np.ndarray) -> np.ndarray:
+        """The sum of |a - b| of each row of others with every pixel of the prism, over the segments."""
+        result = np.zeros(others.shape[0])
+        for segment in range(segments):
+            column, sums = ordered[:, segment], prefix[:, segment]
+            value = others[:, segment]
+            below = np.searchsorted(column, value, side="right")
+            lower = sums[below]
+            result += value * below - lower + (sums[-1] - lower) - value * (count - below)
+        return result
+
+    def quality(totals: np.ndarray, size: int) -> np.ndarray:
+        return np.maximum(totals, 0.0) / (segments * (size * (size - 1) // 2)) / TWO_PI
+
+    more = (quality(total + against(angles(np.transpose(added, (0, 2, 1)))[:, :, 0]), count + 1)
+            if len(added) else np.zeros(0))
+    taken = np.asarray(removed, dtype=int)
+    fewer = quality(total - against(current[taken]), count - 1) if taken.size else np.zeros(0)
+    # Measured on its own, a prism's pairs are a sum of about pixels x segments terms, each
+    # at most 2π times the pixels, and here the same terms are summed in another order:
+    # each sum is within (terms + a few) units of rounding of the exact one, relative to the
+    # pairs that divide it, and the bound takes four times both
+    # (metagen-auditoria/trigen/c5/informe_c5_etapa3_cruce.md, 6).
+    bound = 16.0 * ((count + 1) * segments + 16) * float(np.finfo(np.float64).eps)
+    return more, fewer, bound

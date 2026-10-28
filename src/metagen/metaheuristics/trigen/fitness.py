@@ -17,7 +17,7 @@
 from __future__ import annotations
 
 import math
-from typing import TYPE_CHECKING, Dict, List, Literal, Mapping, Optional, Sequence, Tuple
+from typing import TYPE_CHECKING, Dict, List, Literal, Mapping, Optional, Sequence, Set, Tuple
 
 import numpy as np
 
@@ -25,7 +25,8 @@ from metagen.framework import Solution
 from metagen.framework.rng import get_numpy_rng
 from metagen.triclustering import Cube, Tricluster, lsl, msl, msr3d, triq
 from metagen.triclustering.cube import AXES
-from metagen.triclustering.measures import Views, _average_values, _line_angle, _msl_adding_genes, _segment_angles
+from metagen.triclustering.measures import (Views, _average_values, _line_angle, _msl_adding_genes, _prism_moves,
+                                            _segment_angles)
 from metagen.triclustering.quality import FlatProfiles
 
 if TYPE_CHECKING:
@@ -234,6 +235,8 @@ class TriclusterFitness:
         self._found_sets: Tuple[Tuple[Tricluster, ...], List[Tuple[set, set, set]]] = ((), [])
         # The cells the triclusters found hold, built again only when the list changes.
         self._found_cells: Tuple[Tuple[Tricluster, ...], Optional[np.ndarray]] = ((), None)
+        # The pixels the prisms found hold, built again only when the list changes.
+        self._found_pixels: Tuple[Tuple[Tricluster, ...], Set[Tuple[int, int]]] = ((), set())
 
     def __call__(self, solution: Solution) -> float:
         """
@@ -347,6 +350,72 @@ class TriclusterFitness:
                      + weights["overlap_times"] * base["overlap_times"])
         return total / sum(weights.values())
 
+    def moving_pixels(self, tricluster: Tricluster, added: Sequence[Tuple[int, int]],
+                      removed: Sequence[Tuple[int, int]], quality_only: bool = False
+                      ) -> Optional[Tuple[np.ndarray, np.ndarray, float]]:
+        """
+        The fitness, or with ``quality_only`` the quality term, of a prism with each of some
+        pixels added to it and with each of some of its pixels taken out, at once, and a
+        bound on how far each value is, by rounding, from evaluating that prism on its own.
+        Much faster than evaluating each for many pixels. Only for the prism and
+        ``scoring="significance"``, or ``quality_only``; None otherwise.
+
+        :param tricluster: The prism.
+        :type tricluster: Tricluster
+        :param added: The pixels to add, one at a time, none of them in it.
+        :type added: Sequence[Tuple[int, int]]
+        :param removed: The pixels to take out, one at a time, all of them in it.
+        :type removed: Sequence[Tuple[int, int]]
+        :param quality_only: Whether to give the quality term alone, defaults to False.
+        :type quality_only: bool, optional
+        :return: A value per pixel added and per pixel taken out, in their order, and the
+            bound, or None.
+        :rtype: Tuple[numpy.ndarray, numpy.ndarray, float] or None
+        """
+        from metagen.metaheuristics.trigen.shape import PrismShape, _prism_arrays, prism
+        if not isinstance(self.form, PrismShape) or (self.scoring != "significance" and not quality_only):
+            return None
+        values = self.form.values(self.cube, tricluster)
+        assert values is not None
+        rows, columns, times = _prism_arrays(tricluster)
+        if len(times) < 2:
+            return None
+        window = np.asarray(times)[None, :]
+        rows_added = np.array([pixel[0] for pixel in added], dtype=np.int64)
+        columns_added = np.array([pixel[1] for pixel in added], dtype=np.int64)
+        others = self.cube.values[rows_added[:, None], columns_added[:, None], window][:, None, :]
+        place = {pixel: index for index, pixel in enumerate(zip(rows.tolist(), columns.tolist()))}
+        more, fewer, bound = _prism_moves(values, others, [place[pixel] for pixel in removed],
+                                          _segment_angles if self.measure == "msl" else _line_angle)
+        if quality_only:
+            return more, fewer, bound
+        if self._chance is None:
+            self.fit_chance()
+        assert self._chance is not None
+        mean, deviation = self._chance
+        z_found = self._z_found(tricluster)
+        eps = float(np.finfo(np.float64).eps)
+        found_pixels = self._pixels_of_found()
+        count, length = len(rows), len(times)
+        results: List[np.ndarray] = []
+        error = 0.0
+        for quality, size, pixels, change in ((more, count + 1, added, 1), (fewer, count - 1, removed, -1)):
+            # The same operations as significance(), so that only the quality differs.
+            row: np.ndarray = np.array([1.0, *np.log((size, length))])
+            center, scale = float(row @ mean), float(np.exp(row @ deviation))
+            z = (center - quality) / scale
+            fitness = -(z - z_found)
+            if len(quality):
+                error = max(error, float(np.max((bound + 4 * eps * (abs(center) + 1.0)) / scale
+                                                + 4 * eps * (np.abs(z) + abs(z_found) + 1.0))))
+            # A pixel of a prism found changes what it shares with it: those, one by one.
+            for index, pixel in enumerate(pixels):
+                if pixel in found_pixels:
+                    surface = set(place) | {pixel} if change > 0 else set(place) - {pixel}
+                    fitness[index] = self.evaluate(prism(sorted(surface), times))
+            results.append(fitness)
+        return results[0], results[1], error
+
     def fit_chance(self) -> None:
         """
         Fit the model of chance of ``scoring="significance"``, drawing random triclusters
@@ -392,6 +461,20 @@ class TriclusterFitness:
         row: np.ndarray = np.array([1.0, *np.log(self.form.measured_size(tricluster))])
         value = self.quality(tricluster) if quality is None else quality
         return (float(row @ mean) - value) / float(np.exp(row @ deviation))
+
+    def _z_found(self, tricluster: Tricluster) -> float:
+        """The largest significance a tricluster shares with a tricluster found, 0 if none."""
+        return max([0.0] + [self.significance(shared) for shared in
+                            (self.form.shared(tricluster, found) for found in self.found)
+                            if shared is not None])
+
+    def _pixels_of_found(self) -> Set[Tuple[int, int]]:
+        """The pixels the prisms found hold."""
+        current = tuple(self.found)
+        if current != self._found_pixels[0]:
+            from metagen.metaheuristics.trigen.shape import prism_parts
+            self._found_pixels = (current, set().union(*(set(prism_parts(found)[0]) for found in current)))
+        return self._found_pixels[1]
 
     def _sets_of_found(self) -> List[Tuple[set, set, set]]:
         current = tuple(self.found)
@@ -458,9 +541,7 @@ class TriclusterFitness:
             # found itself (review of 2 October 2026; SPEC-fase4c-significacion.md, §14):
             # the noise lowers O faster than it lowers z.
             terms["z"] = self.significance(tricluster, terms["quality"])
-            terms["z_found"] = max([0.0] + [self.significance(shared) for shared in
-                                            (self.form.shared(tricluster, found) for found in self.found)
-                                            if shared is not None])
+            terms["z_found"] = self._z_found(tricluster)
             terms["fitness"] = -(terms["z"] - terms["z_found"])
             return terms
         weights = self.weights

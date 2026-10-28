@@ -72,7 +72,8 @@ class Shape(ABC):
     @abstractmethod
     def grow(self, tricluster: Tricluster, score: Callable[[Tricluster], float], sizes: Sizes,
              shape: Tuple[int, int, int], pruning: bool = False,
-             adding_genes: Optional[Callable[[Tricluster, List[int]], Optional[Any]]] = None
+             adding_genes: Optional[Callable[[Tricluster, List[int]], Optional[Any]]] = None,
+             moving_pixels: Optional[Callable[[Tricluster, List[plane.Pixel], List[plane.Pixel]], Optional[Any]]] = None
              ) -> Tuple[Tricluster, int]:
         """The tricluster grown, and how many triclusters were scored; see :py:func:`grow`."""
 
@@ -190,7 +191,8 @@ class CubeShape(Shape):
 
     def grow(self, tricluster: Tricluster, score: Callable[[Tricluster], float], sizes: Sizes,
              shape: Tuple[int, int, int], pruning: bool = False,
-             adding_genes: Optional[Callable[[Tricluster, List[int]], Optional[Any]]] = None
+             adding_genes: Optional[Callable[[Tricluster, List[int]], Optional[Any]]] = None,
+             moving_pixels: Optional[Callable[[Tricluster, List[plane.Pixel], List[plane.Pixel]], Optional[Any]]] = None
              ) -> Tuple[Tricluster, int]:
         return grow(tricluster, score, sizes, shape, pruning=pruning, adding_genes=adding_genes,
                     ordered=self.ordered)
@@ -338,7 +340,8 @@ class PrismShape(Shape):
 
     def grow(self, tricluster: Tricluster, score: Callable[[Tricluster], float], sizes: Sizes,
              shape: Tuple[int, int, int], pruning: bool = False,
-             adding_genes: Optional[Callable[[Tricluster, List[int]], Optional[Any]]] = None
+             adding_genes: Optional[Callable[[Tricluster, List[int]], Optional[Any]]] = None,
+             moving_pixels: Optional[Callable[[Tricluster, List[plane.Pixel], List[plane.Pixel]], Optional[Any]]] = None
              ) -> Tuple[Tricluster, int]:
         """
         Grow a prism one step at a time, as :py:func:`grow` grows a cube: at each step, the
@@ -347,6 +350,12 @@ class PrismShape(Shape):
         pixels and the box. With ``pruning``, each step also weighs removing a pixel of the
         border that leaves the surface one piece, or the first or the last time, and stops
         when no step lowers the score. ``adding_genes`` is not used.
+
+        ``moving_pixels``, as :py:meth:`TriclusterFitness.moving_pixels`, scores every pixel
+        added and taken out at once, with a bound on its rounding; the moves whose value is
+        within twice the bound of the lowest are then scored on their own, and the step
+        takes the same move, with the same value, as scoring each. When it gives None, or
+        without it, each move is scored on its own.
         """
         extent = (shape[0], shape[1])
         low, high = self.pixels
@@ -356,23 +365,44 @@ class PrismShape(Shape):
         current = score(tricluster)
         evaluations = 1
         while True:
-            moves: List[Tuple[Set[plane.Pixel], int, int]] = []
+            added: List[plane.Pixel] = []
+            removed: List[plane.Pixel] = []
+            windows: List[Tuple[int, int]] = []
             if len(surface) < high:
                 fits = _fits_in_box(surface, self.box)
-                moves += [(surface | {pixel}, start, end) for pixel in plane.frontier(surface, extent, self.neighborhood)
-                          if fits(pixel)]
+                added = [pixel for pixel in plane.frontier(surface, extent, self.neighborhood) if fits(pixel)]
             if pruning and len(surface) > low:
-                moves += [(surface - {pixel}, start, end)
-                          for pixel in plane.removable(sorted(surface), extent, self.neighborhood)]
+                removed = plane.removable(sorted(surface), extent, self.neighborhood)
             if end - start + 1 < largest:
-                moves += [(surface, first, last) for first, last in ((start - 1, end), (start, end + 1))
-                          if 0 <= first and last < shape[2]]
+                windows += [(first, last) for first, last in ((start - 1, end), (start, end + 1))
+                            if 0 <= first and last < shape[2]]
             if pruning and end - start + 1 > smallest:
-                moves += [(surface, start + 1, end), (surface, start, end - 1)]
+                windows += [(start + 1, end), (start, end - 1)]
+            moves: List[Tuple[Set[plane.Pixel], int, int]] = (
+                [(surface | {pixel}, start, end) for pixel in added] + [(surface - {pixel}, start, end) for pixel in removed]
+                + [(surface, first, last) for first, last in windows])
+
+            def scored(move: Tuple[Set[plane.Pixel], int, int]) -> float:
+                return score(prism(sorted(move[0]), range(move[1], move[2] + 1)))
+
+            together = (moving_pixels(prism(sorted(surface), range(start, end + 1)), added, removed)
+                        if moving_pixels is not None and (added or removed) else None)
+            quick: List[float] = [] if together is None else [float(value) for part in together[:2] for value in part]
+            if together is None or not all(math.isfinite(value) for value in quick + [together[2]]):
+                values = [scored(move) for move in moves]
+            else:
+                # Scoring each pixel added or taken out on its own sorted the angles of the
+                # whole prism every time, most of growing a large one; together, and
+                # then on their own only the moves the rounding could make the lowest, the
+                # step is the same (metagen-auditoria/trigen/c5/informe_c5_etapa3_cruce.md, 6).
+                values = quick + [scored(move) for move in moves[len(quick):]]
+                within = min(values) + 2.0 * together[2]
+                for index in range(len(quick)):
+                    if values[index] <= within:
+                        values[index] = scored(moves[index])
+            evaluations += len(moves)
             best: Optional[Tuple[float, Tuple[Set[plane.Pixel], int, int]]] = None
-            for move in moves:
-                value = score(prism(sorted(move[0]), range(move[1], move[2] + 1)))
-                evaluations += 1
+            for value, move in zip(values, moves):
                 better = value < current if pruning else value <= current
                 if better and (best is None or value < best[0]):
                     best = (value, move)
