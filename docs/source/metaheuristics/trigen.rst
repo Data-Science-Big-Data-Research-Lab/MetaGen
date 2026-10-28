@@ -174,7 +174,21 @@ By default a run makes ``n_triclusters`` searches. With ``stop="coverage"`` it g
     found = trigen.run()
     print(len(found), trigen.stop_reason, round(trigen.covered, 2))      # 3 coverage 0.6
 
-The triclusters still share genes as the scoring allows. A saved run keeps the options, why it ended, the share it held, the significance of each tricluster left out and, with ``noise_rule="null"``, the threshold it found in the null cube.
+The triclusters still share genes as the scoring allows. With ``disjoint=True`` no two share a gene: each search works on the genes no tricluster holds yet, with a model of chance of its own, the genes of a tricluster left out go to the residue, and a run also ends, ``"exhausted"``, when fewer genes are left than the smallest size. It applies to cubes, and to either way of stopping:
+
+.. code-block:: python
+
+    from metagen.metaheuristics import TriGen
+    from metagen.triclustering import plant
+
+    cube, planted = plant((100, 8, 10), [(20, 3, 5), (20, 4, 4), (20, 3, 6)], noise=0.05, seed=0)
+    trigen = TriGen(cube, n_triclusters=10, generations=30, population_size=60, min_sizes=(5, 2, 3),
+                    scoring="significance", stop="coverage", noise_rule="null", disjoint=True, seed=0)
+    found = trigen.run()
+    genes = [set(tricluster.genes) for tricluster in found]
+    print(len(found), trigen.stop_reason, sum(map(len, genes)) == len(set().union(*genes)))   # 3 noise True
+
+A saved run keeps the options, why it ended, the share it held, the significance of each tricluster left out and, with ``noise_rule="null"``, the threshold it found in the null cube.
 
 Saving a run
 ------------

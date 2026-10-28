@@ -48,7 +48,7 @@ CONFIGURATION = ("n_triclusters", "generations", "population_size", "random_frac
                  "mutation_probability", "min_sizes", "max_sizes", "measure", "views", "flat_profiles", "weights",
                  "size_reference", "seed", "growth", "scoring", "pruning", "shuffle_genes", "overlap",
                  "hierarchy", "shape", "ordered", "neighborhood", "pixels", "stop", "cover", "coverage",
-                 "noise_rule", "decline", "patience")
+                 "noise_rule", "decline", "patience", "disjoint")
 
 
 # The options TriGen gained after the format was set, with the value a result saved before
@@ -56,7 +56,7 @@ CONFIGURATION = ("n_triclusters", "generations", "population_size", "random_frac
 _LATER_OPTIONS: Dict[str, Any] = {"shuffle_genes": False, "overlap": "coordinates", "hierarchy": "coordinates",
                                   "shape": "cube", "ordered": [], "neighborhood": 4, "pixels": None,
                                   "stop": "count", "cover": "genes", "coverage": 1.0, "noise_rule": None,
-                                  "decline": 0.5, "patience": 1}
+                                  "decline": 0.5, "patience": 1, "disjoint": False}
 
 
 @dataclass

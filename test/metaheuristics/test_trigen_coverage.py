@@ -8,6 +8,7 @@ import json
 import pytest
 
 from metagen.metaheuristics import TriGen, TriGenResult
+from metagen.metaheuristics.trigen.fitness import NULL_SAMPLES, NULL_SIZES
 from metagen.metaheuristics.trigen.shape import prism_parts
 from metagen.triclustering import plant, plant_prisms
 
@@ -107,11 +108,76 @@ def test_a_file_saved_before_these_options_reads_as_a_run_by_count(tmp_path):
     path = str(tmp_path / "old.json")
     trigen.save(path)
     document = json.load(open(path))
-    for name in ("stop", "cover", "coverage", "noise_rule", "decline", "patience"):
+    for name in ("stop", "cover", "coverage", "noise_rule", "decline", "patience", "disjoint"):
         del document["configuration"][name]
     json.dump(document, open(path, "w"))
     assert TriGenResult.load(path).configuration["stop"] == "count"
     assert TriGenResult.load(path).configuration["patience"] == 1
+    assert TriGenResult.load(path).configuration["disjoint"] is False
+
+
+@pytest.mark.parametrize("shuffle_genes", [False, True])
+def test_disjoint_no_two_triclusters_share_a_gene_and_each_search_works_on_the_genes_left(shuffle_genes, monkeypatch):
+    searched = []
+    original = TriGen._on_genes
+
+    def spy(self, positions):
+        searched.append(list(positions))
+        return original(self, positions)
+
+    monkeypatch.setattr(TriGen, "_on_genes", spy)
+    trigen = TriGen(CUBE, n_triclusters=6, stop="coverage", scoring="significance", disjoint=True,
+                    shuffle_genes=shuffle_genes, **SETTINGS)
+    found = trigen.run()
+    genes = [set(tricluster.genes) for tricluster in found]
+    assert len(found) >= 3 and sum(len(one) for one in genes) == len(set().union(*genes))
+    assert trigen.covered == pytest.approx(_covered(found))
+    # Each search sees the genes no tricluster before it holds, and none of those
+    assert [set(positions) for positions in searched] == [set(range(60)) - set().union(*genes[:i])
+                                                          for i in range(len(found))]
+    assert (trigen.stop_reason == "exhausted") == (len(found) < 6)
+    if shuffle_genes:
+        assert searched[0] != sorted(searched[0])
+    assert trigen.started["chance_evaluations"] == len(found) * NULL_SIZES * NULL_SAMPLES
+
+
+def test_disjoint_a_run_ends_when_fewer_genes_are_left_than_the_smallest_size():
+    cube, _ = plant((12, 6, 8), [(5, 3, 4)], noise=0.05, seed=1)
+    trigen = TriGen(cube, n_triclusters=10, disjoint=True, **{**SETTINGS, "max_sizes": (5, 5, 6)})
+    found = trigen.run()
+    assert trigen.stop_reason == "exhausted" and 12 - sum(len(t.genes) for t in found) < 4
+    assert len(trigen.history) == len(found) < 10
+
+
+def test_disjoint_the_genes_of_one_left_out_go_to_the_residue(monkeypatch):
+    searched = []
+    original = TriGen._on_genes
+
+    def spy(self, positions):
+        searched.append(set(positions))
+        return original(self, positions)
+
+    monkeypatch.setattr(TriGen, "_on_genes", spy)
+    trigen = TriGen(CUBE, n_triclusters=8, stop="coverage", scoring="significance", noise_rule="decline",
+                    decline=0.95, disjoint=True, **SETTINGS)
+    found = trigen.run()
+    held = set().union(*(set(t.genes) for t in found))
+    left = [index for index, record in enumerate(trigen.history) if "left_out" in record]
+    assert trigen.stop_reason == "noise" and left
+    # After one left out, the genes the next search sees lose its genes as well
+    for index in left[:-1]:
+        lost = searched[index] - searched[index + 1]
+        assert lost and not lost & held
+    assert sum(len(t.genes) for t in found) == len(held)
+
+
+def test_disjoint_reruns_from_its_result(tmp_path):
+    trigen = TriGen(CUBE, n_triclusters=3, disjoint=True, scoring="significance", **SETTINGS)
+    found = trigen.run()
+    path = str(tmp_path / "run.json")
+    trigen.save(path)
+    again = TriGenResult.load(path).trigen(CUBE)
+    assert again.disjoint and again.run() == found
 
 
 @pytest.mark.parametrize("change, message", [
@@ -124,6 +190,9 @@ def test_a_file_saved_before_these_options_reads_as_a_run_by_count(tmp_path):
     ({"stop": "coverage", "scoring": "significance", "noise_rule": "z"}, "None, 'null' or 'decline'"),
     ({"decline": 1.0}, "share in"),
     ({"stop": "coverage", "scoring": "significance", "noise_rule": "null", "patience": 0}, "at least 1"),
+    ({"disjoint": 1}, "True or False"),
+    ({"disjoint": True, "shape": "prism", "ordered": ("genes", "conditions", "times"), "views": "time"},
+     "shape='cube'"),
 ])
 def test_what_a_stop_cannot_be_is_refused(change, message):
     with pytest.raises(ValueError, match=message):
