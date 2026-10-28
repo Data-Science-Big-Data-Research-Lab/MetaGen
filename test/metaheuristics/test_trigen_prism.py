@@ -337,15 +337,19 @@ def test_scoring_every_pixel_together_grows_the_same_prism_as_scoring_each(measu
 @pytest.mark.parametrize("measure", ["msl", "lsl"])
 def test_the_pixels_scored_together_are_within_their_bound_of_scoring_each(measure):
     fitness, pixels, times = _growing_fitness(measure)
+    # And one the surfaces drawn share none, one, two or many pixels with
+    fitness.found.append(prism([(x, y) for x in range(5, 11) for y in range(5, 11)], range(1, 6)))
     form = fitness.form
     draw = random.Random(2)
-    for _ in range(20):
+    shared = set()
+    for _ in range(60):
         count = draw.randint(4, 25)
         surface = grow_by((draw.randrange(16), draw.randrange(16)), count, (16, 16), 4, None, lambda pixel: draw.random())
         first = draw.randrange(0, 6)
         window = range(first, first + draw.randint(2, 4))
         base = prism(surface, window)
-        added = [pixel for pixel in sorted({other for one in surface for other in neighbors(one, (16, 16), 4)})
+        shared.add(min(len(set(surface) & set(prism_parts(fitness.found[1])[0])), 3))
+        added =[pixel for pixel in sorted({other for one in surface for other in neighbors(one, (16, 16), 4)})
                  if pixel not in surface]
         removed = removable(sorted(surface), (16, 16), 4)
         for quality_only, score in ((False, fitness.evaluate), (True, fitness.quality)):
@@ -354,6 +358,7 @@ def test_the_pixels_scored_together_are_within_their_bound_of_scoring_each(measu
                     + [score(prism(sorted(set(surface) - {pixel}), window)) for pixel in removed])
             assert bound < 1e-9
             assert all(abs(value - one) <= bound for value, one in zip(list(more) + list(fewer), each))
+    assert shared == {0, 1, 2, 3}
     weighted = TriclusterFitness(CUBE, views="time", form=form)
     assert weighted.moving_pixels(prism(pixels, times), [], []) is None
     assert weighted.moving_pixels(prism(pixels, times), [], [], quality_only=True) is not None
