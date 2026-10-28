@@ -288,4 +288,46 @@ def removable(surface: Sequence[Pixel], extent: Tuple[int, int], neighborhood: i
     steps = _FOUR if neighborhood == 4 else _EIGHT
     border = [pixel for pixel in sorted(held)
               if any((pixel[0] + dx, pixel[1] + dy) not in held for dx, dy in steps)]
-    return [pixel for pixel in border if connected(held - {pixel}, neighborhood)]
+    # A pixel splits a connected surface when it is one of its cut vertices, all found in
+    # one pass; asking whether the rest is connected, pixel by pixel, took a third of
+    # growing a large prism (metagen-auditoria/trigen/c5/informe_c5_etapa3_cruce.md, 5).
+    cut = _cut_pixels(held, steps)
+    if cut is None:
+        return [pixel for pixel in border if connected(held - {pixel}, neighborhood)]
+    return [pixel for pixel in border if pixel not in cut]
+
+
+def _cut_pixels(held: Set[Pixel], steps: Sequence[Tuple[int, int]]) -> Optional[Set[Pixel]]:
+    """The pixels whose removal splits a set of pixels in two or more pieces, by the
+    depth-first search of Hopcroft and Tarjan; None when the set is not one piece."""
+    start = min(held)
+    order: Dict[Pixel, int] = {start: 0}
+    low: Dict[Pixel, int] = {start: 0}
+    cut: Set[Pixel] = set()
+    children_of_start = 0
+    stack = [(start, start, iter(steps))]
+    while stack:
+        pixel, parent, pending = stack[-1]
+        for dx, dy in pending:
+            other = (pixel[0] + dx, pixel[1] + dy)
+            if other not in held:
+                continue
+            if other not in order:
+                order[other] = low[other] = len(order)
+                children_of_start += pixel == start
+                stack.append((other, pixel, iter(steps)))
+                break
+            if other != parent:
+                low[pixel] = min(low[pixel], order[other])
+        else:
+            stack.pop()
+            if stack:
+                above = stack[-1][0]
+                low[above] = min(low[above], low[pixel])
+                if above != start and low[pixel] >= order[above]:
+                    cut.add(above)
+    if len(order) != len(held):
+        return None
+    if children_of_start > 1:
+        cut.add(start)
+    return cut

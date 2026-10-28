@@ -413,9 +413,7 @@ class PrismShape(Shape):
         return side, side, times / references[2]
 
     def values(self, cube: Cube, tricluster: Tricluster) -> Optional[np.ndarray]:
-        pixels, times = prism_parts(tricluster)
-        rows = np.fromiter((pixel[0] for pixel in pixels), dtype=np.int64, count=len(pixels))
-        columns = np.fromiter((pixel[1] for pixel in pixels), dtype=np.int64, count=len(pixels))
+        rows, columns, times = _prism_arrays(tricluster)
         return cube.values[rows[:, None], columns[:, None], np.asarray(times)[None, :]][:, None, :]
 
     def check_measure(self, measure: str, views: str) -> None:
@@ -460,7 +458,11 @@ def prism(pixels: Sequence[plane.Pixel], times: Sequence[int], fitness: Optional
     # sorted and distinct (metagen-auditoria/trigen/c5/informe_c5_etapa3_pastis.md, 2).
     if (len(g) >= 2 and held.min() >= 0 and span.min() >= 0 and bool(np.all(np.diff(span) > 0))
             and not bool(np.any(np.all(np.diff(held, axis=0) == 0, axis=1)))):
-        return Tricluster._from_sorted_cells(g, c, t, fitness)
+        # Its distinct genes and conditions are those of its pixels, and its times the
+        # window: finding them among all its cells took a sixth of growing a large prism
+        # (metagen-auditoria/trigen/c5/informe_c5_etapa3_cruce.md, 5).
+        projections = (np.unique(held[:, 0]), np.unique(held[:, 1]), span)
+        return Tricluster._from_sorted_cells(g, c, t, fitness, projections)
     return Tricluster.from_cells(g, c, t, fitness=fitness)
 
 
@@ -477,13 +479,26 @@ def prism_parts(tricluster: Tricluster) -> Tuple[List[plane.Pixel], Tuple[int, .
     times = tricluster.times
     if tricluster.is_cube:
         return [(gene, condition) for gene in tricluster.genes for condition in tricluster.conditions], times
+    rows, columns, _ = _prism_arrays(tricluster)
+    return list(zip(rows.tolist(), columns.tolist())), times
+
+
+def _prism_arrays(tricluster: Tricluster) -> Tuple[np.ndarray, np.ndarray, Tuple[int, ...]]:
+    """:py:func:`prism_parts` as the arrays of the rows and the columns of the pixels."""
+    # Measuring a prism through the list of its pixels, as tuples, and back to arrays
+    # took a seventh of growing a large one (metagen-auditoria/trigen/c5/informe_c5_etapa3_cruce.md, 5).
+    times = tricluster.times
+    if tricluster.is_cube:
+        rows = np.repeat(np.asarray(tricluster.genes, dtype=np.int64), len(tricluster.conditions))
+        columns = np.tile(np.asarray(tricluster.conditions, dtype=np.int64), len(tricluster.genes))
+        return rows, columns, times
     genes, conditions, held = tricluster.cells()
     count = len(genes) // len(times)
     if count * len(times) != len(genes) or not np.array_equal(held.reshape(count, len(times)),
                                                               np.tile(np.asarray(times), (count, 1))):
         raise ValueError("A prism holds the same times at each of its pixels; this tricluster does not.")
     step = len(times)
-    return list(zip(genes[::step].tolist(), conditions[::step].tolist())), times
+    return genes[::step].astype(np.int64), conditions[::step].astype(np.int64), times
 
 
 def _fits_in_box(surface: Set[plane.Pixel], box: Optional[plane.Box]) -> Callable[[plane.Pixel], bool]:

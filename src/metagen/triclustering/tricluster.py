@@ -127,10 +127,13 @@ class Tricluster:
 
     @classmethod
     def _from_sorted_cells(cls, g: np.ndarray, c: np.ndarray, t: np.ndarray,
-                           fitness: Optional[float] = None) -> Tricluster:
+                           fitness: Optional[float] = None,
+                           projections: Optional[Sequence[np.ndarray]] = None) -> Tricluster:
         """:py:meth:`from_cells` for cells already checked, at least two, none repeating, and
-        sorted by gene, then by condition, then by time."""
-        projections = [np.unique(column) for column in (g, c, t)]
+        sorted by gene, then by condition, then by time; with their distinct genes,
+        conditions and times, sorted, when the caller knows them."""
+        if projections is None:
+            projections = [np.unique(column) for column in (g, c, t)]
         if (all(len(positions) >= 2 for positions in projections)
                 and len(g) == math.prod(len(positions) for positions in projections)):
             return cls(projections[0].tolist(), projections[1].tolist(), projections[2].tolist(), fitness=fitness)

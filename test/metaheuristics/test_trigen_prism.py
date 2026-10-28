@@ -17,7 +17,7 @@ from metagen.metaheuristics import TriclusterFitness, TriGen, TriGenResult
 from metagen.metaheuristics.trigen.population import DataHierarchy
 from metagen.metaheuristics.trigen.shape import PrismShape, prism, prism_parts
 from metagen.triclustering import Cube, Tricluster, plant_prisms
-from metagen.triclustering.surface import connected, decode, encode, grow_by, removable
+from metagen.triclustering.surface import connected, decode, encode, grow_by, neighbors, removable
 
 CUBE, PLANTED = plant_prisms((16, 16, 10), [(20, 5), (14, 4)], noise=0.05, seed=3)
 ORDERED = ("genes", "conditions", "times")
@@ -175,6 +175,28 @@ def test_removing_a_pixel_never_cuts_the_surface():
     assert removable(surface, (5, 5), 4) == [(0, 0), (0, 2), (2, 2)]
     for pixel in removable(surface, (5, 5), 8):
         assert connected(set(surface) - {pixel}, 8)
+
+
+@pytest.mark.parametrize("neighborhood", [4, 8])
+def test_the_pixels_that_can_go_are_those_that_leave_the_rest_in_one_piece(neighborhood):
+    # Asked of each pixel, as the cut vertices found in one pass have to answer, also for
+    # surfaces that are not one piece
+    draw = random.Random(neighborhood)
+    for _ in range(400):
+        extent = (draw.randint(2, 12), draw.randint(2, 12))
+        cells = [(x, y) for x in range(extent[0]) for y in range(extent[1])]
+        surface = draw.sample(cells, draw.randint(1, len(cells)))
+        if draw.random() < 0.5:                    # one piece, grown from a pixel
+            grown = {(draw.randrange(extent[0]), draw.randrange(extent[1]))}
+            while len(grown) < len(surface):
+                grown.add(draw.choice(neighbors(draw.choice(sorted(grown)), extent, neighborhood)))
+            surface = sorted(grown)
+        held = set(surface)
+        steps = [(dx, dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1)
+                 if (dx, dy) != (0, 0) and (neighborhood == 8 or 0 in (dx, dy))]
+        border = [pixel for pixel in sorted(held) if any((pixel[0] + dx, pixel[1] + dy) not in held for dx, dy in steps)]
+        expected = [pixel for pixel in border if len(held) > 1 and connected(held - {pixel}, neighborhood)]
+        assert removable(surface, extent, neighborhood) == expected
 
 
 def test_the_model_of_chance_draws_prisms_of_the_size_asked():
