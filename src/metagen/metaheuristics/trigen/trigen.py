@@ -20,7 +20,7 @@ import datetime
 import json
 import os
 import time
-from typing import Any, Callable, Dict, List, Literal, Mapping, Optional, Sequence, Set, Tuple
+from typing import Any, Callable, Dict, List, Literal, Mapping, Optional, Sequence, Set, Tuple, cast
 
 import numpy as np
 
@@ -31,7 +31,7 @@ from metagen.metaheuristics.trigen.fitness import (NULL_SAMPLES, NULL_SIZES, Mea
                                                    SizeReference, TriclusterFitness)
 from metagen.metaheuristics.trigen.population import DataHierarchy, Sizes
 from metagen.metaheuristics.trigen.results import TriGenResult, _plain
-from metagen.metaheuristics.trigen.shape import Shape, grow, prism_parts, shape_named  # noqa: F401
+from metagen.metaheuristics.trigen.shape import PrismShape, Shape, grow, prism_parts, shape_named  # noqa: F401
 from metagen.metaheuristics.trigen.trigen_ga import TriGenGA, require_integer, validate
 from metagen.triclustering import Cube, Tricluster, null_cube
 from metagen.triclustering.cube import AXES
@@ -51,6 +51,10 @@ NoiseRule = Literal["null", "decline"]
 
 #: The searches of the short run in the null cube that sets the threshold of noise_rule="null".
 NOISE_PROBES = 3
+
+#: With disjoint prisms, the share of the free pixels at the last fit of the model of chance
+#: below which it is fitted again.
+REFIT_SHARE = 0.9
 
 #: What the searches after the first start from: the coordinates or the cells least held.
 Hierarchy = Literal["coordinates", "cells"]
@@ -214,10 +218,14 @@ class TriGen:
         the run ends, defaults to 2. One left out still counts as found, so the next
         search looks elsewhere.
     :type patience: int, optional
-    :param disjoint: Whether no two triclusters share a gene, defaults to False. Each search
-        then works on the genes no tricluster holds yet, with a model of chance of its own,
-        and a run ends when fewer are left than the smallest size; the genes of a tricluster
-        the ``noise_rule`` leaves out go to the residue. Only for the cube.
+    :param disjoint: Whether no two triclusters share a gene or, with a prism, a pixel, at
+        any time, defaults to False. Each search then works on the genes or pixels no
+        tricluster holds yet, and a run ends when no tricluster of the smallest size fits in
+        them; the genes or pixels of a tricluster the ``noise_rule`` leaves out go to the
+        residue. With a cube each search fits a model of chance of its own; with a prism, a
+        prism grows only over free pixels and starts in a free piece of the plane that holds
+        the fewest pixels, and the model of chance is fitted again over the free pixels once
+        they have fallen a tenth since it last was.
     :type disjoint: bool, optional
     :raises ValueError: if a parameter is out of its range.
     """
@@ -306,8 +314,8 @@ class TriGen:
             raise ValueError(f"patience is at least 1, not {patience}.")
         if not isinstance(disjoint, bool):
             raise ValueError(f"disjoint is True or False, not {disjoint!r}.")
-        if disjoint and shape != "cube":
-            raise ValueError("disjoint keeps the genes of the triclusters apart, and applies to shape='cube'.")
+        if disjoint and shape == "prism" and cover != "pixels":
+            raise ValueError("With a prism, disjoint keeps the pixels of the prisms apart: cover='pixels'.")
         #: Whether no two triclusters share a gene.
         self.disjoint = disjoint
         #: When a run ends and what it counts; see the parameters.
@@ -432,12 +440,21 @@ class TriGen:
         best_significance: Optional[float] = None
         left_out = 0
         found: List[Tricluster] = []
-        sizes = self.sizes
-        # The genes in the order of the run, and those a tricluster, or one left out, holds.
+        sizes, form = self.sizes, self.form
+        # The genes in the order of the run, and the genes or pixels a tricluster, or one left
+        # out, holds.
         sequence = list(range(self.cube.shape[0])) if order is None else list(order)
-        taken: Set[int] = set()
+        taken: Set[Any] = set()
+        # The free pixels and the model of chance when it was last fitted.
+        fitted: Optional[Tuple[int, Tuple[np.ndarray, np.ndarray]]] = None
         for index in range(self.n_triclusters):
-            if self.disjoint:
+            if self.disjoint and self.cover == "pixels":
+                form, fitness, fitted = self._on_pixels(taken, fitted)
+                if not form.seeds:
+                    self.stop_reason = "exhausted"
+                    break
+                found = []
+            elif self.disjoint:
                 order = [position for position in sequence if position not in taken]
                 if len(order) < self.sizes[0][0]:
                     self.stop_reason = "exhausted"
@@ -447,7 +464,7 @@ class TriGen:
             search = TriGenGA(fitness, sizes, hierarchy, first=index == 0,
                               population_size=self.population_size, generations=self.generations,
                               random_fraction=self.random_fraction, selection_rate=self.selection_rate,
-                              mutation_probability=self.mutation_probability, form=self.form)
+                              mutation_probability=self.mutation_probability, form=form)
             search.run()
             chosen = _choose(search, set(found))
             record: Dict[str, Any] = {"search": index, "evaluations": search._evaluations,
@@ -457,7 +474,7 @@ class TriGen:
             if chosen is not None and self.growth is not None:
                 score = fitness.evaluate if self.growth == "fitness" else fitness.quality
                 quality_only = self.growth == "quality"
-                grown, record["growth_evaluations"] = self.form.grow(
+                grown, record["growth_evaluations"] = form.grow(
                     chosen, score, sizes, cube.shape, pruning=self.pruning,
                     adding_genes=lambda base, genes: fitness.adding_genes(base, genes, quality_only=quality_only),
                     moving_pixels=lambda base, added, removed: fitness.moving_pixels(base, added, removed,
@@ -485,9 +502,9 @@ class TriGen:
                     found.append(passed)
                     fitness.found.append(passed)
                     hierarchy.update(passed)
-                    if self.disjoint and order is not None:
-                        # Its genes go to the residue: left free, the next search finds it again.
-                        taken |= {order[position] for position in passed.genes}
+                    if self.disjoint:
+                        # What it holds goes to the residue: left free, the next search finds it again.
+                        taken |= self._units(passed) if order is None else {order[gene] for gene in passed.genes}
                     continue
                 left_out = 0
                 best_significance = significance if best_significance is None else max(best_significance,
@@ -519,8 +536,8 @@ class TriGen:
                 if fitness is not self.fitness:
                     self.fitness.found.append(chosen)
                 self.hierarchy.update(chosen)
-                taken |= set(chosen.genes)
-                held |=set(chosen.genes) if self.cover == "genes" else set(prism_parts(chosen)[0])
+                taken |= self._units(chosen)
+                held |= self._units(chosen)
                 self.covered = len(held) / total
                 record["covered"] = self.covered
             self._write(record)
@@ -531,6 +548,32 @@ class TriGen:
             self.stop_reason = "count" if self.stop == "count" else "maximum"
         self.finished = True
         return list(self.triclusters)
+
+    def _units(self, tricluster: Tricluster) -> Set[Any]:
+        """What a tricluster covers: its genes or the pixels of its surface."""
+        return set(tricluster.genes) if self.cover == "genes" else set(prism_parts(tricluster)[0])
+
+    def _on_pixels(self, taken: Set[Any], fitted: Optional[Tuple[int, Tuple[np.ndarray, np.ndarray]]]
+                   ) -> Tuple[PrismShape, TriclusterFitness, Optional[Tuple[int, Tuple[np.ndarray, np.ndarray]]]]:
+        """The prism kept off the pixels taken, with a fitness of its own, for a search on the
+        pixels left free; and the free pixels and the model of chance it was last fitted with."""
+        rows, columns = self.cube.shape[0], self.cube.shape[1]
+        form = cast(PrismShape, self.form).keeping_off(taken, (rows, columns))
+        fitness = TriclusterFitness(self.cube, **{**self._fitness_options, "form": form})
+        if form.seeds and fitness.scoring == "significance":
+            free = rows * columns - len(taken)
+            # Fitted again once the free pixels have fallen a tenth: fitting it is as dear as a
+            # good part of a search, and what changes in between is only where its random
+            # prisms may lie (metagen-auditoria/trigen/SPEC-parada-etapa3-segmentacion.md, 4).
+            if fitted is None or free <= REFIT_SHARE * fitted[0]:
+                fitness.fit_chance()
+                assert fitness._chance is not None
+                fitted = (free, fitness._chance)
+                if self.started is not None:
+                    self.started["chance_evaluations"] += NULL_SIZES * NULL_SAMPLES
+            else:
+                fitness._chance = fitted[1]
+        return form, fitness, fitted
 
     def _on_genes(self, positions: List[int]) -> Tuple[Cube, TriclusterFitness, DataHierarchy, Sizes]:
         """The cube of some genes, in that order, with a fitness of its own, the data hierarchy

@@ -191,8 +191,8 @@ def test_disjoint_reruns_from_its_result(tmp_path):
     ({"decline": 1.0}, "share in"),
     ({"stop": "coverage", "scoring": "significance", "noise_rule": "null", "patience": 0}, "at least 1"),
     ({"disjoint": 1}, "True or False"),
-    ({"disjoint": True, "shape": "prism", "ordered": ("genes", "conditions", "times"), "views": "time"},
-     "shape='cube'"),
+    ({"disjoint": True, "shape": "prism", "ordered": ("genes", "conditions", "times"), "views": "time",
+      "cover": "genes"}, "cover='pixels'"),
 ])
 def test_what_a_stop_cannot_be_is_refused(change, message):
     with pytest.raises(ValueError, match=message):

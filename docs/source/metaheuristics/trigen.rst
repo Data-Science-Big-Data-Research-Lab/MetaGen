@@ -174,7 +174,7 @@ By default a run makes ``n_triclusters`` searches. With ``stop="coverage"`` it g
     found = trigen.run()
     print(len(found), trigen.stop_reason, round(trigen.covered, 2))      # 3 coverage 0.6
 
-The triclusters still share genes as the scoring allows. With ``disjoint=True`` no two share a gene: each search works on the genes no tricluster holds yet, with a model of chance of its own, the genes of a tricluster left out go to the residue, and a run also ends, ``"exhausted"``, when fewer genes are left than the smallest size. It applies to cubes, and to either way of stopping. With ``disjoint=True`` the noise rule is what keeps noise out: without one, the run hands every gene it can to a tricluster.
+The triclusters still share genes as the scoring allows. With ``disjoint=True`` no two share a gene: each search works on the genes no tricluster holds yet, with a model of chance of its own, the genes of a tricluster left out go to the residue, and a run also ends, ``"exhausted"``, when fewer genes are left than the smallest size. It applies to either way of stopping. With ``disjoint=True`` the noise rule is what keeps noise out: without one, the run hands every gene it can to a tricluster.
 
 .. code-block:: python
 
@@ -187,6 +187,22 @@ The triclusters still share genes as the scoring allows. With ``disjoint=True`` 
     found = trigen.run()
     genes = [set(tricluster.genes) for tricluster in found]
     print(len(found), trigen.stop_reason, sum(map(len, genes)) == len(set().union(*genes)))   # 3 noise True
+
+With a prism, ``disjoint=True`` keeps the pixels apart instead, at any time: the prisms segment the plane. A prism then grows only over the pixels no prism holds yet and starts in a free piece of the plane that holds its fewest pixels, and the run ends, ``"exhausted"``, when no piece does. The model of chance is fitted again over the free pixels once they have fallen a tenth since it last was:
+
+.. code-block:: python
+
+    from metagen.metaheuristics import TriGen
+    from metagen.metaheuristics.trigen.shape import prism_parts
+    from metagen.triclustering import plant_prisms
+
+    cube, planted = plant_prisms((24, 24, 10), [(60, 5), (45, 4), (50, 6)], noise=0.05, seed=3)
+    trigen = TriGen(cube, shape="prism", ordered=("genes", "conditions", "times"), views="time", n_triclusters=30,
+                    generations=10, population_size=30, min_sizes=(2, 2, 3), max_sizes=(12, 12, 8), pixels=(6, 80),
+                    scoring="significance", stop="coverage", disjoint=True, seed=0)
+    found = trigen.run()
+    surfaces = [set(prism_parts(prism)[0]) for prism in found]
+    print(trigen.stop_reason, sum(map(len, surfaces)) == len(set().union(*surfaces)))   # exhausted True
 
 A saved run keeps the options, why it ended, the share it held, the significance of each tricluster left out and, with ``noise_rule="null"``, the threshold it found in the null cube.
 

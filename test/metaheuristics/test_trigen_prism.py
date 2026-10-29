@@ -15,9 +15,10 @@ import pytest
 from metagen.framework.rng import set_seed
 from metagen.metaheuristics import TriclusterFitness, TriGen, TriGenResult
 from metagen.metaheuristics.trigen.population import DataHierarchy
+from metagen.metaheuristics.tools import solution_class
 from metagen.metaheuristics.trigen.shape import PrismShape, prism, prism_parts
 from metagen.triclustering import Cube, Tricluster, plant_prisms
-from metagen.triclustering.surface import connected, decode, encode, grow_by, neighbors, removable
+from metagen.triclustering.surface import connected, decode, encode, grow_by, neighbors, pieces, removable
 
 CUBE, PLANTED = plant_prisms((16, 16, 10), [(20, 5), (14, 4)], noise=0.05, seed=3)
 ORDERED = ("genes", "conditions", "times")
@@ -362,3 +363,113 @@ def test_the_pixels_scored_together_are_within_their_bound_of_scoring_each(measu
     weighted = TriclusterFitness(CUBE, views="time", form=form)
     assert weighted.moving_pixels(prism(pixels, times), [], []) is None
     assert weighted.moving_pixels(prism(pixels, times), [], [], quality_only=True) is not None
+
+
+# --- Prisms kept off the pixels taken (disjoint=True) ---------------------------------------
+
+def test_decoding_keeps_off_the_blocked_pixels_and_encoding_reads_it_back():
+    draw = random.Random(5)
+    for _ in range(200):
+        extent = (draw.randint(4, 12), draw.randint(4, 12))
+        cells = [(x, y) for x in range(extent[0]) for y in range(extent[1])]
+        blocked = frozenset(draw.sample(cells, draw.randint(0, len(cells) // 2)))
+        free = [pixel for pixel in cells if pixel not in blocked]
+        if not free:
+            continue
+        neighborhood = draw.choice([4, 8])
+        steps = [draw.randrange(40) for _ in range(draw.randint(0, 20))]
+        surface = decode(extent, neighborhood, None, draw.choice(free), steps, blocked)
+        assert not blocked & set(surface) and connected(surface, neighborhood)
+        seed, back = encode(extent, neighborhood, None, surface, blocked)
+        assert decode(extent, neighborhood, None, seed, back, blocked) == surface
+
+
+def test_the_free_pieces_of_the_plane_hold_every_free_pixel_once():
+    blocked = frozenset([(0, 2), (1, 2), (2, 2), (3, 2), (2, 0), (2, 1)])
+    found = pieces((4, 5), 4, blocked)
+    assert found == [[(0, 0), (0, 1), (1, 0), (1, 1)], [(0, 3), (0, 4), (1, 3), (1, 4), (2, 3), (2, 4), (3, 3), (3, 4)],
+                     [(3, 0), (3, 1)]]
+    assert len(pieces((4, 5), 8, blocked)) == 3
+
+
+def test_a_prism_kept_off_starts_in_a_free_piece_big_enough_and_draws_only_free_pixels():
+    set_seed(0)
+    taken = set(prism_parts(PLANTED[0])[0]) | {(x, 7) for x in range(16)}   # a wall down column 7
+    form = PrismShape(pixels=(4, 30)).keeping_off(taken, (16, 16))
+    assert form.seeds and not set(form.seeds) & taken
+    sizes = ((2, 8), (2, 8), (3, 7))
+    hierarchy = DataHierarchy(CUBE.shape, cells=True)
+    hierarchy.update(PLANTED[0])
+    drawn = ([form.scattered(CUBE.shape, sizes) for _ in range(30)] + [form.block(CUBE.shape, sizes) for _ in range(30)]
+             + [form.hierarchical(hierarchy, sizes) for _ in range(30)]
+             + [form.chance(CUBE.shape, (count, 4)) for count in (2, 9, 30) for _ in range(10)])
+    for one in drawn:
+        surface = set(prism_parts(one)[0])
+        assert not surface & taken and connected(surface, 4)
+    assert all(form.measured_size(one)[0] == count for one, count in zip(drawn[90:], [2] * 10 + [9] * 10 + [30] * 10))
+    assert form.chance_extents(CUBE.shape) == (max(len(piece) for piece in pieces((16, 16), 4, frozenset(taken))), 10)
+    # A solution is a seed among the free starts, and reads back
+    domain = form.domain(CUBE.shape, sizes)
+    for one in drawn[:60]:
+        assert form.from_solution(form.to_solution(one, domain)) == one
+
+
+def test_a_prism_closed_in_before_its_fewest_pixels_scores_the_worst():
+    cube = Cube(np.random.default_rng(0).normal(size=(4, 4, 6)))
+    # Free: a line of four pixels along the first row, which a box of 2 x 2 cannot hold
+    taken = {(x, y) for x in range(4) for y in range(4) if x > 0}
+    form = PrismShape(pixels=(4, 4), box=(2, 2)).keeping_off(taken, (4, 4))
+    assert form.seeds == [(0, 0), (0, 1), (0, 2), (0, 3)]
+    fitness = TriclusterFitness(cube, views="time", scoring="significance", form=form)
+    domain = form.domain(cube.shape, ((2, 4), (2, 4), (3, 6)))
+    solution = solution_class(domain)(domain, connector=domain.get_connector())
+    solution.set("seed", 0)
+    solution.set("steps", [0, 0, 0])
+    solution.set("times_start", 0)
+    solution.set("times_length", 3)
+    closed = form.from_solution(solution)
+    assert form.measured_size(closed)[0] == 2 and not form.admits(closed)
+    assert fitness(solution) == math.inf
+
+
+def test_disjoint_prisms_share_no_pixel_and_end_when_none_fits(tmp_path):
+    settings = {**SETTINGS, "n_triclusters": 40, "generations": 3, "population_size": 12, "pixels": (6, 30),
+                "scoring": "significance", "stop": "coverage", "disjoint": True}
+    trigen = TriGen(CUBE, **settings)
+    found = trigen.run()
+    surfaces = [set(prism_parts(one)[0]) for one in found]
+    assert sum(map(len, surfaces)) == len(set().union(*surfaces))
+    assert trigen.stop_reason == "exhausted" and len(found) < 40
+    assert not pieces((16, 16), 4, frozenset(set().union(*surfaces))) or \
+        max(len(piece) for piece in pieces((16, 16), 4, frozenset(set().union(*surfaces)))) < 6
+    # The model of chance is fitted again only when the free pixels have fallen a tenth
+    fits = trigen.started["chance_evaluations"] // 1800
+    assert 1 < fits < len(found)
+    path = str(tmp_path / "run.json")
+    trigen.save(path)
+    assert TriGenResult.load(path).trigen(CUBE).run() == found
+
+
+def test_disjoint_the_pixels_of_one_left_out_go_to_the_residue(monkeypatch):
+    blocked = []
+    original = PrismShape.keeping_off
+
+    def spy(self, taken, extent):
+        blocked.append(set(taken))
+        return original(self, taken, extent)
+
+    monkeypatch.setattr(PrismShape, "keeping_off", spy)
+    settings = {**SETTINGS, "n_triclusters": 12, "generations": 3, "population_size": 12, "pixels": (6, 30),
+                "scoring": "significance", "stop": "coverage", "disjoint": True, "noise_rule": "decline",
+                "decline": 0.95}
+    trigen = TriGen(CUBE, **settings)
+    found = trigen.run()
+    held = set().union(*(set(prism_parts(one)[0]) for one in found))
+    left = [index for index, record in enumerate(trigen.history) if "left_out" in record]
+    assert trigen.stop_reason == "noise" and left
+    # The searches of the run itself, after those of the short run in the null cube that sets no threshold here
+    searches = blocked[-len(trigen.history):]
+    for index in left[:-1]:
+        gone = searches[index + 1] - searches[index]
+        assert gone and not gone & held
+    assert sum(len(prism_parts(one)[0]) for one in found) == len(held)

@@ -81,11 +81,13 @@ def connected(surface: Iterable[Pixel], neighborhood: int) -> bool:
 
 class _Growing:
     """A surface as it grows from a seed: its pixels, its extent so far, and, if
-    ``ordered``, its frontier, the free neighbors of its pixels, kept in raster order."""
+    ``ordered``, its frontier, the free neighbors of its pixels that are not blocked, kept
+    in raster order."""
 
     def __init__(self, seed: Pixel, extent: Tuple[int, int], neighborhood: int, box: Optional[Box],
-                 ordered: bool = True) -> None:
+                 ordered: bool = True, blocked: FrozenSet[Pixel] = frozenset()) -> None:
         self.extent, self.neighborhood, self.box, self.ordered = extent, neighborhood, box, ordered
+        self.blocked = blocked
         self.held: Set[Pixel] = set()
         self.frontier: List[int] = []          # the pixels as x · columns + y, sorted
         self.on_frontier: Set[int] = set()
@@ -118,18 +120,19 @@ class _Growing:
             del self.frontier[bisect.bisect_left(self.frontier, key)]
         for other in neighbors(pixel, self.extent, self.neighborhood):
             other_key = self.key(other)
-            if other not in self.held and other_key not in self.on_frontier:
+            if other not in self.held and other not in self.blocked and other_key not in self.on_frontier:
                 self.on_frontier.add(other_key)
                 bisect.insort(self.frontier, other_key)
 
 
 def decode(extent: Tuple[int, int], neighborhood: int, box: Optional[Box], seed: Pixel,
-           steps: Sequence[int]) -> Tuple[Pixel, ...]:
+           steps: Sequence[int], blocked: FrozenSet[Pixel] = frozenset()) -> Tuple[Pixel, ...]:
     """
     The surface a seed and some steps stand for. It starts at the seed, and each step
     ``k`` adds the free neighbor number ``k mod F`` of the ``F`` around the surface, in
     raster order; if that one would take the surface out of the box, the next one in that
-    order that does not. It stops early only when no free neighbor fits.
+    order that does not. It stops early only when no free neighbor fits. Blocked pixels
+    are never free.
 
     :param extent: The size of the plane.
     :type extent: Tuple[int, int]
@@ -141,19 +144,22 @@ def decode(extent: Tuple[int, int], neighborhood: int, box: Optional[Box], seed:
     :type seed: Pixel
     :param steps: The steps.
     :type steps: Sequence[int]
+    :param blocked: Pixels it may not take, defaults to none.
+    :type blocked: FrozenSet[Pixel], optional
     :return: Its pixels, in raster order: one more than the steps, but if it stopped early.
     :rtype: Tuple[Pixel, ...]
     """
     return _decode(tuple(extent), neighborhood, None if box is None else tuple(box), tuple(seed),
-                   tuple(int(step) for step in steps))
+                   tuple(int(step) for step in steps), blocked)
 
 
 # A search decodes every individual it evaluates and again every individual it records,
 # and most of them are the same as one decoded before.
 @lru_cache(maxsize=8192)
 def _decode(extent: Tuple[int, int], neighborhood: int, box: Optional[Box], seed: Pixel,
-            steps: Tuple[int, ...]) -> Tuple[Pixel, ...]:
-    growing = _Growing(seed, extent, neighborhood, box)
+            steps: Tuple[int, ...], blocked: FrozenSet[Pixel]) -> Tuple[Pixel, ...]:
+    # A frozenset keeps its hash, and a search passes the same one every time.
+    growing = _Growing(seed, extent, neighborhood, box, blocked=blocked)
     for step in steps:
         count = len(growing.frontier)
         chosen = None
@@ -169,7 +175,7 @@ def _decode(extent: Tuple[int, int], neighborhood: int, box: Optional[Box], seed
 
 
 def encode(extent: Tuple[int, int], neighborhood: int, box: Optional[Box],
-           surface: Iterable[Pixel]) -> Tuple[Pixel, List[int]]:
+           surface: Iterable[Pixel], blocked: FrozenSet[Pixel] = frozenset()) -> Tuple[Pixel, List[int]]:
     """
     A seed and the steps that :py:func:`decode` takes to a surface: the seed is its first
     pixel in raster order, and each step adds its first pixel on the frontier.
@@ -182,6 +188,8 @@ def encode(extent: Tuple[int, int], neighborhood: int, box: Optional[Box],
     :type box: Box, optional
     :param surface: The pixels, connected, and within the box.
     :type surface: Iterable[Pixel]
+    :param blocked: Pixels :py:func:`decode` will not take, none of the surface; defaults to none.
+    :type blocked: FrozenSet[Pixel], optional
     :return: The seed and the steps.
     :rtype: Tuple[Pixel, List[int]]
     :raises ValueError: if the surface is not connected.
@@ -190,7 +198,7 @@ def encode(extent: Tuple[int, int], neighborhood: int, box: Optional[Box],
     if not connected(target, neighborhood):
         raise ValueError(f"A surface is one piece of neighboring pixels, {neighborhood} around each; this one is not.")
     wanted = set(target)
-    growing = _Growing(target[0], extent, neighborhood, box)
+    growing = _Growing(target[0], extent, neighborhood, box, blocked=blocked)
     steps: List[int] = []
     while len(growing.held) < len(wanted):
         index = next(position for position, key in enumerate(growing.frontier) if growing.pixel(key) in wanted)
@@ -331,3 +339,38 @@ def _cut_pixels(held: Set[Pixel], steps: Sequence[Tuple[int, int]]) -> Optional[
     if children_of_start > 1:
         cut.add(start)
     return cut
+
+
+def pieces(extent: Tuple[int, int], neighborhood: int, blocked: FrozenSet[Pixel]) -> List[List[Pixel]]:
+    """
+    The pieces of the plane left free by some blocked pixels: the free pixels, grouped by
+    the neighbors that join them. A surface that keeps off the blocked pixels lies in one.
+
+    :param extent: The size of the plane.
+    :type extent: Tuple[int, int]
+    :param neighborhood: 4 or 8.
+    :type neighborhood: int
+    :param blocked: The pixels taken.
+    :type blocked: FrozenSet[Pixel]
+    :return: The pieces, each in raster order, in the raster order of their first pixel.
+    :rtype: List[List[Pixel]]
+    """
+    rows, columns = extent
+    steps = _FOUR if neighborhood == 4 else _EIGHT
+    reached: Set[Pixel] = set(blocked)
+    found: List[List[Pixel]] = []
+    for start in ((x, y) for x in range(rows) for y in range(columns)):
+        if start in reached:
+            continue
+        piece, stack = [start], [start]
+        reached.add(start)
+        while stack:
+            x, y = stack.pop()
+            for dx, dy in steps:
+                other = (x + dx, y + dy)
+                if 0 <= other[0] < rows and 0 <= other[1] < columns and other not in reached:
+                    reached.add(other)
+                    piece.append(other)
+                    stack.append(other)
+        found.append(sorted(piece))
+    return found

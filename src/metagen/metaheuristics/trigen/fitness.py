@@ -243,10 +243,15 @@ class TriclusterFitness:
 
         :param solution: The solution.
         :type solution: Solution
-        :return: Its fitness, the lower the better.
+        :return: Its fitness, the lower the better; infinity, the worst, for a tricluster its
+            shape does not admit, such as a prism closed in by the prisms found before it
+            reaches its fewest pixels.
         :rtype: float
         """
-        return self.evaluate(self.form.from_solution(solution))
+        tricluster = self.form.from_solution(solution)
+        if not self.form.admits(tricluster):
+            return math.inf
+        return self.evaluate(tricluster)
 
     def evaluate(self, tricluster: Tricluster) -> float:
         """

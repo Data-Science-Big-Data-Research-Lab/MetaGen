@@ -16,10 +16,11 @@
 """
 from __future__ import annotations
 
+import bisect
 import math
 from abc import ABC, abstractmethod
 from functools import lru_cache
-from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Tuple, cast
+from typing import Any, Callable, Dict, FrozenSet, Iterable, List, Optional, Sequence, Set, Tuple, cast
 
 import numpy as np
 
@@ -102,6 +103,11 @@ class Shape(ABC):
         """The values the quality of a tricluster is measured on, as (series, 1, times),
         when they are not the subcube of its genes, conditions and times; None for a cube."""
         return None
+
+    def admits(self, tricluster: Tricluster) -> bool:
+        """Whether a tricluster a search decoded is one it may keep; the fitness scores the
+        rest as the worst there is."""
+        return True
 
     def check_measure(self, measure: str, views: str) -> None:
         """Check that a quality term can measure this shape.
@@ -266,13 +272,60 @@ class PrismShape(Shape):
         self.neighborhood = int(neighborhood)
         self.pixels: Tuple[int, int] = (low, high)
         self.box: Optional[plane.Box] = bound
+        #: The pixels its surfaces keep off; none but in :py:meth:`keeping_off`.
+        self.blocked: FrozenSet[plane.Pixel] = frozenset()
+        #: The pixels a surface may start at, when some are blocked; None for any.
+        self.seeds: Optional[List[plane.Pixel]] = None
+        #: The size of the plane, when some pixels are blocked.
+        self.extent: Optional[Tuple[int, int]] = None
+        # The free pieces of the plane, and the pixels a surface of each size may start at.
+        self._pieces: List[List[plane.Pixel]] = []
+        self._starts_of: Dict[int, List[plane.Pixel]] = {}
+
+    def keeping_off(self, blocked: Iterable[plane.Pixel], extent: Tuple[int, int]) -> PrismShape:
+        """
+        This shape with its surfaces kept off some pixels of a plane, those of the prisms
+        found when no two may share one: a surface starts at a free pixel of a free piece
+        of the plane that holds the fewest pixels, and grows only over free pixels. Its
+        seed is then one number, the place of its pixel among those it may start at.
+
+        :param blocked: The pixels to keep off.
+        :type blocked: Iterable[Pixel]
+        :param extent: The size of the plane.
+        :type extent: Tuple[int, int]
+        :return: The shape; its ``seeds`` are empty when no surface fits.
+        :rtype: PrismShape
+        """
+        form = PrismShape(neighborhood=self.neighborhood, pixels=self.pixels, box=self.box)
+        form.blocked = frozenset(blocked)
+        form.extent = extent
+        form._pieces = plane.pieces(extent, self.neighborhood, form.blocked)
+        form.seeds = form._starts(self.pixels[0])
+        return form
+
+    def _starts(self, count: int) -> List[plane.Pixel]:
+        """The free pixels of the free pieces of the plane that hold at least ``count``."""
+        if count not in self._starts_of:
+            self._starts_of[count] = sorted(pixel for piece in self._pieces if len(piece) >= count
+                                            for pixel in piece)
+        return self._starts_of[count]
+
+    def admits(self, tricluster: Tricluster) -> bool:
+        """Whether a prism a search decoded has the fewest pixels: one kept off the blocked
+        pixels can close itself in before it reaches them."""
+        return self.seeds is None or self.measured_size(tricluster)[0] >= self.pixels[0]
 
     def domain(self, shape: Sequence[int], sizes: Sizes) -> Domain:
         rows, columns, times = shape
         low, high = self.pixels
         domain = Domain(GAConnector())
-        _fixed_or_integer(domain, "seed_x", 0, rows - 1)
-        _fixed_or_integer(domain, "seed_y", 0, columns - 1)
+        if self.seeds is None:
+            _fixed_or_integer(domain, "seed_x", 0, rows - 1)
+            _fixed_or_integer(domain, "seed_y", 0, columns - 1)
+        else:
+            if not self.seeds:
+                raise ValueError("No surface of the fewest pixels fits in the pixels left free.")
+            _fixed_or_integer(domain, "seed", 0, len(self.seeds) - 1)
         domain.define_dynamic_structure("steps", low - 1, high - 1)
         # The frontier of a surface of n pixels has fewer than n · neighborhood pixels, so
         # every step of every surface is below this.
@@ -285,9 +338,15 @@ class PrismShape(Shape):
     def to_solution(self, tricluster: Tricluster, domain: Domain) -> Solution:
         solution = solution_class(domain)(domain, connector=domain.get_connector())
         pixels, times = prism_parts(tricluster)
-        seed, steps = plane.encode(self._extent(solution), self.neighborhood, self.box, pixels)
-        solution.set("seed_x", seed[0])
-        solution.set("seed_y", seed[1])
+        seed, steps = plane.encode(self._extent(solution), self.neighborhood, self.box, pixels, self.blocked)
+        if self.seeds is None:
+            solution.set("seed_x", seed[0])
+            solution.set("seed_y", seed[1])
+        else:
+            place = bisect.bisect_left(self.seeds, seed)
+            if place == len(self.seeds) or self.seeds[place] != seed:
+                raise ValueError(f"A prism here starts at a free pixel, and {seed} is not one.")
+            solution.set("seed", place)
         solution.set("steps", steps)
         solution.set("times_start", times[0])
         solution.set("times_length", len(times))
@@ -297,19 +356,23 @@ class PrismShape(Shape):
         length = int(solution["times_length"])
         extent = _bounds(solution, "times_start")[1] + _bounds(solution, "times_length")[0]
         start = min(int(solution["times_start"]), extent - length)
-        pixels = plane.decode(self._extent(solution), self.neighborhood, self.box,
-                              (int(solution["seed_x"]), int(solution["seed_y"])), solution["steps"])
+        seed = ((int(solution["seed_x"]), int(solution["seed_y"])) if self.seeds is None
+                else self.seeds[int(solution["seed"])])
+        pixels = plane.decode(self._extent(solution), self.neighborhood, self.box, seed, solution["steps"],
+                              self.blocked)
         return prism(pixels, range(start, start + length))
 
     def _extent(self, solution: Solution) -> Tuple[int, int]:
+        if self.extent is not None:
+            return self.extent
         return _bounds(solution, "seed_x")[1] + 1, _bounds(solution, "seed_y")[1] + 1
 
     def scattered(self, shape: Sequence[int], sizes: Sizes) -> Tricluster:
         rows, columns, times = shape
         rng = get_rng()
-        seed = (rng.randrange(rows), rng.randrange(columns))
+        seed = (rng.randrange(rows), rng.randrange(columns)) if self.seeds is None else rng.choice(self.seeds)
         pixels = plane.grow_by(seed, rng.randint(*self.pixels), (rows, columns), self.neighborhood, self.box,
-                               lambda pixel: rng.random())
+                               lambda pixel: rng.random(), self.blocked)
         return prism(pixels, _window(times, rng.randint(*sizes[2])))
 
     def block(self, shape: Sequence[int], sizes: Sizes) -> Tricluster:
@@ -321,6 +384,9 @@ class PrismShape(Shape):
         height, width = rng.choice(rectangles)
         top, left = rng.randint(0, rows - height), rng.randint(0, columns - width)
         pixels = [(x, y) for x in range(top, top + height) for y in range(left, left + width)]
+        if self.blocked and not self.blocked.isdisjoint(pixels):
+            # Over a pixel taken: a surface drawn over the free ones instead.
+            return self.scattered(shape, sizes)
         return prism(pixels, _window(times, rng.randint(*sizes[2])))
 
     def hierarchical(self, hierarchy: DataHierarchy, sizes: Sizes) -> Tricluster:
@@ -331,11 +397,17 @@ class PrismShape(Shape):
             held = hierarchy.cells[:, :, window].sum(axis=2)
         else:
             held = np.add.outer(np.asarray(hierarchy.levels[0]), np.asarray(hierarchy.levels[1]))
-        lowest = [(int(x), int(y)) for x, y in np.argwhere(held == held.min())]
+        if self.seeds is None:
+            lowest = [(int(x), int(y)) for x, y in np.argwhere(held == held.min())]
+        else:
+            # The least held of the pixels a surface may start at.
+            starts = np.asarray(self.seeds).reshape(-1, 2)
+            levels = held[starts[:, 0], starts[:, 1]]
+            lowest = [(int(x), int(y)) for x, y in starts[levels == levels.min()]]
         seed = lowest[0] if len(lowest) == 1 else rng.choice(lowest)
         # The least held neighbor first, ties drawn at random.
         pixels = plane.grow_by(seed, rng.randint(*self.pixels), (rows, columns), self.neighborhood, self.box,
-                               lambda pixel: float(held[pixel]) + 0.5 * rng.random())
+                               lambda pixel: float(held[pixel]) + 0.5 * rng.random(), self.blocked)
         return prism(pixels, window)
 
     def grow(self, tricluster: Tricluster, score: Callable[[Tricluster], float], sizes: Sizes,
@@ -370,7 +442,8 @@ class PrismShape(Shape):
             windows: List[Tuple[int, int]] = []
             if len(surface) < high:
                 fits = _fits_in_box(surface, self.box)
-                added = [pixel for pixel in plane.frontier(surface, extent, self.neighborhood) if fits(pixel)]
+                added = [pixel for pixel in plane.frontier(surface, extent, self.neighborhood)
+                         if fits(pixel) and pixel not in self.blocked]
             if pruning and len(surface) > low:
                 removed = plane.removable(sorted(surface), extent, self.neighborhood)
             if end - start + 1 < largest:
@@ -415,10 +488,16 @@ class PrismShape(Shape):
         rows, columns, times = shape
         count, length = int(size[0]), int(size[1])
         rng = get_numpy_rng()
-        seed = (int(rng.integers(0, rows)), int(rng.integers(0, columns)))
+        if self.seeds is None:
+            seed = (int(rng.integers(0, rows)), int(rng.integers(0, columns)))
+        else:
+            # Over the free pixels, from a free piece it fits in.
+            starts = self._starts(count)
+            seed = starts[int(rng.integers(0, len(starts)))]
         # Every pixel added puts at most one draw per neighbor on the frontier.
         draws = iter(rng.random(self.neighborhood * (count + 1)).tolist())
-        pixels = plane.grow_by(seed, count, (rows, columns), self.neighborhood, None, lambda pixel: next(draws))
+        pixels = plane.grow_by(seed, count, (rows, columns), self.neighborhood, None, lambda pixel: next(draws),
+                               self.blocked)
         start = int(rng.integers(0, times - length + 1))
         return prism(pixels, range(start, start + length))
 
@@ -427,6 +506,9 @@ class PrismShape(Shape):
         return tricluster.n_cells // len(tricluster.times), len(tricluster.times)
 
     def chance_extents(self, shape: Sequence[int]) -> Tuple[int, ...]:
+        """The pixels of the plane, or of its largest free piece, and the times."""
+        if self.seeds is not None:
+            return max((len(piece) for piece in self._pieces), default=0), shape[2]
         return shape[0] * shape[1], shape[2]
 
     def size_shares(self, tricluster: Tricluster, references: Sequence[int]) -> Tuple[float, float, float]:
