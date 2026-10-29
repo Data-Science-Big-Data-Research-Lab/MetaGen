@@ -159,19 +159,46 @@ def decode(extent: Tuple[int, int], neighborhood: int, box: Optional[Box], seed:
 def _decode(extent: Tuple[int, int], neighborhood: int, box: Optional[Box], seed: Pixel,
             steps: Tuple[int, ...], blocked: FrozenSet[Pixel]) -> Tuple[Pixel, ...]:
     # A frozenset keeps its hash, and a search passes the same one every time.
-    growing = _Growing(seed, extent, neighborhood, box, blocked=blocked)
+    # What _Growing does, with the pixels as their keys in raster order and the extent of
+    # the surface in plain numbers: decoding the steps of every prism a search evaluates
+    # went mostly into calling its methods
+    # (metagen-auditoria/trigen/c5/informe_c5_etapa3_cruce.md, 10).
+    rows, columns = extent
+    offsets = _FOUR if neighborhood == 4 else _EIGHT
+    held: Set[int] = set()
+    frontier: List[int] = []
+    on_frontier: Set[int] = set()
+    low_x, low_y = high_x, high_y = seed
+
+    def add(x: int, y: int) -> None:
+        nonlocal low_x, low_y, high_x, high_y
+        key = x * columns + y
+        held.add(key)
+        low_x, high_x, low_y, high_y = min(low_x, x), max(high_x, x), min(low_y, y), max(high_y, y)
+        if key in on_frontier:
+            on_frontier.remove(key)
+            del frontier[bisect.bisect_left(frontier, key)]
+        for dx, dy in offsets:
+            other_x, other_y = x + dx, y + dy
+            if 0 <= other_x < rows and 0 <= other_y < columns:
+                other = other_x * columns + other_y
+                if other not in held and other not in on_frontier and (other_x, other_y) not in blocked:
+                    on_frontier.add(other)
+                    bisect.insort(frontier, other)
+
+    add(*seed)
     for step in steps:
-        count = len(growing.frontier)
+        count = len(frontier)
         chosen = None
         for offset in range(count):
-            candidate = growing.pixel(growing.frontier[(step + offset) % count])
-            if growing.fits(candidate):
-                chosen = candidate
+            x, y = divmod(frontier[(step + offset) % count], columns)
+            if box is None or (max(high_x, x) - min(low_x, x) < box[0] and max(high_y, y) - min(low_y, y) < box[1]):
+                chosen = (x, y)
                 break
         if chosen is None:
             break
-        growing.add(chosen)
-    return tuple(sorted(growing.held))
+        add(*chosen)
+    return tuple(divmod(key, columns) for key in sorted(held))
 
 
 def encode(extent: Tuple[int, int], neighborhood: int, box: Optional[Box],

@@ -494,3 +494,33 @@ def test_growing_without_a_box_is_growing_with_one_that_never_binds():
             if box is None:
                 freely = grown
         assert freely == grown and asked[0] == asked[1]
+
+
+def test_decoding_takes_the_steps_as_a_growing_surface_takes_them():
+    # Decoding keeps the frontier in plain numbers; a surface grown with _Growing, step by
+    # step, is what it has to give
+    from metagen.triclustering.surface import _decode, _Growing
+
+    def grown(extent, neighborhood, box, seed, steps, blocked):
+        growing = _Growing(seed, extent, neighborhood, box, blocked=blocked)
+        for step in steps:
+            count = len(growing.frontier)
+            chosen = next((growing.pixel(growing.frontier[(step + offset) % count]) for offset in range(count)
+                           if growing.fits(growing.pixel(growing.frontier[(step + offset) % count]))), None)
+            if chosen is None:
+                break
+            growing.add(chosen)
+        return tuple(sorted(growing.held))
+
+    draw = random.Random(11)
+    for _ in range(1500):
+        extent = (draw.randint(1, 25), draw.randint(1, 25))
+        cells = [(x, y) for x in range(extent[0]) for y in range(extent[1])]
+        blocked = frozenset(draw.sample(cells, draw.randint(0, len(cells) // 2))) if draw.random() < 0.5 else frozenset()
+        free = [pixel for pixel in cells if pixel not in blocked]
+        if not free:
+            continue
+        box = None if draw.random() < 0.4 else (draw.randint(1, 25), draw.randint(1, 25))
+        case = (extent, draw.choice([4, 8]), box, draw.choice(free),
+                tuple(draw.randrange(200) for _ in range(draw.randint(0, 100))), blocked)
+        assert _decode.__wrapped__(*case) == grown(*case)
