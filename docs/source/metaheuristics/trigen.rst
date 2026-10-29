@@ -174,7 +174,7 @@ By default a run makes ``n_triclusters`` searches. With ``stop="coverage"`` it g
     found = trigen.run()
     print(len(found), trigen.stop_reason, round(trigen.covered, 2))      # 3 coverage 0.6
 
-The triclusters still share genes as the scoring allows. With ``disjoint=True`` no two share a gene: each search works on the genes no tricluster holds yet, with a model of chance of its own, the genes of a tricluster left out go to the residue, and a run also ends, ``"exhausted"``, when fewer genes are left than the smallest size. It applies to cubes, and to either way of stopping:
+The triclusters still share genes as the scoring allows. With ``disjoint=True`` no two share a gene: each search works on the genes no tricluster holds yet, with a model of chance of its own, the genes of a tricluster left out go to the residue, and a run also ends, ``"exhausted"``, when fewer genes are left than the smallest size. It applies to cubes, and to either way of stopping. With ``disjoint=True`` the noise rule is what keeps noise out: without one, the run hands every gene it can to a tricluster.
 
 .. code-block:: python
 
