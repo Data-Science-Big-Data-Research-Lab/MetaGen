@@ -91,6 +91,23 @@ class BaseType(ABC):
         """
         return self.__definition
 
+    @classmethod
+    def _holding(cls, definition: Base, connector: BaseConnector | None, value: Any) -> BaseType:
+        """
+        A variable built as the constructor builds it, but holding a value already drawn
+        within its definition instead of drawing one.
+
+        :param definition: Its definition.
+        :param connector: Its connector.
+        :param value: Its value, valid for the definition.
+        :return: The variable.
+        """
+        variable = cls.__new__(cls)
+        variable.__definition = definition
+        variable.value = value
+        variable.connector = connector
+        return variable
+
     def __deepcopy__(self, memo: dict[int, Any]) -> BaseType:
         """
         A copy of the variable whose value is copied and whose definition and connector

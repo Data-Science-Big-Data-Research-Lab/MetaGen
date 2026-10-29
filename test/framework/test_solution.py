@@ -137,3 +137,40 @@ def test_a_copy_is_equal_until_it_is_mutated(solution):
     set_seed(1)
     twin.mutate(alterations_number=len(solution.get_variables()))
     assert twin != solution
+
+
+@pytest.mark.parametrize("connector_name", ["base", "ga"])
+@pytest.mark.parametrize("step", [None, 3])
+def test_a_structure_of_integers_draws_and_builds_its_elements_as_each_one_would(connector_name, step, monkeypatch):
+    # A structure of integers builds its elements around values drawn in a row; built one
+    # by one, each drawing its own, they must be the same and leave the generator alike
+    from metagen.framework import BaseConnector, Domain
+    from metagen.framework.rng import get_rng
+    from metagen.framework.solution.types import structure as structure_module
+    from metagen.metaheuristics.genetic.genetic_tools import GAConnector
+    from metagen.metaheuristics.tools import solution_class
+
+    def build():
+        domain = Domain(GAConnector() if connector_name == "ga" else BaseConnector())
+        domain.define_dynamic_structure("steps", 2, 60)
+        if step is None:
+            domain.set_structure_to_integer("steps", 0, 40)
+        else:
+            domain.set_structure_to_integer("steps", 1, 40, step)
+        return domain
+
+    outcomes = []
+    for together in (True, False):
+        if not together:
+            # No class is the Integer the shortcut asks for, so every element is built on its own
+            monkeypatch.setattr(structure_module, "Integer", type("NotInteger", (), {"initialize": object()}))
+        set_seed(4)
+        made = []
+        for _ in range(20):
+            domain = build()
+            solution = solution_class(domain)(domain, connector=domain.get_connector())
+            solution.set("steps", [get_rng().randrange(0, 41) for _ in range(get_rng().randint(2, 60))]
+                         if step is None else [1 + 3 * k for k in range(get_rng().randint(2, 13))])
+            made.append([(type(element).__name__, element.value) for element in solution.get("steps").get()])
+        outcomes.append((made, get_rng().random()))
+    assert outcomes[0] == outcomes[1]
