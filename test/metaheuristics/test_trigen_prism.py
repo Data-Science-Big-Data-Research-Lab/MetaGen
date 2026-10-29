@@ -473,3 +473,24 @@ def test_disjoint_the_pixels_of_one_left_out_go_to_the_residue(monkeypatch):
         gone = searches[index + 1] - searches[index]
         assert gone and not gone & held
     assert sum(len(prism_parts(one)[0]) for one in found) == len(held)
+
+
+def test_growing_without_a_box_is_growing_with_one_that_never_binds():
+    # Without a box, grow_by takes a shorter path; a box as large as the plane must give the same
+    draw = random.Random(9)
+    for _ in range(300):
+        extent = (draw.randint(1, 15), draw.randint(1, 15))
+        cells = [(x, y) for x in range(extent[0]) for y in range(extent[1])]
+        blocked = frozenset(draw.sample(cells, draw.randint(0, len(cells) // 2)))
+        free = [pixel for pixel in cells if pixel not in blocked]
+        if not free:
+            continue
+        seed, size, neighborhood = draw.choice(free), draw.randint(1, len(cells) + 2), draw.choice([4, 8])
+        asked = ([], [])
+        for index, box in enumerate((None, extent)):
+            priorities = random.Random(size)
+            grown = grow_by(seed, size, extent, neighborhood, box,
+                            lambda pixel, index=index: asked[index].append(pixel) or priorities.random(), blocked)
+            if box is None:
+                freely = grown
+        assert freely == grown and asked[0] == asked[1]

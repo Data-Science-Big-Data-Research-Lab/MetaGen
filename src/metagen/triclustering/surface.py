@@ -233,6 +233,8 @@ def grow_by(seed: Pixel, size: int, extent: Tuple[int, int], neighborhood: int, 
     """
     # It keeps its own frontier by priority: the one in raster order is what decoding needs,
     # and keeping it took nearly half of drawing a surface.
+    if box is None:
+        return _grow_freely(seed, size, extent, _FOUR if neighborhood == 4 else _EIGHT, priority, blocked)
     growing = _Growing(seed, extent, neighborhood, box, ordered=False)
     queue: List[Tuple[float, int]] = []
     seen: Dict[int, None] = {}
@@ -256,6 +258,37 @@ def grow_by(seed: Pixel, size: int, extent: Tuple[int, int], neighborhood: int, 
             # tighter around the surface, so it never will.
             continue
     return tuple(sorted(growing.held))
+
+
+def _grow_freely(seed: Pixel, size: int, extent: Tuple[int, int], steps: Sequence[Tuple[int, int]],
+                 priority: Callable[[Pixel], float], blocked: FrozenSet[Pixel]) -> Tuple[Pixel, ...]:
+    """:py:func:`grow_by` without a box: the same pixels, from the same priorities asked in
+    the same order, without keeping the extent of the surface."""
+    # The random prisms of the model of chance of a prism are drawn this way, up to the
+    # whole plane, and the general loop took most of fitting it
+    # (metagen-auditoria/trigen/c5/informe_c5_etapa3_cruce.md, 8).
+    rows, columns = extent
+    held = {seed}
+    queue: List[Tuple[float, int]] = []
+    seen: Set[int] = set()
+
+    def push(x: int, y: int) -> None:
+        for dx, dy in steps:
+            other_x, other_y = x + dx, y + dy
+            if 0 <= other_x < rows and 0 <= other_y < columns:
+                other = (other_x, other_y)
+                key = other_x * columns + other_y
+                if other not in held and other not in blocked and key not in seen:
+                    seen.add(key)
+                    heapq.heappush(queue, (priority(other), key))
+
+    push(*seed)
+    while len(held) < size and queue:
+        _, key = heapq.heappop(queue)
+        x, y = divmod(key, columns)
+        held.add((x, y))
+        push(x, y)
+    return tuple(sorted(held))
 
 
 def frontier(surface: Iterable[Pixel], extent: Tuple[int, int], neighborhood: int) -> List[Pixel]:
