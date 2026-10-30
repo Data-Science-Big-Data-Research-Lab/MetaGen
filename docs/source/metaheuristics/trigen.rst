@@ -235,6 +235,21 @@ Saving a run
 
 Quality and enrichment measures are computed from a result, not kept in it: the file of a run stays the same however it is evaluated afterwards. The ``history`` file, a line per search as it ends, remains the record to look at while a long run is under way.
 
+``trigen.report(path)`` writes a report of the run, an HTML page that holds everything in it or, when ``path`` ends in ``.pdf``, a PDF, and next to it the triclusters as a table of coordinates, as ``to_csv`` writes it. It shows the data and the options of the run, what it spent and why it ended, a table of the triclusters with their sizes, fitness, terms and cost, the best fitness of each search by generation, the share of the genes or pixels held as the triclusters were found, the share of the cells of each tricluster another one also holds, and the values of the first ``detailed`` triclusters, 10 by default: for a cube, three views, a panel per time with a line per condition along the genes, a panel per condition with a line per time along the genes, and a panel per condition with a line per gene along the times; for prisms, a map of the plane with every surface and the series of the pixels of each prism along its window. ``result.report(path, cube)`` does the same from a saved result, and without the cube leaves the values out. The figures need matplotlib, which ``pip install pymetagen-datalabupo[report]`` installs.
+
+.. code-block:: python
+
+    from metagen.metaheuristics import TriGen, TriGenResult
+    from metagen.triclustering import plant
+
+    cube, planted = plant((60, 6, 8), [(12, 3, 5)], noise=0.05, seed=0)
+    trigen = TriGen(cube, n_triclusters=2, generations=10, population_size=20,
+                    min_sizes=(4, 2, 3), max_sizes=(15, 4, 6), seed=0)
+    trigen.run()
+    print(trigen.report("run.html", label="planted example"))         # run.html
+    trigen.save("run.json")
+    print(TriGenResult.load("run.json").report("run.pdf", cube))      # run.pdf
+
 Triclusters that recur
 ----------------------
 
@@ -265,10 +280,12 @@ Reference
 ---------
 
 .. autoclass:: metagen.metaheuristics.TriGen
-    :members: run, save, result, configuration
+    :members: run, save, result, report, configuration
 
 .. autoclass:: metagen.metaheuristics.TriGenResult
-    :members: load, save, matches, trigen, to_csv, from_run
+    :members: load, save, matches, trigen, to_csv, report, from_run
+
+.. autofunction:: metagen.metaheuristics.trigen.report.trigen_report
 
 .. autoclass:: metagen.metaheuristics.TriclusterFitness
     :members: evaluate, terms, quality, significance, fit_chance

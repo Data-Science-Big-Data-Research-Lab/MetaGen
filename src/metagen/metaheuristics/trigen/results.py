@@ -293,6 +293,28 @@ class TriGenResult:
             raise ValueError("The cube is not the one this run worked on: its shape or its values differ.")
         return TriGen(cube, **{name: self.configuration[name] for name in CONFIGURATION})
 
+    def report(self, path: str, cube: Optional[Cube] = None, title: Optional[str] = None, detailed: int = 10) -> str:
+        """
+        Write a report of the run, an HTML page or a PDF by the extension of ``path``, and
+        next to it the triclusters as a CSV table; see
+        :py:func:`~metagen.metaheuristics.trigen.report.trigen_report`. With the cube the
+        run worked on, it also draws the values of the triclusters. Needs matplotlib, the
+        ``report`` extra.
+
+        :param path: The file, ``.html`` or ``.pdf``.
+        :type path: str
+        :param cube: The data the run worked on, or None to leave out the values.
+        :type cube: Cube, optional
+        :param title: The title, defaults to the label of the data.
+        :type title: str, optional
+        :param detailed: How many triclusters to draw one by one, defaults to 10.
+        :type detailed: int, optional
+        :return: The file written.
+        :rtype: str
+        """
+        from metagen.metaheuristics.trigen.report import trigen_report
+        return trigen_report(self, cube, path, title=title, detailed=detailed)
+
     def to_csv(self, path: str) -> None:
         """
         Write the triclusters as a long table, a row per coordinate: the tricluster, the

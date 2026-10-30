@@ -652,6 +652,28 @@ class TriGen:
         """
         return TriGenResult.from_run(self, label)
 
+    def report(self, path: str, label: Optional[str] = None, title: Optional[str] = None, detailed: int = 10) -> str:
+        """
+        Write a report of the last run, an HTML page or a PDF by the extension of ``path``,
+        with the values of its triclusters drawn from the cube, and next to it the
+        triclusters as a CSV table; see
+        :py:func:`~metagen.metaheuristics.trigen.report.trigen_report`. Needs matplotlib,
+        the ``report`` extra.
+
+        :param path: The file, ``.html`` or ``.pdf``.
+        :type path: str
+        :param label: A free label for the data, such as the name of the dataset.
+        :type label: str, optional
+        :param title: The title, defaults to the label, or "TriGen".
+        :type title: str, optional
+        :param detailed: How many triclusters to draw one by one, defaults to 10.
+        :type detailed: int, optional
+        :return: The file written.
+        :rtype: str
+        :raises ValueError: if this TriGen has not run.
+        """
+        return self.result(label).report(path, self.cube, title=title, detailed=detailed)
+
     def save(self, path: str, label: Optional[str] = None) -> None:
         """
         Save the result of the last run to a JSON file; :py:meth:`TriGenResult.load` reads
