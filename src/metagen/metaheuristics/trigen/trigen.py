@@ -652,7 +652,8 @@ class TriGen:
         """
         return TriGenResult.from_run(self, label)
 
-    def report(self, path: str, label: Optional[str] = None, title: Optional[str] = None, detailed: int = 10) -> str:
+    def report(self, path: str, label: Optional[str] = None, title: Optional[str] = None, detailed: int = 10,
+               enrichment: Any = None) -> str:
         """
         Write a report of the last run, an HTML page or a PDF by the extension of ``path``,
         with the values of its triclusters drawn from the cube, and next to it the
@@ -668,11 +669,15 @@ class TriGen:
         :type title: str, optional
         :param detailed: How many triclusters to draw one by one, defaults to 10.
         :type detailed: int, optional
+        :param enrichment: An engine of enrichment, such as ``LocalGO``, or an enrichment per
+            tricluster, to show the biological enrichment of their genes; None, the default,
+            for none.
+        :type enrichment: EnrichmentProvider or Sequence[Enrichment or None], optional
         :return: The file written.
         :rtype: str
         :raises ValueError: if this TriGen has not run.
         """
-        return self.result(label).report(path, self.cube, title=title, detailed=detailed)
+        return self.result(label).report(path, self.cube, title=title, detailed=detailed, enrichment=enrichment)
 
     def save(self, path: str, label: Optional[str] = None) -> None:
         """

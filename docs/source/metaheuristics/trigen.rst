@@ -250,6 +250,35 @@ Quality and enrichment measures are computed from a result, not kept in it: the 
     trigen.save("run.json")
     print(TriGenResult.load("run.json").report("run.pdf", cube))      # run.pdf
 
+With ``enrichment``, an engine such as :py:class:`~metagen.triclustering.GProfiler` or :py:class:`~metagen.triclustering.LocalGO` (see :doc:`../triclustering/index`), or the enrichment of each tricluster already computed, the report also shows the biological enrichment of the genes of each tricluster of cubes: its purity, its BIOQ and its significant terms in the table; the most significant terms of every tricluster side by side, a dot where a term is significant, its size the share of the genes it annotates and its color how significant it is; and, for each tricluster drawn, its terms by the share of its genes they annotate. With an engine that gives the genes of each term, as LocalGO does, it also shows which of its genes each term annotates and, with networkx installed, a map of its terms joined by the genes they share. Next to the report go the significant terms of every tricluster, with their genes, as a CSV table.
+
+.. code-block:: python
+
+    from metagen.metaheuristics import TriGen
+    from metagen.triclustering import Cube, LocalGO, plant
+
+    data, (planted,) = plant((60, 6, 8), [(12, 3, 5)], noise=0.05, seed=0)
+    cube = Cube(data.values, genes=[f"gene{g}" for g in range(60)])
+
+    # A small ontology and annotation file, in the formats of geneontology.org: the planted
+    # genes share a function, and half of all the genes another one.
+    with open("ontology.obo", "w") as handle:
+        handle.write("format-version: 1.2\ndata-version: example\n\n")
+        for identifier, name in (("GO:0000001", "planted function"), ("GO:0000002", "common function")):
+            handle.write(f"[Term]\nid: {identifier}\nname: {name}\n\n")
+    with open("genes.gaf", "w") as handle:
+        handle.write("!gaf-version: 2.2\n")
+        for gene in range(60):
+            for term in ["GO:0000001"] * (gene in planted.genes) + ["GO:0000002"] * (gene % 2 == 0):
+                handle.write("\t".join(["DB", f"ID{gene}", f"gene{gene}", "involved_in", term, "REF", "IEA",
+                                        "", "P", "", "", "protein", "taxon:1", "20260101", "DB"]) + "\n")
+
+    trigen = TriGen(cube, n_triclusters=2, generations=10, population_size=20,
+                    min_sizes=(4, 2, 3), max_sizes=(15, 4, 6), seed=0)
+    trigen.run()
+    print(trigen.report("run.html", enrichment=LocalGO("ontology.obo", "genes.gaf")))   # run.html
+    print(open("run_enrichment.csv").readlines()[1].split(",")[2])                       # planted function
+
 Triclusters that recur
 ----------------------
 

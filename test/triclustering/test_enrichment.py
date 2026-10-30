@@ -285,6 +285,15 @@ def test_the_test_is_hypergeometric_and_bonferroni_counts_every_term_tested(loca
     assert _by_id(local.enrich(["g1"], POPULATION))["GO:0000001"].p_adjusted == 1.0
 
 
+def test_each_term_says_which_genes_of_the_study_it_annotates(local):
+    study = ["g1", "g2", "g3", "g4", "g5", "g6"]
+    enrichment = local.enrich(study, POPULATION)
+    assert enrichment.terms
+    for term in enrichment.terms:
+        assert len(term.genes) == term.study_count and set(term.genes) <= set(study)
+        assert list(term.genes) == sorted(term.genes)
+
+
 def test_the_terms_come_most_significant_first_and_ties_by_identifier(local):
     """Metabolism and sugar metabolism annotate the same genes, so they tie."""
     enrichment = local.enrich(["g9", "g3", "g2", "g1"], POPULATION)

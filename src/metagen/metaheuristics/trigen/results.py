@@ -293,7 +293,8 @@ class TriGenResult:
             raise ValueError("The cube is not the one this run worked on: its shape or its values differ.")
         return TriGen(cube, **{name: self.configuration[name] for name in CONFIGURATION})
 
-    def report(self, path: str, cube: Optional[Cube] = None, title: Optional[str] = None, detailed: int = 10) -> str:
+    def report(self, path: str, cube: Optional[Cube] = None, title: Optional[str] = None, detailed: int = 10,
+               enrichment: Any = None) -> str:
         """
         Write a report of the run, an HTML page or a PDF by the extension of ``path``, and
         next to it the triclusters as a CSV table; see
@@ -309,11 +310,15 @@ class TriGenResult:
         :type title: str, optional
         :param detailed: How many triclusters to draw one by one, defaults to 10.
         :type detailed: int, optional
+        :param enrichment: An engine of enrichment, such as ``LocalGO``, or an enrichment per
+            tricluster, to show the biological enrichment of their genes; None, the default,
+            for none.
+        :type enrichment: EnrichmentProvider or Sequence[Enrichment or None], optional
         :return: The file written.
         :rtype: str
         """
         from metagen.metaheuristics.trigen.report import trigen_report
-        return trigen_report(self, cube, path, title=title, detailed=detailed)
+        return trigen_report(self, cube, path, title=title, detailed=detailed, enrichment=enrichment)
 
     def to_csv(self, path: str) -> None:
         """

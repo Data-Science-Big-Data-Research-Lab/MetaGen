@@ -45,7 +45,7 @@ OPTIONS = ("shape", "scoring", "measure", "views", "n_triclusters", "generations
 
 
 def trigen_report(result: "TriGenResult", cube: Optional["Cube"], path: str, title: Optional[str] = None,
-                  detailed: int = MOST_DETAILED) -> str:
+                  detailed: int = MOST_DETAILED, enrichment: Any = None) -> str:
     """
     Write a report of a run of TriGen, an HTML page with everything in it or a PDF, by the
     extension of ``path``, and next to it the triclusters as a CSV table of coordinates
@@ -58,6 +58,16 @@ def trigen_report(result: "TriGenResult", cube: Optional["Cube"], path: str, tit
     window, after a map of the plane with every prism. Without the cube, the values are left
     out. Needs matplotlib, the ``report`` extra.
 
+    With ``enrichment``, an engine such as :py:class:`~metagen.triclustering.LocalGO` or
+    :py:class:`~metagen.triclustering.GProfiler`, or the enrichment of each tricluster already
+    computed, it also shows the biological enrichment of the genes of the triclusters of
+    cubes: their purity, their BIOQ and their significant terms in the table; the most
+    significant terms of every tricluster side by side; for each tricluster drawn, its terms
+    by the share of its genes they annotate, and, when the engine gives the genes of each
+    term as LocalGO does, which of its genes each term annotates and, with networkx
+    installed, a map of its terms joined by the genes they share. Next to the report go the
+    significant terms of every tricluster as a CSV table.
+
     :param result: The result of the run.
     :type result: TriGenResult
     :param cube: The data the run worked on, or None to leave out the values.
@@ -68,11 +78,15 @@ def trigen_report(result: "TriGenResult", cube: Optional["Cube"], path: str, tit
     :type title: str, optional
     :param detailed: How many triclusters to draw one by one, defaults to 10.
     :type detailed: int, optional
+    :param enrichment: An engine of enrichment, or an enrichment (or None) per tricluster,
+        or None, the default, for no enrichment.
+    :type enrichment: EnrichmentProvider or Sequence[Enrichment or None], optional
     :return: The file written.
     :rtype: str
     :raises ImportError: if matplotlib is not installed.
-    :raises ValueError: if the extension is neither, or the cube is not the one the run
-        worked on.
+    :raises ValueError: if the extension is neither, the cube is not the one the run worked
+        on, or an enrichment is asked of prisms, without the cube, or with not one per
+        tricluster.
     """
     try:
         import matplotlib
@@ -86,14 +100,18 @@ def trigen_report(result: "TriGenResult", cube: Optional["Cube"], path: str, tit
         raise ValueError("The cube is not the one this run worked on: its shape or its values differ.")
     heading = title or result.data.get("label") or "TriGen"
     os.makedirs(os.path.dirname(os.path.abspath(path)) or ".", exist_ok=True)
+    enrichments = _enrichments(result, cube, enrichment)
     table = os.path.splitext(path)[0] + ".csv"
     result.to_csv(table)
-    sections = _sections(result, cube, detailed)
+    if enrichments is not None:
+        _terms_csv(enrichments, os.path.splitext(path)[0] + "_enrichment.csv")
+    sections = _sections(result, cube, detailed, enrichments)
     if extension == ".pdf":
-        _pdf(result, heading, sections, path)
+        _pdf(result, heading, sections, path, enrichments)
     else:
         with open(path, "w", encoding="utf-8") as handle:
-            handle.write(_html(result, heading, sections, os.path.basename(table)))
+            handle.write(_html(result, heading, sections, os.path.basename(table), enrichments,
+                               os.path.basename(os.path.splitext(path)[0] + "_enrichment.csv")))
     return path
 
 
@@ -106,8 +124,9 @@ def _is_prism(result: "TriGenResult") -> bool:
 def _run_rows(result: "TriGenResult") -> List[Tuple[str, str]]:
     data, provenance, configuration = result.data, result.provenance, result.configuration
     rows = [("data", f"{data.get('label') or ''} {' × '.join(map(str, data['shape']))}".strip())]
+    prism_only = () if _is_prism(result) else ("neighborhood", "pixels")
     rows += [(name, _text(configuration[name])) for name in OPTIONS if name in configuration
-             and configuration[name] is not None]
+             and configuration[name] is not None and name not in prism_only]
     rows.append(("triclusters", str(len(result.triclusters))))
     for name, key in (("stop reason", "stop_reason"), ("held", "covered"), ("noise threshold", "noise_threshold"),
                       ("evaluations of the searches", "evaluations"), ("evaluations of growing", "growth_evaluations"),
@@ -133,7 +152,8 @@ def _size(result: "TriGenResult", tricluster: "Tricluster") -> str:
     return " × ".join(str(count) for count in tricluster.size)
 
 
-def _tricluster_rows(result: "TriGenResult") -> Tuple[List[str], List[List[str]]]:
+def _tricluster_rows(result: "TriGenResult", enrichments: Optional[List[Any]] = None
+                     ) -> Tuple[List[str], List[List[str]]]:
     searches = {search["tricluster"]: search for search in result.searches if search.get("tricluster") is not None}
     names = sorted({name for terms in result.terms for name in terms
                     if name in ("quality", "z", "z_found", "overlap_cells")})
@@ -145,12 +165,19 @@ def _tricluster_rows(result: "TriGenResult") -> Tuple[List[str], List[List[str]]
                     + [_text(terms.get(name)) for name in names]
                     + [_text(search.get("evaluations")), _text(search.get("growth_evaluations")),
                        _text(round(search["seconds"], 2)) if search.get("seconds") is not None else ""])
+    if enrichments is not None:
+        from metagen.triclustering import bioq, purity
+        header += ["purity", "BIOQ", "significant terms"]
+        for row, found in zip(rows, enrichments):
+            row += (["", "", ""] if found is None else
+                    [_text(purity(found, ALPHA)), _text(bioq(found)), str(len(found.significant(ALPHA)))])
     return header, rows
 
 
 # --- The figures -------------------------------------------------------------------------------
 
-def _sections(result: "TriGenResult", cube: Optional["Cube"], detailed: int) -> List[Tuple[str, str, Any]]:
+def _sections(result: "TriGenResult", cube: Optional["Cube"], detailed: int,
+              enrichments: Optional[List[Any]] = None) -> List[Tuple[str, str, Any]]:
     """The figures, each with its section and its caption."""
     figures: List[Tuple[str, str, Any]] = []
     if result.searches:
@@ -161,9 +188,19 @@ def _sections(result: "TriGenResult", cube: Optional["Cube"], detailed: int) -> 
     if len(result.triclusters) > 1 and _shares(result).sum() > 0:
         figures.append(("Searches", "The share of the cells of each tricluster (row) another one (column) also "
                                     "holds", _overlap(result)))
-    if cube is None or not result.triclusters:
+    if not result.triclusters:
         return figures
     shown = result.triclusters[:detailed]
+    if enrichments is not None and any(found is not None and found.significant(ALPHA) for found in enrichments):
+        figures.append(("Biological enrichment", _compare_caption(enrichments), _compare_terms(enrichments)))
+    if cube is None:
+        # Without the values, the enrichment of each tricluster drawn, which does not need them
+        for index in range(len(shown)):
+            found = enrichments[index] if enrichments is not None else None
+            if found is not None and found.significant(ALPHA):
+                figures += [(f"Tricluster {index}", caption, figure)
+                            for caption, figure in _enrichment_figures(found, index)]
+        return figures
     if _is_prism(result):
         figures.append(("Prisms", "The plane, with the surface of each prism drawn in its number",
                         _plane(result, cube)))
@@ -174,6 +211,9 @@ def _sections(result: "TriGenResult", cube: Optional["Cube"], detailed: int) -> 
     for index, tricluster in enumerate(shown):
         for caption, figure in _views(cube, tricluster, index):
             figures.append((f"Tricluster {index}", caption, figure))
+        found = enrichments[index] if enrichments is not None else None
+        if found is not None and found.significant(ALPHA):
+            figures += [(f"Tricluster {index}", caption, figure) for caption, figure in _enrichment_figures(found, index)]
     return figures
 
 
@@ -262,7 +302,9 @@ def _overlap(result: "TriGenResult") -> Any:
         for row in range(count):
             for column in range(count):
                 if row != column and shares[row, column] > 0:
-                    plot.text(column, row, f"{shares[row, column]:.2f}", ha="center", va="center", fontsize=6,
+                    share = shares[row, column]
+                    plot.text(column, row, f"{share:.2f}" if share >= 0.005 else "<0.01", ha="center", va="center",
+                              fontsize=6,
                               color=INK)
     plot.set_xlabel("tricluster", fontsize=9, color=MUTED)
     plot.set_ylabel("tricluster", fontsize=9, color=MUTED)
@@ -295,7 +337,10 @@ def _view(values: np.ndarray, panel_names: Sequence[Any], line_count: int, x_nam
             plot.plot(x, line, color=SERIES[0], linewidth=0.7, alpha=0.45)
         plot.plot(x, np.median(values[index], axis=0), color=INK, linewidth=1.8)
         plot.set_ylim(low - margin, high + margin)
-        plot.set_title(f"{panel_label} {panel_names[index]}", fontsize=8, color=INK, loc="left")
+        name = str(panel_names[index])
+        # The name alone when it already says what it is, as "Time 6" does
+        plot.set_title(name if name.lower().startswith(panel_label.lower()) else f"{panel_label} {name}",
+                       fontsize=8, color=INK, loc="left")
         ticks = x if len(x) <= 12 else x[:: math.ceil(len(x) / 12)]
         plot.set_xticks(ticks, [str(x_names[tick]) for tick in ticks], rotation=45 if len(ticks) > 6 else 0,
                         ha="right" if len(ticks) > 6 else "center", fontsize=6)
@@ -369,9 +414,201 @@ def _prism_series(cube: "Cube", tricluster: "Tricluster") -> Any:
     return _view(series, ["of the prism"], len(pixels), [cube.times[t] for t in window], "pixels", "time")
 
 
+# --- Biological enrichment ---------------------------------------------------------------------
+
+#: The adjusted p-value below which a term is significant.
+ALPHA = 0.05
+#: The most terms of a tricluster drawn, and of all of them side by side.
+MOST_TERMS, MOST_COMPARED = 12, 25
+#: The share of their genes two terms must share to be joined in the map of terms.
+JOINED = 0.3
+
+
+def _enrichments(result: "TriGenResult", cube: Optional["Cube"], enrichment: Any) -> Optional[List[Any]]:
+    """The enrichment of each tricluster: given, or computed with the engine given."""
+    if enrichment is None:
+        return None
+    if _is_prism(result):
+        raise ValueError("An enrichment is of the genes of a cube; the triclusters of this run are prisms.")
+    if isinstance(enrichment, (list, tuple)):
+        if len(enrichment) != len(result.triclusters):
+            raise ValueError(f"Give one enrichment per tricluster: {len(enrichment)} for {len(result.triclusters)}.")
+        return list(enrichment)
+    if cube is None:
+        raise ValueError("An enrichment computed here needs the cube, with the names of its genes.")
+    from metagen.triclustering import enrich
+    return [enrich(cube, tricluster, enrichment) for tricluster in result.triclusters]
+
+
+def _terms_csv(enrichments: List[Any], path: str) -> None:
+    import csv
+    with open(path, "w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(["tricluster", "id", "name", "p_adjusted", "study_count", "study_size", "population_count",
+                         "population_size", "genes"])
+        for index, found in enumerate(enrichments):
+            for term in (found.significant(ALPHA) if found is not None else ()):
+                writer.writerow([index, term.id, term.name, term.p_adjusted, term.study_count, found.study_size,
+                                 term.population_count, found.population_size, " ".join(term.genes)])
+
+
+def _strength(p_adjusted: float) -> float:
+    return -math.log10(max(p_adjusted, 1e-300))
+
+
+def _ramp() -> Any:
+    from matplotlib.colors import LinearSegmentedColormap
+    return LinearSegmentedColormap.from_list("significance", ["#cfe0f6", SERIES[0], "#0d3d7a"])
+
+
+def _short(name: str, most: int = 48) -> str:
+    return name if len(name) <= most else name[:most - 1] + "…"
+
+
+def _compare_caption(enrichments: List[Any]) -> str:
+    engines = sorted({f"{found.engine} {found.version}".strip() for found in enrichments if found is not None})
+    return (f"The most significant terms of each tricluster, side by side: a dot where the term is significant "
+            f"(adjusted p < {ALPHA}), its size the share of the genes of the tricluster it annotates and its color "
+            f"how significant it is; enrichment by {', '.join(engines)}")
+
+
+def _compare_terms(enrichments: List[Any]) -> Any:
+    """The most significant terms of every tricluster, three each, side by side."""
+    chosen: List[Tuple[str, str]] = []
+    for found in enrichments:
+        for term in (found.significant(ALPHA)[:3] if found is not None else ()):
+            if (term.id, term.name) not in chosen and len(chosen) < MOST_COMPARED:
+                chosen.append((term.id, term.name))
+    figure, axes = _new_figure(height=1.4 + 0.32 * len(chosen))
+    plot = axes[0][0]
+    xs, ys, sizes, colors = [], [], [], []
+    for column, found in enumerate(enrichments):
+        if found is None:
+            continue
+        significant = {term.id: term for term in found.significant(ALPHA)}
+        for row, (identifier, _) in enumerate(chosen):
+            term = significant.get(identifier)
+            if term is not None and found.study_size:
+                xs.append(column)
+                ys.append(row)
+                sizes.append(20 + 280 * (term.study_count or 0) / found.study_size)
+                colors.append(_strength(term.p_adjusted))
+    points = plot.scatter(xs, ys, s=sizes, c=colors, cmap=_ramp(), edgecolors="white", linewidths=0.6)
+    plot.set_yticks(range(len(chosen)), [_short(name) for _, name in chosen], fontsize=7)
+    plot.set_ylim(len(chosen) - 0.5, -0.5)
+    plot.set_xticks(range(len(enrichments)), [str(index) for index in range(len(enrichments))], fontsize=7)
+    plot.set_xlim(-0.6, len(enrichments) - 0.4)
+    plot.set_xlabel("tricluster", fontsize=9, color=MUTED)
+    figure.colorbar(points, ax=plot, fraction=0.04, label="−log10 adjusted p")
+    _size_legend(plot)
+    _axes_style(plot)
+    figure.tight_layout()
+    return figure
+
+
+def _size_legend(plot: Any) -> None:
+    handles = [plot.scatter([], [], s=20 + 280 * share, color=MUTED, edgecolors="white") for share in (0.25, 0.5, 1.0)]
+    plot.legend(handles, ["25 %", "50 %", "100 %"], title="genes annotated", fontsize=7, title_fontsize=7,
+                frameon=False, loc="upper left", bbox_to_anchor=(1.12, 1.0))
+
+
+def _enrichment_figures(found: Any, index: int) -> List[Tuple[str, Any]]:
+    figures = [(f"Tricluster {index}: its most significant terms by the share of its genes they annotate, the size "
+                f"of the dot their number and its color how significant the term is", _term_dots(found))]
+    terms = [term for term in found.significant(ALPHA)[:MOST_TERMS] if term.genes]
+    if terms:
+        figures.append((f"Tricluster {index}: which of its genes each of its most significant terms annotates",
+                        _gene_matrix(terms)))
+        try:
+            import networkx  # noqa: F401
+        except ImportError:
+            pass
+        else:
+            if len(terms) > 1:
+                figures.append((f"Tricluster {index}: its most significant terms, joined when they share at least "
+                                f"{JOINED:.0%} of their genes; the size of a term its genes and its color how "
+                                f"significant it is", _term_map(terms)))
+    return figures
+
+
+def _term_dots(found: Any) -> Any:
+    terms = found.significant(ALPHA)[:MOST_TERMS]
+    figure, axes = _new_figure(height=1.2 + 0.3 * len(terms))
+    plot = axes[0][0]
+    shares = [(term.study_count or 0) / found.study_size if found.study_size else 0.0 for term in terms]
+    points = plot.scatter(shares, range(len(terms)), s=[30 + 12 * (term.study_count or 0) for term in terms],
+                          c=[_strength(term.p_adjusted) for term in terms], cmap=_ramp(), edgecolors="white",
+                          linewidths=0.6)
+    plot.set_yticks(range(len(terms)), [_short(term.name) for term in terms], fontsize=7)
+    plot.set_ylim(len(terms) - 0.5, -0.5)
+    plot.set_xlim(0, min(1.0, max(shares) * 1.15 + 0.05))
+    plot.set_xlabel("share of the genes of the tricluster the term annotates", fontsize=8, color=MUTED)
+    figure.colorbar(points, ax=plot, fraction=0.04, label="−log10 adjusted p")
+    _axes_style(plot)
+    figure.tight_layout()
+    return figure
+
+
+def _gene_matrix(terms: Sequence[Any]) -> Any:
+    counts: dict = {}
+    for term in terms:
+        for gene in term.genes:
+            counts[gene] = counts.get(gene, 0) + 1
+    genes = sorted(counts, key=lambda gene: (-counts[gene], gene))[:MOST_LINES]
+    matrix = np.array([[gene in term.genes for gene in genes] for term in terms], dtype=float)
+    figure, axes = _new_figure(height=1.4 + 0.3 * len(terms))
+    plot = axes[0][0]
+    from matplotlib.colors import ListedColormap
+    plot.imshow(matrix, cmap=ListedColormap(["#f3f6fb", SERIES[0]]), vmin=0, vmax=1, aspect="auto")
+    plot.set_yticks(range(len(terms)), [_short(term.name, 40) for term in terms], fontsize=7)
+    plot.set_xticks(range(len(genes)), genes, rotation=60, ha="right", fontsize=6)
+    plot.set_xticks(np.arange(-0.5, len(genes)), minor=True)
+    plot.set_yticks(np.arange(-0.5, len(terms)), minor=True)
+    plot.grid(which="minor", color="white", linewidth=1.2)
+    plot.tick_params(which="minor", length=0)
+    for side in plot.spines.values():
+        side.set_visible(False)
+    figure.tight_layout()
+    return figure
+
+
+def _term_map(terms: Sequence[Any]) -> Any:
+    import networkx as nx
+    graph = nx.Graph()
+    for term in terms:
+        graph.add_node(term.id)
+    for first in range(len(terms)):
+        for second in range(first + 1, len(terms)):
+            a, b = set(terms[first].genes), set(terms[second].genes)
+            shared = len(a & b) / len(a | b) if a | b else 0.0
+            if shared >= JOINED:
+                graph.add_edge(terms[first].id, terms[second].id, weight=shared)
+    places = nx.spring_layout(graph, seed=0, k=1.2 / math.sqrt(max(len(terms), 1)))
+    figure, axes = _new_figure(height=5.0)
+    plot = axes[0][0]
+    for first, second, data in graph.edges(data=True):
+        (x1, y1), (x2, y2) = places[first], places[second]
+        plot.plot([x1, x2], [y1, y2], color=MUTED, alpha=0.35, linewidth=0.6 + 3 * data["weight"], zorder=1)
+    xs = [places[term.id][0] for term in terms]
+    ys = [places[term.id][1] for term in terms]
+    points = plot.scatter(xs, ys, s=[60 + 25 * len(term.genes) for term in terms],
+                          c=[_strength(term.p_adjusted) for term in terms], cmap=_ramp(), edgecolors="white",
+                          linewidths=0.8, zorder=2)
+    for term, x, y in zip(terms, xs, ys):
+        plot.text(x, y - 0.09, _short(term.name, 28), ha="center", va="top", fontsize=6.5, color=INK, zorder=3)
+    figure.colorbar(points, ax=plot, fraction=0.04, label="−log10 adjusted p")
+    plot.set_xticks([]), plot.set_yticks([])
+    for side in plot.spines.values():
+        side.set_visible(False)
+    plot.margins(0.15)
+    figure.tight_layout()
+    return figure
+
+
 # --- HTML and PDF ------------------------------------------------------------------------------
 
-def _html(result: "TriGenResult", heading: str, sections: List[Tuple[str, str, Any]], table: str) -> str:
+def _html(result: "TriGenResult", heading: str, sections: List[Tuple[str, str, Any]], table: str,
+          enrichments: Optional[List[Any]] = None, terms_table: str = "") -> str:
     when = datetime.datetime.now().astimezone().isoformat(timespec="seconds")
     parts = [f"<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' "
              f"content='width=device-width, initial-scale=1'><title>{html.escape(heading)}</title>"
@@ -379,9 +616,11 @@ def _html(result: "TriGenResult", heading: str, sections: List[Tuple[str, str, A
              f"<h1>{html.escape(heading)}</h1><div class='meta'>TriGen · MetaGen {html.escape(_version())} · Python "
              f"{platform.python_version()} · {html.escape(when)}</div>",
              "<h2>Run</h2><div class='wrap'>" + _table(None, _run_rows(result)) + "</div>"]
-    header, rows = _tricluster_rows(result)
+    header, rows = _tricluster_rows(result, enrichments)
+    terms_note = (f" Their significant terms are in <a href='{html.escape(terms_table)}'>{html.escape(terms_table)}"
+                  f"</a>." if enrichments is not None else "")
     parts.append(f"<h2>Triclusters</h2><p class='meta'>Their coordinates, a row each, are in "
-                 f"<a href='{html.escape(table)}'>{html.escape(table)}</a>.</p>"
+                 f"<a href='{html.escape(table)}'>{html.escape(table)}</a>.{terms_note}</p>"
                  f"<div class='wrap'>{_table(header, rows)}</div>")
     current = None
     for section, caption, figure in sections:
@@ -393,11 +632,12 @@ def _html(result: "TriGenResult", heading: str, sections: List[Tuple[str, str, A
     return "".join(parts)
 
 
-def _pdf(result: "TriGenResult", heading: str, sections: List[Tuple[str, str, Any]], path: str) -> None:
+def _pdf(result: "TriGenResult", heading: str, sections: List[Tuple[str, str, Any]], path: str,
+         enrichments: Optional[List[Any]] = None) -> None:
     import matplotlib.pyplot as plt
     from matplotlib.backends.backend_pdf import PdfPages
     when = datetime.datetime.now().astimezone().isoformat(timespec="seconds")
-    header, rows = _tricluster_rows(result)
+    header, rows = _tricluster_rows(result, enrichments)
     with PdfPages(path) as pages:
         lines = [heading, f"TriGen · MetaGen {_version()} · Python {platform.python_version()} · {when}", ""]
         lines += [f"{name:<36}{value}" for name, value in _run_rows(result)]

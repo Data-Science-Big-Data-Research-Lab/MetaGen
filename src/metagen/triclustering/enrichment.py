@@ -26,7 +26,7 @@ import urllib.request
 from collections import defaultdict
 from dataclasses import dataclass
 from fractions import Fraction
-from typing import TYPE_CHECKING, Dict, Optional, Protocol, Sequence, Set, Tuple
+from typing import TYPE_CHECKING, Dict, List, Optional, Protocol, Sequence, Set, Tuple
 
 from scipy.stats import hypergeom
 
@@ -46,6 +46,8 @@ class Term:
     :param p: The p-value before the correction, None if the engine does not give it.
     :param study_count: How many genes of the study the term annotates.
     :param population_count: How many genes of the population the term annotates.
+    :param genes: The genes of the study the term annotates, when the engine gives them:
+        :py:class:`LocalGO` does, :py:class:`GProfiler` does not.
     """
 
     id: str
@@ -54,6 +56,7 @@ class Term:
     p: Optional[float] = None
     study_count: Optional[int] = None
     population_count: Optional[int] = None
+    genes: Tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -557,9 +560,11 @@ class LocalGO:
             for term in self._terms(gene):
                 population_count[term] += 1
         study_count: Dict[str, int] = defaultdict(int)
+        members: Dict[str, List[str]] = defaultdict(list)
         for gene in study:
             for term in self._terms(gene):
                 study_count[term] += 1
+                members[term].append(gene)
         size, drawn = len(background), len(study)
         tested = len(study_count)
         terms = []
@@ -567,7 +572,7 @@ class LocalGO:
             p = float(hypergeom.sf(k - 1, size, population_count[term], drawn))
             terms.append(Term(id=term, name=self._names.get(term, "root" if term == _ROOT else term),
                               p_adjusted=min(1.0, p * tested), p=p, study_count=k,
-                              population_count=population_count[term]))
+                              population_count=population_count[term], genes=tuple(sorted(members[term]))))
         terms.sort(key=_by_significance)
         return Enrichment(tuple(terms), engine="LocalGO", version=self.version, study_size=drawn,
                           population_size=size)
