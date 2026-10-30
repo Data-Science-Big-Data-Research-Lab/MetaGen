@@ -146,3 +146,37 @@ def test_an_enrichment_already_computed_is_shown_and_what_cannot_be_enriched_is_
     prisms.run()
     with pytest.raises(ValueError, match="genes of a cube"):
         prisms.report(str(tmp_path / "prisms.html"), enrichment=_Engine())
+
+
+def test_with_the_cube_the_table_holds_triq_and_its_parts_with_the_views_of_the_run():
+    from metagen.metaheuristics.trigen.report import _tricluster_rows
+    from metagen.triclustering import grq, peq, spq, triq
+    result = _cubes(views="time").result()
+    header, rows = _tricluster_rows(result, cube=CUBE)
+    assert header[-4:] == ["GRQ", "PEQ", "SPQ", "TRIQ"]
+    for row, tricluster in zip(rows, result.triclusters):
+        expected = (grq(CUBE, tricluster, "time"), peq(CUBE, tricluster), spq(CUBE, tricluster),
+                    triq(CUBE, tricluster, views="time"))
+        assert [float(value) for value in row[-4:]] == pytest.approx(expected, abs=1e-4)
+    assert "TRIQ" not in _tricluster_rows(result)[0]
+
+
+def test_with_the_enrichment_the_table_also_holds_triq_with_bioq():
+    from metagen.metaheuristics.trigen.report import _tricluster_rows
+    from metagen.triclustering import bioq, triq
+    trigen = _named_cubes()
+    result, engine = trigen.result(), _Engine()
+    found = [engine.enrich([f"g{g}" for g in t.genes], [f"g{g}" for g in range(60)]) for t in result.triclusters]
+    header, rows = _tricluster_rows(result, found, trigen.cube)
+    assert header[-1] == "TRIQ with BIOQ" and "TRIQ" in header
+    for row, tricluster, enrichment in zip(rows, result.triclusters, found):
+        assert float(row[-1]) == pytest.approx(triq(trigen.cube, tricluster, bioq=bioq(enrichment)), abs=1e-4)
+
+
+def test_a_table_too_long_for_a_page_goes_on_in_the_next_one(tmp_path):
+    from matplotlib.backends.backend_pdf import PdfPages
+    from metagen.reporting import _pdf_tables
+    rows = [[str(index), "a value"] for index in range(130)]
+    with PdfPages(str(tmp_path / "long.pdf")) as pages:
+        _pdf_tables(pages, ["A title"], [("A table", ("number", "a much longer name"), rows)])
+        assert pages.get_pagecount() == 3

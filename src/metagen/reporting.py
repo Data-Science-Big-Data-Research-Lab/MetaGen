@@ -402,20 +402,20 @@ def _pdf(runs: Sequence["Metaheuristic"], names: Sequence[str], heading: str, pa
     from matplotlib.backends.backend_pdf import PdfPages
     when = datetime.datetime.now().astimezone().isoformat(timespec="seconds")
     with PdfPages(path) as pages:
+        blocks: List[Tuple[str, Optional[Sequence[str]], Sequence[Sequence[str]]]] = []
+        if len(runs) > 1:
+            blocks.append(("Runs", ("run", "algorithm", "best fitness", "evaluations", "seconds", "stop reason"),
+                           [(name, type(run).__name__, _text(run.history[-1]["best"] if run.history else None),
+                             _text(run.evaluations), f"{run.seconds:.2f}", _text(run.stop_reason))
+                            for run, name in zip(runs, names)]))
         for run, name in zip(runs, names):
-            figure = plt.figure(figsize=(8.27, 11.69))
-            figure.patch.set_facecolor("white")
-            lines = [heading, f"MetaGen {_version()} · Python {platform.python_version()} · {when}", "", name, ""]
-            lines += [f"{key:<26}{value}" for key, value in _summary(run)]
-            lines += ["", "Domain"] + [f"  {variable:<22}{kind:<20}{values}  {notes}"
-                                       for variable, kind, values, notes in _domain(run)]
+            prefix = f"{name}: " if len(runs) > 1 else ""
+            blocks.append((f"{prefix}run", None, _summary(run)))
+            blocks.append((f"{prefix}domain", ("variable", "type", "values", "notes"), _domain(run)))
             best = _best_solution(run)
             if best:
-                lines += ["", "Best solution"] + [f"  {variable:<22}{value}" for variable, value in best]
-            figure.text(0.06, 0.96, "\n".join(lines), va="top", ha="left", family="monospace", fontsize=8,
-                        color=INK)
-            pages.savefig(figure)
-            plt.close(figure)
+                blocks.append((f"{prefix}best solution", None, best))
+        _pdf_tables(pages, [heading, f"MetaGen {_version()} · Python {platform.python_version()} · {when}"], blocks)
         # The figures on A4 pages, one under the other with their captions, as many as fit.
         page, top = None, 0.0
         for caption, figure in _figures(runs, names):
@@ -439,3 +439,75 @@ def _pdf(runs: Sequence["Metaheuristic"], names: Sequence[str], heading: str, pa
         if page is not None:
             pages.savefig(page)
             plt.close(page)
+
+
+def _pdf_tables(pages: Any, heading: Sequence[str],
+                blocks: Sequence[Tuple[str, Optional[Sequence[str]], Sequence[Sequence[str]]]]) -> None:
+    """
+    A4 pages with a heading and tables, each with its title: a table with a header, or
+    without one a compact table of names and values. A table that does not fit goes on in
+    the next page, with its header again.
+    """
+    import matplotlib.pyplot as plt
+    row_height, left, width = 0.0175, 0.06, 0.88
+    state: Dict[str, Any] = {"page": None, "top": 0.0}
+
+    def new_page() -> None:
+        if state["page"] is not None:
+            pages.savefig(state["page"])
+            plt.close(state["page"])
+        state["page"] = plt.figure(figsize=(8.27, 11.69))
+        state["page"].patch.set_facecolor("white")
+        state["top"] = 0.95
+
+    new_page()
+    state["page"].text(left, state["top"], heading[0], fontsize=14, weight="bold", color=INK, va="top")
+    state["top"] -= 0.026
+    for line in heading[1:]:
+        state["page"].text(left, state["top"], line, fontsize=8, color=MUTED, va="top")
+        state["top"] -= 0.016
+    state["top"] -= 0.012
+    for title, header, rows in blocks:
+        cells = [[str(cell) for cell in row] for row in rows] or [[""] * (len(header) if header else 2)]
+        columns = len(header) if header else len(cells[0])
+        values = [max([len(row[column]) for row in cells if column < len(row)] + [1]) for column in range(columns)]
+        # A name longer than the values of its column goes on two lines
+        labels = [str(name) if len(str(name)) <= values[column] + 2 or " " not in str(name)
+                  else "\n".join(str(name).rsplit(" ", 1)) for column, name in enumerate(header or ())]
+        lengths = [min(max([values[column]] + [len(line) for line in (labels[column] if header else "").split("\n")]),
+                       60) + 2 for column in range(columns)]
+        widths = [length / sum(lengths) for length in lengths] if header else [0.32, 0.68]
+        font = 7.0 if not header or sum(lengths) <= 125 else max(5.0, 7.0 * 125 / sum(lengths))
+        tall = 2 if any("\n" in label for label in labels) else 1
+        start, first = 0, True
+        while start < len(cells):
+            room = int((state["top"] - 0.04 - 0.03) / row_height) - (tall if header else 0)
+            if room < 3:
+                new_page()
+                continue
+            chunk = cells[start:start + room]
+            state["page"].text(left, state["top"], title + ("" if first else " (continued)"), fontsize=10,
+                               weight="bold", color=INK, va="top")
+            state["top"] -= 0.022
+            height = row_height * (len(chunk) + (tall if header else 0))
+            axes = state["page"].add_axes((left, state["top"] - height, width if header else 0.6, height))
+            axes.axis("off")
+            table = axes.table(cellText=chunk, colLabels=labels if header else None, cellLoc="left",
+                               colLoc="left", colWidths=widths, bbox=(0, 0, 1, 1))
+            table.auto_set_font_size(False)
+            table.set_fontsize(font)
+            for (row, column), cell in table.get_celld().items():
+                cell.set_edgecolor(GRID)
+                cell.visible_edges = "B"
+                if header and row == 0:
+                    # The table scales its rows to fill its box, keeping their proportions
+                    cell.set_height(cell.get_height() * tall)
+                    cell.set_facecolor("#f3f2ee")
+                    cell.set_text_props(weight="bold", color=MUTED)
+                elif not header and column == 0:
+                    cell.set_text_props(color=MUTED)
+            state["top"] -= height + 0.03
+            start += len(chunk)
+            first = False
+    pages.savefig(state["page"])
+    plt.close(state["page"])

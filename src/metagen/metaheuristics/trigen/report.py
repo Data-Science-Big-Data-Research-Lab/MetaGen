@@ -22,12 +22,12 @@ import io
 import math
 import os
 import platform
-from typing import TYPE_CHECKING, Any, List, Optional, Sequence, Tuple
+from typing import TYPE_CHECKING, Any, Callable, List, Optional, Sequence, Tuple
 
 import numpy as np
 
-from metagen.reporting import (INK, MUTED, SERIES, _STYLE, _axes_style, _new_figure, _svg, _table, _text,
-                               _version)
+from metagen.reporting import (INK, MUTED, SERIES, _STYLE, _axes_style, _new_figure, _pdf_tables, _svg, _table,
+                               _text, _version)
 
 if TYPE_CHECKING:
     from metagen.metaheuristics.trigen.results import TriGenResult
@@ -50,23 +50,25 @@ def trigen_report(result: "TriGenResult", cube: Optional["Cube"], path: str, tit
     Write a report of a run of TriGen, an HTML page with everything in it or a PDF, by the
     extension of ``path``, and next to it the triclusters as a CSV table of coordinates
     (:py:meth:`TriGenResult.to_csv`). It shows the run (the data, the options, what it spent,
-    why it ended and what it held), a table of the triclusters with their sizes, fitness,
-    terms and cost, the best fitness of each search by generation, the share of the genes or
-    pixels held as the triclusters were found, the cells two triclusters share, and, for each
-    of the first ``detailed`` triclusters, its values: for a cube, the three views of TrLab,
-    by time, by condition and over time; for a prism, the series of its pixels along its
-    window, after a map of the plane with every prism. Without the cube, the values are left
-    out. Needs matplotlib, the ``report`` extra.
+    why it ended and what it held), a table of the triclusters with their sizes, fitness, terms
+    and cost, the best fitness of each search by generation, the share of the genes or pixels
+    held as the triclusters were found, the cells two triclusters share, and, for each of the
+    first ``detailed`` triclusters, its values: for a cube, the three views of TrLab, by time,
+    by condition and over time; for a prism, the series of its pixels along its window, after a
+    map of the plane with every prism. Without the cube, the values are left out. With the cube,
+    the table also holds the TRIQ of each tricluster of a cube and its graphical, Pearson and
+    Spearman qualities, with the views and the flat profiles of the run. Needs matplotlib, the
+    ``report`` extra.
 
     With ``enrichment``, an engine such as :py:class:`~metagen.triclustering.LocalGO` or
     :py:class:`~metagen.triclustering.GProfiler`, or the enrichment of each tricluster already
-    computed, it also shows the biological enrichment of the genes of the triclusters of
-    cubes: their purity, their BIOQ and their significant terms in the table; the most
-    significant terms of every tricluster side by side; for each tricluster drawn, its terms
-    by the share of its genes they annotate, and, when the engine gives the genes of each
-    term as LocalGO does, which of its genes each term annotates and, with networkx
-    installed, a map of its terms joined by the genes they share. Next to the report go the
-    significant terms of every tricluster as a CSV table.
+    computed, it also shows the biological enrichment of the genes of the triclusters of cubes:
+    their purity, their BIOQ, their significant terms and, with the cube, their TRIQ with BIOQ in
+    the table; the most significant terms of every tricluster side by side; for each tricluster drawn, its
+    terms by the share of its genes they annotate, and, when the engine gives the genes of each
+    term as LocalGO does, which of its genes each term annotates and, with networkx installed, a
+    map of its terms joined by the genes they share. Next to the report go the significant terms
+    of every tricluster as a CSV table.
 
     :param result: The result of the run.
     :type result: TriGenResult
@@ -107,11 +109,11 @@ def trigen_report(result: "TriGenResult", cube: Optional["Cube"], path: str, tit
         _terms_csv(enrichments, os.path.splitext(path)[0] + "_enrichment.csv")
     sections = _sections(result, cube, detailed, enrichments)
     if extension == ".pdf":
-        _pdf(result, heading, sections, path, enrichments)
+        _pdf(result, heading, sections, path, enrichments, cube)
     else:
         with open(path, "w", encoding="utf-8") as handle:
             handle.write(_html(result, heading, sections, os.path.basename(table), enrichments,
-                               os.path.basename(os.path.splitext(path)[0] + "_enrichment.csv")))
+                               os.path.basename(os.path.splitext(path)[0] + "_enrichment.csv"), cube))
     return path
 
 
@@ -152,12 +154,12 @@ def _size(result: "TriGenResult", tricluster: "Tricluster") -> str:
     return " × ".join(str(count) for count in tricluster.size)
 
 
-def _tricluster_rows(result: "TriGenResult", enrichments: Optional[List[Any]] = None
-                     ) -> Tuple[List[str], List[List[str]]]:
+def _tricluster_rows(result: "TriGenResult", enrichments: Optional[List[Any]] = None,
+                     cube: Optional["Cube"] = None) -> Tuple[List[str], List[List[str]]]:
     searches = {search["tricluster"]: search for search in result.searches if search.get("tricluster") is not None}
     names = sorted({name for terms in result.terms for name in terms
                     if name in ("quality", "z", "z_found", "overlap_cells")})
-    header = ["#", "size", "cells", "fitness"] + names + ["search evaluations", "growth evaluations", "seconds"]
+    header = ["#", "size", "cells", "fitness"] + names + ["search ev.", "growth ev.", "seconds"]
     rows = []
     for index, (tricluster, terms) in enumerate(zip(result.triclusters, result.terms)):
         search = searches.get(index, {})
@@ -165,12 +167,35 @@ def _tricluster_rows(result: "TriGenResult", enrichments: Optional[List[Any]] = 
                     + [_text(terms.get(name)) for name in names]
                     + [_text(search.get("evaluations")), _text(search.get("growth_evaluations")),
                        _text(round(search["seconds"], 2)) if search.get("seconds") is not None else ""])
+    # TRIQ and its parts with the views and the flat profiles of the run; with the enrichment,
+    # also TRIQ with BIOQ, which weighs half and leaves out a BIOQ that is not defined
+    quality: Optional[Callable[[Any, Optional[float]], List[float]]] = None
+    if cube is not None and not _is_prism(result):
+        from metagen.triclustering import grq, peq, spq, triq
+        data = cube
+        views = result.configuration.get("views", "distinct")
+        flat = result.configuration.get("flat_profiles", "exclude")
+
+        def quality(tricluster: Any, biological: Optional[float]) -> List[float]:
+            if biological is not None:
+                return [triq(data, tricluster, bioq=biological, views=views, flat_profiles=flat)]
+            return [grq(data, tricluster, views), peq(data, tricluster, flat), spq(data, tricluster, flat),
+                    triq(data, tricluster, views=views, flat_profiles=flat)]
+
+        header += ["GRQ", "PEQ", "SPQ", "TRIQ"]
+        for row, tricluster in zip(rows, result.triclusters):
+            row += [_text(round(value, 4)) for value in quality(tricluster, None)]
     if enrichments is not None:
         from metagen.triclustering import bioq, purity
-        header += ["purity", "BIOQ", "significant terms"]
-        for row, found in zip(rows, enrichments):
-            row += (["", "", ""] if found is None else
-                    [_text(purity(found, ALPHA)), _text(bioq(found)), str(len(found.significant(ALPHA)))])
+        header += ["purity", "BIOQ", "significant terms"] + (["TRIQ with BIOQ"] if quality else [])
+        for row, tricluster, found in zip(rows, result.triclusters, enrichments):
+            if found is None:
+                row += [""] * (4 if quality else 3)
+                continue
+            biological = bioq(found)
+            row += [_text(purity(found, ALPHA)), _text(biological), str(len(found.significant(ALPHA)))]
+            if quality:
+                row += [_text(round(value, 4)) for value in quality(tricluster, biological)]
     return header, rows
 
 
@@ -608,7 +633,7 @@ def _term_map(terms: Sequence[Any]) -> Any:
 # --- HTML and PDF ------------------------------------------------------------------------------
 
 def _html(result: "TriGenResult", heading: str, sections: List[Tuple[str, str, Any]], table: str,
-          enrichments: Optional[List[Any]] = None, terms_table: str = "") -> str:
+          enrichments: Optional[List[Any]] = None, terms_table: str = "", cube: Optional["Cube"] = None) -> str:
     when = datetime.datetime.now().astimezone().isoformat(timespec="seconds")
     parts = [f"<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' "
              f"content='width=device-width, initial-scale=1'><title>{html.escape(heading)}</title>"
@@ -616,7 +641,7 @@ def _html(result: "TriGenResult", heading: str, sections: List[Tuple[str, str, A
              f"<h1>{html.escape(heading)}</h1><div class='meta'>TriGen · MetaGen {html.escape(_version())} · Python "
              f"{platform.python_version()} · {html.escape(when)}</div>",
              "<h2>Run</h2><div class='wrap'>" + _table(None, _run_rows(result)) + "</div>"]
-    header, rows = _tricluster_rows(result, enrichments)
+    header, rows = _tricluster_rows(result, enrichments, cube)
     terms_note = (f" Their significant terms are in <a href='{html.escape(terms_table)}'>{html.escape(terms_table)}"
                   f"</a>." if enrichments is not None else "")
     parts.append(f"<h2>Triclusters</h2><p class='meta'>Their coordinates, a row each, are in "
@@ -633,22 +658,14 @@ def _html(result: "TriGenResult", heading: str, sections: List[Tuple[str, str, A
 
 
 def _pdf(result: "TriGenResult", heading: str, sections: List[Tuple[str, str, Any]], path: str,
-         enrichments: Optional[List[Any]] = None) -> None:
+         enrichments: Optional[List[Any]] = None, cube: Optional["Cube"] = None) -> None:
     import matplotlib.pyplot as plt
     from matplotlib.backends.backend_pdf import PdfPages
     when = datetime.datetime.now().astimezone().isoformat(timespec="seconds")
-    header, rows = _tricluster_rows(result, enrichments)
+    header, rows = _tricluster_rows(result, enrichments, cube)
     with PdfPages(path) as pages:
-        lines = [heading, f"TriGen · MetaGen {_version()} · Python {platform.python_version()} · {when}", ""]
-        lines += [f"{name:<36}{value}" for name, value in _run_rows(result)]
-        lines += ["", "Triclusters", "  " + " | ".join(header)] + ["  " + " | ".join(row) for row in rows[:60]]
-        if len(rows) > 60:
-            lines.append(f"  ... and {len(rows) - 60} more, in the CSV table next to this report")
-        figure = plt.figure(figsize=(8.27, 11.69))
-        figure.patch.set_facecolor("white")
-        figure.text(0.05, 0.97, "\n".join(lines), va="top", ha="left", family="monospace", fontsize=6.5, color=INK)
-        pages.savefig(figure)
-        plt.close(figure)
+        _pdf_tables(pages, [heading, f"TriGen · MetaGen {_version()} · Python {platform.python_version()} · {when}"],
+                    [("Run", None, _run_rows(result)), ("Triclusters", header, rows)])
         page, top = None, 0.0
         for _, caption, chart in sections:
             buffer = io.BytesIO()
