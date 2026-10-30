@@ -84,6 +84,16 @@ def test_a_budget_smaller_than_the_warmup_ends_it_early(algorithm):
     assert best.get_fitness() == min(run.best_solution_fitnesses or [best.get_fitness()])
 
 
+@pytest.mark.parametrize("algorithm", [TPE, KernelTPE], ids=lambda algorithm: algorithm.__name__)
+def test_a_budget_reached_inside_a_round_of_the_warmup_goes_past_by_that_round_and_the_initial_population(algorithm):
+    # 30 is reached in the second round of 20 (40), and the initial population of 20 follows:
+    # 30 past the limit, more than either step alone and no more than both, as documented
+    run = algorithm(_domain(algorithm), _sphere, max_evaluations=30, seed=0)
+    run.run()
+    assert run.stop_reason == "max_evaluations" and run.evaluations == 60
+    assert run.evaluations - 30 > 20 and run.evaluations <= 30 + 20 + 20
+
+
 def test_a_budget_larger_than_the_warmup_runs_all_of_it():
     calls = []
     TPE(_domain(TPE), lambda solution: calls.append(1) or _sphere(solution), max_evaluations=230,

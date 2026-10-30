@@ -157,7 +157,8 @@ class Metaheuristic(ABC):
     ``max_evaluations``, ``timeout`` or :py:meth:`request_stop`. The limits are checked
     after each round of the warmup, after the initialization and at the end of every
     iteration, never in the middle of one, so a run may go past them by up to one round
-    of the warmup, the initial population or one iteration; ``stop_reason``
+    of the warmup and the initial population, which is always evaluated whole, or by one
+    iteration, and past ``timeout`` by the time those evaluations take; ``stop_reason``
     says which one stopped it, and ``evaluations`` and ``seconds`` what it spent. A run
     resumed from a checkpoint carries on with what it had spent.
 
