@@ -266,6 +266,8 @@ class Metaheuristic(ABC):
         # How many slices the population was last split into, for an algorithm that
         # shares a per-iteration budget among them (TPE splits its candidate pool).
         self.distributed_slices: int = 1
+        # Which of them the copy a worker runs on is, from 0; the driver's own is 0.
+        self.distributed_slice: int = 0
         self.seed = seed
         # TensorBoard used to switch itself on for the mere fact of being
         # installed, with no way to turn it off, so a sweep of hundreds of
@@ -338,13 +340,16 @@ class Metaheuristic(ABC):
             metagen_logger.info(
                 f"Distributing the initialization with {ray.cluster_resources().get('CPU', 0)} CPUs -- {distribution}")
 
-        for count in distribution:
-
+        for index, count in enumerate(distribution):
+            # The method is sent with a copy of the metaheuristic, made when the task is
+            # submitted: each copy knows which slice it runs.
+            self.distributed_slice = index
             if iterating:
                 futures.append(call_distributed.remote(spawn_seed(), method, population[:count]))
                 population = population[count:]
             else:
                 futures.append(call_distributed.remote(spawn_seed(), method, count))
+        self.distributed_slice = 0
 
         answers = ray.get(futures)
         # Each worker evaluates on a copy of the fitness function and says how many.

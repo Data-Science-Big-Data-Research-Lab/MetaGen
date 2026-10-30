@@ -65,7 +65,8 @@ Two things follow:
 - **The budget of an iteration does not grow with the number of CPUs.** Each worker
   produces as many candidates as individuals it received, and TPE shares its candidate
   pool among the slices, so ``HillClimbing``, ``TabuSearch`` and TPE cost exactly what
-  they cost sequentially. ``GA`` and ``Memetic`` breed pairs, so a slice with an odd
+  they cost sequentially; TPE as long as its pool holds at least as many candidates as
+  there are CPUs, since every slice draws at least one. ``GA`` and ``Memetic`` breed pairs, so a slice with an odd
   number of individuals breeds one child fewer; ``RandomSearch`` keeps one elite copy
   per slice and mutates one individual fewer per slice; ``SSGA`` breeds its two
   children in every slice. For example, with a population of 10 over 15 iterations on

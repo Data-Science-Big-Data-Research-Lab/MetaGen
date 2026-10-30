@@ -116,11 +116,12 @@ def test_the_global_model_selects_on_the_driver_and_the_island_model_does_not(ra
     assert islands.selections == []
 
 
-@pytest.mark.parametrize("name", ["GA", "HillClimbing", "TabuSearch", "TPE"])
+@pytest.mark.parametrize("name", ["GA", "HillClimbing", "TabuSearch", "TPE", "TPE_odd_pool"])
 def test_the_global_model_costs_what_the_sequential_run_costs(ray_runtime, tmp_path, name):
     """The promise of the global model: an iteration evaluates the fitness as many
     times on two CPUs as on one. GA needs slices of even size to breed the same
-    number of children, so its population here is 8."""
+    number of children, so its population here is 8. A pool of TPE that the CPUs do not
+    divide is shared all the same: 7 on two CPUs are 4 and 3, not 3 and 3."""
     domain, ga_domain = _sphere_domain(), _sphere_domain(GAConnector())
 
     def build(distributed, path):
@@ -133,6 +134,8 @@ def test_the_global_model_costs_what_the_sequential_run_costs(ray_runtime, tmp_p
                                              max_iterations=3, distributed=distributed, seed=0),
             "TPE": lambda: TPE(domain, fitness, warmup_iterations=2, max_iterations=3, candidate_pool_size=8,
                                distributed=distributed, seed=0),
+            "TPE_odd_pool": lambda: TPE(domain, fitness, warmup_iterations=2, max_iterations=3, candidate_pool_size=7,
+                                        distributed=distributed, seed=0),
         }[name]()
 
     sequential, distributed = tmp_path / "sequential", tmp_path / "distributed"

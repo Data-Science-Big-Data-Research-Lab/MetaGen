@@ -228,10 +228,13 @@ class TPE(Metaheuristic):
 
         # Under the global distribution model the pool is shared among the slices, so
         # that an iteration costs the same on any number of CPUs; each slice draws its
-        # share and the driver merges the histories.
+        # share and the driver merges the histories. The first slices take what the
+        # division leaves over: with the whole quotient only, 10 candidates on 4 CPUs
+        # were 8 (metagen-preproduction, 30 October 2026).
         pool = self.candidate_pool_size
         if self.distributed and self.distribution_model == "global":
-            pool = max(1, self.candidate_pool_size // self.distributed_slices)
+            share, left_over = divmod(self.candidate_pool_size, self.distributed_slices)
+            pool = max(1, share + (1 if self.distributed_slice < left_over else 0))
         for _ in range(pool - 1):
             candidate = self.sample_new_solution(best_solutions, worst_solutions)
             candidate.evaluate(self.fitness_function)
