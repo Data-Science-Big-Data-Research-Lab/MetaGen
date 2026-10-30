@@ -772,6 +772,22 @@ class Metaheuristic(ABC):
             self.best_model = self.refit(deepcopy(best))
         return best
 
+    def report(self, path: str, title: Optional[str] = None) -> str:
+        """
+        Write a report of the last run, an HTML page or a PDF by the extension of
+        ``path``; see :py:func:`metagen.reporting.report`, which also reports several runs
+        together. Needs matplotlib, the ``report`` extra.
+
+        :param path: The file, ``.html`` or ``.pdf``.
+        :type path: str
+        :param title: The title, defaults to the name of the algorithm.
+        :type title: str, optional
+        :return: The file written.
+        :rtype: str
+        """
+        from metagen.reporting import report
+        return report(self, path, title=title)
+
     def save_best_model(self, path: str) -> str:
         """
         Write ``best_model`` to a file in the format of the library it comes from: a model

@@ -44,11 +44,16 @@ netcdf = [
     "xarray",
     "netCDF4",
 ]
+# The reports of a run, as an HTML page or a PDF, draw their figures with matplotlib.
+report = [
+    "matplotlib",
+]
 # The behavioral benchmark tunes a scikit-learn model, to exercise a domain that mixes
-# integers, categoricals and reals.
+# integers, categoricals and reals; the reports are tested too.
 test = [
     "pytest",
     "scikit-learn",
+    "matplotlib",
 ]
 all = [
     "tensorboard",
@@ -56,6 +61,7 @@ all = [
     "ray>=2.40.0",
     "xarray",
     "netCDF4",
+    "matplotlib",
 ]
 
 [project.urls]

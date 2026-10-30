@@ -1069,8 +1069,9 @@ def test_p08_los_extras_declaran_un_requisito_por_linea():
     # elemento de la lista, y ninguno lleva dos pegados.
     for requisito in requisitos:
         assert ";" not in requisito, f"el extra sigue usando ';': {requisito!r}"
-    assert set(extras) == {"tensorboard", "distributed", "netcdf", "test", "all"}
-    assert set(extras["all"]) == set(extras["tensorboard"]) | set(extras["distributed"]) | set(extras["netcdf"])
+    assert set(extras) == {"tensorboard", "distributed", "netcdf", "report", "test", "all"}
+    assert set(extras["all"]) == (set(extras["tensorboard"]) | set(extras["distributed"]) | set(extras["netcdf"])
+                                  | set(extras["report"]))
 
     assert any("scikit-learn" in r for r in _extra_test_de_setup_cfg()), (
         "scikit-learn, que el banco necesita, no lo declara el extra `test`"

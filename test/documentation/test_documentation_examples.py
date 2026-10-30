@@ -217,6 +217,16 @@ def test_the_performance_tracking_examples_run(scratch):
     assert list(namespace["table"]["iteration"]) == list(range(len(namespace["algorithm"].history)))
 
 
+def test_the_report_example_runs(scratch):
+    # Apart from the rest of its page, which needs pandas: the report needs matplotlib alone
+    pytest.importorskip("matplotlib")
+    blocks = [block for block in _blocks((DOCS / "performance_tracking" / "index.rst").read_text())
+              if "report(" in block]
+    assert len(blocks) == 1
+    _printed_as_commented(blocks[0], {})
+    assert (scratch / "ga.html").exists() and (scratch / "comparison.pdf").exists()
+
+
 def test_the_pausing_and_resuming_examples_run(scratch):
     if not hasattr(signal, "SIGUSR1"):
         pytest.skip("the example uses a POSIX signal")

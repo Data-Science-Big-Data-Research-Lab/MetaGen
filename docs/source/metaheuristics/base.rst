@@ -21,6 +21,14 @@ which stops a candidate as soon as it is significantly worse than the population
 
 
 
+Reports
+========================
+
+A report of one or more runs, an HTML page or a PDF; see :doc:`../performance_tracking/index`.
+
+.. autofunction:: metagen.reporting.report
+
+
 Reproducibility
 ========================
 
