@@ -71,6 +71,9 @@ class RandomSearch(Metaheuristic):
     :param racing: Stop evaluating a candidate as soon as it is significantly worse than the
         population; see :py:class:`~metagen.metaheuristics.racing.Racing`.
     :type racing: Racing or None, optional
+    :param refit: A function that trains the model of the best solution when the run ends;
+        see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type refit: Callable[[Solution], Any] or None, optional
 
     :ivar max_iterations: Maximum number of iterations to run
     :vartype max_iterations: int
@@ -94,7 +97,8 @@ class RandomSearch(Metaheuristic):
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float], population_size = 10, max_iterations: Optional[int] = None, distributed = False, log_dir: Optional[str] = None, seed: Optional[int] = None, distribution_model: str = "global",
                  checkpoint: Optional[str] = None, checkpoint_every: int = 1, history: Optional[str] = None,
                  max_evaluations: Optional[int] = None, timeout: Optional[float] = None,
-                 initial_solutions: Optional[Sequence[Mapping[str, Any]]] = None, racing: Optional[Racing] = None) -> None:
+                 initial_solutions: Optional[Sequence[Mapping[str, Any]]] = None, racing: Optional[Racing] = None,
+                 refit: Optional[Callable[[Solution], Any]] = None) -> None:
         """
         Initialize the RandomSearch algorithm.
 
@@ -115,7 +119,7 @@ class RandomSearch(Metaheuristic):
                          distribution_model=distribution_model,
                          checkpoint=checkpoint, checkpoint_every=checkpoint_every,
                          history=history, max_evaluations=max_evaluations, timeout=timeout,
-                         initial_solutions=initial_solutions, racing=racing)
+                         initial_solutions=initial_solutions, racing=racing, refit=refit)
         self.max_iterations = self._iterations(max_iterations, 20)
 
     def initialize(self, num_solutions=10) -> Tuple[List[Solution], Solution]:

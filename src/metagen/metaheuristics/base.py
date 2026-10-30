@@ -21,6 +21,7 @@ import math
 import numbers
 import os
 import pickle
+import warnings
 import statistics
 import time
 from abc import ABC, abstractmethod
@@ -35,7 +36,8 @@ from copy import deepcopy
 
 from metagen.logging.metagen_logger import metagen_logger
 from metagen.metaheuristics.racing import Racing
-from metagen.metaheuristics.tools import CountingFitness, add_calls, random_exploration, solution_class
+from metagen.metaheuristics.tools import (CountingFitness, add_calls, random_exploration, save_model,
+                                         solution_class)
 
 IS_RAY_INSTALLED = is_package_installed("ray")
 
@@ -51,7 +53,7 @@ if IS_RAY_INSTALLED:
 #: nested function and cannot be pickled, the TensorBoard writer, and where and how
 #: often to save, which the resumed run is given again.
 _NOT_CHECKPOINTED = frozenset({"fitness_function", "logger", "checkpoint", "checkpoint_every",
-                               "_stop_requested"})
+                               "_stop_requested", "refit"})
 
 
 def _package_version() -> str:
@@ -152,6 +154,17 @@ class Metaheuristic(ABC):
         every candidate whole. With it, ``max_evaluations`` counts the steps taken: a
         candidate stopped after 3 of 10 spends 0.3 of an evaluation.
     :type racing: Racing or None, optional
+    :param refit: A function that trains the model of a solution, such as one with the
+        best hyperparameters on all the data, called once with the best solution when the
+        run ends; what it returns is ``best_model``. None, the default, calls nothing. It
+        is not saved in a checkpoint: :py:meth:`resume` takes it again.
+    :type refit: Callable[[Solution], Any] or None, optional
+
+    A fitness function may return a pair, its value and the model it trained, as in
+    ``return loss, model``: the value is the fitness, and the model of the best
+    evaluation of the run is kept in ``best_model``, the others let go; on Ray it comes
+    back from the worker that trained it. ``refit``, when given, replaces it.
+    :py:meth:`save_best_model` writes it to a file.
 
     The run stops at whichever comes first: the algorithm's own stopping criterion,
     ``max_evaluations``, ``timeout`` or :py:meth:`request_stop`. The limits are checked
@@ -208,7 +221,7 @@ class Metaheuristic(ABC):
                  checkpoint_every: int = 1, history: Optional[str] = None,
                  max_evaluations: Optional[int] = None, timeout: Optional[float] = None,
                  initial_solutions: Optional[Sequence[Mapping[str, Any]]] = None,
-                 racing: Optional[Racing] = None) -> None:
+                 racing: Optional[Racing] = None, refit: Optional[Callable[[Solution], Any]] = None) -> None:
         super().__init__()
 
         if max_evaluations is not None and (isinstance(max_evaluations, bool)
@@ -228,6 +241,14 @@ class Metaheuristic(ABC):
         if racing is not None and not isinstance(racing, Racing):
             raise ValueError(f"racing must be a Racing or None, not {racing!r}")
         self.racing = racing
+        if refit is not None and not callable(refit):
+            raise ValueError(f"refit must be a function of a solution or None, not {refit!r}")
+        self.refit = refit
+        #: The model of the best solution: the one its fitness function returned with the
+        #: best value, or what ``refit`` returned for it; None if neither gave one.
+        self.best_model: Any = None
+        # The value the model in best_model was returned with, to keep the best one.
+        self._best_model_value: Optional[float] = None
         # The steps a whole evaluation takes, for a fitness function that yields them, and
         # the steps taken so far: what max_evaluations counts then.
         self._step_count: Optional[int] = None
@@ -651,11 +672,14 @@ class Metaheuristic(ABC):
             self._evaluations = 0
             self._steps = 0
             self._seconds = 0.0
+            self.best_model, self._best_model_value = None, None
             if self.history_file is not None and os.path.exists(self.history_file):
                 os.remove(self.history_file)
         # Counted on the driver: the history's evaluations, from where a resumed run
-        # left them.
-        counted = CountingFitness(self.fitness_function, racing=self.racing, step_count=self._step_count)
+        # left them, and the best model, from the one it had.
+        counted = CountingFitness(self.fitness_function, racing=self.racing, step_count=self._step_count,
+                                  best=None if self._best_model_value is None
+                                  else (self._best_model_value, self.best_model))
         self.fitness_function = counted
         evaluations_before, seconds_before, started = self._evaluations, self._seconds, time.perf_counter()
         steps_before = self._steps
@@ -713,12 +737,13 @@ class Metaheuristic(ABC):
                 # loses that iteration and never corrupts the file.
                 if self.checkpoint is not None and (
                         self._stop_requested or self.current_iteration % self.checkpoint_every == 0):
+                    self._keep_best_model(counted)
                     self._write_checkpoint()
                 if self._stop_requested:
                     self.stop_reason = "request_stop"
                     if self.logger:
                         self.logger.writer.flush()
-                    return deepcopy(self._best_so_far())
+                    return self._finish(counted)
 
             self.post_execution()
             if self.checkpoint is not None and os.path.exists(self.checkpoint):
@@ -731,7 +756,47 @@ class Metaheuristic(ABC):
             if started_ray and ray.is_initialized():
                 ray.shutdown()
 
-        return deepcopy(self._best_so_far())
+        return self._finish(counted)
+
+    def _keep_best_model(self, counted: CountingFitness) -> None:
+        """Take the best model the fitness function has returned so far, if any."""
+        if counted.best is not None and counted.best[1] is not None:
+            self._best_model_value, self.best_model = counted.best
+
+    def _finish(self, counted: CountingFitness) -> Solution:
+        """The best solution of a run that has ended, with its model kept or, with ``refit``,
+        trained."""
+        self._keep_best_model(counted)
+        best = deepcopy(self._best_so_far())
+        if self.refit is not None:
+            self.best_model = self.refit(deepcopy(best))
+        return best
+
+    def save_best_model(self, path: str) -> str:
+        """
+        Write ``best_model`` to a file in the format of the library it comes from: a model
+        of Keras or TensorFlow with its own ``save``, to a ``.keras`` file; one of PyTorch
+        with ``torch.save``; any other, such as one of scikit-learn, with ``joblib`` when it
+        is installed (it comes with scikit-learn) and with ``pickle`` otherwise; a network
+        of the user's own class built on ``keras.Model`` or ``torch.nn.Module`` is saved as
+        one of its library. Read it back with the same library: ``keras.models.load_model``,
+        ``torch.load(path, weights_only=False)`` with the class of the network importable, or
+        ``joblib.load``.
+
+        :param path: The file. For Keras, ``.keras`` is added if it does not end so.
+        :type path: str
+        :return: The file written.
+        :rtype: str
+        :raises ValueError: if the run has no model, its fitness function returned none and
+            it was given no ``refit``; or if the model cannot be saved so, as one of a
+            library none of those formats can hold. Nothing is written then, a file already
+            at ``path`` is left as it was, and the model stays in ``best_model``, to be
+            saved with the method of its library.
+        """
+        if self.best_model is None:
+            raise ValueError("There is no model to save: the fitness function returned none with its value, "
+                             "and no refit was given.")
+        return save_model(self.best_model, path)
 
     def _iterations(self, max_iterations: Optional[int], default: int,
                     horizon: Optional[Callable[[int], int]] = None) -> Optional[int]:
@@ -867,7 +932,8 @@ class Metaheuristic(ABC):
         self._stop_requested = True
 
     @classmethod
-    def resume(cls, checkpoint: str, fitness_function: Callable[[Solution], float]) -> "Metaheuristic":
+    def resume(cls, checkpoint: str, fitness_function: Callable[[Solution], float],
+               refit: Optional[Callable[[Solution], Any]] = None) -> "Metaheuristic":
         """
         Rebuild a metaheuristic from its checkpoint file, to continue it with ``run()``,
         for instance in a new process after the one that started it was stopped. The
@@ -884,6 +950,8 @@ class Metaheuristic(ABC):
         :type checkpoint: str
         :param fitness_function: The fitness function of the run.
         :type fitness_function: Callable[[Solution], float]
+        :param refit: The ``refit`` of the run, if it had one; it is not saved either.
+        :type refit: Callable[[Solution], Any] or None, optional
         :return: The metaheuristic, ready to continue.
         :rtype: Metaheuristic
         :raises ValueError: if the file belongs to another class or version of the package.
@@ -896,6 +964,7 @@ class Metaheuristic(ABC):
         algorithm = algorithm_class.__new__(algorithm_class)
         algorithm.__dict__.update(state["algorithm"])
         algorithm.fitness_function = fitness_function
+        algorithm.refit = refit
         algorithm.checkpoint = checkpoint
         algorithm.checkpoint_every = state["checkpoint_every"]
         algorithm._stop_requested = False
@@ -909,11 +978,20 @@ class Metaheuristic(ABC):
         the package and the TensorBoard run, so that its curves continue in the same
         directory. A subclass whose state is not all in its attributes extends it.
         """
+        attributes = {name: value for name, value in self.__dict__.items() if name not in _NOT_CHECKPOINTED}
+        if self.best_model is not None:
+            try:
+                pickle.dumps(self.best_model)
+            except Exception as error:
+                # A model the checkpoint cannot hold is left out, not the checkpoint: a run
+                # resumed from it keeps the best model it finds from then on.
+                warnings.warn(f"The best model cannot be saved in the checkpoint ({error}); it is left out.",
+                              RuntimeWarning, stacklevel=2)
+                attributes["best_model"], attributes["_best_model_value"] = None, None
         return {
             "version": _package_version(),
             "class": type(self),
-            "algorithm": {name: value for name, value in self.__dict__.items()
-                          if name not in _NOT_CHECKPOINTED},
+            "algorithm": attributes,
             "rng": rng_state.get_state(),
             "checkpoint_every": self.checkpoint_every,
             "tensorboard_run": self.logger.run_id if self.logger else None,

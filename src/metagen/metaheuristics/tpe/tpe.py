@@ -73,6 +73,9 @@ class TPE(Metaheuristic):
     :param racing: Stop evaluating a candidate as soon as it is significantly worse than the
         population; see :py:class:`~metagen.metaheuristics.racing.Racing`.
     :type racing: Racing or None, optional
+    :param refit: A function that trains the model of the best solution when the run ends;
+        see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type refit: Callable[[Solution], Any] or None, optional
 
     :ivar max_iterations: Maximum number of iterations
     :vartype max_iterations: int
@@ -106,7 +109,8 @@ class TPE(Metaheuristic):
                  distribution_model: str = "global",
                  checkpoint: Optional[str] = None, checkpoint_every: int = 1, history: Optional[str] = None,
                  max_evaluations: Optional[int] = None, timeout: Optional[float] = None,
-                 initial_solutions: Optional[Sequence[Mapping[str, Any]]] = None, racing: Optional[Racing] = None) -> None:
+                 initial_solutions: Optional[Sequence[Mapping[str, Any]]] = None, racing: Optional[Racing] = None,
+                 refit: Optional[Callable[[Solution], Any]] = None) -> None:
         """
         Initialize the TPE algorithm.
 
@@ -161,7 +165,7 @@ class TPE(Metaheuristic):
                          distribution_model=distribution_model,
                          checkpoint=checkpoint, checkpoint_every=checkpoint_every,
                          history=history, max_evaluations=max_evaluations, timeout=timeout,
-                         initial_solutions=initial_solutions, racing=racing)
+                         initial_solutions=initial_solutions, racing=racing, refit=refit)
 
         # The gamma schedule and the size of the history are planned over max_iterations,
         # so a budget of evaluations becomes the iterations it buys.

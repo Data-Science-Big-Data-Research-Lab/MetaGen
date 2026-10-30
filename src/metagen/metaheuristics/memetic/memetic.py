@@ -83,6 +83,9 @@ class Memetic(Metaheuristic):
     :param racing: Stop evaluating a candidate as soon as it is significantly worse than the
         population; see :py:class:`~metagen.metaheuristics.racing.Racing`.
     :type racing: Racing or None, optional
+    :param refit: A function that trains the model of the best solution when the run ends;
+        see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type refit: Callable[[Solution], Any] or None, optional
     :type distribution_level: int
 
     **Code example**
@@ -123,13 +126,14 @@ class Memetic(Metaheuristic):
                  checkpoint: Optional[str] = None, checkpoint_every: int = 1, history: Optional[str] = None,
                  max_evaluations: Optional[int] = None, timeout: Optional[float] = None,
                  initial_solutions: Optional[Sequence[Mapping[str, Any]]] = None, racing: Optional[Racing] = None,
+                 refit: Optional[Callable[[Solution], Any]] = None,
                  mutation_alteration_limit: Any = None) -> None:
         """Initialize the Memetic Algorithm with the given parameters."""
         super().__init__(domain, fitness_function, population_size=population_size, distributed=distributed, log_dir=log_dir, seed=seed,
                          distribution_model=distribution_model,
                          checkpoint=checkpoint, checkpoint_every=checkpoint_every,
                          history=history, max_evaluations=max_evaluations, timeout=timeout,
-                         initial_solutions=initial_solutions, racing=racing)
+                         initial_solutions=initial_solutions, racing=racing, refit=refit)
 
         # Fails here, with a message that says what to do, instead of dying on
         # the first iteration with AttributeError: no attribute 'crossover' (A-07).

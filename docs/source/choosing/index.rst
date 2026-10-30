@@ -143,6 +143,67 @@ Starting from known solutions
     print(search.best_solution_fitnesses[0])   # 0.2: the first known solution is the best to start from
     print(search.evaluations)                  # 100
 
+Keeping the best model
+----------------------
+
+When the fitness function trains a model, the best one need not be trained again. A fitness function may return a pair, its value and the model it trained: the value is the fitness, and the run keeps the model of its best evaluation in ``best_model``, letting the others go; on Ray it comes back from the worker that trained it. ``save_best_model(path)`` writes it in the format of its library: a model of Keras or TensorFlow to a ``.keras`` file with its own ``save``, one of PyTorch with ``torch.save``, and any other, such as one of scikit-learn, with ``joblib``; a network of a class of your own built on ``keras.Model`` or ``torch.nn.Module`` counts as one of its library. Read it back with ``keras.models.load_model``, with ``torch.load(path, weights_only=False)`` where the class of the network can be imported, or with ``joblib.load``. Every metaheuristic but CVOA keeps it.
+
+.. code-block:: python
+
+    from sklearn.datasets import load_breast_cancer
+    from sklearn.model_selection import train_test_split
+    from sklearn.tree import DecisionTreeClassifier
+
+    from metagen.framework import Domain
+    from metagen.metaheuristics import RandomSearch
+
+    x, y = load_breast_cancer(return_X_y=True)
+    x_train, x_valid, y_train, y_valid = train_test_split(x, y, test_size=0.3, random_state=0)
+
+    domain = Domain()
+    domain.define_integer("max_depth", 1, 12)
+    domain.define_integer("min_samples_leaf", 1, 20)
+
+    def fitness(solution):
+        model = DecisionTreeClassifier(max_depth=solution["max_depth"],
+                                       min_samples_leaf=solution["min_samples_leaf"],
+                                       random_state=0).fit(x_train, y_train)
+        return 1 - model.score(x_valid, y_valid), model     # the error, and the model trained
+
+    search = RandomSearch(domain, fitness, max_iterations=5, seed=0)
+    best = search.run()
+    print(1 - search.best_model.score(x_valid, y_valid) == best.get_fitness())   # True
+    print(search.save_best_model("tree.joblib"))                                  # tree.joblib
+
+With cross-validation there is no single model, one per fold: ``refit``, a function of a solution, trains the model of the best one when the run ends, as on all the data with its hyperparameters, and what it returns is ``best_model``. It is not saved in a checkpoint, so ``resume`` takes it again, as it takes the fitness function.
+
+.. code-block:: python
+
+    from sklearn.datasets import load_breast_cancer
+    from sklearn.model_selection import cross_val_score
+    from sklearn.tree import DecisionTreeClassifier
+
+    from metagen.framework import Domain
+    from metagen.metaheuristics import RandomSearch
+
+    x, y = load_breast_cancer(return_X_y=True)
+
+    domain = Domain()
+    domain.define_integer("max_depth", 1, 12)
+    domain.define_integer("min_samples_leaf", 1, 20)
+
+    def tree(solution):
+        return DecisionTreeClassifier(max_depth=solution["max_depth"],
+                                      min_samples_leaf=solution["min_samples_leaf"], random_state=0)
+
+    def fitness(solution):
+        return 1 - cross_val_score(tree(solution), x, y, cv=3).mean()
+
+    search = RandomSearch(domain, fitness, max_iterations=5, seed=0,
+                          refit=lambda solution: tree(solution).fit(x, y))
+    best = search.run()
+    print(search.best_model.get_params()["max_depth"] == best["max_depth"])   # True
+
 Running CVOA
 ------------
 

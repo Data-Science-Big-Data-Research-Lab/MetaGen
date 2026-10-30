@@ -256,13 +256,18 @@ class Solution:
 
     def evaluate(self, fitness_func: Callable[[Solution], float]) -> None:
         """
-        Evaluate the fitness of the Solution using the provided fitness function.
+        Evaluate the fitness of the Solution using the provided fitness function. A fitness
+        function that returns a pair, its value and a model, gives its value; a
+        metaheuristic keeps the model of its best evaluation in ``best_model``.
 
         :param fitness_func: The fitness function to evaluate the object's fitness.
         :type fitness_func: Callable[[Solution], float]
         :return: None
         """
-        self.set_fitness(fitness_func(self))
+        value: Any = fitness_func(self)
+        if isinstance(value, tuple) and len(value) == 2:
+            value = value[0]
+        self.set_fitness(value)
 
     def set_fitness(self, fitness: float) -> None:
         """
