@@ -351,3 +351,78 @@ def test_a_distributed_run_races_its_candidates_and_counts_their_steps(ray_runti
     assert plain.history[-1]["steps"] == 10 * plain.evaluations
     assert raced.history[-1]["steps"] < plain.history[-1]["steps"]
     assert best.raced_out is False
+
+
+@pytest.mark.parametrize("algorithm_class, options", [(GA, {}), (Memetic, {"neighbor_population_size": 2})])
+@pytest.mark.parametrize("model, returned", [("global", 2 + 8), ("islands", 8)])
+def test_under_the_global_model_a_worker_returns_every_child_it_bred(algorithm_class, options, model, returned):
+    """A worker returns the elite and all its children under the global model, for the
+    driver to select among; on an island the population keeps its size. No Ray: this is
+    what iterate does in the worker, on its slice."""
+    set_seed(0)
+    domain = _sphere_domain(GAConnector())
+    search = algorithm_class(domain, _sphere, population_size=8, max_iterations=1, distributed=True, seed=0,
+                             distribution_model=model, **options)
+    population, search.best_solution = search.initialize(8)
+    assert len(search.iterate(population)[0]) == returned
+
+
+def test_sequentially_a_population_keeps_its_size():
+    set_seed(0)
+    search = GA(_sphere_domain(GAConnector()), _sphere, population_size=8, max_iterations=1, seed=0)
+    population, search.best_solution = search.initialize(8)
+    assert len(search.iterate(population)[0]) == 8
+
+
+@pytest.mark.parametrize("name, population, slices", [("GA", 7, [7]), ("GA", 8, [4, 4]), ("Memetic", 3, [3]),
+                                                      ("SSGA", 3, [3]), ("RandomSearch", 2, [2]),
+                                                      ("RandomSearch", 1, [1])])
+def test_each_algorithm_splits_its_population_into_slices_it_can_work_on(ray_runtime, name, population, slices):
+    from metagen.metaheuristics.distributed_tools import assign_load_equally
+    algorithm_class = {"GA": GA, "Memetic": Memetic, "SSGA": SSGA, "RandomSearch": RandomSearch}[name]
+    assert assign_load_equally(population, algorithm_class.minimum_slice) == slices
+
+
+def test_a_small_population_of_random_search_searches_on_ray(ray_runtime, tmp_path):
+    """Two individuals on two CPUs go in one slice, so one of them is mutated every
+    iteration: in slices of one the run would stop at its initial evaluations."""
+    path = tmp_path / "calls"
+    RandomSearch(_sphere_domain(), _counting_sphere(path), population_size=2, max_iterations=3, distributed=True,
+                 seed=0).run()
+    assert _evaluations(path) == 2 + 3
+
+
+def test_the_genetic_algorithms_still_run_with_the_fewest_individuals_they_can():
+    domain = _sphere_domain(GAConnector())
+    for algorithm_class in (GA, Memetic, SSGA):
+        with pytest.raises(ValueError, match="at least 2"):
+            algorithm_class(domain, _sphere, population_size=1, max_iterations=1)
+        assert algorithm_class(domain, _sphere, population_size=2, max_iterations=1).run() is not None
+    assert RandomSearch(_sphere_domain(), _sphere, population_size=1, max_iterations=1).run() is not None
+
+
+def test_the_evaluations_the_documentation_gives_for_each_model(ray_runtime):
+    """The figures of distributed.rst, on the two CPUs of this runtime."""
+    def spent(algorithm_class, population, iterations, connector=None, **options):
+        search = algorithm_class(_sphere_domain(connector), _sphere_for_the_workers(), population_size=population,
+                                 max_iterations=iterations, seed=0, **options)
+        search.run()
+        return search.evaluations
+
+    distributed, islands = {"distributed": True}, {"distributed": True, "distribution_model": "islands"}
+    connector = GAConnector
+    assert spent(GA, 10, 15, connector()) == 160 and spent(GA, 10, 15, connector(), **distributed) == 130
+    assert spent(RandomSearch, 10, 15) == 145 and spent(RandomSearch, 10, 15, **distributed) == 130
+    assert spent(SSGA, 10, 15, connector()) == 40 and spent(SSGA, 10, 15, connector(), **distributed) == 70
+    assert spent(GA, 10, 3, connector()) == 40 and spent(GA, 10, 3, connector(), **islands) == 34
+    assert spent(SSGA, 10, 3, connector()) == 16 and spent(SSGA, 10, 3, connector(), **islands) == 22
+
+
+def test_kernel_tpe_evaluates_one_candidate_per_slice(ray_runtime):
+    def spent(**options):
+        search = KernelTPE(_sphere_domain(), _sphere_for_the_workers(), warmup_iterations=1, max_iterations=3,
+                           seed=0, **options)
+        search.run()
+        return search.evaluations
+
+    assert spent(distributed=True) - spent() == 3

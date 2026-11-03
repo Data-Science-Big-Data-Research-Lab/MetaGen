@@ -94,6 +94,11 @@ class RandomSearch(Metaheuristic):
         search = RandomSearch(domain, fitness_function, population_size=50, max_iterations=100)
         optimal_solution = search.run()
     """
+
+    # The elite copy takes one slot of each slice, so a slice of one mutates nobody: a
+    # population of 10 on ten CPUs made its 10 initial evaluations and nothing else.
+    minimum_slice: int = 2
+
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float], population_size = 10, max_iterations: Optional[int] = None, distributed = False, log_dir: Optional[str] = None, seed: Optional[int] = None, distribution_model: str = "global",
                  checkpoint: Optional[str] = None, checkpoint_every: int = 1, history: Optional[str] = None,
                  max_evaluations: Optional[int] = None, timeout: Optional[float] = None,

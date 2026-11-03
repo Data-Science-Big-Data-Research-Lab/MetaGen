@@ -162,11 +162,12 @@ def test_the_work_is_spread_across_workers(ray_runtime, name):
                            distributed=True, seed=0),
         "KernelTPE": lambda: KernelTPE(domain, fitness, population_size=6, warmup_iterations=1,
                                              max_iterations=3, distributed=True, seed=0),
-        "GA": lambda: GA(ga_domain, fitness, population_size=6, max_iterations=3,
+        # GA and Memetic make slices of at least four: eight are two slices on two CPUs.
+        "GA": lambda: GA(ga_domain, fitness, population_size=8, max_iterations=3,
                          distributed=True, seed=0),
         "SSGA": lambda: SSGA(ga_domain, fitness, population_size=6, max_iterations=3,
                              distributed=True, seed=0),
-        "Memetic": lambda: Memetic(ga_domain, fitness, population_size=6, max_iterations=3,
+        "Memetic": lambda: Memetic(ga_domain, fitness, population_size=8, max_iterations=3,
                                    neighbor_population_size=2, distributed=True, seed=0),
     }[name]()
     algorithm.run()

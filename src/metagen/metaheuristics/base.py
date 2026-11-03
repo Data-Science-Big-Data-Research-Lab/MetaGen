@@ -73,8 +73,10 @@ class Metaheuristic(ABC):
 
     ``minimum_slice`` is the fewest individuals a distributed slice may hold: the
     population is split into one slice per CPU, and an algorithm that needs several
-    individuals per step declares it here (the genetic ones need two to cross), so
-    that a cluster with more CPUs than individuals does not hand it islands of one.
+    individuals per step declares it here, so that a cluster with many CPUs for its
+    population uses fewer of them instead of handing out slices too small to work on. A
+    population smaller than that goes in one slice. ``minimum_population`` is the fewest
+    individuals the algorithm can run with at all (the genetic ones need two to cross).
 
     :param domain: The problem domain.
     :type domain: Domain
@@ -107,7 +109,8 @@ class Metaheuristic(ABC):
         TabuSearch and TPE, and for GA and Memetic when the slices have an even
         number of individuals (a slice breeds pairs, so an odd slice breeds one child
         fewer); ``RandomSearch`` keeps one elite per slice and mutates one individual
-        fewer per slice, and ``SSGA`` breeds its two children in every slice.
+        fewer per slice, ``SSGA`` breeds its two children in every slice, and
+        ``KernelTPE`` evaluates one candidate per slice.
 
         With ``"islands"`` the slices come back with the size they left with and are
         concatenated in order, so the next split hands the same individuals to the
@@ -208,6 +211,7 @@ class Metaheuristic(ABC):
     # minimum_slice exists since F-46: islands of one individual crashed GA and Memetic.
     # Worker tasks are seeded from the driver since A-06.
     minimum_slice: int = 1
+    minimum_population: int = 1
 
     #: Whether every solution the warmup evaluates joins the population ``initialize``
     #: builds, for an algorithm whose population is its model; otherwise the warmup only
@@ -277,8 +281,8 @@ class Metaheuristic(ABC):
 
         self.domain = domain
         self.fitness_function = fitness_function
-        if population_size < self.minimum_slice:
-            raise ValueError(f"{type(self).__name__} needs a population of at least {self.minimum_slice} "
+        if population_size < self.minimum_population:
+            raise ValueError(f"{type(self).__name__} needs a population of at least {self.minimum_population} "
                              f"and population_size is {population_size}.")
         self.population_size = population_size
         self.warmup_iterations = warmup_iterations
@@ -324,8 +328,8 @@ class Metaheuristic(ABC):
         shuffled before the cut and the next population is chosen by
         ``select_survivors`` out of the parents and everything that came back; under
         ``"islands"`` the slices are concatenated in order, so the same individuals go
-        back to the same worker every iteration and with two CPUs a population of six
-        is two independent runs of three for the whole execution. While initializing
+        back to the same worker every iteration and with two CPUs a population of eight
+        is two independent runs of four for the whole execution. While initializing
         there is no population yet, so each worker builds its share from scratch.
 
         :param method: The method to distribute.

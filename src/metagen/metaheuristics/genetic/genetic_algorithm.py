@@ -120,8 +120,13 @@ class GA(Metaheuristic):
     # mutation took GA from 221 to 238 wins of 330 against random sampling on the same
     # budget, and from 6 to 8 problems with a one-sided Wilcoxon p < 0.05.
 
-    # Two parents to cross: a distributed slice of one individual raised IndexError (F-46).
-    minimum_slice: int = 2
+    # Two parents to cross: a population of one individual raised IndexError (F-46).
+    minimum_population: int = 2
+    # A slice of two is all elite: its children never made the population, and the default
+    # population of 20 on ten CPUs lost every run of 30 to the sequential one. With four,
+    # and the children returned under the global model, it goes 12-18 on the same budget
+    # (metagen-auditoria/mediciones/distribucion_lonchas).
+    minimum_slice: int = 4
 
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
                  population_size: int = 20,
@@ -179,7 +184,10 @@ class GA(Metaheuristic):
             if best_solution is None or child2 < best_solution:
                 best_solution = child2
 
-        current_solutions = current_solutions[:num_solutions]
+        # Under the global model the driver selects out of everything a worker returns, so
+        # every child it evaluated goes back; otherwise the population keeps its size.
+        if not (self.distributed and self.distribution_model == "global"):
+            current_solutions = current_solutions[:num_solutions]
 
         return current_solutions, best_solution
 

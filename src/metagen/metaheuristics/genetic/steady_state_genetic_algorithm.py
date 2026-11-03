@@ -122,6 +122,7 @@ class SSGA(Metaheuristic):
     # same budget: neutral for it, a clear gain for GA, so the two share the default.
 
     # Two parents to cross: a distributed slice of one individual raised IndexError (F-46).
+    minimum_population: int = 2
     minimum_slice: int = 2
 
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
