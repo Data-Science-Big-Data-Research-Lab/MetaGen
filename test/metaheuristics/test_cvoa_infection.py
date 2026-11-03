@@ -7,6 +7,7 @@ from metagen.framework.rng import set_seed
 from metagen.metaheuristics import ProbabilisticCVOA, StrainProperties, cvoa_launcher
 from metagen.metaheuristics.cvoa.common_tools import infect
 from metagen.metaheuristics.cvoa.cvoa import CVOA
+from metagen.metaheuristics.cvoa.local_state import LocalPandemicState
 
 
 def _domain():
@@ -75,3 +76,15 @@ def test_a_pandemic_runs_with_a_neighborhood(strain_class):
                                 infection_alteration_limit=RelativeAlteration(0.2))]
     best = cvoa_launcher(strains, _domain(), _fitness, seed=0, strain_class=strain_class)
     assert best.get_fitness() == _fitness(best)
+
+
+def test_a_point_two_strains_infect_again_at_once_leaves_the_recovered_once():
+    """Two strains can read the same point as recovered before either takes it out, and
+    then both infect it again. Taking it out the second time has nothing left to do."""
+    domain = _domain()
+    state = LocalPandemicState(Solution(domain))
+    point = Solution(domain)
+    state.recover_if_not_dead(point)
+    state.get_infected_again(point)
+    state.get_infected_again(point)
+    assert state.get_recovered_len() == 0

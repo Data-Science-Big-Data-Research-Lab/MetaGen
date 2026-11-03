@@ -38,7 +38,9 @@ class RemotePandemicState:
         return len(self.recovered)
 
     def get_infected_again(self, individual: Solution) -> None:
-        self.recovered.remove(individual)
+        # Several tasks can infect the same recovered point again at once: each read it
+        # as recovered before the other took it out, and remove() raised KeyError.
+        self.recovered.discard(individual)
 
     # Deaths
     def update_deaths(self, individuals: SolutionSet) -> None:

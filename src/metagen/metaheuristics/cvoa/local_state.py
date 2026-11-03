@@ -38,8 +38,10 @@ class LocalPandemicState:
             return len(self.recovered)
 
     def get_infected_again(self, individual:Solution) -> None:
+        # Several strains can infect the same recovered point again at once: each read it
+        # as recovered before the other took it out, and remove() raised KeyError.
         with self.lock:
-            self.recovered.remove(individual)
+            self.recovered.discard(individual)
 
     # Deaths
     def update_deaths(self, individuals:SolutionSet)-> None:

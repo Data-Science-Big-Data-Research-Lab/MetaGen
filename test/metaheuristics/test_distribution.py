@@ -427,3 +427,15 @@ def test_kernel_tpe_evaluates_one_candidate_per_slice(ray_runtime):
         return search.evaluations
 
     assert spent(distributed=True) - spent() == 3
+
+
+def test_a_point_two_tasks_infect_again_at_once_leaves_the_recovered_once(ray_runtime):
+    """The same as with strains on threads, on the actor that holds the state on Ray."""
+    from metagen.metaheuristics.cvoa.ray_tools import RemotePandemicState, RemotePandemicStateProxy
+    domain = _sphere_domain()
+    state = RemotePandemicStateProxy(RemotePandemicState.remote(Solution(domain)))
+    point = Solution(domain)
+    state.recover_if_not_dead(point)
+    state.get_infected_again(point)
+    state.get_infected_again(point)
+    assert state.get_recovered_len() == 0
