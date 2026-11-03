@@ -107,7 +107,7 @@ count and the split:
 
 A slice needs enough individuals to work on, so a population too small for its CPUs is
 split into fewer slices: ``GA`` and ``Memetic`` make slices of at least 4 individuals,
-and ``SSGA`` and ``RandomSearch`` of at least 2. A population of 20 on ten CPUs is five
+``SSGA`` of at least 3 and ``RandomSearch`` of at least 2. A population of 20 on ten CPUs is five
 slices for ``GA``, and a population smaller than the minimum runs as one slice. To put
 every CPU to work, give the algorithm at least that many individuals per CPU; the
 genetic algorithms choose their parents within a slice, so they gain from having

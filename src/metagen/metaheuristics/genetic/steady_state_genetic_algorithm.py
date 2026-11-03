@@ -123,7 +123,13 @@ class SSGA(Metaheuristic):
 
     # Two parents to cross: a distributed slice of one individual raised IndexError (F-46).
     minimum_population: int = 2
-    minimum_slice: int = 2
+    # The tournament draws without repeating, so in a slice of two the better one always
+    # wins, both parents are the same individual and the children are its clones unless
+    # they mutate. At the same 1000 evaluations, against sequential over 30 runs, on
+    # Rastrigin, Sphere and Ackley: a minimum of 2 went 0-30 under the global model, 3
+    # went 19-11 with a population of 10 and 16-14 with 20; 4 and 5 did no better and use
+    # fewer CPUs. See metagen-auditoria/mediciones/distribucion_lonchas/INFORME.md.
+    minimum_slice: int = 3
 
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
                  population_size: int = 10,

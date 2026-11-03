@@ -375,7 +375,8 @@ def test_sequentially_a_population_keeps_its_size():
 
 
 @pytest.mark.parametrize("name, population, slices", [("GA", 7, [7]), ("GA", 8, [4, 4]), ("Memetic", 3, [3]),
-                                                      ("SSGA", 3, [3]), ("RandomSearch", 2, [2]),
+                                                      ("SSGA", 3, [3]), ("SSGA", 5, [5]), ("SSGA", 6, [3, 3]),
+                                                      ("RandomSearch", 2, [2]),
                                                       ("RandomSearch", 1, [1])])
 def test_each_algorithm_splits_its_population_into_slices_it_can_work_on(ray_runtime, name, population, slices):
     from metagen.metaheuristics.distributed_tools import assign_load_equally
