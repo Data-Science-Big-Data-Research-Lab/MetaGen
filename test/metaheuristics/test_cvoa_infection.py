@@ -88,3 +88,35 @@ def test_a_point_two_strains_infect_again_at_once_leaves_the_recovered_once():
     state.get_infected_again(point)
     state.get_infected_again(point)
     assert state.get_recovered_len() == 0
+
+
+def _real_domain():
+    domain = Domain()
+    for name in "abcd":
+        domain.define_real(name, -5.0, 5.0)
+    return domain
+
+
+def _real_fitness(solution):
+    return sum((solution[name] - 0.3) ** 2 for name in "abcd")
+
+
+@pytest.mark.parametrize("strain_class", [CVOA, ProbabilisticCVOA], ids=lambda c: c.__name__)
+def test_several_strains_on_threads_repeat_what_a_seed_gives(strain_class):
+    """Each strain draws from its own generators, so what it draws does not depend on
+    the order the threads happen to run in."""
+    def run(seed):
+        strains = [StrainProperties(f"S{index}", pandemic_duration=6, social_distancing=2) for index in range(3)]
+        return cvoa_launcher(strains, _real_domain(), _real_fitness, seed=seed, strain_class=strain_class).get_fitness()
+
+    for seed in range(4):
+        assert len({run(seed) for _ in range(4)}) == 1
+
+
+def test_a_seed_gives_several_strains_different_runs():
+    """Seeds of the strains come from the launcher's seed: another seed, another pandemic."""
+    def run(seed):
+        strains = [StrainProperties(f"S{index}", pandemic_duration=6, social_distancing=2) for index in range(3)]
+        return cvoa_launcher(strains, _real_domain(), _real_fitness, seed=seed).get_fitness()
+
+    assert len({run(seed) for seed in range(4)}) > 1

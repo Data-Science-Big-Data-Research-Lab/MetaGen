@@ -74,6 +74,8 @@ How CVOA Executes in a Distributed Environment
 
 Under ``distributed_cvoa_launcher`` the global pandemic state lives in a **Ray actor**, each strain runs as a Ray task, and within a strain the spreading of the infection is dispatched as **one task per carrier**. Each strain operates independently while interacting with the shared state.
 
+A ``seed`` fixes what every strain and every task draws. The strains, and on Ray the tasks of their carriers, read and change the pandemic state while they run, so when two of them reach the same point at once, which one comes first decides what happens to it. On a domain small enough for that to happen, two runs with the same ``seed`` can differ; with ``cvoa_launcher``, a single strain always reproduces.
+
 Launching Distributed CVOA
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

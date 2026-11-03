@@ -4,7 +4,7 @@ from time import time
 from typing import Callable, List, Optional
 
 from metagen.framework import Domain, Solution
-from metagen.framework.rng import set_seed
+from metagen.framework.rng import own_generators, set_seed, spawn_seed
 from metagen.logging.metagen_logger import metagen_logger
 
 from metagen.metaheuristics.cvoa.common_tools import StrainProperties
@@ -15,9 +15,11 @@ from metagen.metaheuristics.tools import solution_class
 
 def run_strain(global_state: LocalPandemicState, domain: Domain, fitness_function: Callable[[Solution], float],
                strain_properties: StrainProperties, update_isolated: bool = False, log_dir: Optional[str] = None,
-               strain_class: type[CVOA] = CVOA) -> Solution:
-    strain = strain_class(global_state, domain, fitness_function, strain_properties, update_isolated, log_dir)
-    return strain.run()
+               strain_class: type[CVOA] = CVOA, seed: Optional[int] = None) -> Solution:
+    if seed is None:
+        return strain_class(global_state, domain, fitness_function, strain_properties, update_isolated, log_dir).run()
+    with own_generators(seed):
+        return strain_class(global_state, domain, fitness_function, strain_properties, update_isolated, log_dir).run()
 
 
 
@@ -38,10 +40,9 @@ def cvoa_launcher(strains: List[StrainProperties], domain: Domain, fitness_funct
     :type update_isolated: bool, optional
     :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
     :type log_dir: str or None, optional
-    :param seed: Seed for MetaGen's generators (default is None). Note that a
-        pandemic with more than one strain runs them in concurrent threads that
-        share those generators, so a seed makes a single-strain run reproducible
-        but does not pin down the interleaving of several strains.
+    :param seed: Seed making the pandemic reproducible (default is None). With several
+        strains each draws from its own generators, seeded from this one; the order in
+        which they reach the shared state still depends on timing.
     :type seed: Optional[int], optional
     :param strain_class: The class every strain is built from (default is CVOA). A subclass of CVOA changes what a strain does; the launcher does not.
     :type strain_class: type[CVOA], optional
@@ -55,10 +56,16 @@ def cvoa_launcher(strains: List[StrainProperties], domain: Domain, fitness_funct
     solution_type = solution_class(domain)
     global_state = LocalPandemicState(solution_type(domain, connector=domain.get_connector()))
 
+    # One strain has nobody to share the generators with and stays on the process's, so
+    # what a seed gives a single strain does not change. Several sharing them made the
+    # fitness of a seed differ between repeated runs in 29 of 32 cases of three strains.
+    several = len(strains) > 1
+
     t1 = time()
     with ThreadPoolExecutor(max_workers=len(strains)) as executor:
         futures = {strain.strain_id: executor.submit(run_strain, global_state, domain, fitness_function, strain, update_isolated, log_dir,
-                                                      strain_class) for strain in strains}
+                                                      strain_class, spawn_seed() if several else None)
+                   for strain in strains}
     t2 = time()
 
     best_solution = global_state.get_best_individual()
