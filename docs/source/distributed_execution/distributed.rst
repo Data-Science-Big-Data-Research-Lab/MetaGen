@@ -62,7 +62,8 @@ step (``Metaheuristic.select_survivors``): TPE merges the histories every slice
 returned, and ``HillClimbing``, ``TabuSearch`` and ``SA`` keep the fresh candidates only.
 Two things follow:
 
-- **The budget of an iteration does not grow with the number of CPUs.** Each worker
+- **The budget of an iteration does not grow with the number of CPUs**, save in
+  ``SSGA`` and ``KernelTPE``, which spend more with more slices. Each worker
   produces as many candidates as individuals it received, and TPE shares its candidate
   pool among the slices, so ``HillClimbing``, ``TabuSearch`` and TPE cost exactly what
   they cost sequentially; TPE as long as its pool holds at least as many candidates as

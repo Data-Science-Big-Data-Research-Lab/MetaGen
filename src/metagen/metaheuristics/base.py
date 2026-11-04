@@ -105,7 +105,8 @@ class Metaheuristic(ABC):
         by fitness, ``population_size`` strong, which ``select_survivors`` implements
         and an algorithm may override (TPE merges the histories instead, HillClimbing,
         TabuSearch and SA keep the fresh candidates only). The budget per iteration
-        does not grow with the CPU count: it is the sequential one for HillClimbing,
+        does not grow with the CPU count, save in SSGA and KernelTPE, which spend more
+        with more slices: it is the sequential one for HillClimbing,
         TabuSearch and TPE, and for GA and Memetic when the slices have an even
         number of individuals (a slice breeds pairs, so an odd slice breeds one child
         fewer); ``RandomSearch`` keeps one elite per slice and mutates one individual
