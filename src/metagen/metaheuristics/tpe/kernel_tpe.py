@@ -53,7 +53,8 @@ class KernelTPE(TPE):
     - **Candidates are drawn from the model of the best solutions**, ``n_candidates``
       of them per iteration, **and only the one that maximizes** ``l(x) / g(x)``, the
       ratio of the densities under the best and the rest, **is evaluated**: one
-      evaluation per iteration.
+      evaluation per iteration. A subset is drawn from the model of the best and does not
+      enter the ratio.
 
     :py:class:`~metagen.metaheuristics.TPE` shares the history, the ``gamma`` schedules
     and the warmup, and evaluates a pool of candidates per iteration.
@@ -199,6 +200,7 @@ class KernelTPE(TPE):
         """
         Draw ``n_candidates`` solutions from the model of the best ones and return the
         candidate that maximizes the sum over its variables of ``log l(x) - log g(x)``.
+        Permutations and subsets are drawn but stay out of the sum.
 
         :param best_solutions: The best fraction of the history, the observations of ``l``.
         :type best_solutions: List[Solution]
@@ -240,6 +242,14 @@ class KernelTPE(TPE):
             # only when the value drawn for the one it depends on makes it active.
             score = 0.0
             for path, value, model_good, model_bad in drawn:
+                # A subset is drawn from the model of the best and stays out of the score.
+                # Its density is a product over every element, so the term outweighs the
+                # other variables and always picks the most typical selection: the proposals
+                # collapsed and, selecting features over six problems, twenty seeds, the
+                # algorithm won 64 of 120 against random sampling on the same budget; out of
+                # the score, 120 of 120. See metagen-auditoria/mediciones/subconjuntos/INFORME.md.
+                if isinstance(model_good, SubsetModel):
+                    continue
                 if candidate.is_active(cast(str, path[0])):
                     score += model_good.log_density(value) - model_bad.log_density(value)
             if score > best_score:
