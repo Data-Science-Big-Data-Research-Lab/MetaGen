@@ -255,8 +255,9 @@ class SA(Metaheuristic):
 
         In each iteration, multiple neighbor solutions are generated, and the best one
         is selected. The Metropolis criterion determines whether the selected neighbor
-        replaces the current solution based on the current temperature. The temperature
-        is then decreased according to the cooling schedule.
+        replaces the current solution based on the current temperature.
+        :py:meth:`post_iteration` then decreases the temperature according to the cooling
+        schedule.
 
         :param solutions: Current population of solutions (expected to have one solution in SA)
         :type solutions: List[Solution]
@@ -302,10 +303,15 @@ class SA(Metaheuristic):
             if get_rng().random() < exploration_rate:
                 current_solution = best_neighbor
 
-        # Cool down, no further than T_min
-        self.current_temp = max(self.current_temp * self.cooling_rate, self.T_min)
-
         return [current_solution], best_solution
+
+    def post_iteration(self) -> None:
+        """Cool down, no further than T_min, on the process that keeps the schedule."""
+        # On Ray, iterate runs on a copy of the algorithm: cooling there stayed in the worker
+        # and every iteration started at initial_temp, so the Metropolis criterion accepted
+        # anything for the whole run (the same loss as F-40). Found on 4 November 2026.
+        super().post_iteration()
+        self.current_temp = max(self.current_temp * self.cooling_rate, self.T_min)
 
     def select_survivors(self, parents: List[Solution], offspring: List[Solution]) -> List[Solution]:
         """SA walks a single solution and decides by the Metropolis criterion whether

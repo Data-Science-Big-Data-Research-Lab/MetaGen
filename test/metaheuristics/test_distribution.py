@@ -439,3 +439,22 @@ def test_a_point_two_tasks_infect_again_at_once_leaves_the_recovered_once(ray_ru
     state.get_infected_again(point)
     state.get_infected_again(point)
     assert state.get_recovered_len() == 0
+
+
+@pytest.mark.parametrize("model", ["global", "islands"])
+def test_simulated_annealing_cools_on_a_distributed_run(ray_runtime, model):
+    """The temperature is the driver's: iterate runs on a copy in a worker, so cooling
+    there would leave every iteration at the initial temperature, accepting anything."""
+    def fitness(solution):
+        return solution["x"] ** 2
+
+    temperatures = {}
+    for distributed in (False, True):
+        domain = Domain()
+        domain.define_real("x", -5.0, 5.0)
+        options = {"distribution_model": model} if distributed else {}
+        run = SA(domain, fitness, max_iterations=4, seed=0, distributed=distributed, **options)
+        run.run()
+        temperatures[distributed] = run.current_temp
+    assert temperatures[True] == pytest.approx(run.T_min)
+    assert temperatures[True] == temperatures[False]
