@@ -109,7 +109,9 @@ class SA(Metaheuristic):
         values; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
     :type initial_solutions: Sequence[Mapping[str, Any]] or None, optional
     :param racing: Stop evaluating a candidate as soon as it is significantly worse than the
-        population; see :py:class:`~metagen.metaheuristics.racing.Racing`.
+        population; see :py:class:`~metagen.metaheuristics.racing.Racing`. A race needs at
+        least two solutions to compare a candidate with, and this algorithm walks a single
+        one, so every candidate is evaluated whole.
     :type racing: Racing or None, optional
     :param refit: A function that trains the model of the best solution when the run ends;
         see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.

@@ -117,7 +117,7 @@ When evaluating a solution takes steps, such as the folds of a cross-validation,
     print(search.evaluations, search.history[-1]["steps"])   # 115 817: 817 folds of the 1150 of evaluating every candidate whole
     print(round(best.get_fitness(), 4), best.raced_out)        # 0.0633 False
 
-A candidate stopped early is marked with ``raced_out`` and is never the best solution of a run; its fitness is its mean over the steps it took, corrected by how the mean of the population changes from those steps to all of them. Every solution keeps its values per step in ``step_values``, and the history records the steps taken. With racing, ``max_evaluations`` counts the steps: a candidate stopped after 3 of 10 spends 0.3 of an evaluation.
+A candidate stopped early is marked with ``raced_out`` and is never the best solution of a run; its fitness is its mean over the steps it took, corrected by how the mean of the population changes from those steps to all of them. Every solution keeps its values per step in ``step_values``, and the history records the steps taken. With racing, ``max_evaluations`` counts the steps: a candidate stopped after 3 of 10 spends 0.3 of an evaluation. A race needs at least two solutions to compare a candidate with, so |sa|, which walks a single solution, evaluates every candidate whole.
 
 Starting from known solutions
 -----------------------------
