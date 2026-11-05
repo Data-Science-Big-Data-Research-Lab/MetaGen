@@ -188,7 +188,8 @@ class TriGen:
     :param pixels: The fewest and most pixels of the surface of a prism, defaults to the
         pixels of rectangles of the smallest and the largest sizes of the genes and the
         conditions. Each pixel is a step of what a search represents, so a bound well
-        below the plane keeps the search light.
+        below the plane keeps the search light. A higher upper bound lets a prism cover
+        larger regions, and its surface can take in more of what surrounds them.
     :type pixels: Sequence[int], optional
     :param stop: When the run ends, ``"count"`` (the default), after ``n_triclusters``
         searches, or ``"coverage"``, when the triclusters found hold the ``coverage`` share of
