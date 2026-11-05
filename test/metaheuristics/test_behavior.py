@@ -394,7 +394,9 @@ _GA = ("GA clears random sampling overall since F-33 gave its numeric types a "
 _SSGA = ("A-01 gave it parent selection and F-33 a crossover that produces new values, "
          "which took it past random sampling overall. What is left is the budget: two "
          "evaluations per iteration make 40 in all, a quarter of GA's and a fifteenth "
-         "of the memetic algorithm's. A-05, which used to be blamed here, was refuted")
+         "of the memetic algorithm's. A-05, which used to be blamed here, was refuted. "
+         "Griewank sits on the threshold: over thirty seeds it is 19 of 30 at the mutation "
+         "rate of 0.1, 0.5 and 1.0 alike, and on the ten seeds here it reads 5 of 10")
 
 _DECEPTIVE = ("Schwefel is deceptive: its global optimum sits near the corner of the "
               "domain, at (420.97, 420.97), with a wide field of better-looking local "
@@ -407,10 +409,6 @@ _POLYNOMIAL_SA = ("SA walks one point whose structure resizes freely under mutat
                   "so on the polynomial problem it drifts through lengths -- 5.7 on "
                   "average against the right 4 -- and 81 evaluations do not settle "
                   "both a length and its coefficients: 5 of 10 against random sampling")
-
-_POLYNOMIAL_SSGA = ("Forty evaluations, the smallest budget of the seven, on a problem "
-                    "where a length and its coefficients have to be found together: "
-                    "5 of 10 against random sampling")
 
 _TABU = ("TabuSearch accepts a worsening move by design, and on deceptive Schwefel the "
          "moves it accepts lead it into the field of better-looking local optima between "
@@ -436,12 +434,11 @@ _BEATS_RANDOM = {
     **{("Rastrigin", n): r for n, r in (("SSGA", _SSGA), ("TPE", _TPE))},
     **{("Rosenbrock", n): r for n, r in (("SA", _SA), ("GA", _GA), ("SSGA", _SSGA),
                                          ("TPE", _TPE), ("Memetic", _DECEPTIVE))},
-    **{("Ackley", n): r for n, r in (("SSGA", _SSGA),)},
+    **{("Griewank", n): r for n, r in (("SSGA", _SSGA),)},
     **{("Schwefel", n): r for n, r in (("SA", _SA), ("GA", _GA), ("SSGA", _SSGA),
                                        ("TPE", _TPE), ("HillClimbing", _DECEPTIVE),
                                        ("TabuSearch", _TABU))},
-    **{("Zakharov", n): r for n, r in (("SSGA", _SSGA),)},
-    **{("Polynomial", n): r for n, r in (("SA", _POLYNOMIAL_SA), ("SSGA", _POLYNOMIAL_SSGA))},
+    **{("Polynomial", n): r for n, r in (("SA", _POLYNOMIAL_SA),)},
 }
 
 

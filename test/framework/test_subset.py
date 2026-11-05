@@ -931,17 +931,7 @@ def _distance_to_target(solution):
     return len(TARGET ^ set(solution["s"]))
 
 
-# Measured on 28 September 2026: SSGA wins 4 of 10 with its default budget, 110
-# evaluations at two children per iteration; it does improve (from 11 to 9 in 50
-# iterations, to 5 in 500), only slower than random sampling spends the same budget.
-# It is also the weakest on the behavior bench.
-_SLOW = {"SSGA": "two children per iteration: 110 evaluations are too few to beat random sampling here"}
-
-
-@pytest.mark.parametrize("index", [
-    pytest.param(i, marks=pytest.mark.xfail(reason=_SLOW[name], strict=True)) if name in _SLOW else i
-    for i, name in enumerate(a.__name__ for a in _algorithms()) if i > 0
-], ids=lambda i: _algorithms()[i].__name__)
+@pytest.mark.parametrize("index", range(1, len(_algorithms())), ids=lambda i: _algorithms()[i].__name__)
 def test_every_algorithm_beats_random_sampling_with_its_own_budget(index):
     """Choosing the eight elements of a target among two hundred: every search beats
     as many random selections as it evaluates, on at least eight of ten seeds. The

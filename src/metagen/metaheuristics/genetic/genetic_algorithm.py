@@ -40,7 +40,7 @@ class GA(Metaheuristic):
     :type population_size: int, optional
     :param max_iterations: The number of generations to run (default is 50); with ``max_evaluations`` or ``timeout`` and no value, no limit.
     :type max_iterations: int or None, optional
-    :param mutation_rate: The probability of mutation for each child (default is 0.1).
+    :param mutation_rate: The probability of mutation for each child (default is 0.5).
     :type mutation_rate: float, optional
     :param tournament_size: How many individuals compete to become a parent (default is 2,
         the mildest tournament). Raising it makes the search greedier.
@@ -116,6 +116,12 @@ class GA(Metaheuristic):
         best_solution = algorithm.run()
     """
 
+    # mutation_rate: over thirty seeds against random sampling on the same budget, 0.1 gave
+    # 237 wins of 330 on the benchmark and 0.5 gave 280; selecting features with a subset,
+    # 120 and 181 of 210. On gradient-boosted trees over five datasets, twenty seeds, 0.5 went
+    # 55-45 against 0.1, no dataset significant. A rate of 1.0 was no better on the benchmark.
+    # See metagen-auditoria/mediciones/subconjuntos/INFORME.md.
+
     # mutation_alteration_limit: measured on the benchmark over thirty seeds, the local
     # mutation took GA from 221 to 238 wins of 330 against random sampling on the same
     # budget, and from 6 to 8 problems with a one-sided Wilcoxon p < 0.05.
@@ -130,7 +136,7 @@ class GA(Metaheuristic):
 
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
                  population_size: int = 20,
-                 max_iterations: Optional[int] = None, mutation_rate: float = 0.1,
+                 max_iterations: Optional[int] = None, mutation_rate: float = 0.5,
                  tournament_size: int = 2,
                  distributed: bool = False, log_dir: Optional[str] = None,
                  seed: Optional[int] = None, distribution_model: str = "global",
