@@ -1,4 +1,5 @@
 import copy
+import math
 from collections.abc import MutableSet
 from typing import Any, Callable, Dict, Iterable, Iterator, NamedTuple, Optional, Protocol, Tuple
 
@@ -167,17 +168,22 @@ def compute_n_infected_travel_distance(domain: Domain, strain_properties: Strain
 
 
 def infect(individual: Solution, fitness_function: Callable[[Solution], float], travel_distance: int,
-           alteration_limit: Any = None) -> Solution:
+           alteration_limit: Any = None, evaluate: bool = True) -> Solution:
     """ The individual infects another one located at a specific distance from it.
 
     :param travel_distance: How many variables the infection changes.
     :param alteration_limit: How far each of them moves, as in
         :py:meth:`~metagen.framework.Solution.mutate`.
+    :param evaluate: Whether to evaluate the newly infected individual. Without it, its
+        fitness is left unknown, as infinite, for whoever admits it to evaluate it.
 
     :returns: The newly infected individual.
     :rtype: :py:class:`~metagen.framework.Solution`
     """
     infected = copy.deepcopy(individual)
     infected.mutate(travel_distance, alteration_limit)
-    infected.evaluate(fitness_function)
+    if evaluate:
+        infected.evaluate(fitness_function)
+    else:
+        infected.set_fitness(math.inf)
     return infected

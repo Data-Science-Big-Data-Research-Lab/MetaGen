@@ -3134,3 +3134,35 @@ def test_f56_cambiar_de_longitud_saca_todas_las_longitudes_por_igual(minimo, max
     esperada = veces / len(longitudes)
     for longitud, vistas in cuenta.items():
         assert abs(vistas - esperada) < 0.1 * esperada, f"longitud {longitud}: {vistas} de {veces}, {cuenta}"
+
+
+# --------------------------------------------------------------------------------
+# F-57 · CVOA evalua a aislados, rechazados y la ultima generacion, y su valor no compite por el mejor
+# --------------------------------------------------------------------------------
+
+@pytest.mark.parametrize("nombre", ["CVOA", "ProbabilisticCVOA"])
+def test_f57_cvoa_devuelve_lo_mejor_que_evaluo(nombre):
+    """F-57: `infect` evaluaba al contagiado en el momento del contagio y el mejor solo se
+    actualizaba con los que entraban en la poblacion de la iteracion siguiente: los
+    aislados, los rechazados y la ultima generacion gastaban evaluaciones cuyo valor nunca
+    competia, y CVOA devolvia algo peor que lo mejor que habia evaluado. Ahora solo se
+    evalua a quien entra en la poblacion, y todo lo evaluado compite por el mejor."""
+    from metagen.metaheuristics import ProbabilisticCVOA, StrainProperties, cvoa_launcher
+    from metagen.metaheuristics.cvoa.cvoa import CVOA
+
+    clase = {"CVOA": CVOA, "ProbabilisticCVOA": ProbabilisticCVOA}[nombre]
+    for semilla in range(6):
+        dominio = Domain()
+        dominio.define_real("x", -5.0, 5.0)
+        dominio.define_real("y", -5.0, 5.0)
+        valores = []
+
+        def esfera(solucion):
+            valor = solucion["x"] ** 2 + solucion["y"] ** 2
+            valores.append(valor)
+            return valor
+
+        mejor = cvoa_launcher([StrainProperties("S1", pandemic_duration=6, social_distancing=2)], dominio, esfera,
+                              seed=semilla, strain_class=clase)
+        assert mejor.get_fitness() == min(valores), (
+            f"semilla {semilla}: devuelve {mejor.get_fitness()} y evaluo {min(valores)}")
