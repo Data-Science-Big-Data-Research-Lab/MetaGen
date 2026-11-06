@@ -66,6 +66,13 @@
 - **Several strains of CVOA on threads** draw from generators of their own, so what a
   strain draws does not depend on the order the threads run in. A single strain gives the
   same results.
+- **CVOA evaluates an infected individual once it enters the population**: the isolated
+  and the individuals the pandemic already knows are not evaluated, and every individual
+  evaluated, the last generation included, competes for the best. A run follows the same
+  pandemic with fewer evaluations, and its best is never worse.
+- **A dynamic structure that changes its length** draws every length allowed with the
+  same probability, as it does when it is created, so the mutation of a structure gives
+  different results.
 
 ## 1.3.0
 
