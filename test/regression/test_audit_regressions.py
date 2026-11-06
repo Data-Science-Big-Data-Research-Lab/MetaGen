@@ -3106,3 +3106,31 @@ def test_f53_tpe_conserva_su_warmup_como_estaba():
     from metagen.metaheuristics import KernelTPE, TPE
 
     assert TPE.keeps_warmup is False and KernelTPE.keeps_warmup is True
+
+
+# --------------------------------------------------------------------------------
+# F-56 · Una estructura dinamica que cambia de longitud saca las extremas la mitad de veces
+# --------------------------------------------------------------------------------
+
+@pytest.mark.parametrize("minimo, maximo, paso", [(1, 3, None), (2, 8, 2)])
+def test_f56_cambiar_de_longitud_saca_todas_las_longitudes_por_igual(minimo, maximo, paso):
+    """F-56: `Structure._resize` sorteaba la longitud nueva redondeando un real uniforme,
+    asi que la minima y la maxima salian la mitad de veces que cada intermedia (con 1-3,
+    25 %, 50 %, 25 %), mientras que al crear la estructura salen todas por igual. Al
+    cambiar de longitud tiene que sortearlas como al crearla."""
+    dominio = Domain()
+    dominio.define_dynamic_structure("capas", minimo, maximo, paso)
+    dominio.define_integer("ancho", 1, 10)
+    dominio.set_structure_to_variable("capas", "ancho")
+
+    set_seed(5)
+    longitudes = list(range(minimo, maximo + 1, paso or 1))
+    cuenta = dict.fromkeys(longitudes, 0)
+    veces = 6000
+    for _ in range(veces):
+        capas = Solution(dominio, connector=dominio.get_connector()).get("capas")
+        capas._resize()
+        cuenta[len(capas)] += 1
+    esperada = veces / len(longitudes)
+    for longitud, vistas in cuenta.items():
+        assert abs(vistas - esperada) < 0.1 * esperada, f"longitud {longitud}: {vistas} de {veces}, {cuenta}"

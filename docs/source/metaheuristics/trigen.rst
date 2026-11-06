@@ -104,7 +104,7 @@ In a series of images, the first two dimensions are the rows and the columns of 
                     n_triclusters=2, generations=20, population_size=60, min_sizes=(2, 2, 3),
                     max_sizes=(15, 15, 8), pixels=(4, 80), scoring="significance", seed=0)
     found = trigen.run()
-    print(round(recovery(found, planted), 3))                  # 0.63
+    print(round(recovery(found, planted), 3))                  # 0.652
 
 Prisms are searched with ``scoring="significance"``, as in the example: its model of chance draws random prisms of the same pixels and times, so a surface scores by how unlikely its coherence is whatever its outline. The weighted fitness also takes a prism, and sizes it in the genes and the conditions by the side of a square of the area of its surface. Choose ``pixels`` by the size of what you are looking for: a higher upper bound lets a prism cover larger regions, but its surface can take in more of what surrounds them and the search takes longer.
 

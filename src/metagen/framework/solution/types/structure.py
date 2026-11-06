@@ -234,8 +234,9 @@ class Structure(BaseType):
         # that has already established that.
         definition = cast(DynamicStructureDefinition, self.get_definition())
         _, min_size, max_size, step_size, _ = definition.get_attributes()
-        new_size = round(self._generate_numerical(
-            min_size, max_size, step_size))
+        # Every length equally likely, as initialize draws it: rounding a uniform real
+        # gave the shortest and the longest half the chance of each one between (F-56).
+        new_size = get_rng().randrange(min_size, max_size + 1, step_size or 1)
 
         # On a copy, handed over whole at the end: every intermediate length would
         # have to be valid otherwise, and set() checks it (F-38). The draws are the

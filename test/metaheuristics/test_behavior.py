@@ -405,10 +405,10 @@ _DECEPTIVE = ("Schwefel is deceptive: its global optimum sits near the corner of
               "6 of 10, which is a tie rather than a defeat. F-32 was blamed here and "
               "is closed; only the memetic algorithm, on 610 evaluations, clears it")
 
-_POLYNOMIAL_SA = ("SA walks one point whose structure resizes freely under mutation, "
-                  "so on the polynomial problem it drifts through lengths -- 5.7 on "
-                  "average against the right 4 -- and 81 evaluations do not settle "
-                  "both a length and its coefficients: 5 of 10 against random sampling")
+_POLYNOMIAL_SSGA = ("SSGA spends 40 evaluations on a problem that must settle both a "
+                    "length and its coefficients, and sits on the threshold there: over a "
+                    "hundred seeds it beats random sampling in 65, and on the ten seeds "
+                    "here it reads 5 of 10")
 
 _TABU = ("TabuSearch accepts a worsening move by design, and on deceptive Schwefel the "
          "moves it accepts lead it into the field of better-looking local optima between "
@@ -438,7 +438,7 @@ _BEATS_RANDOM = {
     **{("Schwefel", n): r for n, r in (("SA", _SA), ("GA", _GA), ("SSGA", _SSGA),
                                        ("TPE", _TPE), ("HillClimbing", _DECEPTIVE),
                                        ("TabuSearch", _TABU))},
-    **{("Polynomial", n): r for n, r in (("SA", _POLYNOMIAL_SA),)},
+    **{("Polynomial", n): r for n, r in (("SSGA", _POLYNOMIAL_SSGA),)},
 }
 
 
