@@ -212,7 +212,9 @@ def test_the_distributed_pages_run_on_ray(page, scratch):
 
 def test_the_performance_tracking_examples_run(scratch):
     pytest.importorskip("pandas")
-    blocks = _blocks((DOCS / "performance_tracking" / "index.rst").read_text())
+    # The report example needs matplotlib and runs in a test of its own, below
+    blocks = [block for block in _blocks((DOCS / "performance_tracking" / "index.rst").read_text())
+              if "report(" not in block]
     namespace = _run(blocks)
     assert list(namespace["table"]["iteration"]) == list(range(len(namespace["algorithm"].history)))
 
@@ -296,7 +298,17 @@ def test_the_examples_of_the_trigen_docstrings_run_and_print_what_they_say(name,
 
 
 def test_the_trigen_page_prints_what_it_says(scratch):
+    # The examples that write a report need matplotlib and run in a test of their own, below
     for code in _blocks((DOCS / "metaheuristics" / "trigen.rst").read_text()):
+        if "report(" not in code:
+            _printed_as_commented(code, {})
+
+
+def test_the_report_examples_of_the_trigen_page_print_what_they_say(scratch):
+    pytest.importorskip("matplotlib")
+    blocks = [code for code in _blocks((DOCS / "metaheuristics" / "trigen.rst").read_text()) if "report(" in code]
+    assert len(blocks) == 2
+    for code in blocks:
         _printed_as_commented(code, {})
 
 
