@@ -207,6 +207,11 @@ class CVOA(Metaheuristic):
         self.infected.clear()
         self.infected.update(new_infected_population)
 
+        # 1.5. The newly infected are evaluated: they compete for the best now, so that
+        # the last generation of the pandemic counts too (F-57).
+        for individual in self.infected:
+            self.record_if_best(individual)
+
         # 2. Stop if no new infected individuals.
         if not self.infected:
             self.epidemic = False
@@ -287,8 +292,14 @@ class CVOA(Metaheuristic):
         """
         Infect ``n_infected`` individuals from a carrier. Before social distancing they
         are placed at the travel distance; from then on at distance one, and each is
-        isolated with probability p_isolation.
+        isolated with probability p_isolation. Only those that enter the population are
+        evaluated.
         """
+        # F-57: an individual is evaluated once it enters the population, as in the original
+        # Java, where the isolated and the rejected were never evaluated. Evaluating every
+        # one spent about two thirds of the evaluations on individuals whose value never
+        # competed for the best. Neither isolation nor admission reads the fitness, and
+        # evaluating draws nothing, so the pandemic takes the same path.
         infected_population: SolutionSet = SolutionSet()
 
         for _ in range(0, n_infected):
@@ -298,8 +309,9 @@ class CVOA(Metaheuristic):
             # to the newly infected population.
             if time < strain_properties.social_distancing:
                 new_infected_individual = infect(carrier, fitness_function, travel_distance,
-                                                 strain_properties.infection_alteration_limit)
-                cls.admit(state, strain_properties, infected_population, new_infected_individual)
+                                                 strain_properties.infection_alteration_limit, evaluate=False)
+                if cls.admit(state, strain_properties, infected_population, new_infected_individual):
+                    new_infected_individual.evaluate(fitness_function)
 
             # After social_distancing iterations (when the social_distancing policy is applied),
             # the current individual infects another with a travel distance of one (using infect) then,
@@ -310,11 +322,11 @@ class CVOA(Metaheuristic):
             # not, and more isolation made the pandemic grow (F-27).
             else:
                 new_infected_individual = infect(carrier, fitness_function, 1,
-                                                 strain_properties.infection_alteration_limit)
+                                                 strain_properties.infection_alteration_limit, evaluate=False)
                 if get_rng().random() < strain_properties.p_isolation:
                     cls.isolate(state, new_infected_individual)
-                else:
-                    cls.admit(state, strain_properties, infected_population, new_infected_individual)
+                elif cls.admit(state, strain_properties, infected_population, new_infected_individual):
+                    new_infected_individual.evaluate(fitness_function)
         return infected_population
 
     @classmethod
@@ -329,12 +341,16 @@ class CVOA(Metaheuristic):
 
     @classmethod
     def admit(cls, state: PandemicState, strain_properties: StrainProperties,
-              new_infected_population: SolutionSet, new_infected_individual: Solution) -> None:
+              new_infected_population: SolutionSet, new_infected_individual: Solution) -> bool:
         """
         Let a newly infected individual into the next population unless the pandemic
         already knows it: a dead one never enters, a recovered one only with
         p_re_infection, leaving the recovered when it does.
+
+        :return: Whether it entered, not being in the population already.
+        :rtype: bool
         """
+        size = len(new_infected_population)
         # Get the global individual state.
         individual_state: IndividualState = state.get_individual_state(new_infected_individual)
 
@@ -349,6 +365,7 @@ class CVOA(Metaheuristic):
             if get_rng().random() < strain_properties.p_re_infection:
                 new_infected_population.add(new_infected_individual)
                 state.get_infected_again(new_infected_individual)
+        return len(new_infected_population) > size
 
     def infect_individuals(self, carrier_individual: Solution, travel_distance: int, n_infected: int) -> SolutionSet:
         """The contagion of one carrier with the strain's own state, properties and time."""
@@ -396,16 +413,20 @@ class CVOA(Metaheuristic):
             if individual not in dying:
                 self.global_state.recover_if_not_dead(individual)
 
-            if individual.get_fitness() < self.global_state.get_best_individual().get_fitness():
-                self.global_state.update_best_individual(individual)
-                self.best_strain_solution_found = True
-                self._log(f"New global best individual found at {self.time}! ({individual})")
-
-            if individual.get_fitness() < self._best_of_strain().get_fitness():
-                self.best_strain_solution = individual
+            self.record_if_best(individual)
 
         self.global_state.update_deaths(self.dead)
         self.global_state.update_recovered_with_deaths()
+
+    def record_if_best(self, individual: Solution) -> None:
+        """Keep an evaluated individual as the strain's and the pandemic's best if it is."""
+        if individual.get_fitness() < self.global_state.get_best_individual().get_fitness():
+            self.global_state.update_best_individual(individual)
+            self.best_strain_solution_found = True
+            self._log(f"New global best individual found at {self.time}! ({individual})")
+
+        if individual.get_fitness() < self._best_of_strain().get_fitness():
+            self.best_strain_solution = individual
 
     def stopping_criterion(self) -> bool:
 

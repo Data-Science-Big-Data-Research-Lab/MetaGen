@@ -83,6 +83,9 @@ class Memetic(Metaheuristic):
     :param racing: Stop evaluating a candidate as soon as it is significantly worse than the
         population; see :py:class:`~metagen.metaheuristics.racing.Racing`.
     :type racing: Racing or None, optional
+    :param refit: A function that trains the model of the best solution when the run ends;
+        see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type refit: Callable[[Solution], Any] or None, optional
     :type distribution_level: int
 
     **Code example**
@@ -108,8 +111,12 @@ class Memetic(Metaheuristic):
     # mutation is a trade for this algorithm (299 to 297 wins of 330: it gains Rosenbrock
     # and loses Schwefel and the decision tree), so it keeps the wide one that GA dropped.
 
-    # Two parents to cross: a distributed slice of one individual raised IndexError (F-46).
-    minimum_slice: int = 2
+    # Two parents to cross: a population of one individual raised IndexError (F-46).
+    minimum_population: int = 2
+    # A slice of two is all elite, as in GA: a population of 20 on ten CPUs went 1-29 against
+    # the sequential run, and 11-19 with slices of four and the children returned under the
+    # global model (metagen-auditoria/mediciones/distribucion_lonchas).
+    minimum_slice: int = 4
 
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
                  population_size: int = 10,
@@ -123,13 +130,14 @@ class Memetic(Metaheuristic):
                  checkpoint: Optional[str] = None, checkpoint_every: int = 1, history: Optional[str] = None,
                  max_evaluations: Optional[int] = None, timeout: Optional[float] = None,
                  initial_solutions: Optional[Sequence[Mapping[str, Any]]] = None, racing: Optional[Racing] = None,
+                 refit: Optional[Callable[[Solution], Any]] = None,
                  mutation_alteration_limit: Any = None) -> None:
         """Initialize the Memetic Algorithm with the given parameters."""
         super().__init__(domain, fitness_function, population_size=population_size, distributed=distributed, log_dir=log_dir, seed=seed,
                          distribution_model=distribution_model,
                          checkpoint=checkpoint, checkpoint_every=checkpoint_every,
                          history=history, max_evaluations=max_evaluations, timeout=timeout,
-                         initial_solutions=initial_solutions, racing=racing)
+                         initial_solutions=initial_solutions, racing=racing, refit=refit)
 
         # Fails here, with a message that says what to do, instead of dying on
         # the first iteration with AttributeError: no attribute 'crossover' (A-07).
@@ -198,7 +206,10 @@ class Memetic(Metaheuristic):
             if best_solution is None or lc_child2 < best_solution:
                 best_solution = lc_child2
 
-        current_solutions = current_solutions[:num_solutions]
+        # Under the global model the driver selects out of everything a worker returns, so
+        # every child it evaluated goes back; otherwise the population keeps its size.
+        if not (self.distributed and self.distribution_model == "global"):
+            current_solutions = current_solutions[:num_solutions]
 
         return current_solutions, best_solution
 

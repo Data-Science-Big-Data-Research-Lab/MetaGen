@@ -14,10 +14,11 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-from typing import Any, Callable, cast
+from typing import Any, Callable, Type, cast
 
 from metagen.framework.domain.core import (BaseStructureDefinition,
                                            DynamicStructureDefinition,
+                                           IntegerDefinition,
                                            PermutationDefinition,
                                            StaticStructureDefinition,
                                            SubsetDefinition)
@@ -26,6 +27,7 @@ from metagen.framework.solution import Solution
 from metagen.framework.solution.base_solution import builtin_value
 
 from .base import BaseType
+from .integer import Integer
 from metagen.framework.rng import get_rng
 
 
@@ -146,7 +148,34 @@ class Structure(BaseType):
         # Built as a list and handed over whole: set() checks the length, so growing
         # from empty one append at a time would be rejected at the first element
         # (F-38). Each element is initialized by its own constructor.
-        self.set([self._new_element(i) for i in range(size)])
+        self.set(self._new_elements(size))
+
+    def _new_elements(self, size: int) -> list[BaseType | Solution]:
+        """
+        ``size`` fresh elements, each initialized as its own constructor initializes it.
+
+        :param size: How many.
+        :type size: int
+        :return: The elements, in order.
+        :rtype: list
+        """
+        definition = self.get_definition()
+        if not definition.is_positional():
+            base = definition.get_base()
+            element_class = self.get_connector().get_type(base)
+            if isinstance(base, IntegerDefinition) and not base.log \
+                    and getattr(element_class, "initialize", None) is Integer.initialize:
+                # The draws each integer's own initialize makes, in the same order, with the
+                # integer built around its value: building, drawing and checking each in
+                # turn took most of a genetic search over long structures, which builds a
+                # random one for every child before writing its genes
+                # (metagen-auditoria/trigen/c5/informe_c5_etapa3_cruce.md, 9).
+                _, low, high, step = base.get_attributes()
+                rng, connector = get_rng(), self.get_connector()
+                return [cast(Type[Integer], element_class)._holding(base, connector,
+                                                                   rng.randrange(low, high + 1, step or 1))
+                        for _ in range(size)]
+        return [self._new_element(i) for i in range(size)]
 
     def mutate(self, alteration_limit: Any = None) -> None:
         """
@@ -205,8 +234,9 @@ class Structure(BaseType):
         # that has already established that.
         definition = cast(DynamicStructureDefinition, self.get_definition())
         _, min_size, max_size, step_size, _ = definition.get_attributes()
-        new_size = round(self._generate_numerical(
-            min_size, max_size, step_size))
+        # Every length equally likely, as initialize draws it: rounding a uniform real
+        # gave the shortest and the longest half the chance of each one between (F-56).
+        new_size = get_rng().randrange(min_size, max_size + 1, step_size or 1)
 
         # On a copy, handed over whole at the end: every intermediate length would
         # have to be valid otherwise, and set() checks it (F-38). The draws are the
@@ -303,6 +333,15 @@ class Structure(BaseType):
             key: Any = base if by_base else value
             element_class = cast(Callable[..., BaseType | Solution],
                                  self.get_connector().get_type(key))
+            if type(value) is int and isinstance(base, IntegerDefinition) and not base.log \
+                    and getattr(element_class, "initialize", None) is Integer.initialize:
+                # The draw its constructor makes, then the value checked and set as below,
+                # without building the random integer in between (see _new_elements).
+                _, low, high, step = base.get_attributes()
+                get_rng().randrange(low, high + 1, step or 1)
+                integer = cast(Type[Integer], element_class)._holding(base, self.get_connector(), None)
+                integer.set(value)
+                return integer
             converted = element_class(base, connector=self.get_connector())
 
             # The constructor initializes the instance at random, so the input

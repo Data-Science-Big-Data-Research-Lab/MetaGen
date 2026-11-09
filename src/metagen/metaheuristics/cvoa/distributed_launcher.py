@@ -2,12 +2,13 @@ from datetime import timedelta
 from time import time
 from typing import Any, Callable, List, Optional, cast
 
-from metagen.metaheuristics.import_helper import is_package_installed
-
-if is_package_installed("ray"):
+# Imported, not asked about: the documentation is built with Ray mocked, which is found
+# without a file, and is_package_installed answered no, so autodoc could not import the
+# launcher. Whether the package exports it is still decided in cvoa/__init__.py.
+try:
     import ray
-else:
-    raise ImportError("Ray is not installed. Please install it to use distributed CVOA.")
+except ImportError as error:
+    raise ImportError("Ray is not installed. Please install it to use distributed CVOA.") from error
 
 from metagen.framework import Domain, Solution
 from metagen.framework.rng import set_seed, spawn_seed
@@ -49,9 +50,10 @@ def distributed_cvoa_launcher(strains: List[StrainProperties], domain: Domain, f
     :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
     :type log_dir: str or None, optional
     :param seed: Seed making the pandemic reproducible (default is None). Each
-        strain's worker is seeded from a value drawn in the driver, so one strain
-        reproduces; with several strains the order in which they reach the shared
-        state still depends on timing.
+        strain's worker and each carrier's task is seeded from a value drawn in the
+        driver; the order in which they reach the shared state still depends on timing,
+        which can change a run on a domain small enough for two of them to reach the
+        same point at once.
     :type seed: Optional[int], optional
     :param strain_class: The class every strain is built from, run with ``distributed=True``
         (default is CVOA).

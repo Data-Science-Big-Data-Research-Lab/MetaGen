@@ -38,9 +38,10 @@ def assign_load_equally(neighbor_population_size: int, minimum_chunk: int = 1) -
     finished and omits the key while every CPU is busy, which would hand the whole
     workload to a single worker.
 
-    The minimum is the algorithm's: GA and Memetic pick a two-individual elite, so a
-    population split across more CPUs than it has individuals must not leave islands
-    of one. With a minimum of two, ten individuals on ten CPUs make five islands of two.
+    The minimum is the algorithm's: GA and Memetic pick a two-individual elite and need
+    room for children next to it, so a population must not be split into slices too
+    small for that. With a minimum of four, twenty individuals on ten CPUs make five
+    slices of four, and three individuals make one slice of three.
 
     :param neighbor_population_size: How many units of work there are to split.
     :type neighbor_population_size: int

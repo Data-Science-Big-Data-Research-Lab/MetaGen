@@ -24,6 +24,21 @@ Extending variable definitions allows:
 - Domain-specific **constraints** while maintaining compatibility with |metagen|’s framework.
 - Seamless integration with **existing metaheuristics**.
 
+The three steps below are the outline of ``metagen/metaheuristics/genetic/genetic_tools.py``. With these imports they run as one script:
+
+.. code-block:: python
+
+    from __future__ import annotations
+
+    from typing import Tuple
+
+    import metagen.framework.solution as types
+    from metagen.framework import BaseConnector, Solution
+    from metagen.framework.domain import (BaseDefinition, CategoricalDefinition, DynamicStructureDefinition,
+                                          IntegerDefinition, RealDefinition, StaticStructureDefinition)
+    from metagen.framework.solution.types import Structure
+    from metagen.metaheuristics.genetic.genetic_tools import GAInteger, GAReal
+
 1. Extending the Structure Type in GA
 The **Genetic Algorithm (GA)** in |metagen| introduces a custom `GAStructure`, which extends the standard `Structure` class and supports crossover operations:
 

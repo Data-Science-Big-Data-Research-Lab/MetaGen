@@ -1,0 +1,5378 @@
+{
+ "82a3e36ddb41d4fa55e9f230c7a7de70064bf43e82547c5778b5498013a3c825": {
+  "result": [
+   {
+    "native": "GO:0042613",
+    "name": "MHC class II protein complex",
+    "p_value": 1.6764156309576505e-06,
+    "intersection_size": 11,
+    "term_size": 13
+   },
+   {
+    "native": "GO:0042611",
+    "name": "MHC protein complex",
+    "p_value": 1.6764156309576505e-06,
+    "intersection_size": 11,
+    "term_size": 13
+   },
+   {
+    "native": "GO:0019882",
+    "name": "antigen processing and presentation",
+    "p_value": 1.1716687507671405e-05,
+    "intersection_size": 11,
+    "term_size": 13
+   },
+   {
+    "native": "GO:0002504",
+    "name": "antigen processing and presentation of peptide or polysaccharide antigen via MHC class II",
+    "p_value": 1.1716687507671405e-05,
+    "intersection_size": 11,
+    "term_size": 13
+   },
+   {
+    "native": "GO:0023023",
+    "name": "MHC protein complex binding",
+    "p_value": 1.4891504735195764e-05,
+    "intersection_size": 10,
+    "term_size": 12
+   },
+   {
+    "native": "GO:0023026",
+    "name": "MHC class II protein complex binding",
+    "p_value": 1.4891504735195764e-05,
+    "intersection_size": 10,
+    "term_size": 12
+   },
+   {
+    "native": "GO:0000323",
+    "name": "lytic vacuole",
+    "p_value": 2.933727354175897e-05,
+    "intersection_size": 11,
+    "term_size": 15
+   },
+   {
+    "native": "GO:0005764",
+    "name": "lysosome",
+    "p_value": 2.933727354175897e-05,
+    "intersection_size": 11,
+    "term_size": 15
+   },
+   {
+    "native": "GO:0005773",
+    "name": "vacuole",
+    "p_value": 2.933727354175897e-05,
+    "intersection_size": 11,
+    "term_size": 15
+   },
+   {
+    "native": "GO:0098852",
+    "name": "lytic vacuole membrane",
+    "p_value": 2.933727354175897e-05,
+    "intersection_size": 11,
+    "term_size": 15
+   },
+   {
+    "native": "GO:0005774",
+    "name": "vacuolar membrane",
+    "p_value": 2.933727354175897e-05,
+    "intersection_size": 11,
+    "term_size": 15
+   },
+   {
+    "native": "GO:0005765",
+    "name": "lysosomal membrane",
+    "p_value": 2.933727354175897e-05,
+    "intersection_size": 11,
+    "term_size": 15
+   },
+   {
+    "native": "GO:0042277",
+    "name": "peptide binding",
+    "p_value": 6.258618355575253e-05,
+    "intersection_size": 10,
+    "term_size": 13
+   },
+   {
+    "native": "GO:0098797",
+    "name": "plasma membrane protein complex",
+    "p_value": 9.387927533362855e-05,
+    "intersection_size": 11,
+    "term_size": 16
+   },
+   {
+    "native": "GO:0042605",
+    "name": "peptide antigen binding",
+    "p_value": 0.000193746550312283,
+    "intersection_size": 9,
+    "term_size": 11
+   },
+   {
+    "native": "GO:0003823",
+    "name": "antigen binding",
+    "p_value": 0.000193746550312283,
+    "intersection_size": 9,
+    "term_size": 11
+   },
+   {
+    "native": "GO:0098796",
+    "name": "membrane protein complex",
+    "p_value": 0.000265991280111947,
+    "intersection_size": 11,
+    "term_size": 17
+   },
+   {
+    "native": "GO:0012506",
+    "name": "vesicle membrane",
+    "p_value": 0.000265991280111947,
+    "intersection_size": 11,
+    "term_size": 17
+   },
+   {
+    "native": "GO:0030659",
+    "name": "cytoplasmic vesicle membrane",
+    "p_value": 0.000265991280111947,
+    "intersection_size": 11,
+    "term_size": 17
+   },
+   {
+    "native": "GO:0002495",
+    "name": "antigen processing and presentation of peptide antigen via MHC class II",
+    "p_value": 0.0002992261732728399,
+    "intersection_size": 10,
+    "term_size": 12
+   },
+   {
+    "native": "GO:0048002",
+    "name": "antigen processing and presentation of peptide antigen",
+    "p_value": 0.0002992261732728399,
+    "intersection_size": 10,
+    "term_size": 12
+   },
+   {
+    "native": "GO:0002478",
+    "name": "antigen processing and presentation of exogenous peptide antigen",
+    "p_value": 0.0002992261732728399,
+    "intersection_size": 10,
+    "term_size": 12
+   },
+   {
+    "native": "GO:0019884",
+    "name": "antigen processing and presentation of exogenous antigen",
+    "p_value": 0.0002992261732728399,
+    "intersection_size": 10,
+    "term_size": 12
+   },
+   {
+    "native": "GO:0019886",
+    "name": "antigen processing and presentation of exogenous peptide antigen via MHC class II",
+    "p_value": 0.0002992261732728399,
+    "intersection_size": 10,
+    "term_size": 12
+   },
+   {
+    "native": "GO:0031902",
+    "name": "late endosome membrane",
+    "p_value": 0.0005570213321478136,
+    "intersection_size": 9,
+    "term_size": 11
+   },
+   {
+    "native": "GO:0005770",
+    "name": "late endosome",
+    "p_value": 0.0006102152896685826,
+    "intersection_size": 10,
+    "term_size": 14
+   },
+   {
+    "native": "GO:0002250",
+    "name": "adaptive immune response",
+    "p_value": 0.0006561345004295995,
+    "intersection_size": 11,
+    "term_size": 16
+   },
+   {
+    "native": "GO:0005768",
+    "name": "endosome",
+    "p_value": 0.0016244467463979663,
+    "intersection_size": 11,
+    "term_size": 19
+   },
+   {
+    "native": "GO:0010008",
+    "name": "endosome membrane",
+    "p_value": 0.0017719713219222382,
+    "intersection_size": 10,
+    "term_size": 15
+   },
+   {
+    "native": "GO:0098588",
+    "name": "bounding membrane of organelle",
+    "p_value": 0.0036098816586621466,
+    "intersection_size": 11,
+    "term_size": 20
+   },
+   {
+    "native": "GO:0002396",
+    "name": "MHC protein complex assembly",
+    "p_value": 0.0038930947453374365,
+    "intersection_size": 9,
+    "term_size": 11
+   },
+   {
+    "native": "GO:0002503",
+    "name": "peptide antigen assembly with MHC class II protein complex",
+    "p_value": 0.0038930947453374365,
+    "intersection_size": 9,
+    "term_size": 11
+   },
+   {
+    "native": "GO:0002501",
+    "name": "peptide antigen assembly with MHC protein complex",
+    "p_value": 0.0038930947453374365,
+    "intersection_size": 9,
+    "term_size": 11
+   },
+   {
+    "native": "GO:0002399",
+    "name": "MHC class II protein complex assembly",
+    "p_value": 0.0038930947453374365,
+    "intersection_size": 9,
+    "term_size": 11
+   },
+   {
+    "native": "GO:0050778",
+    "name": "positive regulation of immune response",
+    "p_value": 0.012384538695608687,
+    "intersection_size": 10,
+    "term_size": 15
+   },
+   {
+    "native": "GO:0031090",
+    "name": "organelle membrane",
+    "p_value": 0.015161502966380995,
+    "intersection_size": 11,
+    "term_size": 22
+   },
+   {
+    "native": "GO:0050870",
+    "name": "positive regulation of T cell activation",
+    "p_value": 0.0319318790209073,
+    "intersection_size": 10,
+    "term_size": 16
+   },
+   {
+    "native": "GO:0051251",
+    "name": "positive regulation of lymphocyte activation",
+    "p_value": 0.0319318790209073,
+    "intersection_size": 10,
+    "term_size": 16
+   },
+   {
+    "native": "GO:0140375",
+    "name": "immune receptor activity",
+    "p_value": 0.06106234604309056,
+    "intersection_size": 6,
+    "term_size": 8
+   },
+   {
+    "native": "GO:0051249",
+    "name": "regulation of lymphocyte activation",
+    "p_value": 0.07489306654903605,
+    "intersection_size": 10,
+    "term_size": 17
+   },
+   {
+    "native": "GO:0050867",
+    "name": "positive regulation of cell activation",
+    "p_value": 0.07489306654903605,
+    "intersection_size": 10,
+    "term_size": 17
+   },
+   {
+    "native": "GO:0050863",
+    "name": "regulation of T cell activation",
+    "p_value": 0.07489306654903605,
+    "intersection_size": 10,
+    "term_size": 17
+   },
+   {
+    "native": "GO:0022409",
+    "name": "positive regulation of cell-cell adhesion",
+    "p_value": 0.07489306654903605,
+    "intersection_size": 10,
+    "term_size": 17
+   },
+   {
+    "native": "GO:0002696",
+    "name": "positive regulation of leukocyte activation",
+    "p_value": 0.07489306654903605,
+    "intersection_size": 10,
+    "term_size": 17
+   },
+   {
+    "native": "GO:0007159",
+    "name": "leukocyte cell-cell adhesion",
+    "p_value": 0.07489306654903605,
+    "intersection_size": 10,
+    "term_size": 17
+   },
+   {
+    "native": "GO:1903037",
+    "name": "regulation of leukocyte cell-cell adhesion",
+    "p_value": 0.07489306654903605,
+    "intersection_size": 10,
+    "term_size": 17
+   },
+   {
+    "native": "GO:1903039",
+    "name": "positive regulation of leukocyte cell-cell adhesion",
+    "p_value": 0.07489306654903605,
+    "intersection_size": 10,
+    "term_size": 17
+   },
+   {
+    "native": "GO:0022407",
+    "name": "regulation of cell-cell adhesion",
+    "p_value": 0.16253388910641747,
+    "intersection_size": 10,
+    "term_size": 18
+   },
+   {
+    "native": "GO:0002694",
+    "name": "regulation of leukocyte activation",
+    "p_value": 0.16253388910641747,
+    "intersection_size": 10,
+    "term_size": 18
+   },
+   {
+    "native": "GO:0045785",
+    "name": "positive regulation of cell adhesion",
+    "p_value": 0.16253388910641747,
+    "intersection_size": 10,
+    "term_size": 18
+   },
+   {
+    "native": "GO:0050776",
+    "name": "regulation of immune response",
+    "p_value": 0.16253388910641747,
+    "intersection_size": 10,
+    "term_size": 18
+   },
+   {
+    "native": "GO:0098576",
+    "name": "lumenal side of membrane",
+    "p_value": 0.17555424487388538,
+    "intersection_size": 6,
+    "term_size": 8
+   },
+   {
+    "native": "GO:0098553",
+    "name": "lumenal side of endoplasmic reticulum membrane",
+    "p_value": 0.17555424487388538,
+    "intersection_size": 6,
+    "term_size": 8
+   },
+   {
+    "native": "GO:0030134",
+    "name": "COPII-coated ER to Golgi transport vesicle",
+    "p_value": 0.17555424487388538,
+    "intersection_size": 6,
+    "term_size": 8
+   },
+   {
+    "native": "GO:0030658",
+    "name": "transport vesicle membrane",
+    "p_value": 0.17555424487388538,
+    "intersection_size": 6,
+    "term_size": 8
+   },
+   {
+    "native": "GO:0012507",
+    "name": "ER to Golgi transport vesicle membrane",
+    "p_value": 0.17555424487388538,
+    "intersection_size": 6,
+    "term_size": 8
+   },
+   {
+    "native": "GO:0006955",
+    "name": "immune response",
+    "p_value": 0.203100966820479,
+    "intersection_size": 11,
+    "term_size": 23
+   },
+   {
+    "native": "GO:0032395",
+    "name": "MHC class II receptor activity",
+    "p_value": 0.2721971502459304,
+    "intersection_size": 5,
+    "term_size": 7
+   },
+   {
+    "native": "GO:0044877",
+    "name": "protein-containing complex binding",
+    "p_value": 0.28257042891189255,
+    "intersection_size": 10,
+    "term_size": 24
+   },
+   {
+    "native": "GO:0050865",
+    "name": "regulation of cell activation",
+    "p_value": 0.33051213234140125,
+    "intersection_size": 10,
+    "term_size": 19
+   },
+   {
+    "native": "GO:0065003",
+    "name": "protein-containing complex assembly",
+    "p_value": 0.33051213234140125,
+    "intersection_size": 10,
+    "term_size": 19
+   },
+   {
+    "native": "GO:0038023",
+    "name": "signaling receptor activity",
+    "p_value": 0.350102505807406,
+    "intersection_size": 6,
+    "term_size": 10
+   },
+   {
+    "native": "GO:0060089",
+    "name": "molecular transducer activity",
+    "p_value": 0.350102505807406,
+    "intersection_size": 6,
+    "term_size": 10
+   },
+   {
+    "native": "GO:0004888",
+    "name": "transmembrane signaling receptor activity",
+    "p_value": 0.350102505807406,
+    "intersection_size": 6,
+    "term_size": 10
+   },
+   {
+    "native": "GO:0005802",
+    "name": "trans-Golgi network",
+    "p_value": 0.4612072152659631,
+    "intersection_size": 6,
+    "term_size": 9
+   },
+   {
+    "native": "GO:0032588",
+    "name": "trans-Golgi network membrane",
+    "p_value": 0.4612072152659631,
+    "intersection_size": 6,
+    "term_size": 9
+   },
+   {
+    "native": "GO:0030133",
+    "name": "transport vesicle",
+    "p_value": 0.4612072152659631,
+    "intersection_size": 6,
+    "term_size": 9
+   },
+   {
+    "native": "GO:0098791",
+    "name": "Golgi apparatus subcompartment",
+    "p_value": 0.4612072152659631,
+    "intersection_size": 6,
+    "term_size": 9
+   },
+   {
+    "native": "GO:0046649",
+    "name": "lymphocyte activation",
+    "p_value": 0.6357943309162825,
+    "intersection_size": 10,
+    "term_size": 20
+   },
+   {
+    "native": "GO:0043933",
+    "name": "protein-containing complex organization",
+    "p_value": 0.6357943309162825,
+    "intersection_size": 10,
+    "term_size": 20
+   },
+   {
+    "native": "GO:0042110",
+    "name": "T cell activation",
+    "p_value": 0.6357943309162825,
+    "intersection_size": 10,
+    "term_size": 20
+   },
+   {
+    "native": "GO:0030155",
+    "name": "regulation of cell adhesion",
+    "p_value": 0.6357943309162825,
+    "intersection_size": 10,
+    "term_size": 20
+   },
+   {
+    "native": "GO:0002684",
+    "name": "positive regulation of immune system process",
+    "p_value": 0.6357943309162825,
+    "intersection_size": 10,
+    "term_size": 20
+   },
+   {
+    "native": "GO:0031410",
+    "name": "cytoplasmic vesicle",
+    "p_value": 0.7435825351894226,
+    "intersection_size": 11,
+    "term_size": 29
+   },
+   {
+    "native": "GO:0097708",
+    "name": "intracellular vesicle",
+    "p_value": 0.7435825351894226,
+    "intersection_size": 11,
+    "term_size": 29
+   },
+   {
+    "native": "GO:2000147",
+    "name": "positive regulation of cell motility",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 11
+   },
+   {
+    "native": "GO:2000146",
+    "name": "negative regulation of cell motility",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 5
+   },
+   {
+    "native": "GO:2000145",
+    "name": "regulation of cell motility",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 14
+   },
+   {
+    "native": "GO:2000107",
+    "name": "negative regulation of leukocyte apoptotic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:2000106",
+    "name": "regulation of leukocyte apoptotic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 2
+   },
+   {
+    "native": "GO:2000026",
+    "name": "regulation of multicellular organismal development",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 20
+   },
+   {
+    "native": "GO:1990266",
+    "name": "neutrophil migration",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:1904951",
+    "name": "positive regulation of establishment of protein localization",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 5
+   },
+   {
+    "native": "GO:1903902",
+    "name": "positive regulation of viral life cycle",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:1903900",
+    "name": "regulation of viral life cycle",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 3
+   },
+   {
+    "native": "GO:1903829",
+    "name": "positive regulation of protein localization",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 9
+   },
+   {
+    "native": "GO:1903708",
+    "name": "positive regulation of hemopoiesis",
+    "p_value": 1.0,
+    "intersection_size": 3,
+    "term_size": 5
+   },
+   {
+    "native": "GO:1903707",
+    "name": "negative regulation of hemopoiesis",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 3
+   },
+   {
+    "native": "GO:1903706",
+    "name": "regulation of hemopoiesis",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 10
+   },
+   {
+    "native": "GO:1903532",
+    "name": "positive regulation of secretion by cell",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 3
+   },
+   {
+    "native": "GO:1903530",
+    "name": "regulation of secretion by cell",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 6
+   },
+   {
+    "native": "GO:0030247",
+    "name": "polysaccharide binding",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0030246",
+    "name": "carbohydrate binding",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0019955",
+    "name": "cytokine binding",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0019899",
+    "name": "enzyme binding",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 18
+   },
+   {
+    "native": "GO:0005515",
+    "name": "protein binding",
+    "p_value": 1.0,
+    "intersection_size": 9,
+    "term_size": 40
+   },
+   {
+    "native": "GO:0005488",
+    "name": "binding",
+    "p_value": 1.0,
+    "intersection_size": 10,
+    "term_size": 41
+   },
+   {
+    "native": "GO:0005200",
+    "name": "structural constituent of cytoskeleton",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0005198",
+    "name": "structural molecule activity",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 7
+   },
+   {
+    "native": "GO:0005102",
+    "name": "signaling receptor binding",
+    "p_value": 1.0,
+    "intersection_size": 3,
+    "term_size": 11
+   },
+   {
+    "native": "GO:0004896",
+    "name": "cytokine receptor activity",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0003674",
+    "name": "molecular_function",
+    "p_value": 1.0,
+    "intersection_size": 10,
+    "term_size": 41
+   },
+   {
+    "native": "GO:2000341",
+    "name": "regulation of chemokine (C-X-C motif) ligand 2 production",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0098552",
+    "name": "side of membrane",
+    "p_value": 1.0,
+    "intersection_size": 6,
+    "term_size": 12
+   },
+   {
+    "native": "GO:0071944",
+    "name": "cell periphery",
+    "p_value": 1.0,
+    "intersection_size": 11,
+    "term_size": 33
+   },
+   {
+    "native": "GO:0070062",
+    "name": "extracellular exosome",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 13
+   },
+   {
+    "native": "GO:0070013",
+    "name": "intracellular organelle lumen",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 25
+   },
+   {
+    "native": "GO:0065010",
+    "name": "extracellular membrane-bounded organelle",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 13
+   },
+   {
+    "native": "GO:0045334",
+    "name": "clathrin-coated endocytic vesicle",
+    "p_value": 1.0,
+    "intersection_size": 6,
+    "term_size": 11
+   },
+   {
+    "native": "GO:0045111",
+    "name": "intermediate filament cytoskeleton",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0044754",
+    "name": "autolysosome",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0043235",
+    "name": "receptor complex",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 5
+   },
+   {
+    "native": "GO:0043233",
+    "name": "organelle lumen",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 25
+   },
+   {
+    "native": "GO:0043232",
+    "name": "intracellular membraneless organelle",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 15
+   },
+   {
+    "native": "GO:0043231",
+    "name": "intracellular membrane-bounded organelle",
+    "p_value": 1.0,
+    "intersection_size": 11,
+    "term_size": 42
+   },
+   {
+    "native": "GO:0043230",
+    "name": "extracellular organelle",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 13
+   },
+   {
+    "native": "GO:0043229",
+    "name": "intracellular organelle",
+    "p_value": 1.0,
+    "intersection_size": 11,
+    "term_size": 42
+   },
+   {
+    "native": "GO:0043228",
+    "name": "membraneless organelle",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 15
+   },
+   {
+    "native": "GO:0043227",
+    "name": "membrane-bounded organelle",
+    "p_value": 1.0,
+    "intersection_size": 11,
+    "term_size": 42
+   },
+   {
+    "native": "GO:0043226",
+    "name": "organelle",
+    "p_value": 1.0,
+    "intersection_size": 11,
+    "term_size": 42
+   },
+   {
+    "native": "GO:0043202",
+    "name": "lysosomal lumen",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0042175",
+    "name": "nuclear outer membrane-endoplasmic reticulum membrane network",
+    "p_value": 1.0,
+    "intersection_size": 6,
+    "term_size": 12
+   },
+   {
+    "native": "GO:0035693",
+    "name": "NOS2-CD74 complex",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0035692",
+    "name": "macrophage migration inhibitory factor receptor complex",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0032991",
+    "name": "protein-containing complex",
+    "p_value": 1.0,
+    "intersection_size": 11,
+    "term_size": 36
+   },
+   {
+    "native": "GO:0031984",
+    "name": "organelle subcompartment",
+    "p_value": 1.0,
+    "intersection_size": 6,
+    "term_size": 13
+   },
+   {
+    "native": "GO:0031982",
+    "name": "vesicle",
+    "p_value": 1.0,
+    "intersection_size": 11,
+    "term_size": 32
+   },
+   {
+    "native": "GO:0031974",
+    "name": "membrane-enclosed lumen",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 25
+   },
+   {
+    "native": "GO:0001775",
+    "name": "cell activation",
+    "p_value": 1.0,
+    "intersection_size": 10,
+    "term_size": 25
+   },
+   {
+    "native": "GO:0001678",
+    "name": "intracellular glucose homeostasis",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 3
+   },
+   {
+    "native": "GO:0001516",
+    "name": "prostaglandin biosynthetic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0000165",
+    "name": "MAPK cascade",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 13
+   },
+   {
+    "native": "GO:1903561",
+    "name": "extracellular vesicle",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 13
+   },
+   {
+    "native": "GO:0120281",
+    "name": "autolysosome membrane",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0110165",
+    "name": "cellular anatomical structure",
+    "p_value": 1.0,
+    "intersection_size": 11,
+    "term_size": 42
+   },
+   {
+    "native": "GO:0099513",
+    "name": "polymeric cytoskeletal fiber",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0099512",
+    "name": "supramolecular fiber",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 6
+   },
+   {
+    "native": "GO:0099081",
+    "name": "supramolecular polymer",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 6
+   },
+   {
+    "native": "GO:0099080",
+    "name": "supramolecular complex",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 7
+   },
+   {
+    "native": "GO:0098827",
+    "name": "endoplasmic reticulum subcompartment",
+    "p_value": 1.0,
+    "intersection_size": 6,
+    "term_size": 12
+   },
+   {
+    "native": "GO:0001934",
+    "name": "positive regulation of protein phosphorylation",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 9
+   },
+   {
+    "native": "GO:0001932",
+    "name": "regulation of protein phosphorylation",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 11
+   },
+   {
+    "native": "GO:0001916",
+    "name": "positive regulation of T cell mediated cytotoxicity",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0001914",
+    "name": "regulation of T cell mediated cytotoxicity",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0001913",
+    "name": "T cell mediated cytotoxicity",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0001912",
+    "name": "positive regulation of leukocyte mediated cytotoxicity",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0001910",
+    "name": "regulation of leukocyte mediated cytotoxicity",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0001909",
+    "name": "leukocyte mediated cytotoxicity",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0001906",
+    "name": "cell killing",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 3
+   },
+   {
+    "native": "GO:0001819",
+    "name": "positive regulation of cytokine production",
+    "p_value": 1.0,
+    "intersection_size": 3,
+    "term_size": 11
+   },
+   {
+    "native": "GO:0001818",
+    "name": "negative regulation of cytokine production",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 3
+   },
+   {
+    "native": "GO:0001817",
+    "name": "regulation of cytokine production",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 12
+   },
+   {
+    "native": "GO:0001816",
+    "name": "cytokine production",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 12
+   },
+   {
+    "native": "GO:0001783",
+    "name": "B cell apoptotic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0001782",
+    "name": "B cell homeostasis",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0001776",
+    "name": "leukocyte homeostasis",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 3
+   },
+   {
+    "native": "GO:0002367",
+    "name": "cytokine production involved in immune response",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0002366",
+    "name": "leukocyte activation involved in immune response",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 9
+   },
+   {
+    "native": "GO:0002361",
+    "name": "CD4-positive, CD25-positive, alpha-beta regulatory T cell differentiation",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0002347",
+    "name": "response to tumor cell",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0002292",
+    "name": "T cell differentiation involved in immune response",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0002291",
+    "name": "T cell activation via T cell receptor contact with antigen bound to MHC molecule on antigen presenting cell",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0002286",
+    "name": "T cell activation involved in immune response",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 7
+   },
+   {
+    "native": "GO:0002285",
+    "name": "lymphocyte activation involved in immune response",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 7
+   },
+   {
+    "native": "GO:0002274",
+    "name": "myeloid leukocyte activation",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 6
+   },
+   {
+    "native": "GO:0002263",
+    "name": "cell activation involved in immune response",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 10
+   },
+   {
+    "native": "GO:0002260",
+    "name": "lymphocyte homeostasis",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0002253",
+    "name": "activation of immune response",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0002252",
+    "name": "immune effector process",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 11
+   },
+   {
+    "native": "GO:0001961",
+    "name": "positive regulation of cytokine-mediated signaling pathway",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0001959",
+    "name": "regulation of cytokine-mediated signaling pathway",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0002483",
+    "name": "antigen processing and presentation of endogenous peptide antigen",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0002469",
+    "name": "myeloid dendritic cell antigen processing and presentation",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0002468",
+    "name": "dendritic cell antigen processing and presentation",
+    "p_value": 1.0,
+    "intersection_size": 3,
+    "term_size": 3
+   },
+   {
+    "native": "GO:0002460",
+    "name": "adaptive immune response based on somatic recombination of immune receptors built from immunoglobulin superfamily domains",
+    "p_value": 1.0,
+    "intersection_size": 3,
+    "term_size": 6
+   },
+   {
+    "native": "GO:0002456",
+    "name": "T cell mediated immunity",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 3
+   },
+   {
+    "native": "GO:0002449",
+    "name": "lymphocyte mediated immunity",
+    "p_value": 1.0,
+    "intersection_size": 3,
+    "term_size": 5
+   },
+   {
+    "native": "GO:0002443",
+    "name": "leukocyte mediated immunity",
+    "p_value": 1.0,
+    "intersection_size": 3,
+    "term_size": 6
+   },
+   {
+    "native": "GO:0002440",
+    "name": "production of molecular mediator of immune response",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0002437",
+    "name": "inflammatory response to antigenic stimulus",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0002429",
+    "name": "immune response-activating cell surface receptor signaling pathway",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0002424",
+    "name": "T cell mediated immune response to tumor cell",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0002418",
+    "name": "immune response to tumor cell",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0002376",
+    "name": "immune system process",
+    "p_value": 1.0,
+    "intersection_size": 11,
+    "term_size": 29
+   },
+   {
+    "native": "GO:0031901",
+    "name": "early endosome membrane",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0030669",
+    "name": "clathrin-coated endocytic vesicle membrane",
+    "p_value": 1.0,
+    "intersection_size": 6,
+    "term_size": 11
+   },
+   {
+    "native": "GO:0030666",
+    "name": "endocytic vesicle membrane",
+    "p_value": 1.0,
+    "intersection_size": 6,
+    "term_size": 11
+   },
+   {
+    "native": "GO:0030665",
+    "name": "clathrin-coated vesicle membrane",
+    "p_value": 1.0,
+    "intersection_size": 6,
+    "term_size": 11
+   },
+   {
+    "native": "GO:0030662",
+    "name": "coated vesicle membrane",
+    "p_value": 1.0,
+    "intersection_size": 6,
+    "term_size": 11
+   },
+   {
+    "native": "GO:0030139",
+    "name": "endocytic vesicle",
+    "p_value": 1.0,
+    "intersection_size": 6,
+    "term_size": 15
+   },
+   {
+    "native": "GO:0030136",
+    "name": "clathrin-coated vesicle",
+    "p_value": 1.0,
+    "intersection_size": 6,
+    "term_size": 11
+   },
+   {
+    "native": "GO:0030135",
+    "name": "coated vesicle",
+    "p_value": 1.0,
+    "intersection_size": 6,
+    "term_size": 11
+   },
+   {
+    "native": "GO:0016020",
+    "name": "membrane",
+    "p_value": 1.0,
+    "intersection_size": 11,
+    "term_size": 37
+   },
+   {
+    "native": "GO:0002587",
+    "name": "negative regulation of antigen processing and presentation of peptide antigen via MHC class II",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0002586",
+    "name": "regulation of antigen processing and presentation of peptide antigen via MHC class II",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0002584",
+    "name": "negative regulation of antigen processing and presentation of peptide antigen",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0002583",
+    "name": "regulation of antigen processing and presentation of peptide antigen",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0002581",
+    "name": "negative regulation of antigen processing and presentation of peptide or polysaccharide antigen via MHC class II",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0002580",
+    "name": "regulation of antigen processing and presentation of peptide or polysaccharide antigen via MHC class II",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0002579",
+    "name": "positive regulation of antigen processing and presentation",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0002578",
+    "name": "negative regulation of antigen processing and presentation",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0002577",
+    "name": "regulation of antigen processing and presentation",
+    "p_value": 1.0,
+    "intersection_size": 3,
+    "term_size": 3
+   },
+   {
+    "native": "GO:0002573",
+    "name": "myeloid leukocyte differentiation",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 9
+   },
+   {
+    "native": "GO:0002521",
+    "name": "leukocyte differentiation",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 15
+   },
+   {
+    "native": "GO:0002491",
+    "name": "antigen processing and presentation of endogenous peptide antigen via MHC class II",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0002702",
+    "name": "positive regulation of production of molecular mediator of immune response",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 3
+   },
+   {
+    "native": "GO:0002700",
+    "name": "regulation of production of molecular mediator of immune response",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0002699",
+    "name": "positive regulation of immune effector process",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 7
+   },
+   {
+    "native": "GO:0002697",
+    "name": "regulation of immune effector process",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 8
+   },
+   {
+    "native": "GO:0002695",
+    "name": "negative regulation of leukocyte activation",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0002690",
+    "name": "positive regulation of leukocyte chemotaxis",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 3
+   },
+   {
+    "native": "GO:0002688",
+    "name": "regulation of leukocyte chemotaxis",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 3
+   },
+   {
+    "native": "GO:0002687",
+    "name": "positive regulation of leukocyte migration",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 5
+   },
+   {
+    "native": "GO:0002685",
+    "name": "regulation of leukocyte migration",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 6
+   },
+   {
+    "native": "GO:0002683",
+    "name": "negative regulation of immune system process",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 9
+   },
+   {
+    "native": "GO:0002682",
+    "name": "regulation of immune system process",
+    "p_value": 1.0,
+    "intersection_size": 10,
+    "term_size": 25
+   },
+   {
+    "native": "GO:0002606",
+    "name": "positive regulation of dendritic cell antigen processing and presentation",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0002604",
+    "name": "regulation of dendritic cell antigen processing and presentation",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0002792",
+    "name": "negative regulation of peptide secretion",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0002791",
+    "name": "regulation of peptide secretion",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 6
+   },
+   {
+    "native": "GO:0002790",
+    "name": "peptide secretion",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 6
+   },
+   {
+    "native": "GO:0002768",
+    "name": "immune response-regulating cell surface receptor signaling pathway",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 3
+   },
+   {
+    "native": "GO:0002764",
+    "name": "immune response-regulating signaling pathway",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 5
+   },
+   {
+    "native": "GO:0002763",
+    "name": "positive regulation of myeloid leukocyte differentiation",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 3
+   },
+   {
+    "native": "GO:0002761",
+    "name": "regulation of myeloid leukocyte differentiation",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 6
+   },
+   {
+    "native": "GO:0002757",
+    "name": "immune response-activating signaling pathway",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0002720",
+    "name": "positive regulation of cytokine production involved in immune response",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 3
+   },
+   {
+    "native": "GO:0002718",
+    "name": "regulation of cytokine production involved in immune response",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0002711",
+    "name": "positive regulation of T cell mediated immunity",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 3
+   },
+   {
+    "native": "GO:0002709",
+    "name": "regulation of T cell mediated immunity",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 3
+   },
+   {
+    "native": "GO:0002708",
+    "name": "positive regulation of lymphocyte mediated immunity",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0002706",
+    "name": "regulation of lymphocyte mediated immunity",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0002705",
+    "name": "positive regulation of leukocyte mediated immunity",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 5
+   },
+   {
+    "native": "GO:0002703",
+    "name": "regulation of leukocyte mediated immunity",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 5
+   },
+   {
+    "native": "GO:0002861",
+    "name": "regulation of inflammatory response to antigenic stimulus",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0002842",
+    "name": "positive regulation of T cell mediated immune response to tumor cell",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0002840",
+    "name": "regulation of T cell mediated immune response to tumor cell",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0002839",
+    "name": "positive regulation of immune response to tumor cell",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0002837",
+    "name": "regulation of immune response to tumor cell",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0002836",
+    "name": "positive regulation of response to tumor cell",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0002834",
+    "name": "regulation of response to tumor cell",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0002833",
+    "name": "positive regulation of response to biotic stimulus",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 3
+   },
+   {
+    "native": "GO:0002831",
+    "name": "regulation of response to biotic stimulus",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 5
+   },
+   {
+    "native": "GO:0002830",
+    "name": "positive regulation of type 2 immune response",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0002828",
+    "name": "regulation of type 2 immune response",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0002824",
+    "name": "positive regulation of adaptive immune response based on somatic recombination of immune receptors built from immunoglobulin superfamily domains",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0002822",
+    "name": "regulation of adaptive immune response based on somatic recombination of immune receptors built from immunoglobulin superfamily domains",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0002821",
+    "name": "positive regulation of adaptive immune response",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0002819",
+    "name": "regulation of adaptive immune response",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0002793",
+    "name": "positive regulation of peptide secretion",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 3
+   },
+   {
+    "native": "GO:0006636",
+    "name": "unsaturated fatty acid biosynthetic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0006633",
+    "name": "fatty acid biosynthetic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0006631",
+    "name": "fatty acid metabolic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0006629",
+    "name": "lipid metabolic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 10
+   },
+   {
+    "native": "GO:0006468",
+    "name": "protein phosphorylation",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 11
+   },
+   {
+    "native": "GO:0006355",
+    "name": "regulation of DNA-templated transcription",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 18
+   },
+   {
+    "native": "GO:0006351",
+    "name": "DNA-templated transcription",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 18
+   },
+   {
+    "native": "GO:0006139",
+    "name": "nucleobase-containing compound metabolic process",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 21
+   },
+   {
+    "native": "GO:0006082",
+    "name": "organic acid metabolic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 8
+   },
+   {
+    "native": "GO:0003008",
+    "name": "system process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 18
+   },
+   {
+    "native": "GO:0002906",
+    "name": "negative regulation of mature B cell apoptotic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0002905",
+    "name": "regulation of mature B cell apoptotic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0002903",
+    "name": "negative regulation of B cell apoptotic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0002902",
+    "name": "regulation of B cell apoptotic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0002901",
+    "name": "mature B cell apoptotic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0002862",
+    "name": "negative regulation of inflammatory response to antigenic stimulus",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0006996",
+    "name": "organelle organization",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 19
+   },
+   {
+    "native": "GO:0006974",
+    "name": "DNA damage response",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 10
+   },
+   {
+    "native": "GO:0006959",
+    "name": "humoral immune response",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0006954",
+    "name": "inflammatory response",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 11
+   },
+   {
+    "native": "GO:0006952",
+    "name": "defense response",
+    "p_value": 1.0,
+    "intersection_size": 3,
+    "term_size": 15
+   },
+   {
+    "native": "GO:0006950",
+    "name": "response to stress",
+    "p_value": 1.0,
+    "intersection_size": 3,
+    "term_size": 29
+   },
+   {
+    "native": "GO:0006935",
+    "name": "chemotaxis",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0006915",
+    "name": "apoptotic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 20
+   },
+   {
+    "native": "GO:0006886",
+    "name": "intracellular protein transport",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0006810",
+    "name": "transport",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 23
+   },
+   {
+    "native": "GO:0006796",
+    "name": "phosphate-containing compound metabolic process",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 15
+   },
+   {
+    "native": "GO:0006793",
+    "name": "phosphorus metabolic process",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 15
+   },
+   {
+    "native": "GO:0006693",
+    "name": "prostaglandin metabolic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0006692",
+    "name": "prostanoid metabolic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0006690",
+    "name": "icosanoid metabolic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0008284",
+    "name": "positive regulation of cell population proliferation",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 15
+   },
+   {
+    "native": "GO:0008283",
+    "name": "cell population proliferation",
+    "p_value": 1.0,
+    "intersection_size": 5,
+    "term_size": 21
+   },
+   {
+    "native": "GO:0008219",
+    "name": "cell death",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 21
+   },
+   {
+    "native": "GO:0008152",
+    "name": "metabolic process",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 32
+   },
+   {
+    "native": "GO:0008150",
+    "name": "biological_process",
+    "p_value": 1.0,
+    "intersection_size": 11,
+    "term_size": 42
+   },
+   {
+    "native": "GO:0008104",
+    "name": "intracellular protein localization",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 17
+   },
+   {
+    "native": "GO:0007275",
+    "name": "multicellular organism development",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 28
+   },
+   {
+    "native": "GO:0007267",
+    "name": "cell-cell signaling",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 13
+   },
+   {
+    "native": "GO:0007249",
+    "name": "canonical NF-kappaB signal transduction",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 6
+   },
+   {
+    "native": "GO:0007166",
+    "name": "cell surface receptor signaling pathway",
+    "p_value": 1.0,
+    "intersection_size": 3,
+    "term_size": 18
+   },
+   {
+    "native": "GO:0007165",
+    "name": "signal transduction",
+    "p_value": 1.0,
+    "intersection_size": 3,
+    "term_size": 26
+   },
+   {
+    "native": "GO:0007162",
+    "name": "negative regulation of cell adhesion",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 6
+   },
+   {
+    "native": "GO:0007155",
+    "name": "cell adhesion",
+    "p_value": 1.0,
+    "intersection_size": 10,
+    "term_size": 25
+   },
+   {
+    "native": "GO:0007154",
+    "name": "cell communication",
+    "p_value": 1.0,
+    "intersection_size": 3,
+    "term_size": 27
+   },
+   {
+    "native": "GO:0007010",
+    "name": "cytoskeleton organization",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 14
+   },
+   {
+    "native": "GO:0009889",
+    "name": "regulation of biosynthetic process",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 27
+   },
+   {
+    "native": "GO:0009888",
+    "name": "tissue development",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 18
+   },
+   {
+    "native": "GO:0009749",
+    "name": "response to glucose",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 3
+   },
+   {
+    "native": "GO:0009746",
+    "name": "response to hexose",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0009743",
+    "name": "response to carbohydrate",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0009617",
+    "name": "response to bacterium",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0009607",
+    "name": "response to biotic stimulus",
+    "p_value": 1.0,
+    "intersection_size": 3,
+    "term_size": 10
+   },
+   {
+    "native": "GO:0009605",
+    "name": "response to external stimulus",
+    "p_value": 1.0,
+    "intersection_size": 3,
+    "term_size": 17
+   },
+   {
+    "native": "GO:0009595",
+    "name": "detection of biotic stimulus",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0009306",
+    "name": "protein secretion",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 6
+   },
+   {
+    "native": "GO:0009059",
+    "name": "macromolecule biosynthetic process",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 27
+   },
+   {
+    "native": "GO:0009058",
+    "name": "biosynthetic process",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 30
+   },
+   {
+    "native": "GO:0008630",
+    "name": "intrinsic apoptotic signaling pathway in response to DNA damage",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 5
+   },
+   {
+    "native": "GO:0008610",
+    "name": "lipid biosynthetic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 9
+   },
+   {
+    "native": "GO:0008544",
+    "name": "epidermis development",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0008285",
+    "name": "negative regulation of cell population proliferation",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 10
+   },
+   {
+    "native": "GO:0010565",
+    "name": "regulation of ketone metabolic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0010562",
+    "name": "positive regulation of phosphorus metabolic process",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 11
+   },
+   {
+    "native": "GO:0010558",
+    "name": "negative regulation of macromolecule biosynthetic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 14
+   },
+   {
+    "native": "GO:0010557",
+    "name": "positive regulation of macromolecule biosynthetic process",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 25
+   },
+   {
+    "native": "GO:0010556",
+    "name": "regulation of macromolecule biosynthetic process",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 26
+   },
+   {
+    "native": "GO:0010468",
+    "name": "regulation of gene expression",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 26
+   },
+   {
+    "native": "GO:0010467",
+    "name": "gene expression",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 27
+   },
+   {
+    "native": "GO:0009987",
+    "name": "cellular process",
+    "p_value": 1.0,
+    "intersection_size": 10,
+    "term_size": 41
+   },
+   {
+    "native": "GO:0009968",
+    "name": "negative regulation of signal transduction",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 13
+   },
+   {
+    "native": "GO:0009967",
+    "name": "positive regulation of signal transduction",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 19
+   },
+   {
+    "native": "GO:0009966",
+    "name": "regulation of signal transduction",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 23
+   },
+   {
+    "native": "GO:0009914",
+    "name": "hormone transport",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 5
+   },
+   {
+    "native": "GO:0009893",
+    "name": "positive regulation of metabolic process",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 27
+   },
+   {
+    "native": "GO:0009892",
+    "name": "negative regulation of metabolic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 17
+   },
+   {
+    "native": "GO:0009891",
+    "name": "positive regulation of biosynthetic process",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 26
+   },
+   {
+    "native": "GO:0009890",
+    "name": "negative regulation of biosynthetic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 14
+   },
+   {
+    "native": "GO:0016032",
+    "name": "viral process",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 6
+   },
+   {
+    "native": "GO:0015833",
+    "name": "peptide transport",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 6
+   },
+   {
+    "native": "GO:0015031",
+    "name": "protein transport",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 11
+   },
+   {
+    "native": "GO:0012501",
+    "name": "programmed cell death",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 21
+   },
+   {
+    "native": "GO:0010935",
+    "name": "regulation of macrophage cytokine production",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0010934",
+    "name": "macrophage cytokine production",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0010817",
+    "name": "regulation of hormone levels",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 5
+   },
+   {
+    "native": "GO:0010721",
+    "name": "negative regulation of cell development",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 8
+   },
+   {
+    "native": "GO:0010720",
+    "name": "positive regulation of cell development",
+    "p_value": 1.0,
+    "intersection_size": 3,
+    "term_size": 11
+   },
+   {
+    "native": "GO:0010648",
+    "name": "negative regulation of cell communication",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 14
+   },
+   {
+    "native": "GO:0010647",
+    "name": "positive regulation of cell communication",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 20
+   },
+   {
+    "native": "GO:0010646",
+    "name": "regulation of cell communication",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 24
+   },
+   {
+    "native": "GO:0010629",
+    "name": "negative regulation of gene expression",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 14
+   },
+   {
+    "native": "GO:0010628",
+    "name": "positive regulation of gene expression",
+    "p_value": 1.0,
+    "intersection_size": 3,
+    "term_size": 18
+   },
+   {
+    "native": "GO:0010605",
+    "name": "negative regulation of macromolecule metabolic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 16
+   },
+   {
+    "native": "GO:0010604",
+    "name": "positive regulation of macromolecule metabolic process",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 25
+   },
+   {
+    "native": "GO:0019725",
+    "name": "cellular homeostasis",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 9
+   },
+   {
+    "native": "GO:0019724",
+    "name": "B cell mediated immunity",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0019538",
+    "name": "protein metabolic process",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 18
+   },
+   {
+    "native": "GO:0019222",
+    "name": "regulation of metabolic process",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 27
+   },
+   {
+    "native": "GO:0019221",
+    "name": "cytokine-mediated signaling pathway",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 7
+   },
+   {
+    "native": "GO:0019219",
+    "name": "regulation of nucleobase-containing compound metabolic process",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 19
+   },
+   {
+    "native": "GO:0019217",
+    "name": "regulation of fatty acid metabolic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0019216",
+    "name": "regulation of lipid metabolic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 7
+   },
+   {
+    "native": "GO:0019058",
+    "name": "viral life cycle",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 5
+   },
+   {
+    "native": "GO:0016477",
+    "name": "cell migration",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 14
+   },
+   {
+    "native": "GO:0016310",
+    "name": "phosphorylation",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 11
+   },
+   {
+    "native": "GO:0016070",
+    "name": "RNA metabolic process",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 19
+   },
+   {
+    "native": "GO:0016064",
+    "name": "immunoglobulin mediated immune response",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0016053",
+    "name": "organic acid biosynthetic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0016045",
+    "name": "detection of bacterium",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0016043",
+    "name": "cellular component organization",
+    "p_value": 1.0,
+    "intersection_size": 10,
+    "term_size": 35
+   },
+   {
+    "native": "GO:0012505",
+    "name": "endomembrane system",
+    "p_value": 1.0,
+    "intersection_size": 11,
+    "term_size": 33
+   },
+   {
+    "native": "GO:0009986",
+    "name": "cell surface",
+    "p_value": 1.0,
+    "intersection_size": 6,
+    "term_size": 13
+   },
+   {
+    "native": "GO:0009897",
+    "name": "external side of plasma membrane",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0005886",
+    "name": "plasma membrane",
+    "p_value": 1.0,
+    "intersection_size": 11,
+    "term_size": 30
+   },
+   {
+    "native": "GO:0005882",
+    "name": "intermediate filament",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0005856",
+    "name": "cytoskeleton",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 11
+   },
+   {
+    "native": "GO:0005794",
+    "name": "Golgi apparatus",
+    "p_value": 1.0,
+    "intersection_size": 6,
+    "term_size": 16
+   },
+   {
+    "native": "GO:0005789",
+    "name": "endoplasmic reticulum membrane",
+    "p_value": 1.0,
+    "intersection_size": 6,
+    "term_size": 12
+   },
+   {
+    "native": "GO:0005783",
+    "name": "endoplasmic reticulum",
+    "p_value": 1.0,
+    "intersection_size": 6,
+    "term_size": 22
+   },
+   {
+    "native": "GO:0005775",
+    "name": "vacuolar lumen",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0030073",
+    "name": "insulin secretion",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0030072",
+    "name": "peptide hormone secretion",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 5
+   },
+   {
+    "native": "GO:0023061",
+    "name": "signal release",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 5
+   },
+   {
+    "native": "GO:0023057",
+    "name": "negative regulation of signaling",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 14
+   },
+   {
+    "native": "GO:0023056",
+    "name": "positive regulation of signaling",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 20
+   },
+   {
+    "native": "GO:0023052",
+    "name": "signaling",
+    "p_value": 1.0,
+    "intersection_size": 3,
+    "term_size": 27
+   },
+   {
+    "native": "GO:0023051",
+    "name": "regulation of signaling",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 24
+   },
+   {
+    "native": "GO:0022607",
+    "name": "cellular component assembly",
+    "p_value": 1.0,
+    "intersection_size": 10,
+    "term_size": 26
+   },
+   {
+    "native": "GO:0022408",
+    "name": "negative regulation of cell-cell adhesion",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0019883",
+    "name": "antigen processing and presentation of endogenous antigen",
+    "p_value": 1.0,
+    "intersection_size": 3,
+    "term_size": 3
+   },
+   {
+    "native": "GO:0019752",
+    "name": "carboxylic acid metabolic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 8
+   },
+   {
+    "native": "GO:0030890",
+    "name": "positive regulation of B cell proliferation",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0030888",
+    "name": "regulation of B cell proliferation",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0030595",
+    "name": "leukocyte chemotaxis",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0030593",
+    "name": "neutrophil chemotaxis",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0030336",
+    "name": "negative regulation of cell migration",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 5
+   },
+   {
+    "native": "GO:0030335",
+    "name": "positive regulation of cell migration",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 11
+   },
+   {
+    "native": "GO:0030334",
+    "name": "regulation of cell migration",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 14
+   },
+   {
+    "native": "GO:0030330",
+    "name": "DNA damage response, signal transduction by p53 class mediator",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0030225",
+    "name": "macrophage differentiation",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 3
+   },
+   {
+    "native": "GO:0030224",
+    "name": "monocyte differentiation",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0030217",
+    "name": "T cell differentiation",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 10
+   },
+   {
+    "native": "GO:0030154",
+    "name": "cell differentiation",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 27
+   },
+   {
+    "native": "GO:0030099",
+    "name": "myeloid cell differentiation",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 9
+   },
+   {
+    "native": "GO:0030098",
+    "name": "lymphocyte differentiation",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 10
+   },
+   {
+    "native": "GO:0030097",
+    "name": "hemopoiesis",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 16
+   },
+   {
+    "native": "GO:0032602",
+    "name": "chemokine production",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0032502",
+    "name": "developmental process",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 28
+   },
+   {
+    "native": "GO:0032501",
+    "name": "multicellular organismal process",
+    "p_value": 1.0,
+    "intersection_size": 10,
+    "term_size": 38
+   },
+   {
+    "native": "GO:0032103",
+    "name": "positive regulation of response to external stimulus",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 6
+   },
+   {
+    "native": "GO:0032102",
+    "name": "negative regulation of response to external stimulus",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 6
+   },
+   {
+    "native": "GO:0032101",
+    "name": "regulation of response to external stimulus",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 11
+   },
+   {
+    "native": "GO:0032024",
+    "name": "positive regulation of insulin secretion",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0031647",
+    "name": "regulation of protein stability",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 6
+   },
+   {
+    "native": "GO:0031401",
+    "name": "positive regulation of protein modification process",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 10
+   },
+   {
+    "native": "GO:0031399",
+    "name": "regulation of protein modification process",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 12
+   },
+   {
+    "native": "GO:0031394",
+    "name": "positive regulation of prostaglandin biosynthetic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0031392",
+    "name": "regulation of prostaglandin biosynthetic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0031348",
+    "name": "negative regulation of defense response",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0031347",
+    "name": "regulation of defense response",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 8
+   },
+   {
+    "native": "GO:0031343",
+    "name": "positive regulation of cell killing",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0031341",
+    "name": "regulation of cell killing",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0032757",
+    "name": "positive regulation of interleukin-8 production",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 3
+   },
+   {
+    "native": "GO:0032755",
+    "name": "positive regulation of interleukin-6 production",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0032729",
+    "name": "positive regulation of type II interferon production",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 3
+   },
+   {
+    "native": "GO:0032722",
+    "name": "positive regulation of chemokine production",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0032689",
+    "name": "negative regulation of type II interferon production",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0032677",
+    "name": "regulation of interleukin-8 production",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 3
+   },
+   {
+    "native": "GO:0032675",
+    "name": "regulation of interleukin-6 production",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0032673",
+    "name": "regulation of interleukin-4 production",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0032653",
+    "name": "regulation of interleukin-10 production",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0032649",
+    "name": "regulation of type II interferon production",
+    "p_value": 1.0,
+    "intersection_size": 3,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0032642",
+    "name": "regulation of chemokine production",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0032637",
+    "name": "interleukin-8 production",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 3
+   },
+   {
+    "native": "GO:0032635",
+    "name": "interleukin-6 production",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0032633",
+    "name": "interleukin-4 production",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0032613",
+    "name": "interleukin-10 production",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0032609",
+    "name": "type II interferon production",
+    "p_value": 1.0,
+    "intersection_size": 3,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0033559",
+    "name": "unsaturated fatty acid metabolic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0033554",
+    "name": "cellular response to stress",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 18
+   },
+   {
+    "native": "GO:0033500",
+    "name": "carbohydrate homeostasis",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 6
+   },
+   {
+    "native": "GO:0033077",
+    "name": "T cell differentiation in thymus",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 3
+   },
+   {
+    "native": "GO:0033036",
+    "name": "macromolecule localization",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 17
+   },
+   {
+    "native": "GO:0032946",
+    "name": "positive regulation of mononuclear cell proliferation",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 5
+   },
+   {
+    "native": "GO:0032945",
+    "name": "negative regulation of mononuclear cell proliferation",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0032944",
+    "name": "regulation of mononuclear cell proliferation",
+    "p_value": 1.0,
+    "intersection_size": 5,
+    "term_size": 6
+   },
+   {
+    "native": "GO:0032943",
+    "name": "mononuclear cell proliferation",
+    "p_value": 1.0,
+    "intersection_size": 5,
+    "term_size": 7
+   },
+   {
+    "native": "GO:0032940",
+    "name": "secretion by cell",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 7
+   },
+   {
+    "native": "GO:0032880",
+    "name": "regulation of protein localization",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 13
+   },
+   {
+    "native": "GO:0032879",
+    "name": "regulation of localization",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 17
+   },
+   {
+    "native": "GO:0032831",
+    "name": "positive regulation of CD4-positive, CD25-positive, alpha-beta regulatory T cell differentiation",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0032829",
+    "name": "regulation of CD4-positive, CD25-positive, alpha-beta regulatory T cell differentiation",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0032787",
+    "name": "monocarboxylic acid metabolic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 8
+   },
+   {
+    "native": "GO:0032774",
+    "name": "RNA biosynthetic process",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 18
+   },
+   {
+    "native": "GO:0040017",
+    "name": "positive regulation of locomotion",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 11
+   },
+   {
+    "native": "GO:0040013",
+    "name": "negative regulation of locomotion",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 5
+   },
+   {
+    "native": "GO:0040012",
+    "name": "regulation of locomotion",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 14
+   },
+   {
+    "native": "GO:0040011",
+    "name": "locomotion",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 14
+   },
+   {
+    "native": "GO:0036211",
+    "name": "protein modification process",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 14
+   },
+   {
+    "native": "GO:0035774",
+    "name": "positive regulation of insulin secretion involved in cellular response to glucose stimulus",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0035773",
+    "name": "insulin secretion involved in cellular response to glucose stimulus",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0035710",
+    "name": "CD4-positive, alpha-beta T cell activation",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0035691",
+    "name": "macrophage migration inhibitory factor signaling pathway",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0035592",
+    "name": "establishment of protein localization to extracellular region",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 6
+   },
+   {
+    "native": "GO:0035556",
+    "name": "intracellular signal transduction",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 22
+   },
+   {
+    "native": "GO:0034654",
+    "name": "nucleobase-containing compound biosynthetic process",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 18
+   },
+   {
+    "native": "GO:0034341",
+    "name": "response to type II interferon",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 5
+   },
+   {
+    "native": "GO:0034284",
+    "name": "response to monosaccharide",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0034097",
+    "name": "response to cytokine",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 12
+   },
+   {
+    "native": "GO:0033674",
+    "name": "positive regulation of kinase activity",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0042325",
+    "name": "regulation of phosphorylation",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 11
+   },
+   {
+    "native": "GO:0042304",
+    "name": "regulation of fatty acid biosynthetic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0042221",
+    "name": "response to chemical",
+    "p_value": 1.0,
+    "intersection_size": 3,
+    "term_size": 28
+   },
+   {
+    "native": "GO:0042180",
+    "name": "ketone metabolic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0042130",
+    "name": "negative regulation of T cell proliferation",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0042129",
+    "name": "regulation of T cell proliferation",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 5
+   },
+   {
+    "native": "GO:0042127",
+    "name": "regulation of cell population proliferation",
+    "p_value": 1.0,
+    "intersection_size": 5,
+    "term_size": 21
+   },
+   {
+    "native": "GO:0042116",
+    "name": "macrophage activation",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 5
+   },
+   {
+    "native": "GO:0042113",
+    "name": "B cell activation",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0042102",
+    "name": "positive regulation of T cell proliferation",
+    "p_value": 1.0,
+    "intersection_size": 3,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0042100",
+    "name": "B cell proliferation",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0042098",
+    "name": "T cell proliferation",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 6
+   },
+   {
+    "native": "GO:0042093",
+    "name": "T-helper cell differentiation",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0042092",
+    "name": "type 2 immune response",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0042088",
+    "name": "T-helper 1 type immune response",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0043207",
+    "name": "response to external biotic stimulus",
+    "p_value": 1.0,
+    "intersection_size": 3,
+    "term_size": 10
+   },
+   {
+    "native": "GO:0043170",
+    "name": "macromolecule metabolic process",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 27
+   },
+   {
+    "native": "GO:0043123",
+    "name": "positive regulation of canonical NF-kappaB signal transduction",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 6
+   },
+   {
+    "native": "GO:0043122",
+    "name": "regulation of canonical NF-kappaB signal transduction",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 6
+   },
+   {
+    "native": "GO:0043085",
+    "name": "positive regulation of catalytic activity",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 6
+   },
+   {
+    "native": "GO:0043069",
+    "name": "negative regulation of programmed cell death",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 15
+   },
+   {
+    "native": "GO:0043067",
+    "name": "regulation of programmed cell death",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 17
+   },
+   {
+    "native": "GO:0043066",
+    "name": "negative regulation of apoptotic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 14
+   },
+   {
+    "native": "GO:0043030",
+    "name": "regulation of macrophage activation",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0042981",
+    "name": "regulation of apoptotic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 16
+   },
+   {
+    "native": "GO:0042771",
+    "name": "intrinsic apoptotic signaling pathway in response to DNA damage by p53 class mediator",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 3
+   },
+   {
+    "native": "GO:0042770",
+    "name": "signal transduction in response to DNA damage",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0042593",
+    "name": "glucose homeostasis",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 6
+   },
+   {
+    "native": "GO:0042592",
+    "name": "homeostatic process",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 17
+   },
+   {
+    "native": "GO:0042330",
+    "name": "taxis",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0042327",
+    "name": "positive regulation of phosphorylation",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 9
+   },
+   {
+    "native": "GO:0043903",
+    "name": "regulation of biological process involved in symbiotic interaction",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0043549",
+    "name": "regulation of kinase activity",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 6
+   },
+   {
+    "native": "GO:0043518",
+    "name": "negative regulation of DNA damage response, signal transduction by p53 class mediator",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0043516",
+    "name": "regulation of DNA damage response, signal transduction by p53 class mediator",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0043436",
+    "name": "oxoacid metabolic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 8
+   },
+   {
+    "native": "GO:0043412",
+    "name": "macromolecule modification",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 14
+   },
+   {
+    "native": "GO:0043410",
+    "name": "positive regulation of MAPK cascade",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 11
+   },
+   {
+    "native": "GO:0043408",
+    "name": "regulation of MAPK cascade",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 12
+   },
+   {
+    "native": "GO:0043383",
+    "name": "negative T cell selection",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0043382",
+    "name": "positive regulation of memory T cell differentiation",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0043380",
+    "name": "regulation of memory T cell differentiation",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0043379",
+    "name": "memory T cell differentiation",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0043372",
+    "name": "positive regulation of CD4-positive, alpha-beta T cell differentiation",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0043370",
+    "name": "regulation of CD4-positive, alpha-beta T cell differentiation",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0043368",
+    "name": "positive T cell selection",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 3
+   },
+   {
+    "native": "GO:0043367",
+    "name": "CD4-positive, alpha-beta T cell differentiation",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0045184",
+    "name": "establishment of protein localization",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 13
+   },
+   {
+    "native": "GO:0045087",
+    "name": "innate immune response",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 8
+   },
+   {
+    "native": "GO:0045066",
+    "name": "regulatory T cell differentiation",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0045061",
+    "name": "thymic T cell selection",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0045060",
+    "name": "negative thymic T cell selection",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0045059",
+    "name": "positive thymic T cell selection",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0045058",
+    "name": "T cell selection",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 3
+   },
+   {
+    "native": "GO:0044419",
+    "name": "biological process involved in interspecies interaction between organisms",
+    "p_value": 1.0,
+    "intersection_size": 3,
+    "term_size": 11
+   },
+   {
+    "native": "GO:0044409",
+    "name": "symbiont entry into host",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 3
+   },
+   {
+    "native": "GO:0044403",
+    "name": "biological process involved in symbiotic interaction",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 3
+   },
+   {
+    "native": "GO:0044283",
+    "name": "small molecule biosynthetic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 6
+   },
+   {
+    "native": "GO:0044281",
+    "name": "small molecule metabolic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 11
+   },
+   {
+    "native": "GO:0044238",
+    "name": "primary metabolic process",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 24
+   },
+   {
+    "native": "GO:0044093",
+    "name": "positive regulation of molecular function",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 8
+   },
+   {
+    "native": "GO:0044085",
+    "name": "cellular component biogenesis",
+    "p_value": 1.0,
+    "intersection_size": 10,
+    "term_size": 26
+   },
+   {
+    "native": "GO:0045655",
+    "name": "regulation of monocyte differentiation",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 3
+   },
+   {
+    "native": "GO:0045639",
+    "name": "positive regulation of myeloid cell differentiation",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 3
+   },
+   {
+    "native": "GO:0045637",
+    "name": "regulation of myeloid cell differentiation",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 6
+   },
+   {
+    "native": "GO:0045622",
+    "name": "regulation of T-helper cell differentiation",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0045621",
+    "name": "positive regulation of lymphocyte differentiation",
+    "p_value": 1.0,
+    "intersection_size": 3,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0045620",
+    "name": "negative regulation of lymphocyte differentiation",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0045619",
+    "name": "regulation of lymphocyte differentiation",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 6
+   },
+   {
+    "native": "GO:0045597",
+    "name": "positive regulation of cell differentiation",
+    "p_value": 1.0,
+    "intersection_size": 3,
+    "term_size": 15
+   },
+   {
+    "native": "GO:0045596",
+    "name": "negative regulation of cell differentiation",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 11
+   },
+   {
+    "native": "GO:0045595",
+    "name": "regulation of cell differentiation",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 22
+   },
+   {
+    "native": "GO:0045591",
+    "name": "positive regulation of regulatory T cell differentiation",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0045589",
+    "name": "regulation of regulatory T cell differentiation",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0045582",
+    "name": "positive regulation of T cell differentiation",
+    "p_value": 1.0,
+    "intersection_size": 3,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0045581",
+    "name": "negative regulation of T cell differentiation",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0045580",
+    "name": "regulation of T cell differentiation",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 6
+   },
+   {
+    "native": "GO:0045321",
+    "name": "leukocyte activation",
+    "p_value": 1.0,
+    "intersection_size": 10,
+    "term_size": 23
+   },
+   {
+    "native": "GO:0046635",
+    "name": "positive regulation of alpha-beta T cell activation",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0046634",
+    "name": "regulation of alpha-beta T cell activation",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0046632",
+    "name": "alpha-beta T cell differentiation",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0046631",
+    "name": "alpha-beta T cell activation",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 5
+   },
+   {
+    "native": "GO:0046598",
+    "name": "positive regulation of viral entry into host cell",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0046596",
+    "name": "regulation of viral entry into host cell",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0046457",
+    "name": "prostanoid biosynthetic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0046456",
+    "name": "icosanoid biosynthetic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0046394",
+    "name": "carboxylic acid biosynthetic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0045937",
+    "name": "positive regulation of phosphate metabolic process",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 11
+   },
+   {
+    "native": "GO:0045923",
+    "name": "positive regulation of fatty acid metabolic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0045893",
+    "name": "positive regulation of DNA-templated transcription",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 17
+   },
+   {
+    "native": "GO:0045834",
+    "name": "positive regulation of lipid metabolic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 6
+   },
+   {
+    "native": "GO:0045723",
+    "name": "positive regulation of fatty acid biosynthetic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0045657",
+    "name": "positive regulation of monocyte differentiation",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0048146",
+    "name": "positive regulation of fibroblast proliferation",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 3
+   },
+   {
+    "native": "GO:0048145",
+    "name": "regulation of fibroblast proliferation",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0048144",
+    "name": "fibroblast proliferation",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0046907",
+    "name": "intracellular transport",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 8
+   },
+   {
+    "native": "GO:0046903",
+    "name": "secretion",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 9
+   },
+   {
+    "native": "GO:0046890",
+    "name": "regulation of lipid biosynthetic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 7
+   },
+   {
+    "native": "GO:0046889",
+    "name": "positive regulation of lipid biosynthetic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 6
+   },
+   {
+    "native": "GO:0046887",
+    "name": "positive regulation of hormone secretion",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 3
+   },
+   {
+    "native": "GO:0046883",
+    "name": "regulation of hormone secretion",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 5
+   },
+   {
+    "native": "GO:0046879",
+    "name": "hormone secretion",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 5
+   },
+   {
+    "native": "GO:0046718",
+    "name": "symbiont entry into host cell",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 3
+   },
+   {
+    "native": "GO:0046651",
+    "name": "lymphocyte proliferation",
+    "p_value": 1.0,
+    "intersection_size": 5,
+    "term_size": 7
+   },
+   {
+    "native": "GO:0046638",
+    "name": "positive regulation of alpha-beta T cell differentiation",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0046637",
+    "name": "regulation of alpha-beta T cell differentiation",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0050670",
+    "name": "regulation of lymphocyte proliferation",
+    "p_value": 1.0,
+    "intersection_size": 5,
+    "term_size": 6
+   },
+   {
+    "native": "GO:0048878",
+    "name": "chemical homeostasis",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 11
+   },
+   {
+    "native": "GO:0048872",
+    "name": "homeostasis of number of cells",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 7
+   },
+   {
+    "native": "GO:0048871",
+    "name": "multicellular organismal-level homeostasis",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 12
+   },
+   {
+    "native": "GO:0048870",
+    "name": "cell motility",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 15
+   },
+   {
+    "native": "GO:0048869",
+    "name": "cellular developmental process",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 27
+   },
+   {
+    "native": "GO:0048856",
+    "name": "anatomical structure development",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 28
+   },
+   {
+    "native": "GO:0048585",
+    "name": "negative regulation of response to stimulus",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 15
+   },
+   {
+    "native": "GO:0048584",
+    "name": "positive regulation of response to stimulus",
+    "p_value": 1.0,
+    "intersection_size": 10,
+    "term_size": 31
+   },
+   {
+    "native": "GO:0048583",
+    "name": "regulation of response to stimulus",
+    "p_value": 1.0,
+    "intersection_size": 10,
+    "term_size": 35
+   },
+   {
+    "native": "GO:0048524",
+    "name": "positive regulation of viral process",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0048523",
+    "name": "negative regulation of cellular process",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 25
+   },
+   {
+    "native": "GO:0048522",
+    "name": "positive regulation of cellular process",
+    "p_value": 1.0,
+    "intersection_size": 10,
+    "term_size": 37
+   },
+   {
+    "native": "GO:0048519",
+    "name": "negative regulation of biological process",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 28
+   },
+   {
+    "native": "GO:0048518",
+    "name": "positive regulation of biological process",
+    "p_value": 1.0,
+    "intersection_size": 10,
+    "term_size": 37
+   },
+   {
+    "native": "GO:0048468",
+    "name": "cell development",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 25
+   },
+   {
+    "native": "GO:0050821",
+    "name": "protein stabilization",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 5
+   },
+   {
+    "native": "GO:0050796",
+    "name": "regulation of insulin secretion",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0050794",
+    "name": "regulation of cellular process",
+    "p_value": 1.0,
+    "intersection_size": 10,
+    "term_size": 39
+   },
+   {
+    "native": "GO:0050793",
+    "name": "regulation of developmental process",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 26
+   },
+   {
+    "native": "GO:0050792",
+    "name": "regulation of viral process",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 3
+   },
+   {
+    "native": "GO:0050790",
+    "name": "regulation of catalytic activity",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 10
+   },
+   {
+    "native": "GO:0050789",
+    "name": "regulation of biological process",
+    "p_value": 1.0,
+    "intersection_size": 10,
+    "term_size": 39
+   },
+   {
+    "native": "GO:0050777",
+    "name": "negative regulation of immune response",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0050728",
+    "name": "negative regulation of inflammatory response",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0050727",
+    "name": "regulation of inflammatory response",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 7
+   },
+   {
+    "native": "GO:0050714",
+    "name": "positive regulation of protein secretion",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 3
+   },
+   {
+    "native": "GO:0050708",
+    "name": "regulation of protein secretion",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 6
+   },
+   {
+    "native": "GO:0050672",
+    "name": "negative regulation of lymphocyte proliferation",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0050671",
+    "name": "positive regulation of lymphocyte proliferation",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 5
+   },
+   {
+    "native": "GO:0005771",
+    "name": "multivesicular body",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 3
+   },
+   {
+    "native": "GO:0005769",
+    "name": "early endosome",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 5
+   },
+   {
+    "native": "GO:0005767",
+    "name": "secondary lysosome",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0005737",
+    "name": "cytoplasm",
+    "p_value": 1.0,
+    "intersection_size": 11,
+    "term_size": 42
+   },
+   {
+    "native": "GO:0005634",
+    "name": "nucleus",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 21
+   },
+   {
+    "native": "GO:0005622",
+    "name": "intracellular anatomical structure",
+    "p_value": 1.0,
+    "intersection_size": 11,
+    "term_size": 42
+   },
+   {
+    "native": "GO:0005615",
+    "name": "extracellular space",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 21
+   },
+   {
+    "native": "GO:0005576",
+    "name": "extracellular region",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 23
+   },
+   {
+    "native": "GO:0005575",
+    "name": "cellular_component",
+    "p_value": 1.0,
+    "intersection_size": 11,
+    "term_size": 42
+   },
+   {
+    "native": "GO:0001772",
+    "name": "immunological synapse",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0000139",
+    "name": "Golgi membrane",
+    "p_value": 1.0,
+    "intersection_size": 6,
+    "term_size": 12
+   },
+   {
+    "native": "GO:0050921",
+    "name": "positive regulation of chemotaxis",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 3
+   },
+   {
+    "native": "GO:0050920",
+    "name": "regulation of chemotaxis",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 3
+   },
+   {
+    "native": "GO:0050900",
+    "name": "leukocyte migration",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 7
+   },
+   {
+    "native": "GO:0050896",
+    "name": "response to stimulus",
+    "p_value": 1.0,
+    "intersection_size": 11,
+    "term_size": 42
+   },
+   {
+    "native": "GO:0050890",
+    "name": "cognition",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 10
+   },
+   {
+    "native": "GO:0050877",
+    "name": "nervous system process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 15
+   },
+   {
+    "native": "GO:0050871",
+    "name": "positive regulation of B cell activation",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0050868",
+    "name": "negative regulation of T cell activation",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0050866",
+    "name": "negative regulation of cell activation",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 3
+   },
+   {
+    "native": "GO:0050864",
+    "name": "regulation of B cell activation",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0050852",
+    "name": "T cell receptor signaling pathway",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0050851",
+    "name": "antigen receptor-mediated signaling pathway",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0051241",
+    "name": "negative regulation of multicellular organismal process",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 15
+   },
+   {
+    "native": "GO:0051240",
+    "name": "positive regulation of multicellular organismal process",
+    "p_value": 1.0,
+    "intersection_size": 10,
+    "term_size": 29
+   },
+   {
+    "native": "GO:0051239",
+    "name": "regulation of multicellular organismal process",
+    "p_value": 1.0,
+    "intersection_size": 10,
+    "term_size": 37
+   },
+   {
+    "native": "GO:0051234",
+    "name": "establishment of localization",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 24
+   },
+   {
+    "native": "GO:0051223",
+    "name": "regulation of protein transport",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 6
+   },
+   {
+    "native": "GO:0051222",
+    "name": "positive regulation of protein transport",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 5
+   },
+   {
+    "native": "GO:0051179",
+    "name": "localization",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 25
+   },
+   {
+    "native": "GO:0051174",
+    "name": "regulation of phosphorus metabolic process",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 14
+   },
+   {
+    "native": "GO:0051094",
+    "name": "positive regulation of developmental process",
+    "p_value": 1.0,
+    "intersection_size": 3,
+    "term_size": 19
+   },
+   {
+    "native": "GO:0051093",
+    "name": "negative regulation of developmental process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 14
+   },
+   {
+    "native": "GO:0051051",
+    "name": "negative regulation of transport",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 6
+   },
+   {
+    "native": "GO:0051050",
+    "name": "positive regulation of transport",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 10
+   },
+   {
+    "native": "GO:0051049",
+    "name": "regulation of transport",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 13
+   },
+   {
+    "native": "GO:0051048",
+    "name": "negative regulation of secretion",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0051047",
+    "name": "positive regulation of secretion",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 3
+   },
+   {
+    "native": "GO:0051046",
+    "name": "regulation of secretion",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 7
+   },
+   {
+    "native": "GO:0051716",
+    "name": "cellular response to stimulus",
+    "p_value": 1.0,
+    "intersection_size": 3,
+    "term_size": 32
+   },
+   {
+    "native": "GO:0051707",
+    "name": "response to other organism",
+    "p_value": 1.0,
+    "intersection_size": 3,
+    "term_size": 10
+   },
+   {
+    "native": "GO:0051701",
+    "name": "biological process involved in interaction with host",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 3
+   },
+   {
+    "native": "GO:0051649",
+    "name": "establishment of localization in cell",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 13
+   },
+   {
+    "native": "GO:0051641",
+    "name": "cellular localization",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 16
+   },
+   {
+    "native": "GO:0051606",
+    "name": "detection of stimulus",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 3
+   },
+   {
+    "native": "GO:0051338",
+    "name": "regulation of transferase activity",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 6
+   },
+   {
+    "native": "GO:0051262",
+    "name": "protein tetramerization",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0051259",
+    "name": "protein complex oligomerization",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0051254",
+    "name": "positive regulation of RNA metabolic process",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 17
+   },
+   {
+    "native": "GO:0051252",
+    "name": "regulation of RNA metabolic process",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 18
+   },
+   {
+    "native": "GO:0051250",
+    "name": "negative regulation of lymphocyte activation",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0051247",
+    "name": "positive regulation of protein metabolic process",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 14
+   },
+   {
+    "native": "GO:0051246",
+    "name": "regulation of protein metabolic process",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 17
+   },
+   {
+    "native": "GO:0065007",
+    "name": "biological regulation",
+    "p_value": 1.0,
+    "intersection_size": 10,
+    "term_size": 39
+   },
+   {
+    "native": "GO:0062013",
+    "name": "positive regulation of small molecule metabolic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 7
+   },
+   {
+    "native": "GO:0062012",
+    "name": "regulation of small molecule metabolic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 9
+   },
+   {
+    "native": "GO:0061178",
+    "name": "regulation of insulin secretion involved in cellular response to glucose stimulus",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0061082",
+    "name": "myeloid leukocyte cytokine production",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0061081",
+    "name": "positive regulation of myeloid leukocyte cytokine production involved in immune response",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0060907",
+    "name": "positive regulation of macrophage cytokine production",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0060760",
+    "name": "positive regulation of response to cytokine stimulus",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0060759",
+    "name": "regulation of response to cytokine stimulus",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0060341",
+    "name": "regulation of cellular localization",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 7
+   },
+   {
+    "native": "GO:0060326",
+    "name": "cell chemotaxis",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0060284",
+    "name": "regulation of cell development",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 19
+   },
+   {
+    "native": "GO:0060255",
+    "name": "regulation of macromolecule metabolic process",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 26
+   },
+   {
+    "native": "GO:0055082",
+    "name": "intracellular chemical homeostasis",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 7
+   },
+   {
+    "native": "GO:0052372",
+    "name": "modulation by symbiont of entry into host",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0071322",
+    "name": "cellular response to carbohydrate stimulus",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 3
+   },
+   {
+    "native": "GO:0070887",
+    "name": "cellular response to chemical stimulus",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 26
+   },
+   {
+    "native": "GO:0070665",
+    "name": "positive regulation of leukocyte proliferation",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 6
+   },
+   {
+    "native": "GO:0070664",
+    "name": "negative regulation of leukocyte proliferation",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0070663",
+    "name": "regulation of leukocyte proliferation",
+    "p_value": 1.0,
+    "intersection_size": 5,
+    "term_size": 7
+   },
+   {
+    "native": "GO:0070661",
+    "name": "leukocyte proliferation",
+    "p_value": 1.0,
+    "intersection_size": 5,
+    "term_size": 8
+   },
+   {
+    "native": "GO:0070374",
+    "name": "positive regulation of ERK1 and ERK2 cascade",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 7
+   },
+   {
+    "native": "GO:0070372",
+    "name": "regulation of ERK1 and ERK2 cascade",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 7
+   },
+   {
+    "native": "GO:0070371",
+    "name": "ERK1 and ERK2 cascade",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 8
+   },
+   {
+    "native": "GO:0070229",
+    "name": "negative regulation of lymphocyte apoptotic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0070228",
+    "name": "regulation of lymphocyte apoptotic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0070227",
+    "name": "lymphocyte apoptotic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 3
+   },
+   {
+    "native": "GO:0070206",
+    "name": "protein trimerization",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0070201",
+    "name": "regulation of establishment of protein localization",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 6
+   },
+   {
+    "native": "GO:0065009",
+    "name": "regulation of molecular function",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 12
+   },
+   {
+    "native": "GO:0065008",
+    "name": "regulation of biological quality",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 23
+   },
+   {
+    "native": "GO:0072567",
+    "name": "chemokine (C-X-C motif) ligand 2 production",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0072332",
+    "name": "intrinsic apoptotic signaling pathway by p53 class mediator",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0072331",
+    "name": "signal transduction by p53 class mediator",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 6
+   },
+   {
+    "native": "GO:0072330",
+    "name": "monocarboxylic acid biosynthetic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0071887",
+    "name": "leukocyte apoptotic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0071840",
+    "name": "cellular component organization or biogenesis",
+    "p_value": 1.0,
+    "intersection_size": 10,
+    "term_size": 35
+   },
+   {
+    "native": "GO:0071705",
+    "name": "nitrogen compound transport",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 9
+   },
+   {
+    "native": "GO:0071692",
+    "name": "protein localization to extracellular region",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 6
+   },
+   {
+    "native": "GO:0071624",
+    "name": "positive regulation of granulocyte chemotaxis",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0071622",
+    "name": "regulation of granulocyte chemotaxis",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0071621",
+    "name": "granulocyte chemotaxis",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0071346",
+    "name": "cellular response to type II interferon",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0071345",
+    "name": "cellular response to cytokine stimulus",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 11
+   },
+   {
+    "native": "GO:0071333",
+    "name": "cellular response to glucose stimulus",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 3
+   },
+   {
+    "native": "GO:0071331",
+    "name": "cellular response to hexose stimulus",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 3
+   },
+   {
+    "native": "GO:0071326",
+    "name": "cellular response to monosaccharide stimulus",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 3
+   },
+   {
+    "native": "GO:0097530",
+    "name": "granulocyte migration",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0097529",
+    "name": "myeloid leukocyte migration",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 4
+   },
+   {
+    "native": "GO:0097193",
+    "name": "intrinsic apoptotic signaling pathway",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 9
+   },
+   {
+    "native": "GO:0097190",
+    "name": "apoptotic signaling pathway",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 10
+   },
+   {
+    "native": "GO:0090715",
+    "name": "immunological memory formation process",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0090713",
+    "name": "immunological memory process",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0090304",
+    "name": "nucleic acid metabolic process",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 20
+   },
+   {
+    "native": "GO:0090277",
+    "name": "positive regulation of peptide hormone secretion",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 3
+   },
+   {
+    "native": "GO:0090276",
+    "name": "regulation of peptide hormone secretion",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 5
+   },
+   {
+    "native": "GO:0090087",
+    "name": "regulation of peptide transport",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 6
+   },
+   {
+    "native": "GO:0090023",
+    "name": "positive regulation of neutrophil chemotaxis",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0090022",
+    "name": "regulation of neutrophil chemotaxis",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0080135",
+    "name": "regulation of cellular response to stress",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 10
+   },
+   {
+    "native": "GO:0080134",
+    "name": "regulation of response to stress",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 19
+   },
+   {
+    "native": "GO:0080090",
+    "name": "regulation of primary metabolic process",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 22
+   },
+   {
+    "native": "GO:0075294",
+    "name": "positive regulation by symbiont of entry into host",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:1902107",
+    "name": "positive regulation of leukocyte differentiation",
+    "p_value": 1.0,
+    "intersection_size": 3,
+    "term_size": 5
+   },
+   {
+    "native": "GO:1902106",
+    "name": "negative regulation of leukocyte differentiation",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 3
+   },
+   {
+    "native": "GO:1902105",
+    "name": "regulation of leukocyte differentiation",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 10
+   },
+   {
+    "native": "GO:1901797",
+    "name": "negative regulation of signal transduction by p53 class mediator",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:1901796",
+    "name": "regulation of signal transduction by p53 class mediator",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 5
+   },
+   {
+    "native": "GO:1901701",
+    "name": "cellular response to oxygen-containing compound",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 17
+   },
+   {
+    "native": "GO:1901700",
+    "name": "response to oxygen-containing compound",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 21
+   },
+   {
+    "native": "GO:1901652",
+    "name": "response to peptide",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 12
+   },
+   {
+    "native": "GO:0141187",
+    "name": "nucleic acid biosynthetic process",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 18
+   },
+   {
+    "native": "GO:0141124",
+    "name": "intracellular signaling cassette",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 20
+   },
+   {
+    "native": "GO:0140546",
+    "name": "defense response to symbiont",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 8
+   },
+   {
+    "native": "GO:0140352",
+    "name": "export from cell",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 7
+   },
+   {
+    "native": "GO:0098609",
+    "name": "cell-cell adhesion",
+    "p_value": 1.0,
+    "intersection_size": 10,
+    "term_size": 21
+   },
+   {
+    "native": "GO:0098581",
+    "name": "detection of external biotic stimulus",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0098543",
+    "name": "detection of other organism",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0098542",
+    "name": "defense response to other organism",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 8
+   },
+   {
+    "native": "GO:1903131",
+    "name": "mononuclear cell differentiation",
+    "p_value": 1.0,
+    "intersection_size": 4,
+    "term_size": 13
+   },
+   {
+    "native": "GO:1903038",
+    "name": "negative regulation of leukocyte cell-cell adhesion",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 3
+   },
+   {
+    "native": "GO:1902680",
+    "name": "positive regulation of RNA biosynthetic process",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 17
+   },
+   {
+    "native": "GO:1902624",
+    "name": "positive regulation of neutrophil migration",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:1902622",
+    "name": "regulation of neutrophil migration",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:1902533",
+    "name": "positive regulation of intracellular signal transduction",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 18
+   },
+   {
+    "native": "GO:1902532",
+    "name": "negative regulation of intracellular signal transduction",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 8
+   },
+   {
+    "native": "GO:1902531",
+    "name": "regulation of intracellular signal transduction",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 21
+   },
+   {
+    "native": "GO:1902254",
+    "name": "negative regulation of intrinsic apoptotic signaling pathway by p53 class mediator",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:1902253",
+    "name": "regulation of intrinsic apoptotic signaling pathway by p53 class mediator",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 3
+   },
+   {
+    "native": "GO:1902230",
+    "name": "negative regulation of intrinsic apoptotic signaling pathway in response to DNA damage",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:1902229",
+    "name": "regulation of intrinsic apoptotic signaling pathway in response to DNA damage",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:1902166",
+    "name": "negative regulation of intrinsic apoptotic signaling pathway in response to DNA damage by p53 class mediator",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:1902165",
+    "name": "regulation of intrinsic apoptotic signaling pathway in response to DNA damage by p53 class mediator",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0050998",
+    "name": "nitric-oxide synthase binding",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 3
+   },
+   {
+    "native": "GO:0044183",
+    "name": "protein folding chaperone",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0042802",
+    "name": "identical protein binding",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 25
+   },
+   {
+    "native": "GO:0042658",
+    "name": "MHC class II protein binding, via antigen binding groove",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0042609",
+    "name": "CD4 receptor binding",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0042608",
+    "name": "T cell receptor binding",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:0042289",
+    "name": "MHC class II protein binding",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0042287",
+    "name": "MHC protein binding",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0035718",
+    "name": "macrophage migration inhibitory factor binding",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:2000343",
+    "name": "positive regulation of chemokine (C-X-C motif) ligand 2 production",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 2
+   },
+   {
+    "native": "GO:2000446",
+    "name": "regulation of macrophage migration inhibitory factor signaling pathway",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:2000448",
+    "name": "positive regulation of macrophage migration inhibitory factor signaling pathway",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:2000514",
+    "name": "regulation of CD4-positive, alpha-beta T cell activation",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:2000516",
+    "name": "positive regulation of CD4-positive, alpha-beta T cell activation",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 2
+   },
+   {
+    "native": "GO:2001141",
+    "name": "regulation of RNA biosynthetic process",
+    "p_value": 1.0,
+    "intersection_size": 2,
+    "term_size": 18
+   },
+   {
+    "native": "GO:2001188",
+    "name": "regulation of T cell activation via T cell receptor contact with antigen bound to MHC molecule on antigen presenting cell",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:2001190",
+    "name": "positive regulation of T cell activation via T cell receptor contact with antigen bound to MHC molecule on antigen presenting cell",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:2001233",
+    "name": "regulation of apoptotic signaling pathway",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 9
+   },
+   {
+    "native": "GO:2001234",
+    "name": "negative regulation of apoptotic signaling pathway",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 6
+   },
+   {
+    "native": "GO:2001242",
+    "name": "regulation of intrinsic apoptotic signaling pathway",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 6
+   },
+   {
+    "native": "GO:2001243",
+    "name": "negative regulation of intrinsic apoptotic signaling pathway",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 3
+   },
+   {
+    "native": "GO:2001279",
+    "name": "regulation of unsaturated fatty acid biosynthetic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:2001280",
+    "name": "positive regulation of unsaturated fatty acid biosynthetic process",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 1
+   },
+   {
+    "native": "GO:0001540",
+    "name": "amyloid-beta binding",
+    "p_value": 1.0,
+    "intersection_size": 1,
+    "term_size": 2
+   }
+  ],
+  "meta": {
+   "version": "e114_eg62_p19_9dc92ac8"
+  }
+ }
+}

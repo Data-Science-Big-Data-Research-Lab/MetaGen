@@ -109,8 +109,13 @@ class SA(Metaheuristic):
         values; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
     :type initial_solutions: Sequence[Mapping[str, Any]] or None, optional
     :param racing: Stop evaluating a candidate as soon as it is significantly worse than the
-        population; see :py:class:`~metagen.metaheuristics.racing.Racing`.
+        population; see :py:class:`~metagen.metaheuristics.racing.Racing`. A race needs at
+        least two solutions to compare a candidate with, and this algorithm walks a single
+        one, so every candidate is evaluated whole.
     :type racing: Racing or None, optional
+    :param refit: A function that trains the model of the best solution when the run ends;
+        see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type refit: Callable[[Solution], Any] or None, optional
 
     :ivar max_iterations: Maximum number of iterations
     :vartype max_iterations: int
@@ -150,7 +155,8 @@ class SA(Metaheuristic):
                  seed: Optional[int] = None, distribution_model: str = "global",
                  checkpoint: Optional[str] = None, checkpoint_every: int = 1, history: Optional[str] = None,
                  max_evaluations: Optional[int] = None, timeout: Optional[float] = None,
-                 initial_solutions: Optional[Sequence[Mapping[str, Any]]] = None, racing: Optional[Racing] = None) -> None:
+                 initial_solutions: Optional[Sequence[Mapping[str, Any]]] = None, racing: Optional[Racing] = None,
+                 refit: Optional[Callable[[Solution], Any]] = None) -> None:
         """
         Initialize the Simulated Annealing algorithm.
 
@@ -192,7 +198,7 @@ class SA(Metaheuristic):
                          distribution_model=distribution_model,
                          checkpoint=checkpoint, checkpoint_every=checkpoint_every,
                          history=history, max_evaluations=max_evaluations, timeout=timeout,
-                         initial_solutions=initial_solutions, racing=racing)
+                         initial_solutions=initial_solutions, racing=racing, refit=refit)
         # The cooling schedule spans max_iterations, so a budget of evaluations becomes the
         # iterations it buys after the warmup and the starting point.
         # Never None here: an algorithm with a horizon always has one.
@@ -249,8 +255,9 @@ class SA(Metaheuristic):
 
         In each iteration, multiple neighbor solutions are generated, and the best one
         is selected. The Metropolis criterion determines whether the selected neighbor
-        replaces the current solution based on the current temperature. The temperature
-        is then decreased according to the cooling schedule.
+        replaces the current solution based on the current temperature.
+        :py:meth:`post_iteration` then decreases the temperature according to the cooling
+        schedule.
 
         :param solutions: Current population of solutions (expected to have one solution in SA)
         :type solutions: List[Solution]
@@ -296,10 +303,15 @@ class SA(Metaheuristic):
             if get_rng().random() < exploration_rate:
                 current_solution = best_neighbor
 
-        # Cool down, no further than T_min
-        self.current_temp = max(self.current_temp * self.cooling_rate, self.T_min)
-
         return [current_solution], best_solution
+
+    def post_iteration(self) -> None:
+        """Cool down, no further than T_min, on the process that keeps the schedule."""
+        # On Ray, iterate runs on a copy of the algorithm: cooling there stayed in the worker
+        # and every iteration started at initial_temp, so the Metropolis criterion accepted
+        # anything for the whole run (the same loss as F-40). Found on 4 November 2026.
+        super().post_iteration()
+        self.current_temp = max(self.current_temp * self.cooling_rate, self.T_min)
 
     def select_survivors(self, parents: List[Solution], offspring: List[Solution]) -> List[Solution]:
         """SA walks a single solution and decides by the Metropolis criterion whether

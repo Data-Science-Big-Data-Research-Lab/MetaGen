@@ -74,6 +74,8 @@ How CVOA Executes in a Distributed Environment
 
 Under ``distributed_cvoa_launcher`` the global pandemic state lives in a **Ray actor**, each strain runs as a Ray task, and within a strain the spreading of the infection is dispatched as **one task per carrier**. Each strain operates independently while interacting with the shared state.
 
+A ``seed`` fixes what every strain and every task draws. The strains, and on Ray the tasks of their carriers, read and change the pandemic state while they run, so when two of them reach the same point at once, which one comes first decides what happens to it. On a domain small enough for that to happen, two runs with the same ``seed`` can differ; with ``cvoa_launcher``, a single strain always reproduces.
+
 Launching Distributed CVOA
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -92,8 +94,10 @@ The launcher starts Ray if it is not running, and shuts it down afterwards only 
     def my_fitness_function(solution: Solution) -> float:
         return solution["x"] ** 2 + solution["y"] ** 2
 
-    my_strains = [StrainProperties("Strain#1", pandemic_duration=10),
-                  StrainProperties("Strain#2", pandemic_duration=10, p_travel=0.2)]
+    # Social distancing from the third iteration keeps a pandemic over a continuous
+    # domain short, as in "Running CVOA": on Ray, every carrier is a task.
+    my_strains = [StrainProperties("Strain#1", pandemic_duration=10, social_distancing=3),
+                  StrainProperties("Strain#2", pandemic_duration=10, social_distancing=3, p_travel=0.2)]
 
     best_solution = distributed_cvoa_launcher(strains=my_strains,
                                               domain=my_domain,

@@ -76,12 +76,7 @@ class ProbabilisticCVOA(CVOA):
             if get_rng().random() < properties.p_die:
                 self.dead.add(individual)
 
-            if individual.get_fitness() < self.global_state.get_best_individual().get_fitness():
-                self.global_state.update_best_individual(individual)
-                self.best_strain_solution_found = True
-                self._log(f"New global best individual found at {self.time}! ({individual})")
-            if individual.get_fitness() < self._best_of_strain().get_fitness():
-                self.best_strain_solution = individual
+            self.record_if_best(individual)
 
         self.global_state.update_deaths(self.dead)
         self.global_state.update_recovered_with_deaths()
@@ -103,8 +98,10 @@ class ProbabilisticCVOA(CVOA):
                                 n_infected: int, time: int) -> SolutionSet:
         """
         The re-infection and isolation draws are made once per carrier and shared by
-        all of its offspring.
+        all of its offspring. Only those that enter the population are evaluated.
         """
+        # F-57: as in CVOA.infect_individuals_from, the isolated and the rejected are not
+        # evaluated; the draws, and so the pandemic, stay the same.
         reinfection_draw = get_rng().random()
         isolation_draw = get_rng().random()
         distancing = time >= strain_properties.social_distancing
@@ -112,16 +109,19 @@ class ProbabilisticCVOA(CVOA):
 
         for _ in range(0, n_infected):
             new_infected_individual = infect(carrier, fitness_function, 1 if distancing else travel_distance,
-                                             strain_properties.infection_alteration_limit)
+                                             strain_properties.infection_alteration_limit, evaluate=False)
             individual_state = state.get_individual_state(new_infected_individual)
             if individual_state.dead:
                 continue
             if not individual_state.recovered:
                 if distancing and isolation_draw <= strain_properties.p_isolation:
                     cls.isolate(state, new_infected_individual)
-                else:
+                elif new_infected_individual not in infected_population:
                     infected_population.add(new_infected_individual)
+                    new_infected_individual.evaluate(fitness_function)
             elif reinfection_draw < strain_properties.p_re_infection:
-                infected_population.add(new_infected_individual)
+                if new_infected_individual not in infected_population:
+                    infected_population.add(new_infected_individual)
+                    new_infected_individual.evaluate(fitness_function)
                 state.get_infected_again(new_infected_individual)
         return infected_population

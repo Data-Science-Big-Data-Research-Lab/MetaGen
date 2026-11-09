@@ -53,7 +53,8 @@ class KernelTPE(TPE):
     - **Candidates are drawn from the model of the best solutions**, ``n_candidates``
       of them per iteration, **and only the one that maximizes** ``l(x) / g(x)``, the
       ratio of the densities under the best and the rest, **is evaluated**: one
-      evaluation per iteration.
+      evaluation per iteration. A subset is drawn from the model of the best and does not
+      enter the ratio.
 
     :py:class:`~metagen.metaheuristics.TPE` shares the history, the ``gamma`` schedules
     and the warmup, and evaluates a pool of candidates per iteration.
@@ -118,6 +119,9 @@ class KernelTPE(TPE):
     :param racing: Stop evaluating a candidate as soon as it is significantly worse than the
         population; see :py:class:`~metagen.metaheuristics.racing.Racing`.
     :type racing: Racing or None, optional
+    :param refit: A function that trains the model of the best solution when the run ends;
+        see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type refit: Callable[[Solution], Any] or None, optional
 
     **Code example**
 
@@ -156,14 +160,15 @@ class KernelTPE(TPE):
                  seed: Optional[int] = None, distribution_model: str = "global",
                  checkpoint: Optional[str] = None, checkpoint_every: int = 1, history: Optional[str] = None,
                  max_evaluations: Optional[int] = None, timeout: Optional[float] = None,
-                 initial_solutions: Optional[Sequence[Mapping[str, Any]]] = None, racing: Optional[Racing] = None) -> None:
+                 initial_solutions: Optional[Sequence[Mapping[str, Any]]] = None, racing: Optional[Racing] = None,
+                 refit: Optional[Callable[[Solution], Any]] = None) -> None:
         super().__init__(domain, fitness_function, max_iterations=max_iterations,
                          warmup_iterations=warmup_iterations, candidate_pool_size=1, gamma_config=gamma_config,
                          distributed=distributed, log_dir=log_dir, seed=seed, population_size=population_size,
                          distribution_model=distribution_model,
                          checkpoint=checkpoint, checkpoint_every=checkpoint_every,
                          history=history, max_evaluations=max_evaluations, timeout=timeout,
-                         initial_solutions=initial_solutions, racing=racing)
+                         initial_solutions=initial_solutions, racing=racing, refit=refit)
         self.n_candidates = n_candidates
         self.prior_weight = prior_weight
 
@@ -195,6 +200,7 @@ class KernelTPE(TPE):
         """
         Draw ``n_candidates`` solutions from the model of the best ones and return the
         candidate that maximizes the sum over its variables of ``log l(x) - log g(x)``.
+        Permutations and subsets are drawn but stay out of the sum.
 
         :param best_solutions: The best fraction of the history, the observations of ``l``.
         :type best_solutions: List[Solution]
@@ -236,6 +242,14 @@ class KernelTPE(TPE):
             # only when the value drawn for the one it depends on makes it active.
             score = 0.0
             for path, value, model_good, model_bad in drawn:
+                # A subset is drawn from the model of the best and stays out of the score.
+                # Its density is a product over every element, so the term outweighs the
+                # other variables and always picks the most typical selection: the proposals
+                # collapsed and, selecting features over six problems, twenty seeds, the
+                # algorithm won 64 of 120 against random sampling on the same budget; out of
+                # the score, 120 of 120. See metagen-auditoria/mediciones/subconjuntos/INFORME.md.
+                if isinstance(model_good, SubsetModel):
+                    continue
                 if candidate.is_active(cast(str, path[0])):
                     score += model_good.log_density(value) - model_bad.log_density(value)
             if score > best_score:

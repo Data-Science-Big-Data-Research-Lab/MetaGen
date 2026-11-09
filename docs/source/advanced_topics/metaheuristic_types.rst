@@ -33,17 +33,26 @@ Example:
 
 .. code-block:: python
 
-    from metagen.framework import Domain
+    from metagen.framework import Domain, Solution
+    from metagen.metaheuristics import GAConnector
+    from metagen.metaheuristics.tools import solution_class
 
-    # Define a domain using a specific connector
-    connector = AnyConnector()
-    domain = Domain(connector)
+    def new_solution(domain: Domain) -> Solution:
+        # The class the domain's connector maps it to, whichever connector that is
+        solution_type = solution_class(domain)
+        return solution_type(domain, connector=domain.get_connector())
+
+    # The same metaheuristic code serves a domain with the default connector ...
+    domain = Domain()
     domain.define_integer("max_depth", 2, 8)
     domain.define_integer("n_estimators", 2, 16)
+    print(type(new_solution(domain)).__name__)   # Solution
 
-    # Dynamically determine the correct solution type
-    solution_type: type[Solution] = domain.get_connector().get_type(domain.get_core())
-    potential: Solution = solution_type(domain, connector=domain.get_connector())
+    # ... and one with a connector that extends the solution, here the GA's
+    domain = Domain(GAConnector())
+    domain.define_integer("max_depth", 2, 8)
+    domain.define_integer("n_estimators", 2, 16)
+    print(type(new_solution(domain)).__name__)   # GASolution
 
 Key characteristics:
 

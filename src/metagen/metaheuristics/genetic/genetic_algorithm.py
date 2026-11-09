@@ -40,7 +40,7 @@ class GA(Metaheuristic):
     :type population_size: int, optional
     :param max_iterations: The number of generations to run (default is 50); with ``max_evaluations`` or ``timeout`` and no value, no limit.
     :type max_iterations: int or None, optional
-    :param mutation_rate: The probability of mutation for each child (default is 0.1).
+    :param mutation_rate: The probability of mutation for each child (default is 0.5).
     :type mutation_rate: float, optional
     :param tournament_size: How many individuals compete to become a parent (default is 2,
         the mildest tournament). Raising it makes the search greedier.
@@ -84,6 +84,9 @@ class GA(Metaheuristic):
     :param racing: Stop evaluating a candidate as soon as it is significantly worse than the
         population; see :py:class:`~metagen.metaheuristics.racing.Racing`.
     :type racing: Racing or None, optional
+    :param refit: A function that trains the model of the best solution when the run ends;
+        see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type refit: Callable[[Solution], Any] or None, optional
 
     :ivar population_size: The size of the population.
     :vartype population_size: int
@@ -113,28 +116,40 @@ class GA(Metaheuristic):
         best_solution = algorithm.run()
     """
 
+    # mutation_rate: over thirty seeds against random sampling on the same budget, 0.1 gave
+    # 237 wins of 330 on the benchmark and 0.5 gave 280; selecting features with a subset,
+    # 120 and 181 of 210. On gradient-boosted trees over five datasets, twenty seeds, 0.5 went
+    # 55-45 against 0.1, no dataset significant. A rate of 1.0 was no better on the benchmark.
+    # See metagen-auditoria/mediciones/subconjuntos/INFORME.md.
+
     # mutation_alteration_limit: measured on the benchmark over thirty seeds, the local
     # mutation took GA from 221 to 238 wins of 330 against random sampling on the same
     # budget, and from 6 to 8 problems with a one-sided Wilcoxon p < 0.05.
 
-    # Two parents to cross: a distributed slice of one individual raised IndexError (F-46).
-    minimum_slice: int = 2
+    # Two parents to cross: a population of one individual raised IndexError (F-46).
+    minimum_population: int = 2
+    # A slice of two is all elite: its children never made the population, and the default
+    # population of 20 on ten CPUs lost every run of 30 to the sequential one. With four,
+    # and the children returned under the global model, it goes 12-18 on the same budget
+    # (metagen-auditoria/mediciones/distribucion_lonchas).
+    minimum_slice: int = 4
 
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
                  population_size: int = 20,
-                 max_iterations: Optional[int] = None, mutation_rate: float = 0.1,
+                 max_iterations: Optional[int] = None, mutation_rate: float = 0.5,
                  tournament_size: int = 2,
                  distributed: bool = False, log_dir: Optional[str] = None,
                  seed: Optional[int] = None, distribution_model: str = "global",
                  checkpoint: Optional[str] = None, checkpoint_every: int = 1, history: Optional[str] = None,
                  max_evaluations: Optional[int] = None, timeout: Optional[float] = None,
                  initial_solutions: Optional[Sequence[Mapping[str, Any]]] = None, racing: Optional[Racing] = None,
+                 refit: Optional[Callable[[Solution], Any]] = None,
                  mutation_alteration_limit: Any = RelativeAlteration(0.2)):
         super().__init__(domain, fitness_function, population_size=population_size, distributed=distributed, log_dir=log_dir, seed=seed,
                          distribution_model=distribution_model,
                          checkpoint=checkpoint, checkpoint_every=checkpoint_every,
                          history=history, max_evaluations=max_evaluations, timeout=timeout,
-                         initial_solutions=initial_solutions, racing=racing)
+                         initial_solutions=initial_solutions, racing=racing, refit=refit)
 
         # Fails here, with a message that says what to do, instead of dying on
         # the first iteration with AttributeError: no attribute 'crossover' (A-07).
@@ -175,7 +190,10 @@ class GA(Metaheuristic):
             if best_solution is None or child2 < best_solution:
                 best_solution = child2
 
-        current_solutions = current_solutions[:num_solutions]
+        # Under the global model the driver selects out of everything a worker returns, so
+        # every child it evaluated goes back; otherwise the population keeps its size.
+        if not (self.distributed and self.distribution_model == "global"):
+            current_solutions = current_solutions[:num_solutions]
 
         return current_solutions, best_solution
 

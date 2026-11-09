@@ -21,6 +21,7 @@ import math
 import numbers
 import os
 import pickle
+import warnings
 import statistics
 import time
 from abc import ABC, abstractmethod
@@ -35,7 +36,8 @@ from copy import deepcopy
 
 from metagen.logging.metagen_logger import metagen_logger
 from metagen.metaheuristics.racing import Racing
-from metagen.metaheuristics.tools import CountingFitness, add_calls, random_exploration, solution_class
+from metagen.metaheuristics.tools import (CountingFitness, add_calls, random_exploration, save_model,
+                                         solution_class)
 
 IS_RAY_INSTALLED = is_package_installed("ray")
 
@@ -51,7 +53,7 @@ if IS_RAY_INSTALLED:
 #: nested function and cannot be pickled, the TensorBoard writer, and where and how
 #: often to save, which the resumed run is given again.
 _NOT_CHECKPOINTED = frozenset({"fitness_function", "logger", "checkpoint", "checkpoint_every",
-                               "_stop_requested"})
+                               "_stop_requested", "refit"})
 
 
 def _package_version() -> str:
@@ -71,8 +73,10 @@ class Metaheuristic(ABC):
 
     ``minimum_slice`` is the fewest individuals a distributed slice may hold: the
     population is split into one slice per CPU, and an algorithm that needs several
-    individuals per step declares it here (the genetic ones need two to cross), so
-    that a cluster with more CPUs than individuals does not hand it islands of one.
+    individuals per step declares it here, so that a cluster with many CPUs for its
+    population uses fewer of them instead of handing out slices too small to work on. A
+    population smaller than that goes in one slice. ``minimum_population`` is the fewest
+    individuals the algorithm can run with at all (the genetic ones need two to cross).
 
     :param domain: The problem domain.
     :type domain: Domain
@@ -101,11 +105,13 @@ class Metaheuristic(ABC):
         by fitness, ``population_size`` strong, which ``select_survivors`` implements
         and an algorithm may override (TPE merges the histories instead, HillClimbing,
         TabuSearch and SA keep the fresh candidates only). The budget per iteration
-        does not grow with the CPU count: it is the sequential one for HillClimbing,
+        does not grow with the CPU count, save in SSGA and KernelTPE, which spend more
+        with more slices: it is the sequential one for HillClimbing,
         TabuSearch and TPE, and for GA and Memetic when the slices have an even
         number of individuals (a slice breeds pairs, so an odd slice breeds one child
         fewer); ``RandomSearch`` keeps one elite per slice and mutates one individual
-        fewer per slice, and ``SSGA`` breeds its two children in every slice.
+        fewer per slice, ``SSGA`` breeds its two children in every slice, and
+        ``KernelTPE`` evaluates one candidate per slice.
 
         With ``"islands"`` the slices come back with the size they left with and are
         concatenated in order, so the next split hands the same individuals to the
@@ -152,12 +158,24 @@ class Metaheuristic(ABC):
         every candidate whole. With it, ``max_evaluations`` counts the steps taken: a
         candidate stopped after 3 of 10 spends 0.3 of an evaluation.
     :type racing: Racing or None, optional
+    :param refit: A function that trains the model of a solution, such as one with the
+        best hyperparameters on all the data, called once with the best solution when the
+        run ends; what it returns is ``best_model``. None, the default, calls nothing. It
+        is not saved in a checkpoint: :py:meth:`resume` takes it again.
+    :type refit: Callable[[Solution], Any] or None, optional
+
+    A fitness function may return a pair, its value and the model it trained, as in
+    ``return loss, model``: the value is the fitness, and the model of the best
+    evaluation of the run is kept in ``best_model``, the others let go; on Ray it comes
+    back from the worker that trained it. ``refit``, when given, replaces it.
+    :py:meth:`save_best_model` writes it to a file.
 
     The run stops at whichever comes first: the algorithm's own stopping criterion,
     ``max_evaluations``, ``timeout`` or :py:meth:`request_stop`. The limits are checked
     after each round of the warmup, after the initialization and at the end of every
     iteration, never in the middle of one, so a run may go past them by up to one round
-    of the warmup, the initial population or one iteration; ``stop_reason``
+    of the warmup and the initial population, which is always evaluated whole, or by one
+    iteration, and past ``timeout`` by the time those evaluations take; ``stop_reason``
     says which one stopped it, and ``evaluations`` and ``seconds`` what it spent. A run
     resumed from a checkpoint carries on with what it had spent.
 
@@ -194,6 +212,7 @@ class Metaheuristic(ABC):
     # minimum_slice exists since F-46: islands of one individual crashed GA and Memetic.
     # Worker tasks are seeded from the driver since A-06.
     minimum_slice: int = 1
+    minimum_population: int = 1
 
     #: Whether every solution the warmup evaluates joins the population ``initialize``
     #: builds, for an algorithm whose population is its model; otherwise the warmup only
@@ -207,7 +226,7 @@ class Metaheuristic(ABC):
                  checkpoint_every: int = 1, history: Optional[str] = None,
                  max_evaluations: Optional[int] = None, timeout: Optional[float] = None,
                  initial_solutions: Optional[Sequence[Mapping[str, Any]]] = None,
-                 racing: Optional[Racing] = None) -> None:
+                 racing: Optional[Racing] = None, refit: Optional[Callable[[Solution], Any]] = None) -> None:
         super().__init__()
 
         if max_evaluations is not None and (isinstance(max_evaluations, bool)
@@ -227,6 +246,14 @@ class Metaheuristic(ABC):
         if racing is not None and not isinstance(racing, Racing):
             raise ValueError(f"racing must be a Racing or None, not {racing!r}")
         self.racing = racing
+        if refit is not None and not callable(refit):
+            raise ValueError(f"refit must be a function of a solution or None, not {refit!r}")
+        self.refit = refit
+        #: The model of the best solution: the one its fitness function returned with the
+        #: best value, or what ``refit`` returned for it; None if neither gave one.
+        self.best_model: Any = None
+        # The value the model in best_model was returned with, to keep the best one.
+        self._best_model_value: Optional[float] = None
         # The steps a whole evaluation takes, for a fitness function that yields them, and
         # the steps taken so far: what max_evaluations counts then.
         self._step_count: Optional[int] = None
@@ -255,8 +282,8 @@ class Metaheuristic(ABC):
 
         self.domain = domain
         self.fitness_function = fitness_function
-        if population_size < self.minimum_slice:
-            raise ValueError(f"{type(self).__name__} needs a population of at least {self.minimum_slice} "
+        if population_size < self.minimum_population:
+            raise ValueError(f"{type(self).__name__} needs a population of at least {self.minimum_population} "
                              f"and population_size is {population_size}.")
         self.population_size = population_size
         self.warmup_iterations = warmup_iterations
@@ -265,6 +292,8 @@ class Metaheuristic(ABC):
         # How many slices the population was last split into, for an algorithm that
         # shares a per-iteration budget among them (TPE splits its candidate pool).
         self.distributed_slices: int = 1
+        # Which of them the copy a worker runs on is, from 0; the driver's own is 0.
+        self.distributed_slice: int = 0
         self.seed = seed
         # TensorBoard used to switch itself on for the mere fact of being
         # installed, with no way to turn it off, so a sweep of hundreds of
@@ -300,8 +329,8 @@ class Metaheuristic(ABC):
         shuffled before the cut and the next population is chosen by
         ``select_survivors`` out of the parents and everything that came back; under
         ``"islands"`` the slices are concatenated in order, so the same individuals go
-        back to the same worker every iteration and with two CPUs a population of six
-        is two independent runs of three for the whole execution. While initializing
+        back to the same worker every iteration and with two CPUs a population of eight
+        is two independent runs of four for the whole execution. While initializing
         there is no population yet, so each worker builds its share from scratch.
 
         :param method: The method to distribute.
@@ -337,13 +366,16 @@ class Metaheuristic(ABC):
             metagen_logger.info(
                 f"Distributing the initialization with {ray.cluster_resources().get('CPU', 0)} CPUs -- {distribution}")
 
-        for count in distribution:
-
+        for index, count in enumerate(distribution):
+            # The method is sent with a copy of the metaheuristic, made when the task is
+            # submitted: each copy knows which slice it runs.
+            self.distributed_slice = index
             if iterating:
                 futures.append(call_distributed.remote(spawn_seed(), method, population[:count]))
                 population = population[count:]
             else:
                 futures.append(call_distributed.remote(spawn_seed(), method, count))
+        self.distributed_slice = 0
 
         answers = ray.get(futures)
         # Each worker evaluates on a copy of the fitness function and says how many.
@@ -645,11 +677,14 @@ class Metaheuristic(ABC):
             self._evaluations = 0
             self._steps = 0
             self._seconds = 0.0
+            self.best_model, self._best_model_value = None, None
             if self.history_file is not None and os.path.exists(self.history_file):
                 os.remove(self.history_file)
         # Counted on the driver: the history's evaluations, from where a resumed run
-        # left them.
-        counted = CountingFitness(self.fitness_function, racing=self.racing, step_count=self._step_count)
+        # left them, and the best model, from the one it had.
+        counted = CountingFitness(self.fitness_function, racing=self.racing, step_count=self._step_count,
+                                  best=None if self._best_model_value is None
+                                  else (self._best_model_value, self.best_model))
         self.fitness_function = counted
         evaluations_before, seconds_before, started = self._evaluations, self._seconds, time.perf_counter()
         steps_before = self._steps
@@ -707,12 +742,13 @@ class Metaheuristic(ABC):
                 # loses that iteration and never corrupts the file.
                 if self.checkpoint is not None and (
                         self._stop_requested or self.current_iteration % self.checkpoint_every == 0):
+                    self._keep_best_model(counted)
                     self._write_checkpoint()
                 if self._stop_requested:
                     self.stop_reason = "request_stop"
                     if self.logger:
                         self.logger.writer.flush()
-                    return deepcopy(self._best_so_far())
+                    return self._finish(counted)
 
             self.post_execution()
             if self.checkpoint is not None and os.path.exists(self.checkpoint):
@@ -725,7 +761,63 @@ class Metaheuristic(ABC):
             if started_ray and ray.is_initialized():
                 ray.shutdown()
 
-        return deepcopy(self._best_so_far())
+        return self._finish(counted)
+
+    def _keep_best_model(self, counted: CountingFitness) -> None:
+        """Take the best model the fitness function has returned so far, if any."""
+        if counted.best is not None and counted.best[1] is not None:
+            self._best_model_value, self.best_model = counted.best
+
+    def _finish(self, counted: CountingFitness) -> Solution:
+        """The best solution of a run that has ended, with its model kept or, with ``refit``,
+        trained."""
+        self._keep_best_model(counted)
+        best = deepcopy(self._best_so_far())
+        if self.refit is not None:
+            self.best_model = self.refit(deepcopy(best))
+        return best
+
+    def report(self, path: str, title: Optional[str] = None) -> str:
+        """
+        Write a report of the last run, an HTML page or a PDF by the extension of
+        ``path``; see :py:func:`metagen.reporting.report`, which also reports several runs
+        together. Needs matplotlib, the ``report`` extra.
+
+        :param path: The file, ``.html`` or ``.pdf``.
+        :type path: str
+        :param title: The title, defaults to the name of the algorithm.
+        :type title: str, optional
+        :return: The file written.
+        :rtype: str
+        """
+        from metagen.reporting import report
+        return report(self, path, title=title)
+
+    def save_best_model(self, path: str) -> str:
+        """
+        Write ``best_model`` to a file in the format of the library it comes from: a model
+        of Keras or TensorFlow with its own ``save``, to a ``.keras`` file; one of PyTorch
+        with ``torch.save``; any other, such as one of scikit-learn, with ``joblib`` when it
+        is installed (it comes with scikit-learn) and with ``pickle`` otherwise; a network
+        of the user's own class built on ``keras.Model`` or ``torch.nn.Module`` is saved as
+        one of its library. Read it back with the same library: ``keras.models.load_model``,
+        ``torch.load(path, weights_only=False)`` with the class of the network importable, or
+        ``joblib.load``.
+
+        :param path: The file. For Keras, ``.keras`` is added if it does not end so.
+        :type path: str
+        :return: The file written.
+        :rtype: str
+        :raises ValueError: if the run has no model, its fitness function returned none and
+            it was given no ``refit``; or if the model cannot be saved so, as one of a
+            library none of those formats can hold. Nothing is written then, a file already
+            at ``path`` is left as it was, and the model stays in ``best_model``, to be
+            saved with the method of its library.
+        """
+        if self.best_model is None:
+            raise ValueError("There is no model to save: the fitness function returned none with its value, "
+                             "and no refit was given.")
+        return save_model(self.best_model, path)
 
     def _iterations(self, max_iterations: Optional[int], default: int,
                     horizon: Optional[Callable[[int], int]] = None) -> Optional[int]:
@@ -861,7 +953,8 @@ class Metaheuristic(ABC):
         self._stop_requested = True
 
     @classmethod
-    def resume(cls, checkpoint: str, fitness_function: Callable[[Solution], float]) -> "Metaheuristic":
+    def resume(cls, checkpoint: str, fitness_function: Callable[[Solution], float],
+               refit: Optional[Callable[[Solution], Any]] = None) -> "Metaheuristic":
         """
         Rebuild a metaheuristic from its checkpoint file, to continue it with ``run()``,
         for instance in a new process after the one that started it was stopped. The
@@ -878,6 +971,8 @@ class Metaheuristic(ABC):
         :type checkpoint: str
         :param fitness_function: The fitness function of the run.
         :type fitness_function: Callable[[Solution], float]
+        :param refit: The ``refit`` of the run, if it had one; it is not saved either.
+        :type refit: Callable[[Solution], Any] or None, optional
         :return: The metaheuristic, ready to continue.
         :rtype: Metaheuristic
         :raises ValueError: if the file belongs to another class or version of the package.
@@ -890,6 +985,7 @@ class Metaheuristic(ABC):
         algorithm = algorithm_class.__new__(algorithm_class)
         algorithm.__dict__.update(state["algorithm"])
         algorithm.fitness_function = fitness_function
+        algorithm.refit = refit
         algorithm.checkpoint = checkpoint
         algorithm.checkpoint_every = state["checkpoint_every"]
         algorithm._stop_requested = False
@@ -903,11 +999,20 @@ class Metaheuristic(ABC):
         the package and the TensorBoard run, so that its curves continue in the same
         directory. A subclass whose state is not all in its attributes extends it.
         """
+        attributes = {name: value for name, value in self.__dict__.items() if name not in _NOT_CHECKPOINTED}
+        if self.best_model is not None:
+            try:
+                pickle.dumps(self.best_model)
+            except Exception as error:
+                # A model the checkpoint cannot hold is left out, not the checkpoint: a run
+                # resumed from it keeps the best model it finds from then on.
+                warnings.warn(f"The best model cannot be saved in the checkpoint ({error}); it is left out.",
+                              RuntimeWarning, stacklevel=2)
+                attributes["best_model"], attributes["_best_model_value"] = None, None
         return {
             "version": _package_version(),
             "class": type(self),
-            "algorithm": {name: value for name, value in self.__dict__.items()
-                          if name not in _NOT_CHECKPOINTED},
+            "algorithm": attributes,
             "rng": rng_state.get_state(),
             "checkpoint_every": self.checkpoint_every,
             "tensorboard_run": self.logger.run_id if self.logger else None,

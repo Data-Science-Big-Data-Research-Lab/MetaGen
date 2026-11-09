@@ -44,7 +44,8 @@ class Racing:
     ``first_steps`` on, a Friedman test over the candidate and those solutions, followed
     by Conover's comparison against the best of them by sum of ranks, decides whether the
     candidate is significantly worse, at level ``alpha``; if it is, it gets no more steps.
-    The initial population has nothing to race against and is evaluated whole.
+    The initial population has nothing to race against and is evaluated whole, and so is
+    every candidate when fewer than two solutions are there to race against.
 
     A candidate stopped early is marked (``solution.raced_out``) and is never the best
     solution of a run. Its fitness is its mean over the steps it took, corrected by how

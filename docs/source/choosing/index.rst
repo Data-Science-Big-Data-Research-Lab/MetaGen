@@ -57,7 +57,7 @@ Which one to use
 Setting a budget
 ----------------
 
-Every metaheuristic but CVOA also takes ``max_evaluations``, the evaluations of the fitness function a run may make, warmup included, and ``timeout``, the seconds it may last. Without ``max_iterations``, a budget is what stops the run: the limit of iterations is lifted, and |sa|, |tpe|, |kernel_tpe| and a |hc| with a ``gamma_config``, which plan their search over ``max_iterations`` (the cooling schedule, the gamma schedule), take as ``max_iterations`` the iterations that ``max_evaluations`` buys; with ``timeout`` alone they keep their default. Given ``max_iterations`` and a limit, the run stops at whichever comes first. The limits are checked between the rounds of the warmup and between iterations, never in the middle of one, so a run goes past them by at most one of those steps: a round of the warmup, the initial population, which is always evaluated whole, or one iteration, that is one evaluation for |kernel_tpe| and a whole population for a genetic algorithm or |rs|. ``evaluations`` and ``seconds`` say what the run spent, and ``stop_reason`` what stopped it: ``"criterion"``, ``"max_evaluations"``, ``"timeout"`` or ``"request_stop"``.
+Every metaheuristic but CVOA also takes ``max_evaluations``, the evaluations of the fitness function a run may make, warmup included, and ``timeout``, the seconds it may last. Without ``max_iterations``, a budget is what stops the run: the limit of iterations is lifted, and |sa|, |tpe|, |kernel_tpe| and a |hc| with a ``gamma_config``, which plan their search over ``max_iterations`` (the cooling schedule, the gamma schedule), take as ``max_iterations`` the iterations that ``max_evaluations`` buys; with ``timeout`` alone they keep their default. Given ``max_iterations`` and a limit, the run stops at whichever comes first. The limits are checked between the rounds of the warmup and between iterations, never in the middle of one, so a run goes past them by at most one round of the warmup and the initial population, which is always evaluated whole, or by one iteration, that is one evaluation for |kernel_tpe| and a whole population for a genetic algorithm or |rs|. With ``timeout``, a run goes past it by the time those evaluations take, which with a slow fitness function can be long. ``evaluations`` and ``seconds`` say what the run spent, and ``stop_reason`` what stopped it: ``"criterion"``, ``"max_evaluations"``, ``"timeout"`` or ``"request_stop"``.
 
 .. code-block:: python
 
@@ -117,7 +117,7 @@ When evaluating a solution takes steps, such as the folds of a cross-validation,
     print(search.evaluations, search.history[-1]["steps"])   # 115 817: 817 folds of the 1150 of evaluating every candidate whole
     print(round(best.get_fitness(), 4), best.raced_out)        # 0.0633 False
 
-A candidate stopped early is marked with ``raced_out`` and is never the best solution of a run; its fitness is its mean over the steps it took, corrected by how the mean of the population changes from those steps to all of them. Every solution keeps its values per step in ``step_values``, and the history records the steps taken. With racing, ``max_evaluations`` counts the steps: a candidate stopped after 3 of 10 spends 0.3 of an evaluation.
+A candidate stopped early is marked with ``raced_out`` and is never the best solution of a run; its fitness is its mean over the steps it took, corrected by how the mean of the population changes from those steps to all of them. Every solution keeps its values per step in ``step_values``, and the history records the steps taken. With racing, ``max_evaluations`` counts the steps: a candidate stopped after 3 of 10 spends 0.3 of an evaluation. A race needs at least two solutions to compare a candidate with, so |sa|, which walks a single solution, evaluates every candidate whole.
 
 Starting from known solutions
 -----------------------------
@@ -142,6 +142,67 @@ Starting from known solutions
     search.run()
     print(search.best_solution_fitnesses[0])   # 0.2: the first known solution is the best to start from
     print(search.evaluations)                  # 100
+
+Keeping the best model
+----------------------
+
+When the fitness function trains a model, the best one need not be trained again. A fitness function may return a pair, its value and the model it trained: the value is the fitness, and the run keeps the model of its best evaluation in ``best_model``, letting the others go; on Ray it comes back from the worker that trained it. ``save_best_model(path)`` writes it in the format of its library: a model of Keras or TensorFlow to a ``.keras`` file with its own ``save``, one of PyTorch with ``torch.save``, and any other, such as one of scikit-learn, with ``joblib``; a network of a class of your own built on ``keras.Model`` or ``torch.nn.Module`` counts as one of its library. Read it back with ``keras.models.load_model``, with ``torch.load(path, weights_only=False)`` where the class of the network can be imported, or with ``joblib.load``. Every metaheuristic but CVOA keeps it.
+
+.. code-block:: python
+
+    from sklearn.datasets import load_breast_cancer
+    from sklearn.model_selection import train_test_split
+    from sklearn.tree import DecisionTreeClassifier
+
+    from metagen.framework import Domain
+    from metagen.metaheuristics import RandomSearch
+
+    x, y = load_breast_cancer(return_X_y=True)
+    x_train, x_valid, y_train, y_valid = train_test_split(x, y, test_size=0.3, random_state=0)
+
+    domain = Domain()
+    domain.define_integer("max_depth", 1, 12)
+    domain.define_integer("min_samples_leaf", 1, 20)
+
+    def fitness(solution):
+        model = DecisionTreeClassifier(max_depth=solution["max_depth"],
+                                       min_samples_leaf=solution["min_samples_leaf"],
+                                       random_state=0).fit(x_train, y_train)
+        return 1 - model.score(x_valid, y_valid), model     # the error, and the model trained
+
+    search = RandomSearch(domain, fitness, max_iterations=5, seed=0)
+    best = search.run()
+    print(1 - search.best_model.score(x_valid, y_valid) == best.get_fitness())   # True
+    print(search.save_best_model("tree.joblib"))                                  # tree.joblib
+
+With cross-validation there is no single model, one per fold: ``refit``, a function of a solution, trains the model of the best one when the run ends, as on all the data with its hyperparameters, and what it returns is ``best_model``. It is not saved in a checkpoint, so ``resume`` takes it again, as it takes the fitness function.
+
+.. code-block:: python
+
+    from sklearn.datasets import load_breast_cancer
+    from sklearn.model_selection import cross_val_score
+    from sklearn.tree import DecisionTreeClassifier
+
+    from metagen.framework import Domain
+    from metagen.metaheuristics import RandomSearch
+
+    x, y = load_breast_cancer(return_X_y=True)
+
+    domain = Domain()
+    domain.define_integer("max_depth", 1, 12)
+    domain.define_integer("min_samples_leaf", 1, 20)
+
+    def tree(solution):
+        return DecisionTreeClassifier(max_depth=solution["max_depth"],
+                                      min_samples_leaf=solution["min_samples_leaf"], random_state=0)
+
+    def fitness(solution):
+        return 1 - cross_val_score(tree(solution), x, y, cv=3).mean()
+
+    search = RandomSearch(domain, fitness, max_iterations=5, seed=0,
+                          refit=lambda solution: tree(solution).fit(x, y))
+    best = search.run()
+    print(search.best_model.get_params()["max_depth"] == best["max_depth"])   # True
 
 Running CVOA
 ------------

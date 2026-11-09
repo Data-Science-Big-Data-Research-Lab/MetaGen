@@ -1,5 +1,82 @@
 # Changelog
 
+## 1.4.0
+
+MetaGen 1.4.0 adds TriGen and a triclustering package, reports of a run as an HTML page or a PDF,
+and keeping and saving the best model a run trained.
+
+### New
+
+- **TriGen**, a genetic algorithm that finds triclusters, blocks of a three-dimensional
+  dataset whose values behave alike, one after another, each with a search of its own and
+  what it found shaping the searches that follow. `TriGen(cube, ...)` takes the fitness,
+  `TriclusterFitness`, as a weighted mean of a quality and of size and overlap terms or,
+  with `scoring="significance"`, as how unlikely the coherence of a tricluster is among
+  random ones of its size. Each tricluster found grows, gene, condition or time at a
+  time, while its fitness does not rise. It also offers:
+  - `ordered`, for dimensions whose positions have an order, where a tricluster holds a
+    window of consecutive positions;
+  - `shape="prism"`, for series of images: a surface of the plane, one piece through its
+    neighbors, held along a window of the times, bounded by `pixels`;
+  - `stop="coverage"`, to go on until the triclusters hold a share of the genes or of the
+    pixels, with `noise_rule` to leave out what is no better than noise and `patience`;
+  - `disjoint=True`, triclusters that share no gene or, with prisms, no pixel, which
+    segment the plane;
+  - `shuffle_genes`, `hierarchy` and `overlap`, for the order of the genes and how what
+    was found counts;
+  - `save`, a self-describing JSON file that `TriGenResult` reads back, checks against
+    the data and runs again, and `report`, an HTML page or a PDF of the run, with the
+    biological enrichment of its triclusters when an engine is given.
+- **`metagen.triclustering`**, the data and measures of a triclustering, usable on their
+  own:
+  - `Cube` and `Tricluster`, a set of cells that most often makes up a cube;
+  - reading and writing cubes in NetCDF, reading long tables, a matrix per time and GEO
+    DataSets, downloading those with `fetch_gds`, and `check` and helpers to prepare
+    expression data;
+  - the measures MSR3D, LSL and MSL and the qualities GRQ, PEQ, SPQ and TRIQ;
+  - the biological quality BIOQ and the functional purity of an enrichment analysis, with
+    g:Profiler (`GProfiler`) or a local Gene Ontology (`LocalGO`);
+  - synthetic cubes with planted triclusters (`plant`) and prisms (`plant_prisms`), and
+    similarities, `recovery` and `relevance` to measure what a search found;
+  - `stability`, how much the triclusters of several runs recur, against `null_cube`, a
+    cube with nothing to find.
+- **Reports of a run**: `report(path)` on any metaheuristic, and
+  `metagen.reporting.report` for several runs side by side, write an HTML page or a PDF
+  with its parameters, domain, budget, best solution, convergence and cost.
+- **The best trained model of a run**: a fitness function may return its value and the
+  model it trained, and the run keeps the model of its best evaluation in `best_model`;
+  `refit` trains the model of the best solution when the run ends, and `save_best_model`
+  writes it in the format of its library.
+- **New extras**: `netcdf` (xarray and netCDF4, for NetCDF-4 files) and `report`
+  (matplotlib, for the reports).
+
+### Changes
+
+- **GA and SSGA mutate one child in two by default**: `mutation_rate` is 0.5. The memetic
+  algorithm keeps 0.1.
+- **KernelTPE draws a subset from the model of the best solutions and leaves it out of the
+  ratio that ranks its candidates**, which the other variables decide. A domain without
+  subsets gives the same results.
+- **Distributed slices large enough to work on**: GA and Memetic make slices of at least
+  four individuals, SSGA of at least three and RandomSearch of at least two, and a
+  population too small for its CPUs is split into fewer slices. Under the global model,
+  GA and Memetic return every child they bred, for the driver to select among.
+- **TPE under the global model** shares its whole candidate pool among the slices, so an
+  iteration costs what it costs sequentially whenever the pool holds at least as many
+  candidates as there are CPUs.
+- **SA on Ray cools on the driver**: every iteration of a distributed run starts from the
+  temperature the run has reached. A sequential run gives the same results.
+- **Several strains of CVOA on threads** draw from generators of their own, so what a
+  strain draws does not depend on the order the threads run in. A single strain gives the
+  same results.
+- **CVOA evaluates an infected individual once it enters the population**: the isolated
+  and the individuals the pandemic already knows are not evaluated, and every individual
+  evaluated, the last generation included, competes for the best. A run follows the same
+  pandemic with fewer evaluations, and its best is never worse.
+- **A dynamic structure that changes its length** draws every length allowed with the
+  same probability, as it does when it is created, so the mutation of a structure gives
+  different results.
+
 ## 1.3.0
 
 MetaGen 1.3.0 adds a budget of evaluations or seconds to every run, racing to stop the

@@ -62,15 +62,18 @@ step (``Metaheuristic.select_survivors``): TPE merges the histories every slice
 returned, and ``HillClimbing``, ``TabuSearch`` and ``SA`` keep the fresh candidates only.
 Two things follow:
 
-- **The budget of an iteration does not grow with the number of CPUs.** Each worker
+- **The budget of an iteration does not grow with the number of CPUs**, save in
+  ``SSGA`` and ``KernelTPE``, which spend more with more slices. Each worker
   produces as many candidates as individuals it received, and TPE shares its candidate
   pool among the slices, so ``HillClimbing``, ``TabuSearch`` and TPE cost exactly what
-  they cost sequentially. ``GA`` and ``Memetic`` breed pairs, so a slice with an odd
+  they cost sequentially; TPE as long as its pool holds at least as many candidates as
+  there are CPUs, since every slice draws at least one. ``GA`` and ``Memetic`` breed pairs, so a slice with an odd
   number of individuals breeds one child fewer; ``RandomSearch`` keeps one elite copy
   per slice and mutates one individual fewer per slice; ``SSGA`` breeds its two
-  children in every slice. For example, with a population of 10 over 15 iterations on
-  two CPUs, a run of ``GA`` makes 160 evaluations sequentially and 130 distributed,
-  ``RandomSearch`` 145 and 130, and ``SSGA`` 40 and 70.
+  children in every slice, and ``KernelTPE``, which evaluates one candidate per
+  iteration, evaluates one per slice. For example, with a population of 10 over 15
+  iterations on two CPUs, a run of ``GA`` makes 160 evaluations sequentially and 130
+  distributed, ``RandomSearch`` 145 and 130, and ``SSGA`` 40 and 70.
 - **The whole population competes.** Every individual can meet every other across
   iterations, which a population split into fixed islands cannot offer.
 - **Runs are reproducible.** Two distributed runs with the same ``seed`` on the same
@@ -83,11 +86,11 @@ individuals to the same worker every iteration: the islands never exchange
 individuals**, and the only thing they share is the best solution the driver keeps,
 which the algorithms that start from the best read from there. The algorithm each
 worker runs is the algorithm on a smaller population: with two CPUs, a genetic algorithm
-of 6 individuals is two independent genetic algorithms of 3 for the whole run, TPE
+of 8 individuals is two independent genetic algorithms of 4 for the whole run, TPE
 builds its model over its slice, and ``RandomSearch`` keeps one elite per slice. **The
 number of evaluations changes with the number of CPUs**: for example, with a
-population of 6 over 3 iterations on two CPUs, a run of ``GA`` makes 24 evaluations
-sequentially and 18 on islands, and ``SSGA`` 12 and 18; ``TPE`` spends more on islands,
+population of 10 over 3 iterations on two CPUs, a run of ``GA`` makes 40 evaluations
+sequentially and 34 on islands, and ``SSGA`` 16 and 22; ``TPE`` spends more on islands,
 because every island evaluates a whole candidate pool.
 
 ``SA`` works on a population of one, so it gains nothing from either model.
@@ -102,6 +105,14 @@ count and the split:
 
     [ITERATION 10] Distributing with 8 CPUs -- [12, 12, 13, 13, 12, 12, 13, 13]
     [ITERATION 10] Best solution fitness: 0.0314
+
+A slice needs enough individuals to work on, so a population too small for its CPUs is
+split into fewer slices: ``GA`` and ``Memetic`` make slices of at least 4 individuals,
+``SSGA`` of at least 3 and ``RandomSearch`` of at least 2. A population of 20 on ten CPUs is five
+slices for ``GA``, and a population smaller than the minimum runs as one slice. To put
+every CPU to work, give the algorithm at least that many individuals per CPU; the
+genetic algorithms choose their parents within a slice, so they gain from having
+several more.
 
 There is no fallback to sequential execution: with ``distributed=True`` and Ray not
 installed, ``run()`` raises ``ImportError``.

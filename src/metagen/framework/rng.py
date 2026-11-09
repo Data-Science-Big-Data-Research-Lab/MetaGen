@@ -15,7 +15,9 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 import random
-from typing import Any, Dict, Optional
+import threading
+from contextlib import contextmanager
+from typing import Any, Dict, Iterator, Optional
 
 import numpy as np
 
@@ -31,6 +33,14 @@ import numpy as np
 _python_rng: random.Random = random.Random()
 _numpy_rng: np.random.Generator = np.random.default_rng()
 
+# The generators of a thread running under own_generators. Threads drawing from one
+# generator get their numbers in the order they happen to run, which no seed controls.
+# The count keeps every other run off the thread-local lookup, which cost a genetic
+# algorithm on a cheap fitness 6 % of its time.
+_thread_generators = threading.local()
+_threads_with_own_generators: int = 0
+_threads_with_own_generators_lock = threading.Lock()
+
 
 def get_rng() -> random.Random:
     """
@@ -42,7 +52,7 @@ def get_rng() -> random.Random:
     :return: The generator backing every ``random``-style draw in MetaGen.
     :rtype: random.Random
     """
-    return _python_rng
+    return getattr(_thread_generators, "python", _python_rng) if _threads_with_own_generators else _python_rng
 
 
 def get_numpy_rng() -> np.random.Generator:
@@ -56,7 +66,35 @@ def get_numpy_rng() -> np.random.Generator:
     :return: The generator backing every NumPy-style draw in MetaGen.
     :rtype: numpy.random.Generator
     """
-    return _numpy_rng
+    return getattr(_thread_generators, "numpy", _numpy_rng) if _threads_with_own_generators else _numpy_rng
+
+
+@contextmanager
+def own_generators(seed: Optional[int]) -> Iterator[None]:
+    """
+    Give the calling thread its own two generators for the duration of the block.
+
+    Every draw the thread makes inside comes from them, so what it draws does not depend
+    on what other threads are drawing. :func:`set_seed` and the other threads keep working
+    on the generators of the process.
+
+    :param seed: The seed of the thread's generators, or ``None`` for an unpredictable one.
+    :type seed: Optional[int]
+    :return: Nothing; the generators of the process are back when the block ends.
+    :rtype: Iterator[None]
+    """
+    global _threads_with_own_generators
+    _thread_generators.python = random.Random(seed)
+    _thread_generators.numpy = np.random.default_rng(seed)
+    with _threads_with_own_generators_lock:
+        _threads_with_own_generators += 1
+    try:
+        yield
+    finally:
+        with _threads_with_own_generators_lock:
+            _threads_with_own_generators -= 1
+        del _thread_generators.python
+        del _thread_generators.numpy
 
 
 def spawn_seed() -> int:
@@ -67,7 +105,8 @@ def spawn_seed() -> int:
     the driver alone does not make a distributed run reproducible. Every task
     receives a seed drawn here and applies it with :func:`set_seed` before working:
     the driver's seed then determines every worker's stream. Drawing consumes one
-    value of the driver's generator, so only distributed paths call this.
+    value of the driver's generator, so only the paths that need it call this: the
+    distributed ones, and the launcher of several CVOA strains on threads.
 
     :return: A seed for one worker.
     :rtype: int

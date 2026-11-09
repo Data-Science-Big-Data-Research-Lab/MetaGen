@@ -41,7 +41,7 @@ class SSGA(Metaheuristic):
     :type population_size: int, optional
     :param max_iterations: The number of iterations, two children each, to run (default is 50); with ``max_evaluations`` or ``timeout`` and no value, no limit.
     :type max_iterations: int or None, optional
-    :param mutation_rate: The probability of mutation for each child (default is 0.1).
+    :param mutation_rate: The probability of mutation for each child (default is 0.5).
     :type mutation_rate: float, optional
     :param tournament_size: How many individuals compete to become a parent (default is 2,
         the mildest tournament). Raising it makes the search greedier.
@@ -85,6 +85,9 @@ class SSGA(Metaheuristic):
     :param racing: Stop evaluating a candidate as soon as it is significantly worse than the
         population; see :py:class:`~metagen.metaheuristics.racing.Racing`.
     :type racing: Racing or None, optional
+    :param refit: A function that trains the model of the best solution when the run ends;
+        see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+    :type refit: Callable[[Solution], Any] or None, optional
 
     :ivar population_size: The size of the population.
     :vartype population_size: int
@@ -114,28 +117,42 @@ class SSGA(Metaheuristic):
         best_solution = algorithm.run()
     """
 
+    # mutation_rate: over thirty seeds against random sampling on the same budget, 0.1 gave
+    # 196 wins of 330 on the benchmark and 0.5 gave 209; selecting features with a subset,
+    # 116 and 178 of 210. On gradient-boosted trees over five datasets, twenty seeds, 0.5 went
+    # 57-43 against 0.1, no dataset significant. A rate of 1.0 was no better on the benchmark.
+    # See metagen-auditoria/mediciones/subconjuntos/INFORME.md.
+
     # mutation_alteration_limit: measured on the benchmark over thirty seeds, the local
     # mutation took SSGA from 168 to 176 wins of 330 against random sampling on the
     # same budget: neutral for it, a clear gain for GA, so the two share the default.
 
     # Two parents to cross: a distributed slice of one individual raised IndexError (F-46).
-    minimum_slice: int = 2
+    minimum_population: int = 2
+    # The tournament draws without repeating, so in a slice of two the better one always
+    # wins, both parents are the same individual and the children are its clones unless
+    # they mutate. At the same 1000 evaluations, against sequential over 30 runs, on
+    # Rastrigin, Sphere and Ackley: a minimum of 2 went 0-30 under the global model, 3
+    # went 19-11 with a population of 10 and 16-14 with 20; 4 and 5 did no better and use
+    # fewer CPUs. See metagen-auditoria/mediciones/distribucion_lonchas/INFORME.md.
+    minimum_slice: int = 3
 
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
                  population_size: int = 10,
-                 max_iterations: Optional[int] = None, mutation_rate: float = 0.1,
+                 max_iterations: Optional[int] = None, mutation_rate: float = 0.5,
                  tournament_size: int = 2,
                  distributed: bool = False, log_dir: Optional[str] = None,
                  seed: Optional[int] = None, distribution_model: str = "global",
                  checkpoint: Optional[str] = None, checkpoint_every: int = 1, history: Optional[str] = None,
                  max_evaluations: Optional[int] = None, timeout: Optional[float] = None,
                  initial_solutions: Optional[Sequence[Mapping[str, Any]]] = None, racing: Optional[Racing] = None,
+                 refit: Optional[Callable[[Solution], Any]] = None,
                  mutation_alteration_limit: Any = RelativeAlteration(0.2)):
         super().__init__(domain, fitness_function, population_size=population_size, distributed=distributed, log_dir=log_dir, seed=seed,
                          distribution_model=distribution_model,
                          checkpoint=checkpoint, checkpoint_every=checkpoint_every,
                          history=history, max_evaluations=max_evaluations, timeout=timeout,
-                         initial_solutions=initial_solutions, racing=racing)
+                         initial_solutions=initial_solutions, racing=racing, refit=refit)
 
         # Fails here, with a message that says what to do, instead of dying on
         # the first iteration with AttributeError: no attribute 'crossover' (A-07).

@@ -7,7 +7,8 @@ fifth of each variable's range, because a local mutation measured better on the
 benchmark than redrawing the variable over its whole domain (GA went from 221 to
 238 wins of 330 against random sampling on the same budget, thirty seeds); the
 memetic algorithm keeps the whole domain, because its local search already works
-the neighborhood and the wide mutation is its way out of it.
+the neighborhood and the wide mutation is its way out of it. For the same reason it
+keeps a rate of 0.1 where GA and SSGA take 0.5.
 """
 import pytest
 
@@ -65,6 +66,12 @@ def test_without_a_limit_the_mutation_redraws_over_the_whole_domain():
 
 def test_a_number_is_an_absolute_limit():
     assert 0.0 < _largest_move(5.0) <= 5.0
+
+
+@pytest.mark.parametrize("algorithm, expected", [(GA, 0.5), (SSGA, 0.5), (Memetic, 0.1)])
+def test_the_default_rate_is_one_child_in_two_for_ga_and_ssga_and_one_in_ten_for_memetic(algorithm, expected):
+    domain, fitness = _problem()
+    assert algorithm(domain, fitness, population_size=4, max_iterations=1).mutation_rate == expected
 
 
 @pytest.mark.parametrize("algorithm,expected", [(GA, RelativeAlteration), (SSGA, RelativeAlteration),

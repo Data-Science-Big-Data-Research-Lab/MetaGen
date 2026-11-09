@@ -58,7 +58,7 @@ def _run(variant, seed: int, strains: int = 1, **properties):
     """Run a pandemic over a shared state and return the infected curve of every
     strain and the pandemic report. The strains run one after another, not in the
     launcher's threads: the accounting the paper plots is the same, and the run
-    reproduces, which threads sharing one generator cannot promise."""
+    reproduces exactly, which threads reaching a shared state in any order cannot promise."""
     set_seed(seed)
     domain, fitness = _paper_problem()
     state = LocalPandemicState(Solution(domain))

@@ -52,6 +52,36 @@ Every metaheuristic also keeps a record of each iteration in its ``history`` att
 
 The file is written as the run goes, so it can be read while the run is in progress. A new run starts it again, and a run continued from a checkpoint (see :doc:`../pausing_and_resuming/index`) continues it. In a distributed run the evaluations happen in the workers and are recorded as ``None``.
 
+Reports
+-------
+
+``report(path)`` writes a report of the last run: an HTML page that holds everything in it and opens in any browser, or, when ``path`` ends in ``.pdf``, a PDF. It shows the algorithm and its parameters, the domain, what the run spent and what stopped it, and the best solution, and draws, against the evaluations, the best fitness, the best of each iteration and the population, the value of each variable of the best solution so far, and the evaluations and seconds of each iteration. :py:func:`metagen.reporting.report` also puts several runs in one report, with their convergence side by side. The figures need matplotlib, which ``pip install pymetagen-datalabupo[report]`` installs; the HTML page can also be printed to PDF from the browser.
+
+.. code-block:: python
+
+    from metagen.framework import Domain
+    from metagen.metaheuristics import GA, GAConnector, RandomSearch
+    from metagen.reporting import report
+
+    def domain(connector=None):
+        domain = Domain(connector) if connector is not None else Domain()
+        domain.define_real("learning_rate", 1e-3, 1.0, log=True)
+        domain.define_integer("layers", 1, 8)
+        domain.define_categorical("activation", ["relu", "tanh"])
+        return domain
+
+    def fitness(solution):
+        penalty = 0.0 if solution["activation"] == "relu" else 0.2
+        return (solution["learning_rate"] - 0.05) ** 2 + abs(solution["layers"] - 3) / 10 + penalty
+
+    genetic = GA(domain(GAConnector()), fitness, max_iterations=10, seed=0)
+    genetic.run()
+    print(genetic.report("ga.html"))                                     # ga.html
+
+    random = RandomSearch(domain(), fitness, max_iterations=10, seed=0)
+    random.run()
+    print(report([genetic, random], "comparison.pdf", title="GA and random search"))   # comparison.pdf
+
 Installing TensorBoard
 ----------------------
 

@@ -1069,8 +1069,9 @@ def test_p08_los_extras_declaran_un_requisito_por_linea():
     # elemento de la lista, y ninguno lleva dos pegados.
     for requisito in requisitos:
         assert ";" not in requisito, f"el extra sigue usando ';': {requisito!r}"
-    assert set(extras) == {"tensorboard", "distributed", "test", "all"}
-    assert set(extras["all"]) == set(extras["tensorboard"]) | set(extras["distributed"])
+    assert set(extras) == {"tensorboard", "distributed", "netcdf", "report", "test", "all"}
+    assert set(extras["all"]) == (set(extras["tensorboard"]) | set(extras["distributed"]) | set(extras["netcdf"])
+                                  | set(extras["report"]))
 
     assert any("scikit-learn" in r for r in _extra_test_de_setup_cfg()), (
         "scikit-learn, que el banco necesita, no lo declara el extra `test`"
@@ -1108,6 +1109,15 @@ def test_p07_los_csv_de_parametros_no_estan_ignorados():
     # test_parameters/ went away when the CSV-driven tests were inlined; the rule
     # now covers any CSV under test/, which is what the finding was about.
     candidato = "test/framework/nuevo_ejemplo.csv"
+    # Outside a git work tree, such as a copy made with git archive or an unpacked sdist,
+    # .gitignore has no effect and git cannot answer (it exits with 128): nothing to check.
+    try:
+        en_un_repo = subprocess.run(["git", "rev-parse", "--is-inside-work-tree"], cwd=raiz,
+                                    capture_output=True, text=True).returncode == 0
+    except FileNotFoundError:
+        en_un_repo = False
+    if not en_un_repo:
+        pytest.skip("needs a git work tree")
 
     resultado = subprocess.run(
         ["git", "check-ignore", "-q", candidato],
@@ -3096,3 +3106,63 @@ def test_f53_tpe_conserva_su_warmup_como_estaba():
     from metagen.metaheuristics import KernelTPE, TPE
 
     assert TPE.keeps_warmup is False and KernelTPE.keeps_warmup is True
+
+
+# --------------------------------------------------------------------------------
+# F-56 · Una estructura dinamica que cambia de longitud saca las extremas la mitad de veces
+# --------------------------------------------------------------------------------
+
+@pytest.mark.parametrize("minimo, maximo, paso", [(1, 3, None), (2, 8, 2)])
+def test_f56_cambiar_de_longitud_saca_todas_las_longitudes_por_igual(minimo, maximo, paso):
+    """F-56: `Structure._resize` sorteaba la longitud nueva redondeando un real uniforme,
+    asi que la minima y la maxima salian la mitad de veces que cada intermedia (con 1-3,
+    25 %, 50 %, 25 %), mientras que al crear la estructura salen todas por igual. Al
+    cambiar de longitud tiene que sortearlas como al crearla."""
+    dominio = Domain()
+    dominio.define_dynamic_structure("capas", minimo, maximo, paso)
+    dominio.define_integer("ancho", 1, 10)
+    dominio.set_structure_to_variable("capas", "ancho")
+
+    set_seed(5)
+    longitudes = list(range(minimo, maximo + 1, paso or 1))
+    cuenta = dict.fromkeys(longitudes, 0)
+    veces = 6000
+    for _ in range(veces):
+        capas = Solution(dominio, connector=dominio.get_connector()).get("capas")
+        capas._resize()
+        cuenta[len(capas)] += 1
+    esperada = veces / len(longitudes)
+    for longitud, vistas in cuenta.items():
+        assert abs(vistas - esperada) < 0.1 * esperada, f"longitud {longitud}: {vistas} de {veces}, {cuenta}"
+
+
+# --------------------------------------------------------------------------------
+# F-57 · CVOA evalua a aislados, rechazados y la ultima generacion, y su valor no compite por el mejor
+# --------------------------------------------------------------------------------
+
+@pytest.mark.parametrize("nombre", ["CVOA", "ProbabilisticCVOA"])
+def test_f57_cvoa_devuelve_lo_mejor_que_evaluo(nombre):
+    """F-57: `infect` evaluaba al contagiado en el momento del contagio y el mejor solo se
+    actualizaba con los que entraban en la poblacion de la iteracion siguiente: los
+    aislados, los rechazados y la ultima generacion gastaban evaluaciones cuyo valor nunca
+    competia, y CVOA devolvia algo peor que lo mejor que habia evaluado. Ahora solo se
+    evalua a quien entra en la poblacion, y todo lo evaluado compite por el mejor."""
+    from metagen.metaheuristics import ProbabilisticCVOA, StrainProperties, cvoa_launcher
+    from metagen.metaheuristics.cvoa.cvoa import CVOA
+
+    clase = {"CVOA": CVOA, "ProbabilisticCVOA": ProbabilisticCVOA}[nombre]
+    for semilla in range(6):
+        dominio = Domain()
+        dominio.define_real("x", -5.0, 5.0)
+        dominio.define_real("y", -5.0, 5.0)
+        valores = []
+
+        def esfera(solucion):
+            valor = solucion["x"] ** 2 + solucion["y"] ** 2
+            valores.append(valor)
+            return valor
+
+        mejor = cvoa_launcher([StrainProperties("S1", pandemic_duration=6, social_distancing=2)], dominio, esfera,
+                              seed=semilla, strain_class=clase)
+        assert mejor.get_fitness() == min(valores), (
+            f"semilla {semilla}: devuelve {mejor.get_fitness()} y evaluo {min(valores)}")

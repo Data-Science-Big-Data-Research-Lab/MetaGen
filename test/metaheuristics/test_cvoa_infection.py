@@ -7,6 +7,7 @@ from metagen.framework.rng import set_seed
 from metagen.metaheuristics import ProbabilisticCVOA, StrainProperties, cvoa_launcher
 from metagen.metaheuristics.cvoa.common_tools import infect
 from metagen.metaheuristics.cvoa.cvoa import CVOA
+from metagen.metaheuristics.cvoa.local_state import LocalPandemicState
 
 
 def _domain():
@@ -75,3 +76,47 @@ def test_a_pandemic_runs_with_a_neighborhood(strain_class):
                                 infection_alteration_limit=RelativeAlteration(0.2))]
     best = cvoa_launcher(strains, _domain(), _fitness, seed=0, strain_class=strain_class)
     assert best.get_fitness() == _fitness(best)
+
+
+def test_a_point_two_strains_infect_again_at_once_leaves_the_recovered_once():
+    """Two strains can read the same point as recovered before either takes it out, and
+    then both infect it again. Taking it out the second time has nothing left to do."""
+    domain = _domain()
+    state = LocalPandemicState(Solution(domain))
+    point = Solution(domain)
+    state.recover_if_not_dead(point)
+    state.get_infected_again(point)
+    state.get_infected_again(point)
+    assert state.get_recovered_len() == 0
+
+
+def _real_domain():
+    domain = Domain()
+    for name in "abcd":
+        domain.define_real(name, -5.0, 5.0)
+    return domain
+
+
+def _real_fitness(solution):
+    return sum((solution[name] - 0.3) ** 2 for name in "abcd")
+
+
+@pytest.mark.parametrize("strain_class", [CVOA, ProbabilisticCVOA], ids=lambda c: c.__name__)
+def test_several_strains_on_threads_repeat_what_a_seed_gives(strain_class):
+    """Each strain draws from its own generators, so what it draws does not depend on
+    the order the threads happen to run in."""
+    def run(seed):
+        strains = [StrainProperties(f"S{index}", pandemic_duration=6, social_distancing=2) for index in range(3)]
+        return cvoa_launcher(strains, _real_domain(), _real_fitness, seed=seed, strain_class=strain_class).get_fitness()
+
+    for seed in range(4):
+        assert len({run(seed) for _ in range(4)}) == 1
+
+
+def test_a_seed_gives_several_strains_different_runs():
+    """Seeds of the strains come from the launcher's seed: another seed, another pandemic."""
+    def run(seed):
+        strains = [StrainProperties(f"S{index}", pandemic_duration=6, social_distancing=2) for index in range(3)]
+        return cvoa_launcher(strains, _real_domain(), _real_fitness, seed=seed).get_fitness()
+
+    assert len({run(seed) for seed in range(4)}) > 1

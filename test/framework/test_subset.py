@@ -804,9 +804,9 @@ def test_tpe_resamples_a_subset_from_the_best_references():
     assert counts[0] > 300 and counts[0] > 5 * counts[28]
 
 
-def test_kernel_tpe_draws_and_scores_the_subset():
-    """With a subset as the only variable, the candidate KernelTPE proposes is the one
-    that scores highest under l/g, and it is drawn from the model of the good ones."""
+def test_kernel_tpe_draws_the_subset_from_the_model_of_the_good_ones():
+    """With a subset as the only variable, the candidate KernelTPE proposes is drawn from
+    the model of the good ones."""
     from metagen.metaheuristics import KernelTPE
     from metagen.metaheuristics.tools import solution_class
     set_seed(33)
@@ -826,39 +826,69 @@ def test_kernel_tpe_draws_and_scores_the_subset():
         candidate = algorithm.propose(good, bad)
         assert _valid(candidate["s"], list(range(12)), 1, 6)
         counts.update(candidate["s"])
-    assert counts[0] > 150 and counts[11] < 20
+    # The model puts element 0 in four times out of five, and element 11 one in twenty
+    assert counts[0] > 120 and counts[11] < 30
 
 
-def test_kernel_tpe_keeps_the_subset_candidate_that_scores_highest(monkeypatch):
+def test_kernel_tpe_leaves_the_subset_out_of_the_score_and_ranks_by_the_other_variables(monkeypatch):
+    """The density of a subset is a product over its elements and would outweigh everything
+    else: the candidate is chosen by the other variables, among 24 drawn, and with a subset
+    alone the first one drawn stands."""
     from metagen.metaheuristics import KernelTPE
     from metagen.metaheuristics.tools import solution_class
+    from metagen.metaheuristics.tpe.kernel_tpe import _NumericModel
     from metagen.metaheuristics.tpe.subset_model import SubsetModel
     set_seed(34)
-    domain = Domain()
-    domain.define_subset("s", list(range(12)), 1, 6)
-    algorithm = KernelTPE(domain, lambda solution: len(solution["s"]), seed=34, n_candidates=24)
-    make = solution_class(domain)
-    good, bad = [], []
-    for values, bucket in (([0, 1], good), ([2, 3], good), ([9, 10, 11], bad), ([4, 5], bad)):
-        solution = make(domain, connector=domain.get_connector())
-        solution.set("s", values)
-        bucket.append(solution)
-    drawn, original = [], SubsetModel.draw
+
+    def fit(domain, observations):
+        algorithm = KernelTPE(domain, lambda solution: 0.0, seed=34, n_candidates=24)
+        make = solution_class(domain)
+        solutions = []
+        for values in observations:
+            solution = make(domain, connector=domain.get_connector())
+            for name, value in values.items():
+                solution.set(name, value)
+            solutions.append(solution)
+        return algorithm, solutions
+
+    alone = Domain()
+    alone.define_subset("s", list(range(12)), 1, 6)
+    algorithm, solutions = fit(alone, [{"s": [0, 1]}, {"s": [2, 3]}, {"s": [9, 10, 11]}, {"s": [4, 5]}])
+    drawn, original_draw = [], SubsetModel.draw
 
     def recording(self, leaf=None):
-        value = original(self, leaf)
+        value = original_draw(self, leaf)
         drawn.append(value)
         return value
 
     monkeypatch.setattr(SubsetModel, "draw", recording)
-    good_model = SubsetModel(domain.get_core().get("s"), [[0, 1], [2, 3]], 1.0)
-    bad_model = SubsetModel(domain.get_core().get("s"), [[9, 10, 11], [4, 5]], 1.0)
-    for _ in range(20):
+    for _ in range(10):
         drawn.clear()
-        chosen = algorithm.propose(good, bad)["s"]
-        scores = [good_model.log_density(value) - bad_model.log_density(value) for value in drawn]
+        chosen = algorithm.propose(solutions[:2], solutions[2:])["s"]
         assert len(drawn) == 24
-        assert np.isclose(good_model.log_density(chosen) - bad_model.log_density(chosen), max(scores))
+        assert chosen == drawn[0]
+    monkeypatch.setattr(SubsetModel, "draw", original_draw)
+
+    both = Domain()
+    both.define_subset("s", list(range(12)), 1, 6)
+    both.define_real("x", 0.0, 10.0)
+    algorithm, solutions = fit(both, [{"s": [0, 1], "x": 1.0}, {"s": [2, 3], "x": 1.2},
+                                      {"s": [9, 10, 11], "x": 9.0}, {"s": [4, 5], "x": 8.5}])
+    drawn_x, original_x = [], _NumericModel.draw
+
+    def recording_x(self, leaf=None):
+        value = original_x(self, leaf)
+        drawn_x.append(value)
+        return value
+
+    monkeypatch.setattr(_NumericModel, "draw", recording_x)
+    calls = []
+    original_density = SubsetModel.log_density
+    monkeypatch.setattr(SubsetModel, "log_density", lambda self, value: calls.append(value) or original_density(self, value))
+    chosen = algorithm.propose(solutions[:2], solutions[2:])
+    assert len(drawn_x) == 24
+    assert calls == []
+    assert chosen["x"] < 5.0
 
 
 # --- every algorithm -------------------------------------------------------------
@@ -931,17 +961,7 @@ def _distance_to_target(solution):
     return len(TARGET ^ set(solution["s"]))
 
 
-# Measured on 28 September 2026: SSGA wins 4 of 10 with its default budget, 110
-# evaluations at two children per iteration; it does improve (from 11 to 9 in 50
-# iterations, to 5 in 500), only slower than random sampling spends the same budget.
-# It is also the weakest on the behavior bench.
-_SLOW = {"SSGA": "two children per iteration: 110 evaluations are too few to beat random sampling here"}
-
-
-@pytest.mark.parametrize("index", [
-    pytest.param(i, marks=pytest.mark.xfail(reason=_SLOW[name], strict=True)) if name in _SLOW else i
-    for i, name in enumerate(a.__name__ for a in _algorithms()) if i > 0
-], ids=lambda i: _algorithms()[i].__name__)
+@pytest.mark.parametrize("index", range(1, len(_algorithms())), ids=lambda i: _algorithms()[i].__name__)
 def test_every_algorithm_beats_random_sampling_with_its_own_budget(index):
     """Choosing the eight elements of a target among two hundred: every search beats
     as many random selections as it evaluates, on at least eight of ten seeds. The
@@ -1011,3 +1031,17 @@ def test_the_history_records_the_subset_as_a_list(tmp_path):
     lines = [json.loads(line) for line in path.read_text().splitlines()]
     assert lines and all(isinstance(line["best_solution"]["items"], list) for line in lines
                          if "best_solution" in line)
+
+
+def test_a_copy_of_a_solution_shares_the_definition_of_its_subsets():
+    """A definition never changes, and copying it copied every element, thousands for the
+    genes of a dataset, for every child a genetic algorithm breeds."""
+    domain = Domain()
+    domain.define_subset("genes", list(range(5000)), 2, 20)
+    solution = Solution(domain)
+    before = solution["genes"]
+    clone = copy.deepcopy(solution)
+    assert clone.get("genes").get_definition() is solution.get("genes").get_definition()
+    clone.get("genes").set([2, 3] if before != [2, 3] else [4, 5])
+    assert solution["genes"] == before and clone["genes"] != before
+
