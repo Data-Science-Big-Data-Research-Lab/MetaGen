@@ -1,6 +1,9 @@
 # Changelog
 
-## Unreleased
+## 1.4.0
+
+MetaGen 1.4.0 adds TriGen and a triclustering package, reports of a run as an HTML page or a PDF,
+and keeping and saving the best model a run trained.
 
 ### New
 
