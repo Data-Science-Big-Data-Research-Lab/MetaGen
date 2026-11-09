@@ -3166,3 +3166,54 @@ def test_f57_cvoa_devuelve_lo_mejor_que_evaluo(nombre):
                               seed=semilla, strain_class=clase)
         assert mejor.get_fitness() == min(valores), (
             f"semilla {semilla}: devuelve {mejor.get_fitness()} y evaluo {min(valores)}")
+
+
+# --------------------------------------------------------------------------------
+# F-58 · Un real con paso saca los extremos de su rejilla la mitad de veces
+# --------------------------------------------------------------------------------
+
+def _frecuencias(valores):
+    cuenta = {}
+    for valor in valores:
+        cuenta[round(valor, 9)] = cuenta.get(round(valor, 9), 0) + 1
+    return cuenta
+
+
+def test_f58_un_real_con_paso_saca_todos_los_puntos_de_su_rejilla_por_igual():
+    """F-58: `Real.initialize` y `Real.mutate` llevaban un real uniforme al punto de la
+    rejilla mas cercano, asi que cada extremo del intervalo recibia medio intervalo: en
+    [0, 1] de 0,25 en 0,25, 12,5 % en cada extremo frente al 20 %. Al crear, al mutar sin
+    limite y al mutar dentro de una ventana, todos los puntos de la rejilla del intervalo
+    tienen que salir por igual, y siempre en la rejilla del dominio."""
+    from metagen.framework.solution.types.real import Real
+    from metagen.framework.domain import RealDefinition
+
+    set_seed(9)
+    definicion = RealDefinition(0.0, 1.0, 0.25)
+    veces = 8000
+
+    def por_igual(cuenta, puntos):
+        assert sorted(cuenta) == puntos, cuenta
+        esperada = veces / len(puntos)
+        for punto, vistas in cuenta.items():
+            assert abs(vistas - esperada) < 0.1 * esperada, f"{punto}: {vistas} de {veces}, {cuenta}"
+
+    creados = []
+    for _ in range(veces):
+        real = Real(definicion)
+        creados.append(real.get())
+    por_igual(_frecuencias(creados), [0.0, 0.25, 0.5, 0.75, 1.0])
+
+    real, mutados = Real(definicion), []
+    for _ in range(veces):
+        real.mutate()
+        mutados.append(real.get())
+    por_igual(_frecuencias(mutados), [0.0, 0.25, 0.5, 0.75, 1.0])
+
+    en_ventana = []
+    for _ in range(veces):
+        real = Real(definicion)
+        real.set(0.5)
+        real.mutate(alteration_limit=0.3)
+        en_ventana.append(real.get())
+    por_igual(_frecuencias(en_ventana), [0.25, 0.5, 0.75])

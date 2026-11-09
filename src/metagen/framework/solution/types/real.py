@@ -75,7 +75,10 @@ class Real(BaseType):
 
         # Delegated instead of rounding here: this used to skip the clipping that
         # _generate_numerical does, and could hand set() a value its own check()
-        # rejects (F-01).
+        # rejects (F-01). On a grid, every point is equally likely (F-58).
+        if step is not None:
+            self.set(self._draw_on_grid(min_value, max_value, step, min_value))
+            return
         self.set(self._generate_numerical(min_value, max_value, step))
 
     def mutate(self, alteration_limit: Any = None) -> None:
@@ -112,6 +115,9 @@ class Real(BaseType):
             min_value = limited_min_value if max_value > limited_min_value > min_value else min_value
             max_value = limited_max_value if max_value > limited_max_value > min_value else max_value
 
+        if step is not None:
+            self.set(self._draw_on_grid(min_value, max_value, step, domain_min_value))
+            return
         self.set(self._generate_numerical(min_value, max_value, step,
                                           origin=domain_min_value))
 

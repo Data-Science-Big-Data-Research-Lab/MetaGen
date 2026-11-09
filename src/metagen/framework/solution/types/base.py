@@ -175,6 +175,28 @@ class BaseType(ABC):
         """
         return origin + round((value - origin) / step) * step
 
+    def _draw_on_grid(self, left: float, right: float, step: float, origin: float) -> float:
+        """
+        One of the points of the grid anchored at ``origin`` that lie in ``[left, right]``,
+        every one of them equally likely. When the interval holds none, the nearest
+        value inside it, as :py:meth:`_generate_numerical` gives.
+
+        :param left: Left end of the interval.
+        :param right: Right end of the interval.
+        :param step: Distance between two consecutive points of the grid.
+        :param origin: Point the grid is anchored at.
+        :returns: A point of the grid.
+        :rtype: float
+        """
+        # F-58: rounding a uniform real to the grid gave each end half the chance of a
+        # point between. The tolerance keeps an end that sits on the grid, up to the
+        # rounding of the division, inside the interval.
+        first = math.ceil((left - origin) / step - 1e-9)
+        last = math.floor((right - origin) / step + 1e-9)
+        if first > last:
+            return self._generate_numerical(left, right, step, origin)
+        return min(max(origin + get_rng().randint(first, last) * step, left), right)
+
     def _generate_numerical(self, left: int | float, right: int | float,
                             step_size: int | float | None = None,
                             origin: int | float | None = None) -> int | float:
