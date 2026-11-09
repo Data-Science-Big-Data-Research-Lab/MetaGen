@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Changes
+
+- **A real with a step** draws every point of its grid with the same probability, when it is
+  created and when it mutates, so runs over such variables give different results.
+
 ## 1.4.0
 
 MetaGen 1.4.0 adds TriGen and a triclustering package, reports of a run as an HTML page or a PDF,
