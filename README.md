@@ -23,6 +23,9 @@ MetaGen simplifies the development of **metaheuristics** and the **optimization 
 ✔ **Pause and Resume** – Give a run a `checkpoint` file and it continues where it stopped after a power failure or a job scheduler's time limit, with the same result as an uninterrupted run.  
 ✔ **Run History and TensorBoard** – Every run keeps a record of each iteration, which it can write as a JSON Lines file for pandas; give it a `log_dir` and follow it graphically in TensorBoard.  
 ✔ **Scalable and Distributed Execution** – With `distributed=True`, metaheuristics run across the CPUs of a [Ray](https://www.ray.io) cluster.  
+✔ **Budgets and Racing** – Stop a run after a number of evaluations or seconds and, with racing, stop evaluating a candidate as soon as it is significantly worse than the population.  
+✔ **Reports** – An HTML page or a PDF with the parameters, the convergence and the cost of a run, or of several runs side by side.  
+✔ **Triclustering** – TriGen finds blocks of three-dimensional data whose values behave alike, such as genes under some conditions at some times or regions of a series of images, with measures of quality, biological enrichment and synthetic data to check a search against.  
 
 ### 📌 Built-in Metaheuristics
 
@@ -34,6 +37,7 @@ MetaGen simplifies the development of **metaheuristics** and the **optimization 
 - **Memetic Algorithm**
 - **Tree-structured Parzen Estimator**: `TPE`, which evaluates a pool of candidates per iteration, and `KernelTPE`, which evaluates a single candidate per iteration, for expensive fitness functions
 - **Coronavirus Optimization Algorithm (CVOA)**, with two strain classes, `CVOA` and `ProbabilisticCVOA`, that differ in how deaths, superspreaders and isolation are decided
+- **TriGen**, a genetic algorithm that finds triclusters in three-dimensional data
 
 The documentation has a [guide to choosing one](https://pymetagen.readthedocs.io/en/latest/choosing/index.html), with what each costs in evaluations.
 
@@ -45,12 +49,14 @@ MetaGen requires **Python 3.10+** and can be installed with:
 pip install pymetagen-datalabupo
 ```
 
-Two features are optional and installed on demand:
+Some features are optional and installed on demand:
 
 ```bash
 pip install pymetagen-datalabupo[distributed]   # Ray, for distributed=True
 pip install pymetagen-datalabupo[tensorboard]   # TensorBoard logging
-pip install pymetagen-datalabupo[all]           # both
+pip install pymetagen-datalabupo[report]        # matplotlib, for the reports of a run
+pip install pymetagen-datalabupo[netcdf]        # xarray and netCDF4, for NetCDF-4 cubes
+pip install pymetagen-datalabupo[all]           # all of them
 ```
 
 ## 📖 Documentation

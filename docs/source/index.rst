@@ -34,6 +34,7 @@ Use Cases
 - Deep Learning Architecture Optimization
 - Scientific Computational Problems
 - Engineering Design Optimization
+- Triclustering of three-dimensional data, such as gene expression over time or series of images
 
 User Profiles
 -------------
@@ -77,12 +78,14 @@ Using pip:
 
    (.venv) $ pip install pymetagen-datalabupo
 
-Distributed execution and TensorBoard logging are optional and installed on demand:
+Distributed execution, TensorBoard logging, the reports of a run and NetCDF-4 files are optional and installed on demand:
 
 .. code-block:: console
 
    (.venv) $ pip install pymetagen-datalabupo[distributed]
    (.venv) $ pip install pymetagen-datalabupo[tensorboard]
+   (.venv) $ pip install pymetagen-datalabupo[report]
+   (.venv) $ pip install pymetagen-datalabupo[netcdf]
 
 
 Quick Example

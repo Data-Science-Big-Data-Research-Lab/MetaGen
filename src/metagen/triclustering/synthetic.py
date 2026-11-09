@@ -256,7 +256,7 @@ def _counts(what: str, given: Sequence[int]) -> Tuple[int, int, int]:
 def null_cube(cube: Cube, seed: Optional[int] = None) -> Cube:
     """
     The cube with its rows shuffled apart in each condition: every series of values stays
-    as it was, but a row no longer holds the same gene from one condition to another, so
+    as it was, but a row does not hold the same gene from one condition to another, so
     no group of genes moves together across conditions but by chance. Searching such cubes
     shows what a search finds where there is nothing to find; see
     :py:func:`~metagen.triclustering.stability`.
