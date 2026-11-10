@@ -19,6 +19,7 @@ from __future__ import annotations
 import math
 import numbers
 from collections.abc import Callable
+from copy import deepcopy
 from typing import (TYPE_CHECKING, Any, Dict, KeysView, Optional, Union,
                     ValuesView, cast)
 
@@ -163,6 +164,29 @@ class Solution:
         self.fitness: float = -math.inf if best else math.inf
 
         self.initialize()
+
+    def __deepcopy__(self, memo: dict[int, Any]) -> 'Solution':
+        """
+        A copy of the solution whose variables and fitness are copied and whose definition
+        and connector are this one's: they say what the solution may hold and how to build
+        it, and are shared already by every solution built from the same domain.
+
+        :param memo: What has been copied so far, as :py:func:`copy.deepcopy` keeps it.
+        :type memo: dict
+        :return: The copy.
+        :rtype: Solution
+        """
+        # Copying them cost several times more than building a new solution, and was most
+        # of the time of the trajectory algorithms and of CVOA on a cheap fitness, and of
+        # the size of what travels to Ray and into a checkpoint (E-01,
+        # metagen-auditoria/auditoria-independiente-2026-11/eficiencia.md). A group is a
+        # Solution inside value, so it is still copied whole and shares nothing (F-39).
+        copied = self.__class__.__new__(self.__class__)
+        memo[id(self)] = copied
+        for name, value in self.__dict__.items():
+            shared = name in ("_Solution__definition", "connector")
+            copied.__dict__[name] = value if shared else deepcopy(value, memo)
+        return copied
 
     def get_variables(self) -> Dict[str, Union[types.BaseType, 'Solution']]:
         """

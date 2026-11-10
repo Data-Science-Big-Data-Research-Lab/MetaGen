@@ -6,6 +6,7 @@ import math
 
 import pytest
 
+from metagen.framework import Solution
 from metagen.framework.rng import set_seed
 from metagen.framework.solution.types.base import BaseType
 
@@ -120,10 +121,18 @@ def test_a_fresh_solution_is_consistent_with_its_domain(full_domain, solution):
 
 
 def test_a_copy_shares_the_definitions_and_the_connector_and_nothing_else(solution):
+    solution.set_fitness(1.5)
     twin = copy.deepcopy(solution)
+    # The solution itself shares them too: copying them cost more than building a new one.
+    assert twin.get_definition() is solution.get_definition()
+    assert twin.get_connector() is solution.get_connector()
+    assert twin.get_fitness() == 1.5 and twin.get_variables() is not solution.get_variables()
     for name, variable in solution.get_variables().items():
         copied = twin.get(name)
         assert copied is not variable and copied == variable
+        if isinstance(variable, Solution):
+            # A group is copied whole, its own variables too (F-39).
+            assert all(copied.get(inner) is not value for inner, value in variable.get_variables().items())
         if isinstance(variable, BaseType):
             assert copied.get_definition() is variable.get_definition()
             assert copied.connector is variable.connector

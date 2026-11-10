@@ -6,6 +6,11 @@
 
 - **A real with a step** draws every point of its grid with the same probability, when it is
   created and when it mutates, so runs over such variables give different results.
+- **Copying a solution** shares its domain definition and its connector with the original
+  instead of copying them, as its variables already did. Hill climbing, tabu search,
+  simulated annealing, the memetic algorithm and CVOA run faster on a cheap fitness, and what
+  a distributed run sends to its workers and a checkpoint writes is smaller. Results are the
+  same.
 
 ## 1.4.0
 
