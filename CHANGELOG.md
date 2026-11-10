@@ -9,6 +9,10 @@
   as a warning.
 - **A real with a step** draws every point of its grid with the same probability, when it is
   created and when it mutates, so runs over such variables give different results.
+- **A real with a step** mutates by at least one step when its alteration limit is narrower
+  than the step, as an integer does: with `RelativeAlteration(0.2)`, the default neighborhood
+  of hill climbing, tabu search, simulated annealing and the memetic algorithm and the mutation
+  of GA and SSGA, a step wider than a fifth of the range left the variable where it was.
 - **Copying a solution** shares its domain definition and its connector with the original
   instead of copying them, as its variables already did. Hill climbing, tabu search,
   simulated annealing, the memetic algorithm and CVOA run faster on a cheap fitness, and what

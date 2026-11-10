@@ -3289,3 +3289,31 @@ def test_f59_un_modelo_con_fitness_nan_no_se_queda_como_el_mejor_modelo():
     algoritmo.run()
     reales = [v for v in valores if not math.isnan(v)]
     assert algoritmo.best_model == f"modelo {valores.index(min(reales)) + 1}"
+
+
+# --------------------------------------------------------------------------------
+# F-60 · Un real con paso mayor que el limite de alteracion no muta nunca
+# --------------------------------------------------------------------------------
+
+@pytest.mark.parametrize("limite", ["relativo", 0.1])
+@pytest.mark.parametrize("desde, vecinos", [(0.5, [0.25, 0.5, 0.75]), (0.0, [0.0, 0.25]), (1.0, [0.75, 1.0])])
+def test_f60_un_real_con_paso_mayor_que_el_limite_se_mueve_un_paso(limite, desde, vecinos):
+    """F-60: con un limite de alteracion menor que el paso, la ventana [v - L, v + L] solo
+    contenia el valor actual, asi que un real con paso no se movia nunca: con
+    RelativeAlteration(0.2), el vecindario por defecto de HillClimbing, TabuSearch, SA,
+    Memetic y la mutacion de GA y SSGA, en [0, 1] de 0,25 en 0,25. Es el gemelo en Real
+    de F-50. La ventana alcanza al menos un paso, y sigue en la rejilla y en el dominio."""
+    from metagen.framework import RelativeAlteration
+
+    dominio = Domain()
+    dominio.define_real("x", 0.0, 1.0, 0.25)
+    alteracion = RelativeAlteration(0.2) if limite == "relativo" else limite
+    set_seed(4)
+    solucion = Solution(dominio)
+    solucion["x"] = desde
+    alcanzados = set()
+    for _ in range(600):
+        copia = copy.deepcopy(solucion)
+        copia.get("x").mutate(alteration_limit=alteracion)
+        alcanzados.add(round(copia["x"], 9))
+    assert sorted(alcanzados) == vecinos

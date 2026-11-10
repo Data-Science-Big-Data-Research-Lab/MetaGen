@@ -109,6 +109,11 @@ class Real(BaseType):
             alteration_limit = alteration_limit.of(min_value, max_value)
 
         if alteration_limit is not None:
+            if step is not None:
+                # At least one grid step, as Integer reaches since F-50: a limit narrower
+                # than the step left only the current value in the window, and the
+                # variable never moved (F-60).
+                alteration_limit = max(alteration_limit, step)
             limited_min_value = self.get() - alteration_limit
             limited_max_value = self.get() + alteration_limit
 
