@@ -16,7 +16,6 @@
 """
 from typing import Callable
 
-from metagen.framework import Domain
 from metagen.framework.rng import get_rng
 from metagen.framework.solution import Solution
 from metagen.metaheuristics.cvoa.common_tools import PandemicState, SolutionSet, StrainProperties, infect

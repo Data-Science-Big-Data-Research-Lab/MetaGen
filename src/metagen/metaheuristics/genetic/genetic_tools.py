@@ -19,7 +19,7 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 import math
 from copy import deepcopy
-from typing import Any, Protocol, Tuple, List, cast
+from typing import Any, Protocol, Tuple, cast
 
 import metagen.framework.solution as types
 from metagen.framework import BaseConnector, Solution, Domain

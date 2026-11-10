@@ -502,7 +502,7 @@ class Metaheuristic(ABC):
                     break
 
 
-            metagen_logger.info(f"Warmup phase completed. Proceeding to optimization.")
+            metagen_logger.info("Warmup phase completed. Proceeding to optimization.")
 
     def _iterate(self) -> Tuple[List[Solution], Solution]:
         """

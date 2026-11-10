@@ -16,8 +16,7 @@
 """
 from typing import Any, Callable, Type, cast
 
-from metagen.framework.domain.core import (BaseStructureDefinition,
-                                           DynamicStructureDefinition,
+from metagen.framework.domain.core import (DynamicStructureDefinition,
                                            IntegerDefinition,
                                            PermutationDefinition,
                                            StaticStructureDefinition,

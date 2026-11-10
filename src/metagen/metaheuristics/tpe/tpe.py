@@ -1,19 +1,14 @@
 import heapq
-from collections import Counter
 
-from scipy.optimize import minimize
 
 from metagen.metaheuristics.racing import Racing
 from metagen.metaheuristics.base import Metaheuristic
 import math
 from typing import Callable, List, Tuple, Optional, cast, Any, Mapping, Sequence
-import numpy as np
-from scipy.stats import norm
 from metagen.framework import Domain, Solution
 from metagen.metaheuristics.tools import solution_class
 from metagen.metaheuristics.tpe.tpe_tools import TPESolution
 from copy import deepcopy
-from metagen.framework.domain.literals import I, R, C
 from metagen.metaheuristics.gamma_schedules import GammaConfig, compute_gamma
 from .tpe_tools import TPEConnector
 

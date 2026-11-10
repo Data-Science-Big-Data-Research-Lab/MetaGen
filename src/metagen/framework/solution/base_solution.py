@@ -31,7 +31,6 @@ if TYPE_CHECKING:
     from metagen.framework import BaseConnector, Domain
     from metagen.framework.domain import Base, BaseDefinition
     from metagen.framework.solution.literals import (InputValue, SolLayer)
-    from metagen.framework.solution.bounds import BaseTypeClass, SolutionClass
 
 
 def builtin_value(value: Any) -> Any:

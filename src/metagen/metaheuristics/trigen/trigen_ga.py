@@ -27,7 +27,6 @@ from metagen.metaheuristics.trigen.fitness import TriclusterFitness
 from metagen.metaheuristics.trigen.population import DataHierarchy, Sizes, exact_floor, initial_population
 from metagen.metaheuristics.trigen.shape import CubeShape, Shape, tricluster_domain  # noqa: F401
 from metagen.triclustering import Tricluster
-from metagen.triclustering.cube import AXES
 
 
 def select_by_groups(population: Sequence[Solution], count: int) -> List[Solution]:
