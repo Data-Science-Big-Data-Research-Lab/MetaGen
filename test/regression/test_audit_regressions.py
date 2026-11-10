@@ -3317,3 +3317,37 @@ def test_f60_un_real_con_paso_mayor_que_el_limite_se_mueve_un_paso(limite, desde
         copia.get("x").mutate(alteration_limit=alteracion)
         alcanzados.add(round(copia["x"], 9))
     assert sorted(alcanzados) == vecinos
+
+
+# --------------------------------------------------------------------------------
+# F-61 · KernelTPE revienta con un entero cuyo paso no divide el rango
+# --------------------------------------------------------------------------------
+
+@pytest.mark.parametrize("tipo, minimo, maximo, paso, rejilla", [
+    ("entero", 0, 11, 4, {0, 4, 8}),
+    ("real", 0.0, 1.0, 0.375, {0.0, 0.375, 0.75}),
+])
+def test_f61_kernel_tpe_propone_solo_puntos_de_la_rejilla(tipo, minimo, maximo, paso, rejilla):
+    """F-61: `_snap` llevaba el valor al punto de la rejilla mas cercano sin acotar el indice:
+    con (0, 11, 4), 10,7 iba a 12 y se recortaba a 11, fuera de la rejilla; en un entero, el
+    recorte contra un maximo float lo dejaba en 11.0 y el dominio lo rechazaba con ValueError.
+    Con un real (0, 1, 0,375) el 1,0 salia fuera de la rejilla en silencio. Todo lo evaluado
+    tiene que ser un punto de la rejilla, y un entero, un int."""
+    from metagen.metaheuristics import KernelTPE
+
+    dominio = Domain()
+    if tipo == "entero":
+        dominio.define_integer("v", minimo, maximo, paso)
+    else:
+        dominio.define_real("v", minimo, maximo, paso)
+    vistos = []
+
+    def fitness(solucion):
+        vistos.append(solucion["v"])
+        return -float(solucion["v"])
+
+    KernelTPE(dominio, fitness, max_iterations=120, warmup_iterations=5, seed=0).run()
+    assert {round(v, 9) for v in vistos} <= rejilla
+    if tipo == "entero":
+        assert all(type(v) is int for v in vistos)
+

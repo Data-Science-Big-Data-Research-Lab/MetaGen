@@ -336,9 +336,14 @@ def _kernels(values: Sequence[float], low: float, high: float, prior_weight: flo
 def _snap(value: float, low: float, high: float, step: Optional[float], integer: bool) -> float:
     value = min(max(value, low), high)
     if step:
-        value = low + round((value - low) / step) * step
+        # The nearest grid point, but never past the last one inside the range: when the
+        # step does not divide the range, rounding up went beyond it, and the clipping
+        # that followed left the value off the grid and, for an integer, a float the
+        # domain rejected (F-61).
+        last = math.floor((high - low) / step + 1e-9)
+        value = low + min(max(round((value - low) / step), 0), last) * step
     if integer:
-        value = round(value)
+        return int(min(max(round(value), low), high))
     return min(max(value, low), high)
 
 
