@@ -69,9 +69,11 @@ jobs:
         shell: bash
         run: |
           pytest test --ignore=test/metaheuristics/test_behavior.py -q -rxXs | tee pytest.log
-          # A test that skips here runs nowhere: only TensorFlow may be missing.
-          if grep "^SKIPPED" pytest.log | grep -v -i tensorflow; then
-            echo "These tests skipped although every extra is installed."
+          # A test that skips here for want of a module runs nowhere: only TensorFlow may
+          # be missing. A test may still skip for another reason, such as one that only
+          # makes sense without Ray, which runs in the matrix above.
+          if grep "^SKIPPED" pytest.log | grep -i -e "could not import" -e "needs " | grep -v -i tensorflow; then
+            echo "These tests skipped for want of a module although every extra is installed."
             exit 1
           fi
 
