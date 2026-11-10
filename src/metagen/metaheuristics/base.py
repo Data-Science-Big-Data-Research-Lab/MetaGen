@@ -674,6 +674,13 @@ class Metaheuristic(ABC):
         if resuming:
             self._trim_history_file()
         else:
+            # The state of a run, as the constructor leaves it: a second run() started
+            # from the best and the population of the first, so a new seed gave back the
+            # best of the run before and the curve of bests ran on (F-63).
+            self.current_iteration = -1
+            self.best_solution = None
+            self.current_solutions = []
+            self.best_solution_fitnesses = []
             self.history = []
             self._evaluations = 0
             self._steps = 0

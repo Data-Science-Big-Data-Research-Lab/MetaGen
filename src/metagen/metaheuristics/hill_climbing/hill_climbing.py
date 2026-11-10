@@ -167,6 +167,13 @@ class HillClimbing(Metaheuristic):
         self.alteration_limit: Any = alteration_limit
         self.gamma_config = gamma_config
 
+    def pre_execution(self) -> None:
+        """Start every run with an empty tabu list, so that a seed reproduces a run."""
+        # A second run() searched around the solutions the first one had made tabu (F-63),
+        # as TabuSearch did before A-06.
+        super().pre_execution()
+        self.tabu_list.clear()
+
     def initialize(self, num_solutions: int = 10) -> Tuple[List[Solution], Solution]:
         """
         Initializes the Tabu Search algorithm.

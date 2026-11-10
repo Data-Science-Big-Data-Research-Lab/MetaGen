@@ -3397,3 +3397,37 @@ def test_f62_tpe_evalua_y_devuelve_solo_puntos_de_la_rejilla():
     assert {round(x, 9) for x, _ in vistos} <= {0.0, 0.25, 0.5, 0.75, 1.0}
     assert {n for _, n in vistos} <= {0, 5, 10, 15, 20}
     assert (mejor["x"], mejor["n"]) == (0.25, 5)
+
+
+# --------------------------------------------------------------------------------
+# F-63 · Un segundo run() sobre el mismo objeto arrastra el estado del primero
+# --------------------------------------------------------------------------------
+
+@pytest.mark.parametrize("nombre", ["RandomSearch", "SA", "HillClimbing", "TabuSearch", "GA", "SSGA", "TPE",
+                                    "KernelTPE", "Memetic"])
+def test_f63_un_segundo_run_es_una_ejecucion_nueva(nombre):
+    """F-63: `run()` reiniciaba el historial y los contadores, pero no el mejor, la
+    poblacion, la iteracion ni la curva de mejores, y `HillClimbing` no vaciaba su lista
+    tabu: el mismo objeto con otra semilla devolvia el mejor de la ejecucion anterior, con
+    la misma semilla HillClimbing, TabuSearch y KernelTPE daban otro resultado, y la curva
+    se acumulaba. Un segundo `run()`, con la misma semilla o con otra, tiene que dar lo
+    mismo que un objeto nuevo."""
+    def fitness(solucion):
+        return (solucion["x"] - 1.0) ** 2
+
+    def construir(semilla):
+        dominio = Domain()
+        dominio.define_real("x", -5.0, 5.0)
+        algoritmo = _f59_algoritmo(nombre, dominio, fitness)
+        algoritmo.seed = semilla
+        return algoritmo
+
+    def resultado(algoritmo, mejor):
+        return mejor.get_fitness(), list(algoritmo.best_solution_fitnesses), len(algoritmo.current_solutions)
+
+    reutilizado = construir(3)
+    reutilizado.run()
+    for semilla in (3, 8):
+        reutilizado.seed = semilla
+        nuevo = construir(semilla)
+        assert resultado(reutilizado, reutilizado.run()) == resultado(nuevo, nuevo.run()), f"semilla {semilla}"

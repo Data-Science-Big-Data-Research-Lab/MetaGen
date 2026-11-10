@@ -13,6 +13,9 @@
   than the step, as an integer does: with `RelativeAlteration(0.2)`, the default neighborhood
   of hill climbing, tabu search, simulated annealing and the memetic algorithm and the mutation
   of GA and SSGA, a step wider than a fifth of the range left the variable where it was.
+- **A second `run()`** of the same metaheuristic is a new run: it starts from no best
+  solution, no population and an empty curve of bests, and hill climbing from an empty tabu
+  list, so it gives what a new object with the same seed gives.
 - **`TPE`** evaluates and returns only points of the grid of an integer or a real with a step:
   the value its model draws goes to the nearest point of the grid. Variables without a step
   give the same results.
