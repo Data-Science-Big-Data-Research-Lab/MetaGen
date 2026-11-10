@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import math
+
 import metagen.framework.solution as types
 from metagen.framework import BaseConnector, Solution
 from metagen.framework.domain import (BaseDefinition, CategoricalDefinition,
@@ -10,6 +12,26 @@ from scipy.stats import norm
 import numpy as np
 from metagen.framework.rng import get_numpy_rng
 from metagen.metaheuristics.tpe.subset_model import SubsetModel
+
+def _on_grid(value: float, low: float, high: float, step: float | None) -> float:
+    """
+    The point of the grid of a variable with a step nearest to a value, never past the last
+    one inside the range; the value itself without a step.
+
+    :param value: The value drawn from the model.
+    :param low: The minimum of the variable, where its grid starts.
+    :param high: The maximum of the variable.
+    :param step: The step of the variable, or None.
+    :return: The point of the grid, or the value.
+    """
+    # The model draws on a continuous line, and the step was left out: TPE evaluated and
+    # returned points that were not in the domain (F-62). No draw is added, so a variable
+    # without a step gets exactly what it got before.
+    if step is None:
+        return value
+    last = math.floor((high - low) / step + 1e-9)
+    return min(max(low + min(max(round((value - low) / step), 0), last) * step, low), high)
+
 
 def sample_from_values(tpe_type, best_values, worst_values):
     _, min_value, max_value, step = tpe_type.get_definition().get_attributes()
@@ -57,7 +79,7 @@ class TPEInteger(types.Integer):
         """
         Modify the value of this Integer instance to a random category from its definition.
         """
-        _, min_value, max_value, _ = self.get_definition().get_attributes()
+        _, min_value, max_value, step = self.get_definition().get_attributes()
 
         best_values = [val.value for val in best_values]
         worst_values = [val.value for val in worst_values]
@@ -72,7 +94,7 @@ class TPEInteger(types.Integer):
 
         # set(), not self.value: assigning straight to the attribute skipped check()
         # and let an out-of-domain value reach the user's fitness function (F-22).
-        self.set(int(round(float(value))))
+        self.set(int(round(float(_on_grid(float(value), min_value, max_value, step)))))
 
 class TPEReal(types.Real):
     """
@@ -86,12 +108,12 @@ class TPEReal(types.Real):
         worst_values = [val.value for val in worst_values]
 
 
-        _, min_value, max_value, _ = self.get_definition().get_attributes()
+        _, min_value, max_value, step = self.get_definition().get_attributes()
         value = sample_from_values(self, best_values, worst_values)
         if value is None or np.isnan(value):
             value = get_numpy_rng().uniform(min_value, max_value)
 
-        self.set(float(value))
+        self.set(float(_on_grid(float(value), min_value, max_value, step)))
 
 class TPECategorical(types.Categorical):
     """

@@ -13,6 +13,9 @@
   than the step, as an integer does: with `RelativeAlteration(0.2)`, the default neighborhood
   of hill climbing, tabu search, simulated annealing and the memetic algorithm and the mutation
   of GA and SSGA, a step wider than a fifth of the range left the variable where it was.
+- **`TPE`** evaluates and returns only points of the grid of an integer or a real with a step:
+  the value its model draws goes to the nearest point of the grid. Variables without a step
+  give the same results.
 - **`KernelTPE`** proposes only points of the grid of a variable with a step, also when the
   step does not divide the range, as in `define_integer("i", 0, 11, 4)`.
 - **Copying a solution** shares its domain definition and its connector with the original

@@ -3351,3 +3351,28 @@ def test_f61_kernel_tpe_propone_solo_puntos_de_la_rejilla(tipo, minimo, maximo, 
     if tipo == "entero":
         assert all(type(v) is int for v in vistos)
 
+
+# --------------------------------------------------------------------------------
+# F-62 · TPE ignora el paso de los enteros y los reales
+# --------------------------------------------------------------------------------
+
+def test_f62_tpe_evalua_y_devuelve_solo_puntos_de_la_rejilla():
+    """F-62: `TPEReal.resample` y `TPEInteger.resample` dejaban el valor dibujado del modelo
+    tal cual (el entero, solo redondeado a la unidad), asi que con paso TPE evaluaba y
+    devolvia puntos que no eran del dominio: 322 de 480 reales fuera de la rejilla y un
+    mejor con x = 0,3255 de paso 0,25. Todo lo evaluado tiene que estar en la rejilla."""
+    from metagen.metaheuristics import TPE
+
+    dominio = Domain()
+    dominio.define_real("x", 0.0, 1.0, 0.25)
+    dominio.define_integer("n", 0, 22, 5)
+    vistos = []
+
+    def fitness(solucion):
+        vistos.append((solucion["x"], solucion["n"]))
+        return (solucion["x"] - 0.33) ** 2 + (solucion["n"] - 7) ** 2
+
+    mejor = TPE(dominio, fitness, max_iterations=15, warmup_iterations=5, seed=0).run()
+    assert {round(x, 9) for x, _ in vistos} <= {0.0, 0.25, 0.5, 0.75, 1.0}
+    assert {n for _, n in vistos} <= {0, 5, 10, 15, 20}
+    assert (mejor["x"], mejor["n"]) == (0.25, 5)
