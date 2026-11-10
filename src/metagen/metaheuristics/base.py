@@ -944,8 +944,9 @@ class Metaheuristic(ABC):
         """
         Ask a running ``run()`` to stop after the iteration in progress. It saves the
         state if the run has a ``checkpoint`` file, and returns the best solution found
-        so far; calling ``run()`` again, or :py:meth:`resume` in another process,
-        continues from there. It only sets a flag, so it can be called from a callback,
+        so far. With a checkpoint, calling ``run()`` again, or :py:meth:`resume` in another
+        process, continues from there; without one, ``run()`` starts a new run. It only
+        sets a flag, so it can be called from a callback,
         another thread or a signal handler, for instance the signal a job scheduler
         sends before stopping a job:
 
