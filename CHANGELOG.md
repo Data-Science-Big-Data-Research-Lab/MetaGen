@@ -4,6 +4,9 @@
 
 ### Changes
 
+- **A fitness function that returns NaN**: the value counts as the worst one, infinity, so
+  it never stays as the best solution or the best model of a run, and the first one is logged
+  as a warning.
 - **A real with a step** draws every point of its grid with the same probability, when it is
   created and when it mutates, so runs over such variables give different results.
 - **Copying a solution** shares its domain definition and its connector with the original

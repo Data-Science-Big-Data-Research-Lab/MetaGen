@@ -80,7 +80,8 @@ class Metaheuristic(ABC):
 
     :param domain: The problem domain.
     :type domain: Domain
-    :param fitness_function: Function to evaluate solutions.
+    :param fitness_function: Function to evaluate solutions. A value that is NaN counts as the worst
+        one, infinity.
     :type fitness_function: Callable[[Solution], float]
     :param population_size: The size of the population (default is 20).
     :type population_size: int, optional

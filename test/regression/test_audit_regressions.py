@@ -3217,3 +3217,75 @@ def test_f58_un_real_con_paso_saca_todos_los_puntos_de_su_rejilla_por_igual():
         real.mutate(alteration_limit=0.3)
         en_ventana.append(real.get())
     por_igual(_frecuencias(en_ventana), [0.25, 0.5, 0.75])
+
+
+# --------------------------------------------------------------------------------
+# F-59 · Un fitness NaN se queda como mejor solucion
+# --------------------------------------------------------------------------------
+
+def _f59_algoritmo(nombre, dominio, fitness):
+    from metagen.metaheuristics import (GA, SA, SSGA, TPE, GAConnector, HillClimbing, KernelTPE, Memetic,
+                                        RandomSearch, TabuSearch)
+
+    if nombre in ("GA", "SSGA", "Memetic"):
+        conectado = Domain(GAConnector())
+        conectado.define_real("x", -5.0, 5.0)
+        dominio = conectado
+    comunes = {"seed": 3, "max_iterations": 6}
+    if nombre == "RandomSearch":
+        return RandomSearch(dominio, fitness, population_size=6, **comunes)
+    if nombre == "SA":
+        return SA(dominio, fitness, **comunes)
+    if nombre == "HillClimbing":
+        return HillClimbing(dominio, fitness, population_size=6, **comunes)
+    if nombre == "TabuSearch":
+        return TabuSearch(dominio, fitness, population_size=6, **comunes)
+    if nombre == "GA":
+        return GA(dominio, fitness, population_size=6, **comunes)
+    if nombre == "SSGA":
+        return SSGA(dominio, fitness, population_size=6, **comunes)
+    if nombre == "TPE":
+        return TPE(dominio, fitness, warmup_iterations=2, **comunes)
+    if nombre == "KernelTPE":
+        return KernelTPE(dominio, fitness, warmup_iterations=2, seed=3, max_iterations=20)
+    return Memetic(dominio, fitness, population_size=6, neighbor_population_size=2, **comunes)
+
+
+@pytest.mark.parametrize("nombre", ["RandomSearch", "SA", "HillClimbing", "TabuSearch", "GA", "SSGA", "TPE",
+                                    "KernelTPE", "Memetic"])
+def test_f59_un_fitness_nan_no_se_queda_como_el_mejor(nombre):
+    """F-59: `nan < x` y `x < nan` son siempre falsos, asi que una evaluacion que devolvia
+    NaN y llegaba a ser la mejor ya no la desbancaba nada: la ejecucion entera devolvia NaN.
+    Un NaN cuenta como el peor valor posible, y el resultado es lo mejor que se evaluo."""
+    dominio = Domain()
+    dominio.define_real("x", -5.0, 5.0)
+    valores = []
+
+    def fitness(solucion):
+        valor = math.nan if not valores else (solucion["x"] - 1.0) ** 2
+        valores.append(valor)
+        return valor
+
+    mejor = _f59_algoritmo(nombre, dominio, fitness).run()
+    assert not math.isnan(mejor.get_fitness())
+    assert mejor.get_fitness() == min(v for v in valores if not math.isnan(v))
+
+
+def test_f59_un_modelo_con_fitness_nan_no_se_queda_como_el_mejor_modelo():
+    """F-59, el mismo fallo en el mejor modelo: un primer par (NaN, modelo) se quedaba como
+    `best_model` y ningun valor posterior lo sustituia."""
+    from metagen.metaheuristics import RandomSearch
+
+    dominio = Domain()
+    dominio.define_real("x", -5.0, 5.0)
+    valores = []
+
+    def fitness(solucion):
+        valor = math.nan if not valores else (solucion["x"] - 1.0) ** 2
+        valores.append(valor)
+        return valor, f"modelo {len(valores)}"
+
+    algoritmo = RandomSearch(dominio, fitness, population_size=6, max_iterations=4, seed=3)
+    algoritmo.run()
+    reales = [v for v in valores if not math.isnan(v)]
+    assert algoritmo.best_model == f"modelo {valores.index(min(reales)) + 1}"
