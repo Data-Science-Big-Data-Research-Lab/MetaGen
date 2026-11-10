@@ -1831,7 +1831,11 @@ def test_p06_el_workflow_de_ci_ejecuta_la_suite_que_debe_estar_verde():
     - **no** instala los extras opcionales en el job `tests`, para que la suite
       siga recolectando y pasando sin ellos (P-04);
     - y tiene un job `extras` que si instala Ray y ejecuta `test_extras.py` y la
-      suite de regresion, para que lo que necesita Ray corra en algun sitio.
+      suite de regresion, para que lo que necesita Ray corra en algun sitio. Desde
+      OF-04 (10 de noviembre de 2026) los ejecuta con el arbol entero, sin ignorar mas
+      que el banco aritmetico, y falla si se salta un test que no sea de TensorFlow:
+      la lista de ficheros a mano dejaba tests con Ray, TensorBoard y NetCDF-4 sin
+      correr en ningun sitio. Se comprueba la intencion, no como se escriba.
 
     Y desde que P-11 cerro, el job de mypy **bloquea**: el `continue-on-error` que lo
     hacia informativo mientras quedaban errores no puede volver.
@@ -1888,10 +1892,27 @@ def test_p06_el_workflow_de_ci_ejecuta_la_suite_que_debe_estar_verde():
     )
 
     en_extras = bloque_del_job("extras")
-    assert "[distributed]" in en_extras or "ray" in en_extras, (
+    instala_extras = [linea for linea in en_extras.splitlines()
+                      if "pip install" in linea and not linea.strip().startswith("#")]
+    assert any(extra in linea for linea in instala_extras for extra in ("[distributed]", "[all]", ",all]", " ray")), (
         "el job `extras` no instala Ray: lo que necesita Ray no corre en ningun sitio")
-    assert "test_extras.py" in en_extras and "test/regression" in en_extras, (
+    ejecuciones = [linea.strip() for linea in en_extras.splitlines()
+                   if linea.strip().startswith("pytest ")]
+    arbol_entero = [linea for linea in ejecuciones if re.match(r"pytest test(\s|$)", linea)]
+    por_nombre = any("test_extras.py" in linea for linea in ejecuciones) and any(
+        "test/regression" in linea for linea in ejecuciones)
+    assert arbol_entero or por_nombre, (
         "el job `extras` no ejecuta test_extras.py y la suite de regresion")
+    for linea in arbol_entero:
+        ignorados = re.findall(r"--ignore=(\S+)", linea) + re.findall(r"--deselect[= ](\S+)", linea)
+        assert ignorados in ([], ["test/metaheuristics/test_behavior.py"]), (
+            f"el job `extras` deja fuera mas que el banco aritmetico: {ignorados}")
+        assert " -k " not in linea and " -m " not in linea, (
+            f"el job `extras` filtra el arbol con -k o -m: {linea}")
+    if arbol_entero:
+        assert re.search(r'grep "\^SKIPPED".*\|\s*grep -v -i tensorflow', en_extras), (
+            "el job `extras` no falla cuando se salta un test que no es de TensorFlow: "
+            "un test que se salta alli no corre en ningun sitio")
 
     for version in ("3.10", "3.11", "3.12"):
         assert f'"{version}"' in texto, (
