@@ -1,8 +1,11 @@
+import math
+import numbers
 from copy import deepcopy
 from collections.abc import Iterator
 from typing import Any, Callable, Dict, Tuple, List, Optional, Set, cast
 
 from metagen.framework import Domain, Solution
+from metagen.logging.metagen_logger import metagen_logger
 
 
 def solution_class(domain: Domain) -> type[Solution]:
@@ -80,6 +83,9 @@ class CountingFitness:
     behind ``references``, the values per step of the population it races against, gets
     no more steps. Every solution so evaluated keeps its values per step in
     ``step_values`` and whether it was stopped in ``raced_out``.
+
+    A value that is not a number, NaN, counts as the worst one, infinity: it is no
+    solution's best, and the first one is logged as a warning.
     """
 
     def __init__(self, function: Callable[[Solution], Any], racing: Any = None,
@@ -95,18 +101,31 @@ class CountingFitness:
         #: The value and the model of the best evaluation that returned a model, if any:
         #: a fitness function may return a pair, its value and the model it trained.
         self.best: BestModel = best
+        #: Whether a NaN has been warned about.
+        self.warned_nan = False
 
     def __call__(self, solution: Solution) -> float:
         self.calls += 1
         value = self.function(solution)
         if isinstance(value, tuple) and len(value) == 2:
             value, model = value
+            value = self._worst_if_nan(value)
             if self.best is None or value < self.best[0]:
                 self.best = (value, model)
             return value
         if not isinstance(value, Iterator):
-            return value
-        return self._steps_of(solution, value)
+            return self._worst_if_nan(value)
+        return self._worst_if_nan(self._steps_of(solution, value))
+
+    def _worst_if_nan(self, value: Any) -> Any:
+        # Every comparison with NaN is false, so a NaN that became the best could not be
+        # replaced and the whole run returned it, the best model too (F-59).
+        if isinstance(value, numbers.Real) and math.isnan(value):
+            if not self.warned_nan:
+                self.warned_nan = True
+                metagen_logger.warning("The fitness function returned NaN; it counts as the worst value, inf.")
+            return math.inf
+        return value
 
     def __getstate__(self) -> Dict[str, Any]:
         # A copy for a worker of Ray takes the value of the best model but not the model:

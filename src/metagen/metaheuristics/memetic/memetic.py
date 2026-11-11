@@ -144,7 +144,7 @@ class Memetic(Metaheuristic):
         require_crossover(domain, "Memetic")
 
         self.mutation_rate = mutation_rate
-        self.max_generations = self._iterations(max_iterations, 20)
+        self.max_iterations = self._iterations(max_iterations, 20)
         self.tournament_size = tournament_size
         self.neighbor_population_size = neighbor_population_size
         self.alteration_limit = alteration_limit
@@ -212,6 +212,13 @@ class Memetic(Metaheuristic):
             current_solutions = current_solutions[:num_solutions]
 
         return current_solutions, best_solution
+
+    @property
+    def max_generations(self) -> Optional[int]:
+        """The same as ``max_iterations``, the name it was kept under before."""
+        # Kept under that name alone, it was the one argument of a metaheuristic the report
+        # did not show (F-65).
+        return self.max_iterations
 
     def stopping_criterion(self) -> bool:
         """

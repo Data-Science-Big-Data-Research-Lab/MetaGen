@@ -36,10 +36,6 @@ INK, MUTED, GRID, SURFACE = "#0b0b0b", "#52514e", "#e8e7e3", "#fcfcfb"
 #: The most panels of the trajectory of the best solution, one per variable.
 MOST_VARIABLES = 12
 
-#: The parameters of a metaheuristic the report lists, those it has.
-PARAMETERS = ("population_size", "warmup_iterations", "max_iterations", "max_evaluations", "timeout",
-              "distributed", "distribution_model", "seed", "candidate_pool_size", "neighbor_population_size",
-              "mutation_probability", "alteration_limit", "initial_temp", "cooling_rate")
 
 
 def report(runs: Union["Metaheuristic", Sequence["Metaheuristic"]], path: str, title: Optional[str] = None,
@@ -111,7 +107,7 @@ def _labels(runs: Sequence["Metaheuristic"]) -> List[str]:
 def _summary(run: "Metaheuristic") -> List[Tuple[str, str]]:
     best = run.history[-1]["best"] if run.history else None
     rows = [("algorithm", type(run).__name__)]
-    rows += [(name, _text(getattr(run, name))) for name in PARAMETERS if hasattr(run, name)]
+    rows += [(name, _text(value)) for name, value in run.parameters().items()]
     rows += [("stop reason", _text(run.stop_reason)), ("evaluations", _text(run.evaluations)),
              ("seconds", f"{run.seconds:.2f}"), ("iterations", _text(len(run.history))),
              ("best fitness", _text(best))]

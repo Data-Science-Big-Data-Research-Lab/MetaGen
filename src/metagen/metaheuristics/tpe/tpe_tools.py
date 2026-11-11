@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import math
+from functools import lru_cache
+from typing import Tuple
+
 import metagen.framework.solution as types
 from metagen.framework import BaseConnector, Solution
 from metagen.framework.domain import (BaseDefinition, CategoricalDefinition,
@@ -11,6 +15,26 @@ import numpy as np
 from metagen.framework.rng import get_numpy_rng
 from metagen.metaheuristics.tpe.subset_model import SubsetModel
 
+def _on_grid(value: float, low: float, high: float, step: float | None) -> float:
+    """
+    The point of the grid of a variable with a step nearest to a value, never past the last
+    one inside the range; the value itself without a step.
+
+    :param value: The value drawn from the model.
+    :param low: The minimum of the variable, where its grid starts.
+    :param high: The maximum of the variable.
+    :param step: The step of the variable, or None.
+    :return: The point of the grid, or the value.
+    """
+    # The model draws on a continuous line, and the step was left out: TPE evaluated and
+    # returned points that were not in the domain (F-62). No draw is added, so a variable
+    # without a step gets exactly what it got before.
+    if step is None:
+        return value
+    last = math.floor((high - low) / step + 1e-9)
+    return min(max(low + min(max(round((value - low) / step), 0), last) * step, low), high)
+
+
 def sample_from_values(tpe_type, best_values, worst_values):
     _, min_value, max_value, step = tpe_type.get_definition().get_attributes()
     if tpe_type.get_definition().log:
@@ -21,17 +45,41 @@ def sample_from_values(tpe_type, best_values, worst_values):
     return _sample(tpe_type.value, best_values, worst_values, min_value, max_value)
 
 
+#: The normalizing constant of the normal density, as scipy computes it.
+_NORM_PDF_C = math.sqrt(2 * math.pi)
+
+
+@lru_cache(maxsize=1024)
+def _fit(values: Tuple[float, ...]) -> Tuple[float, float]:
+    """The mean and the standard deviation of the values, as ``scipy.stats.norm.fit`` gives them."""
+    # Every candidate of an iteration fitted the same values again, for every variable and
+    # side: fitted once, the result is the same (E-02,
+    # metagen-auditoria/auditoria-independiente-2026-11/eficiencia.md).
+    return norm.fit(values)
+
+
+def _pdf(x: float, loc: float, scale: float) -> float:
+    """
+    The normal density at ``x``, with the operations of ``scipy.stats.norm.pdf`` in its order,
+    on an array of one element as scipy does: the same value, bit for bit.
+    """
+    # The generic machinery of scipy.stats took most of the time of an iteration for a
+    # single number (E-02). Checked equal to norm.pdf on 200 000 values and on seeded runs.
+    y = np.asarray([(np.asarray(x) - loc) / scale], dtype=np.float64)
+    return float((np.exp(-y ** 2 / 2.0) / _NORM_PDF_C / scale)[0])
+
+
 def _sample(current, best_values, worst_values, min_value, max_value):
 
-    mu_best, sigma_best = norm.fit(best_values)
-    mu_worst, sigma_worst = norm.fit(worst_values)
+    mu_best, sigma_best = _fit(tuple(best_values))
+    mu_worst, sigma_worst = _fit(tuple(worst_values))
 
     value = 0
 
     if sigma_best > 0 and sigma_worst > 0:
 
-        p_best = norm.pdf(current, mu_best, sigma_best)
-        p_worst = norm.pdf(current, mu_worst, sigma_worst)
+        p_best = _pdf(current, mu_best, sigma_best)
+        p_worst = _pdf(current, mu_worst, sigma_worst)
     
         if p_best / (p_best + p_worst + 1e-16) > get_numpy_rng().random():
             value = np.clip(get_numpy_rng().normal(mu_best, sigma_best), min_value, max_value).item()
@@ -57,7 +105,7 @@ class TPEInteger(types.Integer):
         """
         Modify the value of this Integer instance to a random category from its definition.
         """
-        _, min_value, max_value, _ = self.get_definition().get_attributes()
+        _, min_value, max_value, step = self.get_definition().get_attributes()
 
         best_values = [val.value for val in best_values]
         worst_values = [val.value for val in worst_values]
@@ -72,7 +120,7 @@ class TPEInteger(types.Integer):
 
         # set(), not self.value: assigning straight to the attribute skipped check()
         # and let an out-of-domain value reach the user's fitness function (F-22).
-        self.set(int(round(float(value))))
+        self.set(int(round(float(_on_grid(float(value), min_value, max_value, step)))))
 
 class TPEReal(types.Real):
     """
@@ -86,12 +134,12 @@ class TPEReal(types.Real):
         worst_values = [val.value for val in worst_values]
 
 
-        _, min_value, max_value, _ = self.get_definition().get_attributes()
+        _, min_value, max_value, step = self.get_definition().get_attributes()
         value = sample_from_values(self, best_values, worst_values)
         if value is None or np.isnan(value):
             value = get_numpy_rng().uniform(min_value, max_value)
 
-        self.set(float(value))
+        self.set(float(_on_grid(float(value), min_value, max_value, step)))
 
 class TPECategorical(types.Categorical):
     """

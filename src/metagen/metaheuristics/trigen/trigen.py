@@ -20,7 +20,7 @@ import datetime
 import json
 import os
 import time
-from typing import Any, Callable, Dict, List, Literal, Mapping, Optional, Sequence, Set, Tuple, cast
+from typing import Any, Dict, List, Literal, Mapping, Optional, Sequence, Set, Tuple, cast
 
 import numpy as np
 

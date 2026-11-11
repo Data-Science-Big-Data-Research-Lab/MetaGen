@@ -1511,7 +1511,9 @@ def test_f23_una_cepa_no_muere_al_encontrar_la_primera_mejora():
     finally:
         cvoa_local.CVOA.run = run_original
 
-    assert iteraciones["hechas"] > 4, (
+    # Exactamente las 4 declaradas: ni muere antes, que es F-23, ni hace una de mas. Hasta
+    # F-69 la cepa hacia pandemic_duration + 1 y este test pedia > 4.
+    assert iteraciones["hechas"] == 4, (
         f"la cepa se detuvo en la iteracion {iteraciones['hechas']} de las 4 "
         "declaradas en pandemic_duration"
     )
@@ -1831,7 +1833,11 @@ def test_p06_el_workflow_de_ci_ejecuta_la_suite_que_debe_estar_verde():
     - **no** instala los extras opcionales en el job `tests`, para que la suite
       siga recolectando y pasando sin ellos (P-04);
     - y tiene un job `extras` que si instala Ray y ejecuta `test_extras.py` y la
-      suite de regresion, para que lo que necesita Ray corra en algun sitio.
+      suite de regresion, para que lo que necesita Ray corra en algun sitio. Desde
+      OF-04 (10 de noviembre de 2026) los ejecuta con el arbol entero, sin ignorar mas
+      que el banco aritmetico, y falla si se salta un test que no sea de TensorFlow:
+      la lista de ficheros a mano dejaba tests con Ray, TensorBoard y NetCDF-4 sin
+      correr en ningun sitio. Se comprueba la intencion, no como se escriba.
 
     Y desde que P-11 cerro, el job de mypy **bloquea**: el `continue-on-error` que lo
     hacia informativo mientras quedaban errores no puede volver.
@@ -1888,10 +1894,27 @@ def test_p06_el_workflow_de_ci_ejecuta_la_suite_que_debe_estar_verde():
     )
 
     en_extras = bloque_del_job("extras")
-    assert "[distributed]" in en_extras or "ray" in en_extras, (
+    instala_extras = [linea for linea in en_extras.splitlines()
+                      if "pip install" in linea and not linea.strip().startswith("#")]
+    assert any(extra in linea for linea in instala_extras for extra in ("[distributed]", "[all]", ",all]", " ray")), (
         "el job `extras` no instala Ray: lo que necesita Ray no corre en ningun sitio")
-    assert "test_extras.py" in en_extras and "test/regression" in en_extras, (
+    ejecuciones = [linea.strip() for linea in en_extras.splitlines()
+                   if linea.strip().startswith("pytest ")]
+    arbol_entero = [linea for linea in ejecuciones if re.match(r"pytest test(\s|$)", linea)]
+    por_nombre = any("test_extras.py" in linea for linea in ejecuciones) and any(
+        "test/regression" in linea for linea in ejecuciones)
+    assert arbol_entero or por_nombre, (
         "el job `extras` no ejecuta test_extras.py y la suite de regresion")
+    for linea in arbol_entero:
+        ignorados = re.findall(r"--ignore=(\S+)", linea) + re.findall(r"--deselect[= ](\S+)", linea)
+        assert ignorados in ([], ["test/metaheuristics/test_behavior.py"]), (
+            f"el job `extras` deja fuera mas que el banco aritmetico: {ignorados}")
+        assert " -k " not in linea and " -m " not in linea, (
+            f"el job `extras` filtra el arbol con -k o -m: {linea}")
+    if arbol_entero:
+        assert re.search(r'grep "\^SKIPPED".*\|\s*grep -v -i tensorflow', en_extras), (
+            "el job `extras` no falla cuando se salta un test que no es de TensorFlow: "
+            "un test que se salta alli no corre en ningun sitio")
 
     for version in ("3.10", "3.11", "3.12"):
         assert f'"{version}"' in texto, (
@@ -3166,3 +3189,451 @@ def test_f57_cvoa_devuelve_lo_mejor_que_evaluo(nombre):
                               seed=semilla, strain_class=clase)
         assert mejor.get_fitness() == min(valores), (
             f"semilla {semilla}: devuelve {mejor.get_fitness()} y evaluo {min(valores)}")
+
+
+# --------------------------------------------------------------------------------
+# F-58 · Un real con paso saca los extremos de su rejilla la mitad de veces
+# --------------------------------------------------------------------------------
+
+def _frecuencias(valores):
+    cuenta = {}
+    for valor in valores:
+        cuenta[round(valor, 9)] = cuenta.get(round(valor, 9), 0) + 1
+    return cuenta
+
+
+def test_f58_un_real_con_paso_saca_todos_los_puntos_de_su_rejilla_por_igual():
+    """F-58: `Real.initialize` y `Real.mutate` llevaban un real uniforme al punto de la
+    rejilla mas cercano, asi que cada extremo del intervalo recibia medio intervalo: en
+    [0, 1] de 0,25 en 0,25, 12,5 % en cada extremo frente al 20 %. Al crear, al mutar sin
+    limite y al mutar dentro de una ventana, todos los puntos de la rejilla del intervalo
+    tienen que salir por igual, y siempre en la rejilla del dominio."""
+    from metagen.framework.solution.types.real import Real
+    from metagen.framework.domain import RealDefinition
+
+    set_seed(9)
+    definicion = RealDefinition(0.0, 1.0, 0.25)
+    veces = 8000
+
+    def por_igual(cuenta, puntos):
+        assert sorted(cuenta) == puntos, cuenta
+        esperada = veces / len(puntos)
+        for punto, vistas in cuenta.items():
+            assert abs(vistas - esperada) < 0.1 * esperada, f"{punto}: {vistas} de {veces}, {cuenta}"
+
+    creados = []
+    for _ in range(veces):
+        real = Real(definicion)
+        creados.append(real.get())
+    por_igual(_frecuencias(creados), [0.0, 0.25, 0.5, 0.75, 1.0])
+
+    real, mutados = Real(definicion), []
+    for _ in range(veces):
+        real.mutate()
+        mutados.append(real.get())
+    por_igual(_frecuencias(mutados), [0.0, 0.25, 0.5, 0.75, 1.0])
+
+    en_ventana = []
+    for _ in range(veces):
+        real = Real(definicion)
+        real.set(0.5)
+        real.mutate(alteration_limit=0.3)
+        en_ventana.append(real.get())
+    por_igual(_frecuencias(en_ventana), [0.25, 0.5, 0.75])
+
+
+# --------------------------------------------------------------------------------
+# F-59 · Un fitness NaN se queda como mejor solucion
+# --------------------------------------------------------------------------------
+
+def _f59_algoritmo(nombre, dominio, fitness):
+    from metagen.metaheuristics import (GA, SA, SSGA, TPE, GAConnector, HillClimbing, KernelTPE, Memetic,
+                                        RandomSearch, TabuSearch)
+
+    if nombre in ("GA", "SSGA", "Memetic"):
+        conectado = Domain(GAConnector())
+        conectado.define_real("x", -5.0, 5.0)
+        dominio = conectado
+    comunes = {"seed": 3, "max_iterations": 6}
+    if nombre == "RandomSearch":
+        return RandomSearch(dominio, fitness, population_size=6, **comunes)
+    if nombre == "SA":
+        return SA(dominio, fitness, **comunes)
+    if nombre == "HillClimbing":
+        return HillClimbing(dominio, fitness, population_size=6, **comunes)
+    if nombre == "TabuSearch":
+        return TabuSearch(dominio, fitness, population_size=6, **comunes)
+    if nombre == "GA":
+        return GA(dominio, fitness, population_size=6, **comunes)
+    if nombre == "SSGA":
+        return SSGA(dominio, fitness, population_size=6, **comunes)
+    if nombre == "TPE":
+        return TPE(dominio, fitness, warmup_iterations=2, **comunes)
+    if nombre == "KernelTPE":
+        return KernelTPE(dominio, fitness, warmup_iterations=2, seed=3, max_iterations=20)
+    return Memetic(dominio, fitness, population_size=6, neighbor_population_size=2, **comunes)
+
+
+@pytest.mark.parametrize("nombre", ["RandomSearch", "SA", "HillClimbing", "TabuSearch", "GA", "SSGA", "TPE",
+                                    "KernelTPE", "Memetic"])
+def test_f59_un_fitness_nan_no_se_queda_como_el_mejor(nombre):
+    """F-59: `nan < x` y `x < nan` son siempre falsos, asi que una evaluacion que devolvia
+    NaN y llegaba a ser la mejor ya no la desbancaba nada: la ejecucion entera devolvia NaN.
+    Un NaN cuenta como el peor valor posible, y el resultado es lo mejor que se evaluo."""
+    dominio = Domain()
+    dominio.define_real("x", -5.0, 5.0)
+    valores = []
+
+    def fitness(solucion):
+        valor = math.nan if not valores else (solucion["x"] - 1.0) ** 2
+        valores.append(valor)
+        return valor
+
+    mejor = _f59_algoritmo(nombre, dominio, fitness).run()
+    assert not math.isnan(mejor.get_fitness())
+    assert mejor.get_fitness() == min(v for v in valores if not math.isnan(v))
+
+
+def test_f59_un_modelo_con_fitness_nan_no_se_queda_como_el_mejor_modelo():
+    """F-59, el mismo fallo en el mejor modelo: un primer par (NaN, modelo) se quedaba como
+    `best_model` y ningun valor posterior lo sustituia."""
+    from metagen.metaheuristics import RandomSearch
+
+    dominio = Domain()
+    dominio.define_real("x", -5.0, 5.0)
+    valores = []
+
+    def fitness(solucion):
+        valor = math.nan if not valores else (solucion["x"] - 1.0) ** 2
+        valores.append(valor)
+        return valor, f"modelo {len(valores)}"
+
+    algoritmo = RandomSearch(dominio, fitness, population_size=6, max_iterations=4, seed=3)
+    algoritmo.run()
+    reales = [v for v in valores if not math.isnan(v)]
+    assert algoritmo.best_model == f"modelo {valores.index(min(reales)) + 1}"
+
+
+# --------------------------------------------------------------------------------
+# F-60 · Un real con paso mayor que el limite de alteracion no muta nunca
+# --------------------------------------------------------------------------------
+
+@pytest.mark.parametrize("limite", ["relativo", 0.1])
+@pytest.mark.parametrize("desde, vecinos", [(0.5, [0.25, 0.5, 0.75]), (0.0, [0.0, 0.25]), (1.0, [0.75, 1.0])])
+def test_f60_un_real_con_paso_mayor_que_el_limite_se_mueve_un_paso(limite, desde, vecinos):
+    """F-60: con un limite de alteracion menor que el paso, la ventana [v - L, v + L] solo
+    contenia el valor actual, asi que un real con paso no se movia nunca: con
+    RelativeAlteration(0.2), el vecindario por defecto de HillClimbing, TabuSearch, SA,
+    Memetic y la mutacion de GA y SSGA, en [0, 1] de 0,25 en 0,25. Es el gemelo en Real
+    de F-50. La ventana alcanza al menos un paso, y sigue en la rejilla y en el dominio."""
+    from metagen.framework import RelativeAlteration
+
+    dominio = Domain()
+    dominio.define_real("x", 0.0, 1.0, 0.25)
+    alteracion = RelativeAlteration(0.2) if limite == "relativo" else limite
+    set_seed(4)
+    solucion = Solution(dominio)
+    solucion["x"] = desde
+    alcanzados = set()
+    for _ in range(600):
+        copia = copy.deepcopy(solucion)
+        copia.get("x").mutate(alteration_limit=alteracion)
+        alcanzados.add(round(copia["x"], 9))
+    assert sorted(alcanzados) == vecinos
+
+
+# --------------------------------------------------------------------------------
+# F-61 · KernelTPE revienta con un entero cuyo paso no divide el rango
+# --------------------------------------------------------------------------------
+
+@pytest.mark.parametrize("tipo, minimo, maximo, paso, rejilla", [
+    ("entero", 0, 11, 4, {0, 4, 8}),
+    ("real", 0.0, 1.0, 0.375, {0.0, 0.375, 0.75}),
+])
+def test_f61_kernel_tpe_propone_solo_puntos_de_la_rejilla(tipo, minimo, maximo, paso, rejilla):
+    """F-61: `_snap` llevaba el valor al punto de la rejilla mas cercano sin acotar el indice:
+    con (0, 11, 4), 10,7 iba a 12 y se recortaba a 11, fuera de la rejilla; en un entero, el
+    recorte contra un maximo float lo dejaba en 11.0 y el dominio lo rechazaba con ValueError.
+    Con un real (0, 1, 0,375) el 1,0 salia fuera de la rejilla en silencio. Todo lo evaluado
+    tiene que ser un punto de la rejilla, y un entero, un int."""
+    from metagen.metaheuristics import KernelTPE
+
+    dominio = Domain()
+    if tipo == "entero":
+        dominio.define_integer("v", minimo, maximo, paso)
+    else:
+        dominio.define_real("v", minimo, maximo, paso)
+    vistos = []
+
+    def fitness(solucion):
+        vistos.append(solucion["v"])
+        return -float(solucion["v"])
+
+    KernelTPE(dominio, fitness, max_iterations=120, warmup_iterations=5, seed=0).run()
+    assert {round(v, 9) for v in vistos} <= rejilla
+    if tipo == "entero":
+        assert all(type(v) is int for v in vistos)
+
+
+# --------------------------------------------------------------------------------
+# F-62 · TPE ignora el paso de los enteros y los reales
+# --------------------------------------------------------------------------------
+
+def test_f62_tpe_evalua_y_devuelve_solo_puntos_de_la_rejilla():
+    """F-62: `TPEReal.resample` y `TPEInteger.resample` dejaban el valor dibujado del modelo
+    tal cual (el entero, solo redondeado a la unidad), asi que con paso TPE evaluaba y
+    devolvia puntos que no eran del dominio: 322 de 480 reales fuera de la rejilla y un
+    mejor con x = 0,3255 de paso 0,25. Todo lo evaluado tiene que estar en la rejilla."""
+    from metagen.metaheuristics import TPE
+
+    dominio = Domain()
+    dominio.define_real("x", 0.0, 1.0, 0.25)
+    dominio.define_integer("n", 0, 22, 5)
+    vistos = []
+
+    def fitness(solucion):
+        vistos.append((solucion["x"], solucion["n"]))
+        return (solucion["x"] - 0.33) ** 2 + (solucion["n"] - 7) ** 2
+
+    mejor = TPE(dominio, fitness, max_iterations=15, warmup_iterations=5, seed=0).run()
+    assert {round(x, 9) for x, _ in vistos} <= {0.0, 0.25, 0.5, 0.75, 1.0}
+    assert {n for _, n in vistos} <= {0, 5, 10, 15, 20}
+    assert (mejor["x"], mejor["n"]) == (0.25, 5)
+
+
+# --------------------------------------------------------------------------------
+# F-63 · Un segundo run() sobre el mismo objeto arrastra el estado del primero
+# --------------------------------------------------------------------------------
+
+@pytest.mark.parametrize("nombre", ["RandomSearch", "SA", "HillClimbing", "TabuSearch", "GA", "SSGA", "TPE",
+                                    "KernelTPE", "Memetic"])
+def test_f63_un_segundo_run_es_una_ejecucion_nueva(nombre):
+    """F-63: `run()` reiniciaba el historial y los contadores, pero no el mejor, la
+    poblacion, la iteracion ni la curva de mejores, y `HillClimbing` no vaciaba su lista
+    tabu: el mismo objeto con otra semilla devolvia el mejor de la ejecucion anterior, con
+    la misma semilla HillClimbing, TabuSearch y KernelTPE daban otro resultado, y la curva
+    se acumulaba. Un segundo `run()`, con la misma semilla o con otra, tiene que dar lo
+    mismo que un objeto nuevo."""
+    def fitness(solucion):
+        return (solucion["x"] - 1.0) ** 2
+
+    def construir(semilla):
+        dominio = Domain()
+        dominio.define_real("x", -5.0, 5.0)
+        algoritmo = _f59_algoritmo(nombre, dominio, fitness)
+        algoritmo.seed = semilla
+        return algoritmo
+
+    def resultado(algoritmo, mejor):
+        return mejor.get_fitness(), list(algoritmo.best_solution_fitnesses), len(algoritmo.current_solutions)
+
+    reutilizado = construir(3)
+    reutilizado.run()
+    for semilla in (3, 8):
+        reutilizado.seed = semilla
+        nuevo = construir(semilla)
+        assert resultado(reutilizado, reutilizado.run()) == resultado(nuevo, nuevo.run()), f"semilla {semilla}"
+
+
+# --------------------------------------------------------------------------------
+# F-64 · Un checkpoint olvidado sustituye en silencio la configuracion de otro experimento
+# --------------------------------------------------------------------------------
+
+def _f64_corta(algoritmo):
+    """Ejecuta el algoritmo y lo para en la primera evaluacion, dejando su checkpoint."""
+    original = algoritmo.fitness_function
+
+    def para(solucion):
+        algoritmo.request_stop()
+        return original(solucion)
+
+    algoritmo.fitness_function = para
+    algoritmo.run()
+    algoritmo.fitness_function = original
+
+
+def test_f64_un_checkpoint_de_otro_experimento_se_rechaza_diciendo_que_difiere(tmp_path):
+    """F-64: `_restore` solo comprobaba la clase y la version, y `__dict__.update` pisaba
+    el dominio, la semilla y los parametros: otro experimento con la misma ruta de
+    checkpoint continuaba el viejo sin aviso y devolvia una solucion de otro dominio.
+    Tiene que rechazarse diciendo que difiere; el mismo experimento sigue continuando."""
+    from metagen.metaheuristics import RandomSearch
+
+    ruta = str(tmp_path / "run.ckpt")
+
+    def dominio(maximo):
+        d = Domain()
+        d.define_real("x", -maximo, maximo)
+        return d
+
+    def fitness(solucion):
+        return solucion["x"] ** 2
+
+    _f64_corta(RandomSearch(dominio(100.0), fitness, population_size=5, max_iterations=30, seed=0, checkpoint=ruta))
+    assert os.path.exists(ruta)
+
+    otro = RandomSearch(dominio(1.0), fitness, population_size=3, max_iterations=4, seed=5, checkpoint=ruta)
+    with pytest.raises(ValueError) as error:
+        otro.run()
+    for diferencia in ("domain", "population_size", "max_iterations", "seed"):
+        assert diferencia in str(error.value)
+    assert os.path.exists(ruta), "rechazarlo no puede borrar el checkpoint del otro experimento"
+
+    # Lo que no es configuracion, donde escribir, no cuenta: el mismo experimento continua.
+    mismo = RandomSearch(dominio(100.0), fitness, population_size=5, max_iterations=30, seed=0, checkpoint=ruta,
+                         history=str(tmp_path / "historia.jsonl"))
+    reanudado = mismo.run()
+    sin_cortar = RandomSearch(dominio(100.0), fitness, population_size=5, max_iterations=30, seed=0).run()
+    assert reanudado.get_fitness() == sin_cortar.get_fitness()
+
+
+# --------------------------------------------------------------------------------
+# F-65 · El informe omite parametros reales y muestra uno que no es del algoritmo
+# --------------------------------------------------------------------------------
+
+@pytest.mark.parametrize("nombre", ["RandomSearch", "SA", "HillClimbing", "TabuSearch", "GA", "SSGA", "TPE",
+                                    "KernelTPE", "Memetic"])
+def test_f65_el_informe_muestra_todos_los_parametros_del_algoritmo_y_solo_esos(nombre, tmp_path):
+    """F-65: el informe listaba los atributos de una tupla fija, `reporting.PARAMETERS`, que
+    tuviera el objeto: omitia `mutation_rate` y `tournament_size` de GA, `tabu_size` de
+    HillClimbing, `n_candidates` y `prior_weight` de KernelTPE y `max_iterations` de Memetic
+    (que lo guardaba como `max_generations`), y a KernelTPE le atribuia `candidate_pool_size`,
+    que no es parametro suyo. Tiene que mostrar cada argumento del constructor con su valor."""
+    import inspect
+    from metagen.reporting import _summary
+
+    dominio = Domain()
+    dominio.define_real("x", -5.0, 5.0)
+    historia = str(tmp_path / "historia.jsonl")
+    algoritmo = _f59_algoritmo(nombre, dominio, lambda solucion: solucion["x"] ** 2)
+    algoritmo.history_file = historia
+    filas = dict(_summary(algoritmo))
+    firma = inspect.signature(type(algoritmo).__init__).parameters
+    fuera = {"self", "domain", "fitness_function", "refit", "initial_solutions"}
+    for parametro in firma:
+        if parametro not in fuera:
+            assert parametro in filas, f"{nombre}: el informe no muestra {parametro}"
+    assert all(fila in firma or fila in ("algorithm", "stop reason", "evaluations", "seconds", "iterations",
+                                         "best fitness") for fila in filas), sorted(filas)
+    assert filas["history"] == historia
+    assert filas["max_iterations"] == str(algoritmo.parameters()["max_iterations"])
+
+
+# --------------------------------------------------------------------------------
+# F-66 · RandomSearch con un individuo no busca, y con solo un presupuesto no termina
+# --------------------------------------------------------------------------------
+
+def test_f66_random_search_exige_dos_individuos_y_con_dos_busca():
+    """F-66: con `population_size=1` el unico individuo era a la vez la elite, que se
+    conserva, y el peor, que se descarta: no se mutaba ni se evaluaba nada, y con
+    `max_evaluations` como unico limite el bucle no terminaba nunca. Tiene que rechazarse
+    al construirlo, como en GA y SSGA, y con dos individuos cada iteracion evalua."""
+    from metagen.metaheuristics import RandomSearch
+
+    dominio = Domain()
+    dominio.define_real("x", -5.0, 5.0)
+
+    def fitness(solucion):
+        return solucion["x"] ** 2
+
+    with pytest.raises(ValueError, match="at least 2"):
+        RandomSearch(dominio, fitness, population_size=1, max_evaluations=10)
+    algoritmo = RandomSearch(dominio, fitness, population_size=2, max_evaluations=12, seed=0)
+    algoritmo.run()
+    assert algoritmo.stop_reason == "max_evaluations" and algoritmo.evaluations >= 12
+
+
+# --------------------------------------------------------------------------------
+# F-67 · SA no arranca del mejor del warmup, como promete su docstring
+# --------------------------------------------------------------------------------
+
+def test_f67_sa_empieza_a_caminar_desde_lo_mejor_que_evaluo():
+    """F-67: la docstring de `warmup_iterations` dice que el paseo empieza en la mejor de las
+    soluciones del warmup, pero `initialize` sorteaba un punto nuevo y el paseo arrancaba de
+    ahi: el warmup solo servia como candidato a mejor. La primera iteracion tiene que
+    caminar desde lo mejor evaluado hasta ese momento, sin gastar mas evaluaciones."""
+    from metagen.metaheuristics import SA
+
+    class SAQueMiraDondeEmpieza(SA):
+        def iterate(self, solutions):
+            if not hasattr(self, "punto_de_partida"):
+                self.punto_de_partida = solutions[0].get_fitness()
+                self.evaluado_antes = list(valores)
+            return super().iterate(solutions)
+
+    for semilla in range(8):
+        dominio = Domain()
+        dominio.define_real("x", -10.0, 10.0)
+        valores = []
+
+        def fitness(solucion):
+            valores.append(solucion["x"] ** 2)
+            return valores[-1]
+
+        algoritmo = SAQueMiraDondeEmpieza(dominio, fitness, warmup_iterations=5, max_iterations=3, seed=semilla)
+        algoritmo.run()
+        assert len(algoritmo.evaluado_antes) == 5 + 1, "arrancar del mejor no gasta evaluaciones"
+        assert algoritmo.punto_de_partida == min(algoritmo.evaluado_antes), f"semilla {semilla}"
+
+
+# --------------------------------------------------------------------------------
+# F-68 · El vecindario de HillClimbing encoge para siempre en dominios discretos
+# --------------------------------------------------------------------------------
+
+def test_f68_hill_climbing_mantiene_su_vecindario_en_un_dominio_discreto():
+    """F-68: sin `gamma_config`, cada iteracion generaba tantos vecinos como tenia el
+    vecindario anterior, que ya no incluia los vecinos tabu: en un dominio discreto el
+    tamano solo podia bajar, hasta un vecino, y la ejecucion gastaba menos de la mitad de
+    las evaluaciones que anuncia la docstring. F-54 lo arreglo solo con `gamma_config`.
+    Cada iteracion tiene que generar `population_size` vecinos."""
+    from metagen.metaheuristics import HillClimbing
+
+    for semilla in range(4):
+        dominio = Domain()
+        dominio.define_integer("a", 0, 6)
+        dominio.define_integer("b", 0, 6)
+        dominio.define_categorical("c", ["x", "y", "z"])
+        evaluaciones = [0]
+
+        def fitness(solucion):
+            evaluaciones[0] += 1
+            return (solucion["a"] - 3) ** 2 + (solucion["b"] - 1) ** 2 + (solucion["c"] != "y")
+
+        HillClimbing(dominio, fitness, population_size=10, warmup_iterations=5, max_iterations=30, seed=semilla).run()
+        assert evaluaciones[0] == 10 * (5 + 1 + 30), f"semilla {semilla}: {evaluaciones[0]}"
+
+
+# --------------------------------------------------------------------------------
+# F-69 · pandemic_duration=N hace N + 1 iteraciones
+# --------------------------------------------------------------------------------
+
+@pytest.mark.parametrize("nombre", ["CVOA", "ProbabilisticCVOA"])
+@pytest.mark.parametrize("duracion", [1, 5])
+def test_f69_una_cepa_hace_tantas_iteraciones_como_pandemic_duration(nombre, duracion):
+    """F-69: la cepa paraba con `time > pandemic_duration`, despues de N + 1 iteraciones,
+    contra su docstring («Iterations the strain runs») y contra el Java original de los
+    autores (`while (epidemic && time < max_time)` desde 0, N iteraciones). Con una
+    pandemia que no se apaga antes, una cepa tiene que hacer exactamente N."""
+    from metagen.metaheuristics import ProbabilisticCVOA, StrainProperties
+    from metagen.metaheuristics.cvoa.cvoa import CVOA
+    from metagen.metaheuristics.cvoa.local_state import LocalPandemicState
+
+    clase = {"CVOA": CVOA, "ProbabilisticCVOA": ProbabilisticCVOA}[nombre]
+    dominio = Domain()
+    dominio.define_real("x", -5.0, 5.0)
+    dominio.define_real("y", -5.0, 5.0)
+
+    def fitness(solucion):
+        return solucion["x"] ** 2 + solucion["y"] ** 2
+
+    iteraciones = []
+
+    class Contada(clase):
+        def iterate(self, solutions):
+            iteraciones.append(self.time)
+            return super().iterate(solutions)
+
+    set_seed(2)
+    estado = LocalPandemicState(Solution(dominio))
+    Contada(estado, dominio, fitness, StrainProperties("S1", pandemic_duration=duracion)).run()
+    assert len(iteraciones) == duracion, iteraciones

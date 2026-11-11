@@ -1,13 +1,51 @@
 import copy
 import math
 from collections.abc import MutableSet
-from typing import Any, Callable, Dict, Iterable, Iterator, NamedTuple, Optional, Protocol, Tuple
+from typing import Any, Callable, Dict, Iterable, Iterator, NamedTuple, Optional, Protocol, Set, Tuple
 
 from metagen.framework import Domain, Solution
 from metagen.framework.rng import get_rng
 
 
 # Strain Properties
+class SolutionKeys:
+    """
+    A set of solutions kept by their key (:py:meth:`~metagen.framework.Solution._key`)
+    rather than whole: it answers whether a solution is in it, counts them, and adds and
+    removes them, with the equality of solutions, but holds no solution. It is never
+    iterated, so the order of its keys does not matter.
+    """
+    # The recovered, the dead and the isolated of a pandemic were kept as whole solutions
+    # and only ever asked whether one was there and how many: the isolated alone, which
+    # are only counted, were most of the memory of a run, and every question rebuilt the
+    # hash of the solution (E-03, metagen-auditoria/auditoria-independiente-2026-11/eficiencia.md).
+
+    def __init__(self) -> None:
+        self._keys: Set[Tuple[Any, ...]] = set()
+
+    def __contains__(self, item: object) -> bool:
+        return isinstance(item, Solution) and item._key() in self._keys
+
+    def __len__(self) -> int:
+        return len(self._keys)
+
+    def holds(self, key: Tuple[Any, ...]) -> bool:
+        """Whether the solution with this key is in the set."""
+        return key in self._keys
+
+    def add(self, item: Solution) -> None:
+        self._keys.add(item._key())
+
+    def discard(self, item: Solution) -> None:
+        self._keys.discard(item._key())
+
+    def update(self, items: Iterable[Solution]) -> None:
+        self._keys.update(item._key() for item in items)
+
+    def difference_update(self, other: "SolutionKeys") -> None:
+        self._keys -= other._keys
+
+
 class SolutionSet(MutableSet[Solution]):
     """
     A set of solutions that iterates in insertion order.

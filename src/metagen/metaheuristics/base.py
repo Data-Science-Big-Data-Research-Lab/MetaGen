@@ -16,6 +16,7 @@
 """
 
 import heapq
+import inspect
 import json
 import math
 import numbers
@@ -55,6 +56,21 @@ if IS_RAY_INSTALLED:
 _NOT_CHECKPOINTED = frozenset({"fitness_function", "logger", "checkpoint", "checkpoint_every",
                                "_stop_requested", "refit"})
 
+#: The arguments of a constructor that are not part of what :py:meth:`Metaheuristic.parameters`
+#: reports: the problem itself, and the shared state of a CVOA pandemic.
+_NOT_PARAMETERS = frozenset({"self", "domain", "fitness_function", "refit", "initial_solutions", "global_state"})
+
+#: The arguments of a constructor kept under another name.
+_PARAMETER_ATTRIBUTES = {"history": "history_file"}
+
+#: What is not configuration: the state of a run, and where to write. A checkpoint keeps
+#: a description of everything else, and a run with another configuration is not
+#: continued from it.
+_NOT_CONFIGURATION = _NOT_CHECKPOINTED | frozenset({
+    "_configuration", "current_iteration", "best_solution", "current_solutions", "best_solution_fitnesses",
+    "history", "_evaluations", "_steps", "_seconds", "best_model", "_best_model_value", "_step_count",
+    "stop_reason", "log_dir", "history_file"})
+
 
 def _package_version() -> str:
     try:
@@ -80,7 +96,8 @@ class Metaheuristic(ABC):
 
     :param domain: The problem domain.
     :type domain: Domain
-    :param fitness_function: Function to evaluate solutions.
+    :param fitness_function: Function to evaluate solutions. A value that is NaN counts as the worst
+        one, infinity.
     :type fitness_function: Callable[[Solution], float]
     :param population_size: The size of the population (default is 20).
     :type population_size: int, optional
@@ -501,7 +518,7 @@ class Metaheuristic(ABC):
                     break
 
 
-            metagen_logger.info(f"Warmup phase completed. Proceeding to optimization.")
+            metagen_logger.info("Warmup phase completed. Proceeding to optimization.")
 
     def _iterate(self) -> Tuple[List[Solution], Solution]:
         """
@@ -625,8 +642,13 @@ class Metaheuristic(ABC):
         Callback executed after each iteration.
         Override this method to add custom post-iteration processing.
         """
-        metagen_logger.debug(f'[ITERATION {self.current_iteration}] POPULATION ({len(self.current_solutions)}): {self.current_solutions}')
-        metagen_logger.info(f'[ITERATION {self.current_iteration}] BEST SOLUTION: {self.best_solution}')
+        # Arguments rather than f-strings, so that the text is only built when a handler
+        # wants it: formatting the whole population every iteration with the logger off
+        # was up to half the time of a run on a cheap fitness (E-05,
+        # metagen-auditoria/auditoria-independiente-2026-11/eficiencia.md).
+        metagen_logger.debug('[ITERATION %s] POPULATION (%s): %s', self.current_iteration,
+                             len(self.current_solutions), self.current_solutions)
+        metagen_logger.info('[ITERATION %s] BEST SOLUTION: %s', self.current_iteration, self.best_solution)
         self.best_solution_fitnesses.append(self._best_so_far().get_fitness())
         if self.logger: 
             # Log iteration metrics
@@ -663,7 +685,9 @@ class Metaheuristic(ABC):
         self.stop_reason = None
         resuming = self.checkpoint is not None and os.path.exists(self.checkpoint)
         if resuming:
-            self._restore(self._read_checkpoint(cast(str, self.checkpoint)))
+            state = self._read_checkpoint(cast(str, self.checkpoint))
+            self._check_configuration(state)
+            self._restore(state)
         # Seeded here rather than in __init__ so that every run() starts from
         # the same state: building two metaheuristics and running them later
         # would otherwise make the second one depend on the first.
@@ -673,6 +697,14 @@ class Metaheuristic(ABC):
         if resuming:
             self._trim_history_file()
         else:
+            # The state of a run, as the constructor leaves it: a second run() started
+            # from the best and the population of the first, so a new seed gave back the
+            # best of the run before and the curve of bests ran on (F-63).
+            self.current_iteration = -1
+            self.best_solution = None
+            self.current_solutions = []
+            self.best_solution_fitnesses = []
+            self._configuration = self._describe_configuration()
             self.history = []
             self._evaluations = 0
             self._steps = 0
@@ -932,12 +964,31 @@ class Metaheuristic(ABC):
         with open(self.history_file, "w") as handle:
             handle.writelines(kept)
 
+    def parameters(self) -> Dict[str, Any]:
+        """
+        The arguments of the constructor of this metaheuristic, by name and in the order of
+        its signature, with the values it holds: what a run was configured with. The
+        domain, the fitness function, the initial solutions and ``refit`` are left out.
+        ``max_iterations`` is the one a budget resolved, when it was not given.
+
+        :return: The parameters.
+        :rtype: Dict[str, Any]
+        """
+        # A fixed list of names in the report showed only some of them and one that was not
+        # an argument of KernelTPE (F-65): the signature is the list now.
+        names = [parameter.name for parameter in inspect.signature(type(self).__init__).parameters.values()
+                 if parameter.kind in (parameter.POSITIONAL_OR_KEYWORD, parameter.KEYWORD_ONLY)
+                 and parameter.name not in _NOT_PARAMETERS]
+        return {name: getattr(self, _PARAMETER_ATTRIBUTES.get(name, name)) for name in names
+                if hasattr(self, _PARAMETER_ATTRIBUTES.get(name, name))}
+
     def request_stop(self) -> None:
         """
         Ask a running ``run()`` to stop after the iteration in progress. It saves the
         state if the run has a ``checkpoint`` file, and returns the best solution found
-        so far; calling ``run()`` again, or :py:meth:`resume` in another process,
-        continues from there. It only sets a flag, so it can be called from a callback,
+        so far. With a checkpoint, calling ``run()`` again, or :py:meth:`resume` in another
+        process, continues from there; without one, ``run()`` starts a new run. It only
+        sets a flag, so it can be called from a callback,
         another thread or a signal handler, for instance the signal a job scheduler
         sends before stopping a job:
 
@@ -1017,6 +1068,45 @@ class Metaheuristic(ABC):
             "checkpoint_every": self.checkpoint_every,
             "tensorboard_run": self.logger.run_id if self.logger else None,
         }
+
+    def _describe_configuration(self) -> Dict[str, str]:
+        """
+        The configuration of the run, as text: every attribute but the state of a run and
+        where to write (``_NOT_CONFIGURATION``), the domain by its definitions and any
+        other value by its representation, or by its type when that only says where it is
+        in memory.
+        """
+        described: Dict[str, str] = {}
+        for name, value in sorted(self.__dict__.items()):
+            if name in _NOT_CONFIGURATION:
+                continue
+            text = str(value) if isinstance(value, Domain) else repr(value)
+            described[name] = type(value).__qualname__ if " at 0x" in text else text
+        return described
+
+    def _check_configuration(self, state: Dict[str, Any]) -> None:
+        """
+        Refuse to continue, from a checkpoint, a run with another configuration than this
+        one. A metaheuristic that already ran, or that :py:meth:`resume` rebuilt, holds
+        the run of the checkpoint and is not checked; nor is a checkpoint that holds no
+        description of its configuration.
+
+        :raises ValueError: if the configurations differ, naming what differs.
+        """
+        # Only the class and the version were checked, and the attributes of the
+        # checkpoint then replaced the domain, the seed and the parameters given: a new
+        # experiment that found an old file at its path went on with the old one, and
+        # returned a solution of another domain without a word (F-64).
+        saved = state["algorithm"].get("_configuration")
+        # A checkpoint of another class is refused by _restore, saying so.
+        if saved is None or "_configuration" in self.__dict__ or state["class"] is not type(self):
+            return
+        current = self._describe_configuration()
+        differ = sorted(name for name in saved.keys() | current.keys() if saved.get(name) != current.get(name))
+        if differ:
+            raise ValueError(f"The checkpoint {self.checkpoint} belongs to another run: {', '.join(differ)} "
+                             f"differ. Remove it, or give this run another checkpoint file, to start this run; "
+                             f"to continue the one it holds, use resume().")
 
     def _restore(self, state: Dict[str, Any]) -> None:
         """

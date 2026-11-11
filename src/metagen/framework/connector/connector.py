@@ -15,7 +15,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 import inspect
-from typing import Any, Dict, Optional, Tuple, TypeAlias, Union, cast
+from typing import Dict, Optional, Tuple, TypeAlias, Union, cast
 
 import metagen.framework.domain as definitions
 import metagen.framework.solution as types

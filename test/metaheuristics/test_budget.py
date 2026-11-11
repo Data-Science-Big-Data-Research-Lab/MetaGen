@@ -176,7 +176,7 @@ DEFAULTS = {RandomSearch: 20, GA: 50, SSGA: 50, SA: 20, HillClimbing: 20, TabuSe
 
 
 def _iterations_of(run) -> object:
-    return run.max_generations if isinstance(run, Memetic) else run.max_iterations
+    return run.max_iterations
 
 
 @pytest.mark.parametrize("algorithm", ALGORITHMS, ids=lambda algorithm: algorithm.__name__)

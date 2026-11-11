@@ -167,6 +167,13 @@ class HillClimbing(Metaheuristic):
         self.alteration_limit: Any = alteration_limit
         self.gamma_config = gamma_config
 
+    def pre_execution(self) -> None:
+        """Start every run with an empty tabu list, so that a seed reproduces a run."""
+        # A second run() searched around the solutions the first one had made tabu (F-63),
+        # as TabuSearch did before A-06.
+        super().pre_execution()
+        self.tabu_list.clear()
+
     def initialize(self, num_solutions: int = 10) -> Tuple[List[Solution], Solution]:
         """
         Initializes the Tabu Search algorithm.
@@ -210,7 +217,13 @@ class HillClimbing(Metaheuristic):
                                   max_iterations=self.max_iterations, num_solutions=self.population_size)
             l = max(1, round(gamma * self.population_size / self.distributed_slices))  # at least one neighbor
         else:
-            l = max(1, len(solutions))  # at least one neighbor
+            # The slice's share of population_size, the first slices taking what the division
+            # leaves over, as the slices themselves are cut. It was len(solutions), the
+            # previous neighborhood without its tabu neighbors: on a discrete domain it shrank
+            # to a single neighbor here too, and a run made less than half the evaluations
+            # its docstring gives (F-68).
+            share, left_over = divmod(self.population_size, self.distributed_slices)
+            l = max(1, share + (1 if self.distributed_slice < left_over else 0))
 
         # Local search over `l` neighbors, skipping the ones already visited.
         current_solutions, best_solution = local_search_with_tabu(

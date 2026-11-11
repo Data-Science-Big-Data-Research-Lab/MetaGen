@@ -19,7 +19,8 @@ from __future__ import annotations
 import math
 import numbers
 from collections.abc import Callable
-from typing import (TYPE_CHECKING, Any, Dict, KeysView, Optional, Union,
+from copy import deepcopy
+from typing import (TYPE_CHECKING, Any, Dict, KeysView, Optional, Tuple, Union,
                     ValuesView, cast)
 
 import metagen.framework.solution as types
@@ -30,7 +31,6 @@ if TYPE_CHECKING:
     from metagen.framework import BaseConnector, Domain
     from metagen.framework.domain import Base, BaseDefinition
     from metagen.framework.solution.literals import (InputValue, SolLayer)
-    from metagen.framework.solution.bounds import BaseTypeClass, SolutionClass
 
 
 def builtin_value(value: Any) -> Any:
@@ -163,6 +163,29 @@ class Solution:
         self.fitness: float = -math.inf if best else math.inf
 
         self.initialize()
+
+    def __deepcopy__(self, memo: dict[int, Any]) -> 'Solution':
+        """
+        A copy of the solution whose variables and fitness are copied and whose definition
+        and connector are this one's: they say what the solution may hold and how to build
+        it, and are shared already by every solution built from the same domain.
+
+        :param memo: What has been copied so far, as :py:func:`copy.deepcopy` keeps it.
+        :type memo: dict
+        :return: The copy.
+        :rtype: Solution
+        """
+        # Copying them cost several times more than building a new solution, and was most
+        # of the time of the trajectory algorithms and of CVOA on a cheap fitness, and of
+        # the size of what travels to Ray and into a checkpoint (E-01,
+        # metagen-auditoria/auditoria-independiente-2026-11/eficiencia.md). A group is a
+        # Solution inside value, so it is still copied whole and shares nothing (F-39).
+        copied = self.__class__.__new__(self.__class__)
+        memo[id(self)] = copied
+        for name, value in self.__dict__.items():
+            shared = name in ("_Solution__definition", "connector")
+            copied.__dict__[name] = value if shared else deepcopy(value, memo)
+        return copied
 
     def get_variables(self) -> Dict[str, Union[types.BaseType, 'Solution']]:
         """
@@ -561,9 +584,20 @@ class Solution:
         # dict.__hash__ is None for every solution alike, leaving the fitness as the
         # only ingredient: two equal solutions with different fitness broke the
         # invariant, and every solution sharing a fitness value landed in one bucket.
-        return hash(tuple(sorted((name, _hashable(value))
-                                 for name, value in self.get_variables().items()
-                                 if self.is_active(name))))
+        return hash(self._key())
+
+    def _key(self) -> Tuple[Any, ...]:
+        """
+        The values of the active variables, by name, as a tuple of builtins: two solutions
+        have equal keys exactly when they are equal, so a key stands for a solution where
+        only its identity matters, as in the sets of the state of a CVOA pandemic.
+
+        :return: The key.
+        :rtype: tuple
+        """
+        return tuple(sorted((name, _hashable(value))
+                            for name, value in self.get_variables().items()
+                            if self.is_active(name)))
 
     def __lt__(self, other):
         """ A solution is less than another when its fitness is strictly lower, that is, better:

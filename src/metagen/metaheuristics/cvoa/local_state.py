@@ -2,7 +2,7 @@ import threading
 from typing import Any, Dict
 
 from metagen.framework import Solution
-from metagen.metaheuristics.cvoa.common_tools import IndividualState, SolutionSet
+from metagen.metaheuristics.cvoa.common_tools import IndividualState, SolutionKeys, SolutionSet
 
 
 # Local pandemic state (multi-threading)
@@ -15,22 +15,17 @@ class LocalPandemicState:
         # of getting the nesting wrong is a silent hang, which is reason enough to
         # let a thread reacquire a lock it already owns.
         self.lock = threading.RLock()
-        self.recovered: SolutionSet = SolutionSet()
-        self.deaths: SolutionSet = SolutionSet()
-        self.isolated: SolutionSet = SolutionSet()
+        self.recovered: SolutionKeys = SolutionKeys()
+        self.deaths: SolutionKeys = SolutionKeys()
+        self.isolated: SolutionKeys = SolutionKeys()
         self.best_individual_found:bool = False
         self.best_individual:Solution = initial_individual
 
     def get_individual_state(self, individual: Solution) -> IndividualState:
         with self.lock:
-            result: IndividualState = IndividualState(False, False, False)
-            if individual in self.recovered:
-                result = result._replace(recovered=True)
-            if individual in self.deaths:
-                result = result._replace(dead=True)
-            if individual in self.isolated:
-                result = result._replace(isolated=True)
-            return result
+            # The key once, not a hash per set (E-03).
+            key = individual._key()
+            return IndividualState(self.recovered.holds(key), self.deaths.holds(key), self.isolated.holds(key))
 
     # Recovered
     def get_recovered_len(self) -> int:

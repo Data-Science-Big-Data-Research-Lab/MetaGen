@@ -19,7 +19,7 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 import math
 from copy import deepcopy
-from typing import Any, Protocol, Tuple, List, cast
+from typing import Any, Protocol, Tuple, cast
 
 import metagen.framework.solution as types
 from metagen.framework import BaseConnector, Solution, Domain
@@ -508,8 +508,12 @@ class GASolution(Solution):
             if variable_name not in swappable:
                 variable_child1, variable_child2 = cast(Crossable, variable_value).crossover(
                     other.get(variable_name))
-                child1.set(variable_name, deepcopy(variable_child1))
-                child2.set(variable_name, deepcopy(variable_child2))
+                # Not copied: crossover builds both children new, sharing nothing with the
+                # parents, so a copy only cost time, a quarter of a run of TriGen with
+                # prisms (E-08, metagen-auditoria/auditoria-independiente-2026-11/eficiencia.md).
+                # What is exchanged whole, below, belongs to a parent and is copied (F-39).
+                child1.set(variable_name, variable_child1)
+                child2.set(variable_name, variable_child2)
             elif variable_name in variables_to_exchange:
                 child1.set(variable_name, deepcopy(other.get(variable_name)))
                 child2.set(variable_name, deepcopy(self.get(variable_name)))

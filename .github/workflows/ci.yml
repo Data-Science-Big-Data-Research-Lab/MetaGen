@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [master, dev, budget]
+    branches: [master, dev, budget, trigen]
   pull_request:
     branches: [master, dev, budget]
 
@@ -42,12 +42,14 @@ jobs:
         run: pytest test -q -rxX
 
   extras:
-    name: tests with ray
+    name: tests with every extra
     runs-on: ubuntu-latest
-    # The one job that installs an optional extra. It runs what the matrix above
-    # skips: test_extras.py, and the regression tests that need a real Ray (F-11,
-    # F-21, F-40, F-42, F-43). Until this job existed they only ran on the machine
-    # of whoever launched them by hand.
+    # The one job that installs the optional extras, all of them but TensorFlow, which no
+    # extra declares. It runs the whole tree but the arithmetic bench, which needs no
+    # extra and runs in the matrix above, so that a test that skips there runs here: Ray,
+    # TensorBoard, NetCDF-4, the reports and the documentation pages that need them. It
+    # used to run a list of files kept by hand, and the tests with Ray added to other
+    # modules, and those of TensorBoard and NetCDF-4, ran nowhere.
     steps:
       - uses: actions/checkout@v4
 
@@ -56,21 +58,78 @@ jobs:
           python-version: "3.12"
           cache: pip
 
-      - name: Install the package with the test and distributed extras
+      - name: Install the package with the test extra and every optional one
         run: |
           python -m pip install --upgrade pip
-          pip install -e .[test,distributed]
+          # networkx and pandas are not extras of the package: a figure of the reports
+          # and an example of the documentation use them when they are there.
+          pip install -e .[test,all] networkx pandas
 
-      - name: Run the tests that need Ray
-        run: pytest test/metaheuristics/test_extras.py test/metaheuristics/test_distribution.py test/regression -q -rxXs
+      - name: Run every test that needs an extra
+        shell: bash
+        run: |
+          pytest test --ignore=test/metaheuristics/test_behavior.py -q -rxXs | tee pytest.log
+          # A test that skips here for want of a module runs nowhere: only TensorFlow may
+          # be missing. A test may still skip for another reason, such as one that only
+          # makes sense without Ray, which runs in the matrix above.
+          if grep "^SKIPPED" pytest.log | grep -i -e "could not import" -e "needs " | grep -v -i tensorflow; then
+            echo "These tests skipped for want of a module although every extra is installed."
+            exit 1
+          fi
 
-      - name: Run the documentation pages that need Ray
-        run: pytest test/documentation -k on_ray -q -rxXs
+  lint:
+    name: ruff
+    runs-on: ubuntu-latest
+    # Only the pyflakes rules: unused imports and variables, undefined names. No style is
+    # imposed. An import of a module that does not exist hid behind the type checker
+    # until this ran.
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install ruff
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff
+
+      - name: Check the sources
+        run: ruff check src --select F
+
+  docs:
+    name: documentation
+    runs-on: ubuntu-latest
+    # What Read the Docs does, with warnings as errors: Python 3.11 and the requirements of
+    # docs/ only, the package's own dependencies mocked by conf.py. A module that cannot be
+    # imported under those mocks leaves its API reference empty while the build still
+    # succeeds, which is how a constant computed with numpy at import time got as far as a
+    # release candidate.
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install what Read the Docs installs
+        # Graphviz draws the inheritance diagrams of the API reference; the build image of
+        # Read the Docs has it, the runner does not.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y graphviz
+          python -m pip install --upgrade pip
+          pip install -r docs/requirements.txt
+
+      - name: Build the documentation
+        run: sphinx-build -W --keep-going -b html docs/source docs/_build/html
 
   types:
     name: mypy
     runs-on: ubuntu-latest
-    # Blocking since P-11 closed: mypy src is clean, on the 1.1.1 of the development
+    # Blocking since P-11 closed: mypy src is clean, on the 2.4.1 of the development
     # machine and on the latest release. A new error here is a regression.
 
     steps:
