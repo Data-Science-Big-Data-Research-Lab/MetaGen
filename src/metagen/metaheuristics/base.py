@@ -55,6 +55,14 @@ if IS_RAY_INSTALLED:
 _NOT_CHECKPOINTED = frozenset({"fitness_function", "logger", "checkpoint", "checkpoint_every",
                                "_stop_requested", "refit"})
 
+#: What is not configuration: the state of a run, and where to write. A checkpoint keeps
+#: a description of everything else, and a run with another configuration is not
+#: continued from it.
+_NOT_CONFIGURATION = _NOT_CHECKPOINTED | frozenset({
+    "_configuration", "current_iteration", "best_solution", "current_solutions", "best_solution_fitnesses",
+    "history", "_evaluations", "_steps", "_seconds", "best_model", "_best_model_value", "_step_count",
+    "stop_reason", "log_dir", "history_file"})
+
 
 def _package_version() -> str:
     try:
@@ -664,7 +672,9 @@ class Metaheuristic(ABC):
         self.stop_reason = None
         resuming = self.checkpoint is not None and os.path.exists(self.checkpoint)
         if resuming:
-            self._restore(self._read_checkpoint(cast(str, self.checkpoint)))
+            state = self._read_checkpoint(cast(str, self.checkpoint))
+            self._check_configuration(state)
+            self._restore(state)
         # Seeded here rather than in __init__ so that every run() starts from
         # the same state: building two metaheuristics and running them later
         # would otherwise make the second one depend on the first.
@@ -681,6 +691,7 @@ class Metaheuristic(ABC):
             self.best_solution = None
             self.current_solutions = []
             self.best_solution_fitnesses = []
+            self._configuration = self._describe_configuration()
             self.history = []
             self._evaluations = 0
             self._steps = 0
@@ -1026,6 +1037,45 @@ class Metaheuristic(ABC):
             "checkpoint_every": self.checkpoint_every,
             "tensorboard_run": self.logger.run_id if self.logger else None,
         }
+
+    def _describe_configuration(self) -> Dict[str, str]:
+        """
+        The configuration of the run, as text: every attribute but the state of a run and
+        where to write (``_NOT_CONFIGURATION``), the domain by its definitions and any
+        other value by its representation, or by its type when that only says where it is
+        in memory.
+        """
+        described: Dict[str, str] = {}
+        for name, value in sorted(self.__dict__.items()):
+            if name in _NOT_CONFIGURATION:
+                continue
+            text = str(value) if isinstance(value, Domain) else repr(value)
+            described[name] = type(value).__qualname__ if " at 0x" in text else text
+        return described
+
+    def _check_configuration(self, state: Dict[str, Any]) -> None:
+        """
+        Refuse to continue, from a checkpoint, a run with another configuration than this
+        one. A metaheuristic that already ran, or that :py:meth:`resume` rebuilt, holds
+        the run of the checkpoint and is not checked; nor is a checkpoint that holds no
+        description of its configuration.
+
+        :raises ValueError: if the configurations differ, naming what differs.
+        """
+        # Only the class and the version were checked, and the attributes of the
+        # checkpoint then replaced the domain, the seed and the parameters given: a new
+        # experiment that found an old file at its path went on with the old one, and
+        # returned a solution of another domain without a word (F-64).
+        saved = state["algorithm"].get("_configuration")
+        # A checkpoint of another class is refused by _restore, saying so.
+        if saved is None or "_configuration" in self.__dict__ or state["class"] is not type(self):
+            return
+        current = self._describe_configuration()
+        differ = sorted(name for name in saved.keys() | current.keys() if saved.get(name) != current.get(name))
+        if differ:
+            raise ValueError(f"The checkpoint {self.checkpoint} belongs to another run: {', '.join(differ)} "
+                             f"differ. Remove it, or give this run another checkpoint file, to start this run; "
+                             f"to continue the one it holds, use resume().")
 
     def _restore(self, state: Dict[str, Any]) -> None:
         """

@@ -13,6 +13,9 @@
   than the step, as an integer does: with `RelativeAlteration(0.2)`, the default neighborhood
   of hill climbing, tabu search, simulated annealing and the memetic algorithm and the mutation
   of GA and SSGA, a step wider than a fifth of the range left the variable where it was.
+- **A checkpoint of another run** is refused: `run()` continues from a checkpoint only when it
+  was written with the same configuration, the domain, the seed and the parameters, and
+  otherwise raises a `ValueError` naming what differs.
 - **A second `run()`** of the same metaheuristic is a new run: it starts from no best
   solution, no population and an empty curve of bests, and hill climbing from an empty tabu
   list, so it gives what a new object with the same seed gives.

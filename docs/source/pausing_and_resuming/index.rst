@@ -60,6 +60,7 @@ What to keep in mind
 
 * The checkpoint stores the algorithm, its population and the state of MetaGen's random generators. With the same ``seed``, a run continued from a checkpoint gives the same result as one never stopped; a distributed run, on the same number of CPUs.
 * A checkpoint is a Python pickle: load only files you wrote or trust. It is rejected by another version of the package, or by another metaheuristic class.
+* ``run()`` continues from a checkpoint only when it was written with the same configuration: the domain, the seed and the parameters. Otherwise it raises a ``ValueError`` naming what differs, so a new experiment that finds an old file at its path does not go on with the old one. Remove the file, or give the run another one, to start it; ``resume`` continues the run the file holds. Where to write, ``log_dir`` and ``history``, is not part of the configuration.
 * Types of your own registered in a connector must be importable when the run continues.
 * With ``log_dir``, a continued run keeps writing to the same TensorBoard run, so its curves stay in one piece.
 * CVOA runs its strains through a launcher and has no checkpoint.

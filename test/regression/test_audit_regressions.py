@@ -3431,3 +3431,55 @@ def test_f63_un_segundo_run_es_una_ejecucion_nueva(nombre):
         reutilizado.seed = semilla
         nuevo = construir(semilla)
         assert resultado(reutilizado, reutilizado.run()) == resultado(nuevo, nuevo.run()), f"semilla {semilla}"
+
+
+# --------------------------------------------------------------------------------
+# F-64 · Un checkpoint olvidado sustituye en silencio la configuracion de otro experimento
+# --------------------------------------------------------------------------------
+
+def _f64_corta(algoritmo):
+    """Ejecuta el algoritmo y lo para en la primera evaluacion, dejando su checkpoint."""
+    original = algoritmo.fitness_function
+
+    def para(solucion):
+        algoritmo.request_stop()
+        return original(solucion)
+
+    algoritmo.fitness_function = para
+    algoritmo.run()
+    algoritmo.fitness_function = original
+
+
+def test_f64_un_checkpoint_de_otro_experimento_se_rechaza_diciendo_que_difiere(tmp_path):
+    """F-64: `_restore` solo comprobaba la clase y la version, y `__dict__.update` pisaba
+    el dominio, la semilla y los parametros: otro experimento con la misma ruta de
+    checkpoint continuaba el viejo sin aviso y devolvia una solucion de otro dominio.
+    Tiene que rechazarse diciendo que difiere; el mismo experimento sigue continuando."""
+    from metagen.metaheuristics import RandomSearch
+
+    ruta = str(tmp_path / "run.ckpt")
+
+    def dominio(maximo):
+        d = Domain()
+        d.define_real("x", -maximo, maximo)
+        return d
+
+    def fitness(solucion):
+        return solucion["x"] ** 2
+
+    _f64_corta(RandomSearch(dominio(100.0), fitness, population_size=5, max_iterations=30, seed=0, checkpoint=ruta))
+    assert os.path.exists(ruta)
+
+    otro = RandomSearch(dominio(1.0), fitness, population_size=3, max_iterations=4, seed=5, checkpoint=ruta)
+    with pytest.raises(ValueError) as error:
+        otro.run()
+    for diferencia in ("domain", "population_size", "max_iterations", "seed"):
+        assert diferencia in str(error.value)
+    assert os.path.exists(ruta), "rechazarlo no puede borrar el checkpoint del otro experimento"
+
+    # Lo que no es configuracion, donde escribir, no cuenta: el mismo experimento continua.
+    mismo = RandomSearch(dominio(100.0), fitness, population_size=5, max_iterations=30, seed=0, checkpoint=ruta,
+                         history=str(tmp_path / "historia.jsonl"))
+    reanudado = mismo.run()
+    sin_cortar = RandomSearch(dominio(100.0), fitness, population_size=5, max_iterations=30, seed=0).run()
+    assert reanudado.get_fitness() == sin_cortar.get_fitness()
