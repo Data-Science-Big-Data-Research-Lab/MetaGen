@@ -634,8 +634,13 @@ class Metaheuristic(ABC):
         Callback executed after each iteration.
         Override this method to add custom post-iteration processing.
         """
-        metagen_logger.debug(f'[ITERATION {self.current_iteration}] POPULATION ({len(self.current_solutions)}): {self.current_solutions}')
-        metagen_logger.info(f'[ITERATION {self.current_iteration}] BEST SOLUTION: {self.best_solution}')
+        # Arguments rather than f-strings, so that the text is only built when a handler
+        # wants it: formatting the whole population every iteration with the logger off
+        # was up to half the time of a run on a cheap fitness (E-05,
+        # metagen-auditoria/auditoria-independiente-2026-11/eficiencia.md).
+        metagen_logger.debug('[ITERATION %s] POPULATION (%s): %s', self.current_iteration,
+                             len(self.current_solutions), self.current_solutions)
+        metagen_logger.info('[ITERATION %s] BEST SOLUTION: %s', self.current_iteration, self.best_solution)
         self.best_solution_fitnesses.append(self._best_so_far().get_fitness())
         if self.logger: 
             # Log iteration metrics

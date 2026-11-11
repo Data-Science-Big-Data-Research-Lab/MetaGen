@@ -24,6 +24,9 @@
   give the same results.
 - **`KernelTPE`** proposes only points of the grid of a variable with a step, also when the
   step does not divide the range, as in `define_integer("i", 0, 11, 4)`.
+- **Log messages** are built only when the log level emits them: with the log off, the
+  default, a run spends no time formatting its population every iteration, and CVOA does not
+  read the state of the pandemic for a report nobody sees. Results are the same.
 - **Copying a solution** shares its domain definition and its connector with the original
   instead of copying them, as its variables already did. Hill climbing, tabu search,
   simulated annealing, the memetic algorithm and CVOA run faster on a cheap fitness, and what

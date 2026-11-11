@@ -152,10 +152,16 @@ class CVOA(Metaheuristic):
         mode, the thread; on Ray it goes through the remote logger.
         """
         # A-09: the two former twins differed only in which logger and which prefix.
+        if not self._logging():
+            return
         if self.spread_on_ray:
             self._logger.detailed_info(f"[{self.strain_properties.strain_id}] {message}")
         else:
             self._logger.detailed_info(f"[{self.strain_properties.strain_id}, {threading.get_ident()}] {message}")
+
+    def _logging(self) -> bool:
+        """Whether a message of :py:meth:`_log` would be emitted at all."""
+        return self._logger.isEnabledFor(DETAILED_INFO)
 
     def _best_of_strain(self) -> Solution:
         """
@@ -217,9 +223,12 @@ class CVOA(Metaheuristic):
             self.epidemic = False
             self._log(f"No new infected individuals at {self.time}")
 
-        self._log(f"Iteration #{self.time} - {self.r0_report(len(new_infected_population))}"
-                  f" - Best strain individual: {self.best_strain_solution} , "
-                  f"Best global individual: {self.global_state.get_best_individual()} ")
+        # Asked first: the report reads the shared state, a call to the actor on Ray, and
+        # it was built every iteration with the logger off (E-05).
+        if self._logging():
+            self._log(f"Iteration #{self.time} - {self.r0_report(len(new_infected_population))}"
+                      f" - Best strain individual: {self.best_strain_solution} , "
+                      f"Best global individual: {self.global_state.get_best_individual()} ")
 
         # 3. Update the elapsed pandemic time.
         # The improvement flag becomes a stagnation count here, and is cleared. Left
