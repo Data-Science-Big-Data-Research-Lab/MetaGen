@@ -24,6 +24,9 @@
   give the same results.
 - **`KernelTPE`** proposes only points of the grid of a variable with a step, also when the
   step does not divide the range, as in `define_integer("i", 0, 11, 4)`.
+- **`KernelTPE`** scores its candidates in one step per variable, and draws its kernels from a
+  cumulative table built once per model. It runs two to three times faster, with the same
+  results.
 - **Log messages** are built only when the log level emits them: with the log off, the
   default, a run spends no time formatting its population every iteration, and CVOA does not
   read the state of the pandemic for a report nobody sees. Results are the same.

@@ -216,11 +216,10 @@ class KernelTPE(TPE):
         # draws the same numbers in the same order.
         models: Dict[Path, Tuple[_Model, _Model]] = {}
         solution_type = solution_class(self.domain)
-        best_candidate: Optional[Solution] = None
-        best_score = -math.inf
+        candidates: List[Tuple[Solution, List[Tuple[Path, Any, _Model, _Model]]]] = []
         for _ in range(self.n_candidates):
             candidate = solution_type(self.domain, connector=self.domain.get_connector())
-            drawn = []
+            drawn: List[Tuple[Path, Any, _Model, _Model]] = []
             for path, leaf in _leaves(candidate):
                 if path not in good:
                     continue
@@ -238,9 +237,19 @@ class KernelTPE(TPE):
                 value = model_good.draw(leaf)
                 leaf.set(value)
                 drawn.append((path, value, model_good, model_bad))
-            # Scored once every variable is drawn, so that a conditional variable counts
-            # only when the value drawn for the one it depends on makes it active.
-            score = 0.0
+            candidates.append((candidate, drawn))
+
+        # Scored once every candidate is drawn: scoring draws nothing, so the numbers come
+        # out in the same order, and each model takes the values of every candidate at
+        # once, a matrix of points by kernels, instead of one call per candidate and
+        # variable, which was most of the cost of an iteration (E-04,
+        # metagen-auditoria/auditoria-independiente-2026-11/eficiencia.md). The terms of a
+        # candidate are added in the same order, so the scores are the same, bit for bit.
+        # A conditional variable counts only when the value drawn for the one it depends
+        # on makes it active.
+        counted: List[List[Tuple[_Model, _Model, Any]]] = []
+        for candidate, drawn in candidates:
+            terms: List[Tuple[_Model, _Model, Any]] = []
             for path, value, model_good, model_bad in drawn:
                 # A subset is drawn from the model of the best and stays out of the score.
                 # Its density is a product over every element, so the term outweighs the
@@ -251,7 +260,19 @@ class KernelTPE(TPE):
                 if isinstance(model_good, SubsetModel):
                     continue
                 if candidate.is_active(cast(str, path[0])):
-                    score += model_good.log_density(value) - model_bad.log_density(value)
+                    terms.append((model_good, model_bad, value))
+            counted.append(terms)
+        densities = _log_densities_by_model([term for terms in counted for term in terms])
+
+        best_candidate: Optional[Solution] = None
+        best_score = -math.inf
+        position = 0
+        for (candidate, _), terms in zip(candidates, counted):
+            score = 0.0
+            for _term in terms:
+                good_density, bad_density = densities[position]
+                score += good_density - bad_density
+                position += 1
             if score > best_score:
                 best_candidate, best_score = candidate, score
         assert best_candidate is not None
@@ -259,6 +280,22 @@ class KernelTPE(TPE):
 
 
 Leaf = Union[Integer, Real, Categorical, Permutation, Subset]
+
+
+def _log_densities_by_model(terms: Sequence[Tuple[Any, Any, Any]]) -> List[Tuple[float, float]]:
+    """
+    The log densities of ``l`` and ``g`` at the value of every term, in order, asking each
+    model once for all the values it is given.
+
+    :param terms: The model of the best, the model of the rest and the value, per term.
+    :return: The log density under each model, per term.
+    """
+    asked: Dict[int, Tuple[Any, List[Any]]] = {}
+    for model_good, model_bad, value in terms:
+        for model in (model_good, model_bad):
+            asked.setdefault(id(model), (model, []))[1].append(value)
+    answered = {key: iter(model.log_densities(values)) for key, (model, values) in asked.items()}
+    return [(next(answered[id(model_good)]), next(answered[id(model_bad)])) for model_good, model_bad, _ in terms]
 
 
 def _leaves(solution: Solution, prefix: Path = ()) -> List[Tuple[Path, Leaf]]:
@@ -362,6 +399,9 @@ class _CategoricalModel:
     def log_density(self, value: Any) -> float:
         return float(np.log(self.probabilities[self.categories.index(value)]))
 
+    def log_densities(self, values: Sequence[Any]) -> List[float]:
+        return [self.log_density(value) for value in values]
+
 
 class _NumericModel:
     """The adaptive Parzen estimator of an integer or real variable, truncated to its domain."""
@@ -380,10 +420,15 @@ class _NumericModel:
         # Truncated to the domain, so a kernel spilling past the bounds does not undercount.
         self.mass = np.maximum(norm.cdf(self.space_high, self.mus, self.sigmas)
                                - norm.cdf(self.space_low, self.mus, self.sigmas), 1e-300)
+        # What Generator.choice(n, p=weights) computes on every call, once: drawing with it
+        # validated and accumulated the weights for every candidate (E-04). Searching a
+        # uniform in it gives the same kernel and draws the same number.
+        self.cumulative = self.weights.cumsum()
+        self.cumulative /= self.cumulative[-1]
 
     def draw(self, leaf: Leaf) -> Any:
         rng = get_numpy_rng()
-        component = int(rng.choice(len(self.mus), p=self.weights))
+        component = int(self.cumulative.searchsorted(rng.random(), side="right"))
         for _ in range(20):
             drawn = rng.normal(self.mus[component], self.sigmas[component])
             if self.space_low <= drawn <= self.space_high:
@@ -395,9 +440,13 @@ class _NumericModel:
         return _snap(float(drawn), self.low, self.high, self.step, self.integer)
 
     def log_density(self, value: Any) -> float:
-        point = math.log(float(value)) if self.log else float(value)
-        densities = self.weights * norm.pdf(point, self.mus, self.sigmas) / self.mass
-        return float(np.log(max(densities.sum(), 1e-300)))
+        return self.log_densities([value])[0]
+
+    def log_densities(self, values: Sequence[Any]) -> List[float]:
+        """The log density at every value, all in one matrix of values by kernels."""
+        points = np.array([math.log(float(value)) if self.log else float(value) for value in values])
+        densities = self.weights * norm.pdf(points[:, None], self.mus, self.sigmas) / self.mass
+        return [float(np.log(max(total, 1e-300))) for total in densities.sum(axis=1)]
 
 
 _Model = Union[_CategoricalModel, _NumericModel, SubsetModel]
