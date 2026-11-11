@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+### New
+
+- **A public API**: what a program needs is imported from `metagen.framework`,
+  `metagen.framework.domain`, `metagen.framework.solution`, `metagen.metaheuristics`,
+  `metagen.triclustering`, `metagen.triclustering.data`, `metagen.reporting` and
+  `metagen.logging`, and the names in their `__all__` are the public API. Among the names they
+  add are `Metaheuristic`, `CVOA`, `DistributedCVOA`, `GammaConfig`, `random_exploration`,
+  `local_search`, `solution_class` and the types of the genetic algorithms in
+  `metagen.metaheuristics`, and `set_seed`, `get_rng` and `get_numpy_rng` in
+  `metagen.framework`. The documentation imports from them, and its API reference documents
+  each name where it is public. The import paths of earlier releases keep working.
+- **`metagen.__version__`** is the version of the installed package.
+
 ## 1.5.0
 
 MetaGen 1.5.0 makes runs more robust and faster: a fitness that returns NaN, a checkpoint of

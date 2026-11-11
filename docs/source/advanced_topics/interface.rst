@@ -29,8 +29,8 @@ Example: a search that mutates every solution in each iteration and stops after 
     from typing import Callable, List, Tuple
 
     from metagen.framework import Domain, Solution
-    from metagen.metaheuristics.base import Metaheuristic
-    from metagen.metaheuristics.tools import random_exploration
+    from metagen.metaheuristics import Metaheuristic
+    from metagen.metaheuristics import random_exploration
 
 
     class MutateAll(Metaheuristic):
@@ -89,7 +89,7 @@ iteration is kept:
 Two rules to keep
 -----------------
 
-- **Draw random numbers from the package's generators**, :py:func:`metagen.framework.rng.get_rng` and ``get_numpy_rng``, never from the global ``random`` or ``numpy.random``. The ``seed`` parameter seeds those generators and nothing else, so a draw made elsewhere makes the run irreproducible.
+- **Draw random numbers from the package's generators**, :py:func:`metagen.framework.get_rng` and ``get_numpy_rng``, never from the global ``random`` or ``numpy.random``. The ``seed`` parameter seeds those generators and nothing else, so a draw made elsewhere makes the run irreproducible.
 - **Do not keep state in** ``self`` **inside** ``initialize`` **or** ``iterate``. Under ``distributed=True`` Ray runs them on a serialized copy of the algorithm, and whatever they write to ``self`` stays in the worker. What the algorithm needs later must be in what the method returns, or be rebuilt in ``post_iteration``, which runs in the driver.
 
 See :doc:`extending_framework` for a complete example that also extends the solution types, and :doc:`../distributed_execution/distributed` for what distributing a run means.

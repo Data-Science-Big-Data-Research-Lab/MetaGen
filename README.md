@@ -98,7 +98,7 @@ best_solution = RandomSearch(regression_domain, regression_fitness, seed=0).run(
 print(best_solution)
 ```
 
-Any other metaheuristic takes the same two arguments. To follow the run in TensorBoard, add `log_dir="logs/random_search"` and launch `tensorboard --logdir=logs`; to see progress on the console, call `set_metagen_logger_level()` from `metagen.logging.metagen_logger`.
+Any other metaheuristic takes the same two arguments. To follow the run in TensorBoard, add `log_dir="logs/random_search"` and launch `tensorboard --logdir=logs`; to see progress on the console, call `set_metagen_logger_level()` from `metagen.logging`.
 
 ## 🛠 Example: Developing a Metaheuristic
 

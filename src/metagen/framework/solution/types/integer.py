@@ -56,7 +56,7 @@ class Integer(BaseType):
         """
         The definition this variable was built from.
 
-        Narrows what :py:meth:`~metagen.framework.solution.types.base.BaseType.get_definition`
+        Narrows what :py:meth:`~metagen.framework.solution.BaseType.get_definition`
         declares, which is the union of every definition and whose ``get_attributes``
         is therefore a union of tuples of two to five elements. Every unpacking here
         is of a fixed width, so without the narrowing none of them type-checks.
@@ -85,7 +85,7 @@ class Integer(BaseType):
         does for a Categorical.
 
         :param alteration_limit: How far the mutation may move the current value. A
-            number is an absolute amount; a :py:class:`~metagen.framework.alteration.RelativeAlteration`
+            number is an absolute amount; a :py:class:`~metagen.framework.RelativeAlteration`
             is a fraction of this variable's own range. If not provided, the
             mutation can replace the current value with any within the domain. On a
             logarithmic scale both are measured on the natural logarithm of the value.

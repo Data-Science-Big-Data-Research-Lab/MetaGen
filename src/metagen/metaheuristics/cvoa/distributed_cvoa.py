@@ -26,10 +26,10 @@ from metagen.metaheuristics.cvoa.ray_tools import PandemicStateHandle
 
 class DistributedCVOA(CVOA):
     """
-    :py:class:`~metagen.metaheuristics.cvoa.cvoa.CVOA` with ``distributed=True``, kept for
+    :py:class:`~metagen.metaheuristics.CVOA` with ``distributed=True``, kept for
     backward compatibility: a strain whose infection is spread as Ray tasks over a pandemic
     state that lives in a Ray actor. It adds nothing but the constructor; strains are run through
-    :py:func:`~metagen.metaheuristics.cvoa.distributed_launcher.distributed_cvoa_launcher`.
+    :py:func:`~metagen.metaheuristics.distributed_cvoa_launcher`.
     """
 
     def __init__(self, global_state: PandemicStateHandle, domain: Domain, fitness_function: Callable[[Solution], float],

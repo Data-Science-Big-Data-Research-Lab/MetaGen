@@ -8,28 +8,28 @@ The Coronavirus Optimization Algorithm: several strains run at once over a share
 Launchers
 ---------
 
-.. autofunction:: metagen.metaheuristics.cvoa.local_launcher.cvoa_launcher
+.. autofunction:: metagen.metaheuristics.cvoa_launcher
 
-.. autofunction:: metagen.metaheuristics.cvoa.distributed_launcher.distributed_cvoa_launcher
+.. autofunction:: metagen.metaheuristics.distributed_cvoa_launcher
 
 Strain properties
 -----------------
 
-.. autoclass:: metagen.metaheuristics.cvoa.common_tools.StrainProperties
+.. autoclass:: metagen.metaheuristics.StrainProperties
     :members:
 
 The strain classes
 ------------------
 
-.. autoclass:: metagen.metaheuristics.cvoa.cvoa.CVOA
+.. autoclass:: metagen.metaheuristics.CVOA
     :members:
     :show-inheritance:
 
-.. autoclass:: metagen.metaheuristics.cvoa.probabilistic_cvoa.ProbabilisticCVOA
+.. autoclass:: metagen.metaheuristics.ProbabilisticCVOA
     :members:
     :show-inheritance:
 
 ``DistributedCVOA`` is kept for backward compatibility: it is |cvoa| with ``distributed=True``.
 
-.. autoclass:: metagen.metaheuristics.cvoa.distributed_cvoa.DistributedCVOA
+.. autoclass:: metagen.metaheuristics.DistributedCVOA
     :show-inheritance:

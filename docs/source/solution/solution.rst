@@ -39,43 +39,43 @@ Types
 
 BaseType
 -------------
-.. autoclass:: metagen.framework.solution.types.BaseType
+.. autoclass:: metagen.framework.solution.BaseType
     :members:
     :show-inheritance:
 
 Integer
 ------------
-.. autoclass:: metagen.framework.solution.types.Integer
+.. autoclass:: metagen.framework.solution.Integer
     :members:
     :show-inheritance:
 
 Real
 ------------
-.. autoclass:: metagen.framework.solution.types.Real
+.. autoclass:: metagen.framework.solution.Real
     :members:
     :show-inheritance:
 
 Categorical
 ------------
-.. autoclass:: metagen.framework.solution.types.Categorical
+.. autoclass:: metagen.framework.solution.Categorical
     :members:
     :show-inheritance:
 
 Permutation
 ------------
-.. autoclass:: metagen.framework.solution.types.Permutation
+.. autoclass:: metagen.framework.solution.Permutation
     :members:
     :show-inheritance:
 
 Subset
 ------------
-.. autoclass:: metagen.framework.solution.types.Subset
+.. autoclass:: metagen.framework.solution.Subset
     :members:
     :show-inheritance:
 
 Structure
 ------------
-.. autoclass:: metagen.framework.solution.types.Structure
+.. autoclass:: metagen.framework.solution.Structure
     :members:
     :private-members:
     :show-inheritance:
@@ -87,5 +87,5 @@ How far ``mutate`` may move a numeric variable is its ``alteration_limit``. A pl
 an absolute amount, the same for every variable; a ``RelativeAlteration`` is a fraction of each
 variable's own range, which is what a domain whose variables have different widths needs.
 
-.. autoclass:: metagen.framework.alteration.RelativeAlteration
+.. autoclass:: metagen.framework.RelativeAlteration
     :members:

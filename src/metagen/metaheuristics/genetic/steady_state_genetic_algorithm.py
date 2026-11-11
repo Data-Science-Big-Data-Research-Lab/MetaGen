@@ -62,31 +62,31 @@ class SSGA(Metaheuristic):
     :type seed: int or None, optional
     :param distribution_model: How a distributed run makes up the next population out of
         the slices, ``"global"`` (the default: shuffled, selected among all workers) or
-        ``"islands"``; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+        ``"islands"``; see :py:class:`~metagen.metaheuristics.Metaheuristic`.
     :type distribution_model: str, optional
     :param checkpoint: File the run saves its state to every ``checkpoint_every``
         iterations, and continues from if it exists when ``run()`` starts; None, the
-        default, saves nothing. See :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+        default, saves nothing. See :py:class:`~metagen.metaheuristics.Metaheuristic`.
     :type checkpoint: str or None, optional
     :param checkpoint_every: Iterations between two saves (default is 1).
     :type checkpoint_every: int, optional
     :param history: File the run writes its history to, one JSON line per iteration;
-        None, the default, writes nothing. See :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+        None, the default, writes nothing. See :py:class:`~metagen.metaheuristics.Metaheuristic`.
     :type history: str or None, optional
     :param max_evaluations: Stop once the run has evaluated the fitness at least this
-        many times; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+        many times; see :py:class:`~metagen.metaheuristics.Metaheuristic`.
     :type max_evaluations: int or None, optional
     :param timeout: Stop once the run has lasted at least this many seconds; see
-        :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+        :py:class:`~metagen.metaheuristics.Metaheuristic`.
     :type timeout: float or None, optional
     :param initial_solutions: Solutions to start from, each a mapping from variable names to
-        values; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+        values; see :py:class:`~metagen.metaheuristics.Metaheuristic`.
     :type initial_solutions: Sequence[Mapping[str, Any]] or None, optional
     :param racing: Stop evaluating a candidate as soon as it is significantly worse than the
-        population; see :py:class:`~metagen.metaheuristics.racing.Racing`.
+        population; see :py:class:`~metagen.metaheuristics.Racing`.
     :type racing: Racing or None, optional
     :param refit: A function that trains the model of the best solution when the run ends;
-        see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+        see :py:class:`~metagen.metaheuristics.Metaheuristic`.
     :type refit: Callable[[Solution], Any] or None, optional
 
     :ivar population_size: The size of the population.

@@ -3,7 +3,7 @@
 Base Metaheuristic
 ========================
 
-.. autoclass:: metagen.metaheuristics.base.Metaheuristic
+.. autoclass:: metagen.metaheuristics.Metaheuristic
     :members:
     :show-inheritance:
 
@@ -15,7 +15,7 @@ A fitness function that yields the value of each of its steps can be evaluated w
 which stops a candidate as soon as it is significantly worse than the population; see
 :doc:`../choosing/index`.
 
-.. autoclass:: metagen.metaheuristics.racing.Racing
+.. autoclass:: metagen.metaheuristics.Racing
     :members: eliminates
 
 
@@ -36,8 +36,8 @@ The package keeps its own random generators, apart from Python's global ``random
 ``numpy.random``. ``Metaheuristic(..., seed=N)`` seeds them at the start of ``run()``; code that
 extends |metagen| must draw from them for the seed to control it.
 
-.. autofunction:: metagen.framework.rng.set_seed
+.. autofunction:: metagen.framework.set_seed
 
-.. autofunction:: metagen.framework.rng.get_rng
+.. autofunction:: metagen.framework.get_rng
 
-.. autofunction:: metagen.framework.rng.get_numpy_rng
+.. autofunction:: metagen.framework.get_numpy_rng

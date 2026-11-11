@@ -39,14 +39,14 @@ class CVOA(Metaheuristic):
     It solves an optimization problem defined by a :py:class:`~metagen.framework.Domain` object and an
     implementation of a fitness function.
 
-    A :py:class:`~metagen.metaheuristics.cvoa.cvoa.CVOA` object is one strain, configured by the
-    :py:class:`~metagen.metaheuristics.cvoa.common_tools.StrainProperties` it receives.
+    A :py:class:`~metagen.metaheuristics.CVOA` object is one strain, configured by the
+    :py:class:`~metagen.metaheuristics.StrainProperties` it receives.
 
     Several strains run at once over a shared pandemic state and the best
     :py:class:`~metagen.framework.Solution` of them all is returned. Strains are not run by hand but
-    through a launcher: :py:func:`~metagen.metaheuristics.cvoa.local_launcher.cvoa_launcher`, one
+    through a launcher: :py:func:`~metagen.metaheuristics.cvoa_launcher`, one
     thread per strain, or
-    :py:func:`~metagen.metaheuristics.cvoa.distributed_launcher.distributed_cvoa_launcher`, one Ray
+    :py:func:`~metagen.metaheuristics.distributed_cvoa_launcher`, one Ray
     task per strain.
 
     :param global_state: The pandemic state every strain shares.
@@ -55,7 +55,7 @@ class CVOA(Metaheuristic):
     :param fitness_function: The fitness function to minimize.
     :type fitness_function: Callable[[Solution], float]
     :param strain_properties: The parameters of the strain; see
-        :py:class:`~metagen.metaheuristics.cvoa.common_tools.StrainProperties`.
+        :py:class:`~metagen.metaheuristics.StrainProperties`.
     :type strain_properties: StrainProperties, optional
     :param update_isolated: Kept for compatibility and ignored: every isolated individual is
         recorded.
@@ -473,7 +473,7 @@ class CVOA(Metaheuristic):
         return report
 
     def __str__(self):
-        """ String representation of a :py:class:`~metagen.metaheuristics.cvoa.cvoa.CVOA` object (a strain).
+        """ String representation of a :py:class:`~metagen.metaheuristics.CVOA` object (a strain).
         """
         res = ""
         res += self.strain_properties.strain_id + "\n"

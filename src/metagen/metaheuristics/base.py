@@ -171,7 +171,7 @@ class Metaheuristic(ABC):
     :type initial_solutions: Sequence[Mapping[str, Any]] or None, optional
     :param racing: Stop evaluating a candidate as soon as it is significantly worse than
         the population, for a fitness function that yields its steps one at a time; see
-        :py:class:`~metagen.metaheuristics.racing.Racing`. None, the default, evaluates
+        :py:class:`~metagen.metaheuristics.Racing`. None, the default, evaluates
         every candidate whole. With it, ``max_evaluations`` counts the steps taken: a
         candidate stopped after 3 of 10 spends 0.3 of an evaluation.
     :type racing: Racing or None, optional

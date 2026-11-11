@@ -27,7 +27,7 @@ class ProbabilisticCVOA(CVOA):
     A CVOA strain in which the fate of each individual is drawn with its probability.
 
     Same launchers, same parameters and same pandemic state as
-    :py:class:`~metagen.metaheuristics.cvoa.cvoa.CVOA`; it runs in threads and on
+    :py:class:`~metagen.metaheuristics.CVOA`; it runs in threads and on
     Ray like it, through ``strain_class=ProbabilisticCVOA``. It differs in how deaths,
     superspreading and isolation are decided:
 

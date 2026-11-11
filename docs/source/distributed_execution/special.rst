@@ -85,7 +85,7 @@ The launcher starts Ray if it is not running, and shuts it down afterwards only 
 
     from metagen.framework import Domain, Solution
     from metagen.metaheuristics import StrainProperties
-    from metagen.metaheuristics.cvoa import distributed_cvoa_launcher
+    from metagen.metaheuristics import distributed_cvoa_launcher
 
     my_domain = Domain()
     my_domain.define_real("x", -5.0, 5.0)
@@ -125,7 +125,7 @@ Nothing is printed unless the logger is enabled with ``set_metagen_logger_level`
 .. code-block:: python
 
     import logging
-    from metagen.logging.metagen_logger import set_metagen_logger_level
+    from metagen.logging import set_metagen_logger_level
 
     set_metagen_logger_level(logging.INFO)
 

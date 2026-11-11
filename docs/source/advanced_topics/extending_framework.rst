@@ -21,13 +21,11 @@ The example is complete: the code blocks below, put together in one file in the 
     from copy import deepcopy
     from typing import Callable, List, Tuple
 
-    from metagen.framework import BaseConnector, Domain, Solution
-    from metagen.framework.domain.core import (BaseDefinition, CategoricalDefinition, IntegerDefinition,
-                                               RealDefinition, StaticStructureDefinition)
-    from metagen.framework.rng import get_rng
-    from metagen.framework.solution import types
-    from metagen.metaheuristics.base import Metaheuristic
-    from metagen.metaheuristics.tools import random_exploration, solution_class
+    from metagen.framework import BaseConnector, Domain, Solution, get_rng
+    from metagen.framework.domain import (BaseDefinition, CategoricalDefinition, IntegerDefinition,
+                                          RealDefinition, StaticStructureDefinition)
+    from metagen.framework.solution import Categorical, Integer, Real, Structure
+    from metagen.metaheuristics import Metaheuristic, random_exploration, solution_class
 
 Custom Structure Type
 ---------------------
@@ -36,7 +34,7 @@ Custom Structure Type
 
 .. code-block:: python
 
-    class SwapStructure(types.Structure):
+    class SwapStructure(Structure):
         """A structure whose positions are exchanged between two parents."""
 
         def crossover(self, other: SwapStructure) -> Tuple[SwapStructure, SwapStructure]:
@@ -93,9 +91,9 @@ The connector maps each definition of the domain to the type that represents it 
         def __init__(self) -> None:
             super().__init__()
             self.register(BaseDefinition, SwapSolution, dict)
-            self.register(IntegerDefinition, types.Integer, int)
-            self.register(RealDefinition, types.Real, float)
-            self.register(CategoricalDefinition, types.Categorical, str)
+            self.register(IntegerDefinition, Integer, int)
+            self.register(RealDefinition, Real, float)
+            self.register(CategoricalDefinition, Categorical, str)
             self.register(StaticStructureDefinition, (SwapStructure, "static"), list)
 
 Extending the Metaheuristic class
@@ -109,7 +107,7 @@ A metaheuristic inherits from |metaheuristic| and implements **three** methods:
 
 In exchange the base class provides the run loop, elitism (the best solution ever seen is kept even if an iteration returns something worse), and four constructor parameters that the subclass should pass through:
 
-- ``seed``: the same seed reproduces the run. Draw every random number from :py:func:`metagen.framework.rng.get_rng` (or ``get_numpy_rng``), never from the global ``random`` module, or the seed will not control it.
+- ``seed``: the same seed reproduces the run. Draw every random number from :py:func:`metagen.framework.get_rng` (or ``get_numpy_rng``), never from the global ``random`` module, or the seed will not control it.
 - ``log_dir``: a directory to write TensorBoard logs to. ``None``, the default, writes nothing.
 - ``distributed``: run ``initialize`` and ``iterate`` on slices of the population across the CPUs of a Ray cluster.
 - ``distribution_model``: how a distributed run makes up the next population, ``"global"`` (the default) or ``"islands"``; see :doc:`../distributed_execution/distributed`.

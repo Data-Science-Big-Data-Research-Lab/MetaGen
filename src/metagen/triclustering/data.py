@@ -24,6 +24,8 @@ import numpy as np
 if TYPE_CHECKING:
     from metagen.triclustering.cube import Cube
 
+__all__ = ["check", "collapse_genes", "drop_genes", "fetch_gds", "netcdf_attributes", "read_gds", "read_long", "read_netcdf", "read_slices", "rename_genes", "write_netcdf"]
+
 #: The names of the dimensions of a cube in a NetCDF file, in the order of its axes.
 NETCDF_DIMENSIONS: Tuple[str, str, str] = ("gene", "condition", "time")
 

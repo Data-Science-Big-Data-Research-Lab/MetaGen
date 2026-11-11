@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 class Subset(BaseType):
     """
     A selection of some of the elements of a
-    :py:class:`~metagen.framework.domain.core.SubsetDefinition`, between its minimum
+    :py:class:`~metagen.framework.domain.SubsetDefinition`, between its minimum
     and maximum number of them. It reads as a list without repetitions, in the order
     the elements were given.
 
@@ -88,7 +88,7 @@ class Subset(BaseType):
         :param alteration_limit: How far the selection may move, counted in steps, each
             of them adding, removing or changing one element, drawn among those the
             sizes allow. A number is the most steps, a
-            :py:class:`~metagen.framework.alteration.RelativeAlteration` a fraction of the
+            :py:class:`~metagen.framework.RelativeAlteration` a fraction of the
             maximum size (at least one step; with no maximum declared, the maximum is
             all the elements), and None, the default, draws a new selection at random.
         :type alteration_limit: int or RelativeAlteration or None
