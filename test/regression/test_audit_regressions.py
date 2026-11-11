@@ -1511,7 +1511,9 @@ def test_f23_una_cepa_no_muere_al_encontrar_la_primera_mejora():
     finally:
         cvoa_local.CVOA.run = run_original
 
-    assert iteraciones["hechas"] > 4, (
+    # Exactamente las 4 declaradas: ni muere antes, que es F-23, ni hace una de mas. Hasta
+    # F-69 la cepa hacia pandemic_duration + 1 y este test pedia > 4.
+    assert iteraciones["hechas"] == 4, (
         f"la cepa se detuvo en la iteracion {iteraciones['hechas']} de las 4 "
         "declaradas en pandemic_duration"
     )
@@ -3599,3 +3601,39 @@ def test_f68_hill_climbing_mantiene_su_vecindario_en_un_dominio_discreto():
 
         HillClimbing(dominio, fitness, population_size=10, warmup_iterations=5, max_iterations=30, seed=semilla).run()
         assert evaluaciones[0] == 10 * (5 + 1 + 30), f"semilla {semilla}: {evaluaciones[0]}"
+
+
+# --------------------------------------------------------------------------------
+# F-69 · pandemic_duration=N hace N + 1 iteraciones
+# --------------------------------------------------------------------------------
+
+@pytest.mark.parametrize("nombre", ["CVOA", "ProbabilisticCVOA"])
+@pytest.mark.parametrize("duracion", [1, 5])
+def test_f69_una_cepa_hace_tantas_iteraciones_como_pandemic_duration(nombre, duracion):
+    """F-69: la cepa paraba con `time > pandemic_duration`, despues de N + 1 iteraciones,
+    contra su docstring («Iterations the strain runs») y contra el Java original de los
+    autores (`while (epidemic && time < max_time)` desde 0, N iteraciones). Con una
+    pandemia que no se apaga antes, una cepa tiene que hacer exactamente N."""
+    from metagen.metaheuristics import ProbabilisticCVOA, StrainProperties
+    from metagen.metaheuristics.cvoa.cvoa import CVOA
+    from metagen.metaheuristics.cvoa.local_state import LocalPandemicState
+
+    clase = {"CVOA": CVOA, "ProbabilisticCVOA": ProbabilisticCVOA}[nombre]
+    dominio = Domain()
+    dominio.define_real("x", -5.0, 5.0)
+    dominio.define_real("y", -5.0, 5.0)
+
+    def fitness(solucion):
+        return solucion["x"] ** 2 + solucion["y"] ** 2
+
+    iteraciones = []
+
+    class Contada(clase):
+        def iterate(self, solutions):
+            iteraciones.append(self.time)
+            return super().iterate(solutions)
+
+    set_seed(2)
+    estado = LocalPandemicState(Solution(dominio))
+    Contada(estado, dominio, fitness, StrainProperties("S1", pandemic_duration=duracion)).run()
+    assert len(iteraciones) == duracion, iteraciones

@@ -445,7 +445,10 @@ class CVOA(Metaheuristic):
         first_condition: bool = self.epidemic == False
 
         # Second condition: When the pandemic duration has been reached
-        second_condition: bool = self.time > self.strain_properties.pandemic_duration
+        # >=, not >: time counts the iterations done, so > ran one more than
+        # pandemic_duration, against its docstring and the authors' Java, whose loop is
+        # "while (epidemic && time < max_time)" from 0 (F-69).
+        second_condition: bool = self.time >= self.strain_properties.pandemic_duration
 
         # Third condition: when the strain has spent too long without improving.
         # This used to be "best_strain_solution_found and self.time > 1", with a

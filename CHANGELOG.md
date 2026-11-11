@@ -21,6 +21,9 @@
   than the step, as an integer does: with `RelativeAlteration(0.2)`, the default neighborhood
   of hill climbing, tabu search, simulated annealing and the memetic algorithm and the mutation
   of GA and SSGA, a step wider than a fifth of the range left the variable where it was.
+- **A CVOA strain** runs exactly `pandemic_duration` iterations, as its documentation says and
+  as the original implementation of the algorithm does; it ran one more. Seeded runs give
+  different results; to keep the search of a run, ask for one iteration more.
 - **Hill climbing** draws `population_size` neighbors every iteration on a discrete domain
   too, where its neighborhood shrank when neighbors repeated visited solutions, so its seeded
   runs on such domains give different results.
