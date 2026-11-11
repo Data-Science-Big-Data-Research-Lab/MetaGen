@@ -21,6 +21,8 @@
   than the step, as an integer does: with `RelativeAlteration(0.2)`, the default neighborhood
   of hill climbing, tabu search, simulated annealing and the memetic algorithm and the mutation
   of GA and SSGA, a step wider than a fifth of the range left the variable where it was.
+- **Simulated annealing** begins its walk from the best solution evaluated before it, the
+  warmup's included, as `warmup_iterations` says, so its seeded runs give different results.
 - **`RandomSearch`** needs a population of at least two, as the genetic algorithms do: with
   one individual, its elite copy left nobody to mutate, and a run limited by `max_evaluations`
   alone did not end.

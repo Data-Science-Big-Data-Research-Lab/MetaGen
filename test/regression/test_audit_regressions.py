@@ -3540,3 +3540,35 @@ def test_f66_random_search_exige_dos_individuos_y_con_dos_busca():
     algoritmo.run()
     assert algoritmo.stop_reason == "max_evaluations" and algoritmo.evaluations >= 12
 
+
+# --------------------------------------------------------------------------------
+# F-67 · SA no arranca del mejor del warmup, como promete su docstring
+# --------------------------------------------------------------------------------
+
+def test_f67_sa_empieza_a_caminar_desde_lo_mejor_que_evaluo():
+    """F-67: la docstring de `warmup_iterations` dice que el paseo empieza en la mejor de las
+    soluciones del warmup, pero `initialize` sorteaba un punto nuevo y el paseo arrancaba de
+    ahi: el warmup solo servia como candidato a mejor. La primera iteracion tiene que
+    caminar desde lo mejor evaluado hasta ese momento, sin gastar mas evaluaciones."""
+    from metagen.metaheuristics import SA
+
+    class SAQueMiraDondeEmpieza(SA):
+        def iterate(self, solutions):
+            if not hasattr(self, "punto_de_partida"):
+                self.punto_de_partida = solutions[0].get_fitness()
+                self.evaluado_antes = list(valores)
+            return super().iterate(solutions)
+
+    for semilla in range(8):
+        dominio = Domain()
+        dominio.define_real("x", -10.0, 10.0)
+        valores = []
+
+        def fitness(solucion):
+            valores.append(solucion["x"] ** 2)
+            return valores[-1]
+
+        algoritmo = SAQueMiraDondeEmpieza(dominio, fitness, warmup_iterations=5, max_iterations=3, seed=semilla)
+        algoritmo.run()
+        assert len(algoritmo.evaluado_antes) == 5 + 1, "arrancar del mejor no gasta evaluaciones"
+        assert algoritmo.punto_de_partida == min(algoritmo.evaluado_antes), f"semilla {semilla}"

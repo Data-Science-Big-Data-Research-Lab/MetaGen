@@ -247,6 +247,13 @@ class SA(Metaheuristic):
         :rtype: Tuple[List[Solution], Solution]
         """
         current_solutions, best_solution = random_exploration(self.domain, self.fitness_function, num_solutions)
+        # The walk begins from the best solution evaluated so far, the warmup's included, as
+        # warmup_iterations promises: it began from the point drawn here, and the warmup only
+        # stood as a candidate for the best (F-67). The point is still drawn and evaluated, so
+        # the evaluations a run makes are the same.
+        if self.best_solution is not None and self.best_solution.get_fitness() < best_solution.get_fitness():
+            best_solution = deepcopy(self.best_solution)
+            current_solutions = [best_solution]
         return current_solutions, best_solution
 
     def iterate(self, solutions: List[Solution]) -> Tuple[List[Solution], Solution]:
