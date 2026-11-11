@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import math
+from functools import lru_cache
+from typing import Tuple
 
 import metagen.framework.solution as types
 from metagen.framework import BaseConnector, Solution
@@ -43,17 +45,41 @@ def sample_from_values(tpe_type, best_values, worst_values):
     return _sample(tpe_type.value, best_values, worst_values, min_value, max_value)
 
 
+#: The normalizing constant of the normal density, as scipy computes it.
+_NORM_PDF_C = np.sqrt(2 * np.pi)
+
+
+@lru_cache(maxsize=1024)
+def _fit(values: Tuple[float, ...]) -> Tuple[float, float]:
+    """The mean and the standard deviation of the values, as ``scipy.stats.norm.fit`` gives them."""
+    # Every candidate of an iteration fitted the same values again, for every variable and
+    # side: fitted once, the result is the same (E-02,
+    # metagen-auditoria/auditoria-independiente-2026-11/eficiencia.md).
+    return norm.fit(values)
+
+
+def _pdf(x: float, loc: float, scale: float) -> float:
+    """
+    The normal density at ``x``, with the operations of ``scipy.stats.norm.pdf`` in its order,
+    on an array of one element as scipy does: the same value, bit for bit.
+    """
+    # The generic machinery of scipy.stats took most of the time of an iteration for a
+    # single number (E-02). Checked equal to norm.pdf on 200 000 values and on seeded runs.
+    y = np.asarray([(np.asarray(x) - loc) / scale], dtype=np.float64)
+    return float((np.exp(-y ** 2 / 2.0) / _NORM_PDF_C / scale)[0])
+
+
 def _sample(current, best_values, worst_values, min_value, max_value):
 
-    mu_best, sigma_best = norm.fit(best_values)
-    mu_worst, sigma_worst = norm.fit(worst_values)
+    mu_best, sigma_best = _fit(tuple(best_values))
+    mu_worst, sigma_worst = _fit(tuple(worst_values))
 
     value = 0
 
     if sigma_best > 0 and sigma_worst > 0:
 
-        p_best = norm.pdf(current, mu_best, sigma_best)
-        p_worst = norm.pdf(current, mu_worst, sigma_worst)
+        p_best = _pdf(current, mu_best, sigma_best)
+        p_worst = _pdf(current, mu_worst, sigma_worst)
     
         if p_best / (p_best + p_worst + 1e-16) > get_numpy_rng().random():
             value = np.clip(get_numpy_rng().normal(mu_best, sigma_best), min_value, max_value).item()

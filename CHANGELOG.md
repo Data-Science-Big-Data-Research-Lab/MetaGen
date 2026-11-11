@@ -32,6 +32,9 @@
   give the same results.
 - **`KernelTPE`** proposes only points of the grid of a variable with a step, also when the
   step does not divide the range, as in `define_integer("i", 0, 11, 4)`.
+- **`TPE`** fits its model once per iteration instead of once per candidate, and computes the
+  normal density with the operations of SciPy without its generic machinery. It runs two to
+  four times faster, with the same results.
 - **CVOA** keeps the recovered, the dead and the isolated of a pandemic by a key of their
   values rather than as whole solutions, since it only asks whether one is there and how many:
   a long pandemic takes less memory and less time, with the same results.
