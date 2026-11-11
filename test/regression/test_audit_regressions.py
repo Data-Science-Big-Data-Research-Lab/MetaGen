@@ -3572,3 +3572,30 @@ def test_f67_sa_empieza_a_caminar_desde_lo_mejor_que_evaluo():
         algoritmo.run()
         assert len(algoritmo.evaluado_antes) == 5 + 1, "arrancar del mejor no gasta evaluaciones"
         assert algoritmo.punto_de_partida == min(algoritmo.evaluado_antes), f"semilla {semilla}"
+
+
+# --------------------------------------------------------------------------------
+# F-68 · El vecindario de HillClimbing encoge para siempre en dominios discretos
+# --------------------------------------------------------------------------------
+
+def test_f68_hill_climbing_mantiene_su_vecindario_en_un_dominio_discreto():
+    """F-68: sin `gamma_config`, cada iteracion generaba tantos vecinos como tenia el
+    vecindario anterior, que ya no incluia los vecinos tabu: en un dominio discreto el
+    tamano solo podia bajar, hasta un vecino, y la ejecucion gastaba menos de la mitad de
+    las evaluaciones que anuncia la docstring. F-54 lo arreglo solo con `gamma_config`.
+    Cada iteracion tiene que generar `population_size` vecinos."""
+    from metagen.metaheuristics import HillClimbing
+
+    for semilla in range(4):
+        dominio = Domain()
+        dominio.define_integer("a", 0, 6)
+        dominio.define_integer("b", 0, 6)
+        dominio.define_categorical("c", ["x", "y", "z"])
+        evaluaciones = [0]
+
+        def fitness(solucion):
+            evaluaciones[0] += 1
+            return (solucion["a"] - 3) ** 2 + (solucion["b"] - 1) ** 2 + (solucion["c"] != "y")
+
+        HillClimbing(dominio, fitness, population_size=10, warmup_iterations=5, max_iterations=30, seed=semilla).run()
+        assert evaluaciones[0] == 10 * (5 + 1 + 30), f"semilla {semilla}: {evaluaciones[0]}"
