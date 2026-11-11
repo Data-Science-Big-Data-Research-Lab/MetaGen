@@ -32,6 +32,9 @@
   give the same results.
 - **`KernelTPE`** proposes only points of the grid of a variable with a step, also when the
   step does not divide the range, as in `define_integer("i", 0, 11, 4)`.
+- **CVOA** keeps the recovered, the dead and the isolated of a pandemic by a key of their
+  values rather than as whole solutions, since it only asks whether one is there and how many:
+  a long pandemic takes less memory and less time, with the same results.
 - **`KernelTPE`** scores its candidates in one step per variable, and draws its kernels from a
   cumulative table built once per model. It runs two to three times faster, with the same
   results.

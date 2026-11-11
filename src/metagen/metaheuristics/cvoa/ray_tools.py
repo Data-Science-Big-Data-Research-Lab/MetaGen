@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, TypeAlias
 import ray
 from metagen.framework import Solution, Domain
-from metagen.metaheuristics.cvoa.common_tools import IndividualState, PandemicState, StrainProperties, SolutionSet
+from metagen.metaheuristics.cvoa.common_tools import IndividualState, PandemicState, SolutionKeys, StrainProperties, SolutionSet
 from metagen.framework.rng import set_seed, spawn_seed
 
 if TYPE_CHECKING:
@@ -17,21 +17,16 @@ PandemicStateHandle: TypeAlias = Any
 @ray.remote
 class RemotePandemicState:
     def __init__(self, initial_individual: Solution):
-        self.recovered: SolutionSet = SolutionSet()
-        self.deaths: SolutionSet = SolutionSet()
-        self.isolated: SolutionSet = SolutionSet()
+        self.recovered: SolutionKeys = SolutionKeys()
+        self.deaths: SolutionKeys = SolutionKeys()
+        self.isolated: SolutionKeys = SolutionKeys()
         self.best_individual_found: bool = False
         self.best_individual: Solution = initial_individual
 
     def get_individual_state(self, individual: Solution) -> IndividualState:
-        result: IndividualState = IndividualState(False, False, False)
-        if individual in self.recovered:
-            result = result._replace(recovered=True)
-        if individual in self.deaths:
-            result = result._replace(dead=True)
-        if individual in self.isolated:
-            result = result._replace(isolated=True)
-        return result
+        # The key once, not a hash per set (E-03).
+        key = individual._key()
+        return IndividualState(self.recovered.holds(key), self.deaths.holds(key), self.isolated.holds(key))
 
     # Recovered
     def get_recovered_len(self) -> int:

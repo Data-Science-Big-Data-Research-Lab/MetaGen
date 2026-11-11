@@ -20,7 +20,7 @@ import math
 import numbers
 from collections.abc import Callable
 from copy import deepcopy
-from typing import (TYPE_CHECKING, Any, Dict, KeysView, Optional, Union,
+from typing import (TYPE_CHECKING, Any, Dict, KeysView, Optional, Tuple, Union,
                     ValuesView, cast)
 
 import metagen.framework.solution as types
@@ -584,9 +584,20 @@ class Solution:
         # dict.__hash__ is None for every solution alike, leaving the fitness as the
         # only ingredient: two equal solutions with different fitness broke the
         # invariant, and every solution sharing a fitness value landed in one bucket.
-        return hash(tuple(sorted((name, _hashable(value))
-                                 for name, value in self.get_variables().items()
-                                 if self.is_active(name))))
+        return hash(self._key())
+
+    def _key(self) -> Tuple[Any, ...]:
+        """
+        The values of the active variables, by name, as a tuple of builtins: two solutions
+        have equal keys exactly when they are equal, so a key stands for a solution where
+        only its identity matters, as in the sets of the state of a CVOA pandemic.
+
+        :return: The key.
+        :rtype: tuple
+        """
+        return tuple(sorted((name, _hashable(value))
+                            for name, value in self.get_variables().items()
+                            if self.is_active(name)))
 
     def __lt__(self, other):
         """ A solution is less than another when its fitness is strictly lower, that is, better:
