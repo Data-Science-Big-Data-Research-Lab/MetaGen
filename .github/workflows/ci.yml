@@ -115,7 +115,11 @@ jobs:
           cache: pip
 
       - name: Install what Read the Docs installs
+        # Graphviz draws the inheritance diagrams of the API reference; the build image of
+        # Read the Docs has it, the runner does not.
         run: |
+          sudo apt-get update
+          sudo apt-get install -y graphviz
           python -m pip install --upgrade pip
           pip install -r docs/requirements.txt
 
