@@ -3515,3 +3515,28 @@ def test_f65_el_informe_muestra_todos_los_parametros_del_algoritmo_y_solo_esos(n
                                          "best fitness") for fila in filas), sorted(filas)
     assert filas["history"] == historia
     assert filas["max_iterations"] == str(algoritmo.parameters()["max_iterations"])
+
+
+# --------------------------------------------------------------------------------
+# F-66 · RandomSearch con un individuo no busca, y con solo un presupuesto no termina
+# --------------------------------------------------------------------------------
+
+def test_f66_random_search_exige_dos_individuos_y_con_dos_busca():
+    """F-66: con `population_size=1` el unico individuo era a la vez la elite, que se
+    conserva, y el peor, que se descarta: no se mutaba ni se evaluaba nada, y con
+    `max_evaluations` como unico limite el bucle no terminaba nunca. Tiene que rechazarse
+    al construirlo, como en GA y SSGA, y con dos individuos cada iteracion evalua."""
+    from metagen.metaheuristics import RandomSearch
+
+    dominio = Domain()
+    dominio.define_real("x", -5.0, 5.0)
+
+    def fitness(solucion):
+        return solucion["x"] ** 2
+
+    with pytest.raises(ValueError, match="at least 2"):
+        RandomSearch(dominio, fitness, population_size=1, max_evaluations=10)
+    algoritmo = RandomSearch(dominio, fitness, population_size=2, max_evaluations=12, seed=0)
+    algoritmo.run()
+    assert algoritmo.stop_reason == "max_evaluations" and algoritmo.evaluations >= 12
+

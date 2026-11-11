@@ -399,7 +399,10 @@ def test_the_genetic_algorithms_still_run_with_the_fewest_individuals_they_can()
         with pytest.raises(ValueError, match="at least 2"):
             algorithm_class(domain, _sphere, population_size=1, max_iterations=1)
         assert algorithm_class(domain, _sphere, population_size=2, max_iterations=1).run() is not None
-    assert RandomSearch(_sphere_domain(), _sphere, population_size=1, max_iterations=1).run() is not None
+    # Random search too since F-66: with one individual, the elite copy left nobody to mutate.
+    with pytest.raises(ValueError, match="at least 2"):
+        RandomSearch(_sphere_domain(), _sphere, population_size=1, max_iterations=1)
+    assert RandomSearch(_sphere_domain(), _sphere, population_size=2, max_iterations=1).run() is not None
 
 
 def test_the_evaluations_the_documentation_gives_for_each_model(ray_runtime):

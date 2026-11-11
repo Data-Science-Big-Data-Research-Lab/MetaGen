@@ -98,6 +98,10 @@ class RandomSearch(Metaheuristic):
     # The elite copy takes one slot of each slice, so a slice of one mutates nobody: a
     # population of 10 on ten CPUs made its 10 initial evaluations and nothing else.
     minimum_slice: int = 2
+    # The same on its own: with one individual, the elite copy was the one individual and
+    # nobody was mutated or evaluated, and a run limited by max_evaluations alone never
+    # ended (F-66).
+    minimum_population: int = 2
 
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float], population_size = 10, max_iterations: Optional[int] = None, distributed = False, log_dir: Optional[str] = None, seed: Optional[int] = None, distribution_model: str = "global",
                  checkpoint: Optional[str] = None, checkpoint_every: int = 1, history: Optional[str] = None,
