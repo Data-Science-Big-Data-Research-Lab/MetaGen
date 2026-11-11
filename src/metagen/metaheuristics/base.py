@@ -83,6 +83,67 @@ def _package_version() -> str:
 DISTRIBUTION_MODELS = frozenset({"global", "islands"})
 
 
+#: Where a metaheuristic's docstring takes the options of a run, documented here once.
+OPTIONS_OF_A_RUN = "{options_of_a_run}"
+
+#: The options of a run every metaheuristic takes and hands on to this class, as its
+#: docstring documents them where it says ``OPTIONS_OF_A_RUN``. The long form is in the
+#: docstring of :py:class:`Metaheuristic` itself.
+_OPTIONS_OF_A_RUN_DOC = """\
+:param distributed: Whether to run on Ray, defaults to False; see
+    :py:class:`~metagen.metaheuristics.Metaheuristic` for what a distributed run does.
+:type distributed: bool, optional
+:param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
+:type log_dir: str or None, optional
+:param seed: Seed for the package's random generators, applied at the start of
+    ``run()``; the same seed reproduces the run. None, the default, draws a different
+    run every time.
+:type seed: int or None, optional
+:param distribution_model: How a distributed run makes up the next population out of
+    the slices, ``"global"`` (the default: shuffled, selected among all workers) or
+    ``"islands"``; see :py:class:`~metagen.metaheuristics.Metaheuristic`.
+:type distribution_model: str, optional
+:param checkpoint: File the run saves its state to every ``checkpoint_every``
+    iterations, and continues from if it exists when ``run()`` starts; None, the
+    default, saves nothing. See :py:class:`~metagen.metaheuristics.Metaheuristic`.
+:type checkpoint: str or None, optional
+:param checkpoint_every: Iterations between two saves (default is 1).
+:type checkpoint_every: int, optional
+:param history: File the run writes its history to, one JSON line per iteration;
+    None, the default, writes nothing. See :py:class:`~metagen.metaheuristics.Metaheuristic`.
+:type history: str or None, optional
+:param max_evaluations: Stop once the run has evaluated the fitness at least this
+    many times; see :py:class:`~metagen.metaheuristics.Metaheuristic`.
+:type max_evaluations: int or None, optional
+:param timeout: Stop once the run has lasted at least this many seconds; see
+    :py:class:`~metagen.metaheuristics.Metaheuristic`.
+:type timeout: float or None, optional
+:param initial_solutions: Solutions to start from, each a mapping from variable names to
+    values; see :py:class:`~metagen.metaheuristics.Metaheuristic`.
+:type initial_solutions: Sequence[Mapping[str, Any]] or None, optional
+:param racing: Stop evaluating a candidate as soon as it is significantly worse than the
+    population; see :py:class:`~metagen.metaheuristics.Racing`.
+:type racing: Racing or None, optional
+:param refit: A function that trains the model of the best solution when the run ends;
+    see :py:class:`~metagen.metaheuristics.Metaheuristic`.
+:type refit: Callable[[Solution], Any] or None, optional"""
+
+
+def _with_options_of_a_run(doc: Optional[str]) -> Optional[str]:
+    """A docstring with the options of a run where it says ``OPTIONS_OF_A_RUN``, indented as that line is."""
+    # Ten constructors repeated them by hand, about 350 lines in all, and their wording had
+    # drifted apart (O-02, metagen-auditoria/auditoria-independiente-2026-11/organizacion.md).
+    if doc is None or OPTIONS_OF_A_RUN not in doc:
+        return doc
+    lines = doc.split("\n")
+    for index, line in enumerate(lines):
+        if line.strip() == OPTIONS_OF_A_RUN:
+            indent = line[:len(line) - len(line.lstrip())]
+            lines[index:index + 1] = [indent + text if text else text for text in _OPTIONS_OF_A_RUN_DOC.split("\n")]
+            break
+    return "\n".join(lines)
+
+
 class Metaheuristic(ABC):
     """
     Abstract base class for metaheuristic algorithms.
@@ -235,6 +296,10 @@ class Metaheuristic(ABC):
     #: builds, for an algorithm whose population is its model; otherwise the warmup only
     #: hands on the best solution it found.
     keeps_warmup: bool = False
+
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        super().__init_subclass__(**kwargs)
+        cls.__doc__ = _with_options_of_a_run(cls.__doc__)
 
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float], population_size=20,
                  warmup_iterations: int = 0, distributed=False,

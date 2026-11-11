@@ -42,47 +42,12 @@ class HillClimbing(Metaheuristic):
         Defaults to a fifth of each variable's own range; a plain number is an
         absolute amount instead, and None lets a mutation land anywhere in the domain.
     :type alteration_limit: RelativeAlteration or float or None, optional
-    :param distributed: Whether to use distributed computation, defaults to False
-    :type distributed: bool, optional
-    :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
-    :type log_dir: str or None, optional
+    {options_of_a_run}
     :param gamma_config: When given, each iteration samples only a share of the
         ``population_size`` neighbors, the share a gamma schedule gives for that
         iteration; see :py:class:`~metagen.metaheuristics.GammaConfig`.
         None, the default, samples them all.
     :type gamma_config: GammaConfig or None, optional
-    :param seed: Seed for the package's random generators, applied at the start of
-        ``run()``; the same seed reproduces the run. None, the default, draws a different
-        run every time.
-    :type seed: int or None, optional
-    :param distribution_model: How a distributed run makes up the next population out of
-        the slices, ``"global"`` (the default: shuffled, selected among all workers) or
-        ``"islands"``; see :py:class:`~metagen.metaheuristics.Metaheuristic`.
-    :type distribution_model: str, optional
-    :param checkpoint: File the run saves its state to every ``checkpoint_every``
-        iterations, and continues from if it exists when ``run()`` starts; None, the
-        default, saves nothing. See :py:class:`~metagen.metaheuristics.Metaheuristic`.
-    :type checkpoint: str or None, optional
-    :param checkpoint_every: Iterations between two saves (default is 1).
-    :type checkpoint_every: int, optional
-    :param history: File the run writes its history to, one JSON line per iteration;
-        None, the default, writes nothing. See :py:class:`~metagen.metaheuristics.Metaheuristic`.
-    :type history: str or None, optional
-    :param max_evaluations: Stop once the run has evaluated the fitness at least this
-        many times; see :py:class:`~metagen.metaheuristics.Metaheuristic`.
-    :type max_evaluations: int or None, optional
-    :param timeout: Stop once the run has lasted at least this many seconds; see
-        :py:class:`~metagen.metaheuristics.Metaheuristic`.
-    :type timeout: float or None, optional
-    :param initial_solutions: Solutions to start from, each a mapping from variable names to
-        values; see :py:class:`~metagen.metaheuristics.Metaheuristic`.
-    :type initial_solutions: Sequence[Mapping[str, Any]] or None, optional
-    :param racing: Stop evaluating a candidate as soon as it is significantly worse than the
-        population; see :py:class:`~metagen.metaheuristics.Racing`.
-    :type racing: Racing or None, optional
-    :param refit: A function that trains the model of the best solution when the run ends;
-        see :py:class:`~metagen.metaheuristics.Metaheuristic`.
-    :type refit: Callable[[Solution], Any] or None, optional
 
     :ivar max_iterations: Maximum number of iterations to run
     :vartype max_iterations: int
@@ -124,30 +89,6 @@ class HillClimbing(Metaheuristic):
                  max_evaluations: Optional[int] = None, timeout: Optional[float] = None,
                  initial_solutions: Optional[Sequence[Mapping[str, Any]]] = None, racing: Optional[Racing] = None,
                  refit: Optional[Callable[[Solution], Any]] = None):
-        """
-        Initialize the hill climbing algorithm.
-
-        :param domain: The problem's domain to explore
-        :type domain: Domain
-        :param fitness_function: Function to evaluate solutions
-        :type fitness_function: Callable[[Solution], float]
-        :param population_size: Size of the population (neighborhood) to maintain, defaults to 10
-        :type population_size: int, optional
-        :param max_iterations: Maximum number of iterations to run, defaults to 20. With
-            ``max_evaluations`` or ``timeout`` and no value, no limit; with a
-            ``gamma_config``, whose schedule spans ``max_iterations``, the iterations
-            ``max_evaluations`` buys, and 20 with ``timeout`` alone
-        :type max_iterations: int or None, optional
-        :param tabu_size: Maximum size of the tabu list, defaults to 5
-        :type tabu_size: int, optional
-        :param alteration_limit: How far a neighbor may move from the current solution,
-            defaults to a fifth of each variable's own range
-        :type alteration_limit: RelativeAlteration or float or None, optional
-        :param distributed: Whether to use distributed computation, defaults to False
-        :type distributed: bool, optional
-        :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
-        :type log_dir: str or None, optional
-        """
         super().__init__(domain, fitness_function, population_size, warmup_iterations, distributed, log_dir, seed=seed,
                          distribution_model=distribution_model,
                          checkpoint=checkpoint, checkpoint_every=checkpoint_every,

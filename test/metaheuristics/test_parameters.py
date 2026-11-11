@@ -220,3 +220,17 @@ def test_a_metaheuristic_hands_every_option_of_a_run_on_to_the_base_class(algori
     algorithm(domain, fitness, **given)
     wrong = {name: received.get(name, "<not handed on>") for name in _COMMON if received.get(name) is not given[name]}
     assert not wrong, f"{algorithm.__name__} hands on {wrong}"
+
+
+@pytest.mark.parametrize("algorithm", _ALGORITHMS, ids=lambda c: c.__name__)
+def test_the_docstring_of_a_metaheuristic_documents_each_of_its_parameters_once(algorithm):
+    import re
+
+    documented = re.findall(r":param (\w+):", algorithm.__doc__)
+    taken = [name for name in inspect.signature(algorithm.__init__).parameters if name != "self"]
+    assert sorted(documented) == sorted(taken), (
+        f"{algorithm.__name__}: documented and not taken {sorted(set(documented) - set(taken))}, "
+        f"taken and not documented {sorted(set(taken) - set(documented))}, "
+        f"documented twice {sorted({name for name in documented if documented.count(name) > 1})}")
+    assert algorithm.__init__.__doc__ is None or ":param" not in algorithm.__init__.__doc__, (
+        f"{algorithm.__name__}.__init__ documents parameters again: the reference shows both docstrings")
