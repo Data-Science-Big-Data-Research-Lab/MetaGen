@@ -46,7 +46,7 @@ def sample_from_values(tpe_type, best_values, worst_values):
 
 
 #: The normalizing constant of the normal density, as scipy computes it.
-_NORM_PDF_C = np.sqrt(2 * np.pi)
+_NORM_PDF_C = math.sqrt(2 * math.pi)
 
 
 @lru_cache(maxsize=1024)
