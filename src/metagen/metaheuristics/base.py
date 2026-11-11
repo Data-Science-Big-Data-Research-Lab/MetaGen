@@ -28,7 +28,7 @@ import time
 from abc import ABC, abstractmethod
 from importlib import metadata
 
-from .import_helper import is_package_installed
+from .import_helper import is_package_installed, require_ray, start_ray
 from typing import Any, Dict, List, Mapping, Sequence, Tuple, Optional, Callable, cast
 from metagen.framework import Domain, Solution
 from metagen.framework import rng as rng_state
@@ -501,8 +501,7 @@ class Metaheuristic(ABC):
         best_individual: Optional[Solution] = None
         if drawn > 0:
             if self.distributed:
-                if not IS_RAY_INSTALLED:
-                    raise ImportError("Ray must be installed to use distributed initialization")
+                require_ray("a distributed run")
                 population, best_individual = self._launch_distributed_method(self.initialize)
             else:
                 population, best_individual = self.initialize(drawn)
@@ -556,8 +555,7 @@ class Metaheuristic(ABC):
 
             for warmup_step in range(self.warmup_iterations):
                 if self.distributed:
-                    if not IS_RAY_INSTALLED:
-                        raise ImportError("Ray must be installed to use distributed execution")
+                    require_ray("a distributed run")
                     metagen_logger.debug(
                         f'[WARMUP {warmup_step + 1}/{self.warmup_iterations}] Distributed warmup step.'
                     )
@@ -600,8 +598,7 @@ class Metaheuristic(ABC):
                 if not getattr(solution, "raced_out", False)
                 and len(getattr(solution, "step_values", ())) == step_count]
         if self.distributed:
-            if not IS_RAY_INSTALLED:
-                    raise ImportError("Ray must be installed to use distributed initialization")
+            require_ray("a distributed run")
             population, best_individual = self._launch_distributed_method(self.iterate)
         else:
             population, best_individual = self.iterate(self.current_solutions)
@@ -796,10 +793,7 @@ class Metaheuristic(ABC):
         # Remembered so that only the run() that started Ray stops it. Shutting it
         # down unconditionally took the runtime away from a cluster the user had
         # connected to, or from the other metaheuristics in a comparison (F-21).
-        started_ray = False
-        if self.distributed and IS_RAY_INSTALLED and not ray.is_initialized():
-            ray.init()
-            started_ray = True
+        stop_ray = start_ray(self.distributed and IS_RAY_INSTALLED)
 
         try:
             if not resuming:
@@ -855,8 +849,7 @@ class Metaheuristic(ABC):
             # Also on the way out of an exception: a runtime this run() started must
             # not outlive it, or the workers and their memory stay alive until the
             # interpreter exits (F-44).
-            if started_ray and ray.is_initialized():
-                ray.shutdown()
+            stop_ray()
 
         return self._finish(counted)
 

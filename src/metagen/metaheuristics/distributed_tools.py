@@ -1,4 +1,4 @@
-from typing import Any, List, Callable, Tuple
+from typing import Any, Callable, List, Sequence, Tuple
 
 import ray
 
@@ -62,25 +62,50 @@ def assign_load_equally(neighbor_population_size: int, minimum_chunk: int = 1) -
 
 
 @ray.remote
-def remote_random_exploration(seed: int, domain: Domain, fitness_function: Callable[[Solution], float],
-                              num_solutions: int) -> Tuple[List[Solution], Solution, Counts]:
+def _call_counted(seed: int, function: Callable[..., Any], arguments: Tuple[Any, ...], counted: int) -> Tuple[Any, Counts]:
+    """
+    Run a function in a worker, on generators seeded for this task, and count the
+    evaluations of the fitness function at position ``counted`` of its arguments.
+
+    The arguments travel as one tuple so that the fitness function counted is the very one
+    the function calls: each argument of a task is a copy of its own.
+    """
     set_seed(seed)
+    fitness_function = arguments[counted]
     before = calls_of(fitness_function)
-    population, best = random_exploration(domain, fitness_function, num_solutions)
-    return population, best, calls_of(fitness_function) - before
+    result = function(*arguments)
+    return result, calls_of(fitness_function) - before
+
+
+def scatter(function: Callable[..., Any], tasks: Sequence[Tuple[Any, ...]], counted: int) -> List[Any]:
+    """
+    Run a function on Ray once per task and give back what each call returned, in order.
+
+    Every task is seeded from the driver, with seeds drawn in the order of the tasks, so a
+    seeded run reproduces; and the evaluations each one makes on its copy of the fitness
+    function, the argument at position ``counted``, are added to the driver's.
+
+    :param function: The function to run, importable by the workers.
+    :type function: Callable
+    :param tasks: The arguments of each call.
+    :type tasks: Sequence[Tuple]
+    :param counted: The position of the fitness function among the arguments.
+    :type counted: int
+    :return: What each call returned.
+    :rtype: List
+    """
+    # The pattern was written out by hand for every function run on Ray, and a copy that
+    # missed a part of it gave F-11 (O-01, metagen-auditoria/auditoria-independiente-2026-11/organizacion.md).
+    answers = ray.get([_call_counted.remote(spawn_seed(), function, tuple(arguments), counted) for arguments in tasks])
+    if tasks:
+        add_calls(tasks[0][counted], sum(calls for _, calls in answers))
+    return [result for result, _ in answers]
 
 
 def distributed_random_exploration(domain: Domain, fitness_function: Callable[[Solution], float], num_solutions: int) \
-                                                                            -> Tuple[List[Solution], Solution]:
-    distribution = assign_load_equally(num_solutions)
-
-    futures = []
-    for count in distribution:
-        futures.append(remote_random_exploration.remote(spawn_seed(), domain, fitness_function, count))
-
-    remote_results = ray.get(futures)
-    add_calls(fitness_function, sum(result[2] for result in remote_results))
-    population = [individual for subpopulation in remote_results for individual in subpopulation[0]]
-    best_individual = min([result[1] for result in remote_results], key=lambda sol: sol.get_fitness())
-
+        -> Tuple[List[Solution], Solution]:
+    answers = scatter(random_exploration, [(domain, fitness_function, count)
+                                           for count in assign_load_equally(num_solutions)], counted=1)
+    population = [individual for subpopulation, _ in answers for individual in subpopulation]
+    best_individual = min([best for _, best in answers], key=lambda sol: sol.get_fitness())
     return population, best_individual
