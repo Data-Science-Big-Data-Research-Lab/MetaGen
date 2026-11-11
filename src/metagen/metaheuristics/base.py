@@ -16,6 +16,7 @@
 """
 
 import heapq
+import inspect
 import json
 import math
 import numbers
@@ -54,6 +55,13 @@ if IS_RAY_INSTALLED:
 #: often to save, which the resumed run is given again.
 _NOT_CHECKPOINTED = frozenset({"fitness_function", "logger", "checkpoint", "checkpoint_every",
                                "_stop_requested", "refit"})
+
+#: The arguments of a constructor that are not part of what :py:meth:`Metaheuristic.parameters`
+#: reports: the problem itself, and the shared state of a CVOA pandemic.
+_NOT_PARAMETERS = frozenset({"self", "domain", "fitness_function", "refit", "initial_solutions", "global_state"})
+
+#: The arguments of a constructor kept under another name.
+_PARAMETER_ATTRIBUTES = {"history": "history_file"}
 
 #: What is not configuration: the state of a run, and where to write. A checkpoint keeps
 #: a description of everything else, and a run with another configuration is not
@@ -955,6 +963,24 @@ class Metaheuristic(ABC):
                     if line.strip() and json.loads(line)["iteration"] < self.current_iteration]
         with open(self.history_file, "w") as handle:
             handle.writelines(kept)
+
+    def parameters(self) -> Dict[str, Any]:
+        """
+        The arguments of the constructor of this metaheuristic, by name and in the order of
+        its signature, with the values it holds: what a run was configured with. The
+        domain, the fitness function, the initial solutions and ``refit`` are left out.
+        ``max_iterations`` is the one a budget resolved, when it was not given.
+
+        :return: The parameters.
+        :rtype: Dict[str, Any]
+        """
+        # A fixed list of names in the report showed only some of them and one that was not
+        # an argument of KernelTPE (F-65): the signature is the list now.
+        names = [parameter.name for parameter in inspect.signature(type(self).__init__).parameters.values()
+                 if parameter.kind in (parameter.POSITIONAL_OR_KEYWORD, parameter.KEYWORD_ONLY)
+                 and parameter.name not in _NOT_PARAMETERS]
+        return {name: getattr(self, _PARAMETER_ATTRIBUTES.get(name, name)) for name in names
+                if hasattr(self, _PARAMETER_ATTRIBUTES.get(name, name))}
 
     def request_stop(self) -> None:
         """

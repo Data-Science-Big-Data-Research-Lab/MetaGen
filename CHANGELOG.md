@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### New
+
+- **`Metaheuristic.parameters()`** returns the arguments of the constructor of a metaheuristic
+  with the values it holds, the configuration of a run. The report of a run lists them all,
+  such as the mutation rate and the tournament size of a genetic algorithm or the tabu size of
+  hill climbing. `Memetic` keeps its `max_iterations` under that name; `max_generations` still
+  reads it.
+
 ### Changes
 
 - **A fitness function that returns NaN**: the value counts as the worst one, infinity, so

@@ -3483,3 +3483,35 @@ def test_f64_un_checkpoint_de_otro_experimento_se_rechaza_diciendo_que_difiere(t
     reanudado = mismo.run()
     sin_cortar = RandomSearch(dominio(100.0), fitness, population_size=5, max_iterations=30, seed=0).run()
     assert reanudado.get_fitness() == sin_cortar.get_fitness()
+
+
+# --------------------------------------------------------------------------------
+# F-65 · El informe omite parametros reales y muestra uno que no es del algoritmo
+# --------------------------------------------------------------------------------
+
+@pytest.mark.parametrize("nombre", ["RandomSearch", "SA", "HillClimbing", "TabuSearch", "GA", "SSGA", "TPE",
+                                    "KernelTPE", "Memetic"])
+def test_f65_el_informe_muestra_todos_los_parametros_del_algoritmo_y_solo_esos(nombre, tmp_path):
+    """F-65: el informe listaba los atributos de una tupla fija, `reporting.PARAMETERS`, que
+    tuviera el objeto: omitia `mutation_rate` y `tournament_size` de GA, `tabu_size` de
+    HillClimbing, `n_candidates` y `prior_weight` de KernelTPE y `max_iterations` de Memetic
+    (que lo guardaba como `max_generations`), y a KernelTPE le atribuia `candidate_pool_size`,
+    que no es parametro suyo. Tiene que mostrar cada argumento del constructor con su valor."""
+    import inspect
+    from metagen.reporting import _summary
+
+    dominio = Domain()
+    dominio.define_real("x", -5.0, 5.0)
+    historia = str(tmp_path / "historia.jsonl")
+    algoritmo = _f59_algoritmo(nombre, dominio, lambda solucion: solucion["x"] ** 2)
+    algoritmo.history_file = historia
+    filas = dict(_summary(algoritmo))
+    firma = inspect.signature(type(algoritmo).__init__).parameters
+    fuera = {"self", "domain", "fitness_function", "refit", "initial_solutions"}
+    for parametro in firma:
+        if parametro not in fuera:
+            assert parametro in filas, f"{nombre}: el informe no muestra {parametro}"
+    assert all(fila in firma or fila in ("algorithm", "stop reason", "evaluations", "seconds", "iterations",
+                                         "best fitness") for fila in filas), sorted(filas)
+    assert filas["history"] == historia
+    assert filas["max_iterations"] == str(algoritmo.parameters()["max_iterations"])
