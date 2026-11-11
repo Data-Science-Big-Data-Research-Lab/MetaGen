@@ -1,6 +1,11 @@
 # Changelog
 
-## Unreleased
+## 1.5.0
+
+MetaGen 1.5.0 makes runs more robust and faster: a fitness that returns NaN, a checkpoint of
+another run and a second `run()` of the same object are handled, variables with a step stay on
+their grid and move under every neighborhood, and the configuration of a run is in its report.
+Several algorithms run faster, with the same results.
 
 ### New
 
@@ -15,51 +20,53 @@
 - **A fitness function that returns NaN**: the value counts as the worst one, infinity, so
   it never stays as the best solution or the best model of a run, and the first one is logged
   as a warning.
-- **A real with a step** draws every point of its grid with the same probability, when it is
-  created and when it mutates, so runs over such variables give different results.
-- **A real with a step** mutates by at least one step when its alteration limit is narrower
-  than the step, as an integer does: with `RelativeAlteration(0.2)`, the default neighborhood
-  of hill climbing, tabu search, simulated annealing and the memetic algorithm and the mutation
-  of GA and SSGA, a step wider than a fifth of the range left the variable where it was.
-- **A CVOA strain** runs exactly `pandemic_duration` iterations, as its documentation says and
-  as the original implementation of the algorithm does; it ran one more. Seeded runs give
-  different results; to keep the search of a run, ask for one iteration more.
-- **Hill climbing** draws `population_size` neighbors every iteration on a discrete domain
-  too, where its neighborhood shrank when neighbors repeated visited solutions, so its seeded
-  runs on such domains give different results.
-- **Simulated annealing** begins its walk from the best solution evaluated before it, the
-  warmup's included, as `warmup_iterations` says, so its seeded runs give different results.
-- **`RandomSearch`** needs a population of at least two, as the genetic algorithms do: with
-  one individual, its elite copy left nobody to mutate, and a run limited by `max_evaluations`
-  alone did not end.
 - **A checkpoint of another run** is refused: `run()` continues from a checkpoint only when it
   was written with the same configuration, the domain, the seed and the parameters, and
   otherwise raises a `ValueError` naming what differs.
 - **A second `run()`** of the same metaheuristic is a new run: it starts from no best
   solution, no population and an empty curve of bests, and hill climbing from an empty tabu
   list, so it gives what a new object with the same seed gives.
+- **A real with a step** draws every point of its grid with the same probability, when it is
+  created and when it mutates, so runs over such variables give different results.
+- **A real with a step** mutates by at least one step when its alteration limit is narrower
+  than the step, as an integer does, so that it moves under `RelativeAlteration(0.2)`, the
+  default neighborhood of hill climbing, tabu search, simulated annealing and the memetic
+  algorithm and the mutation of GA and SSGA, whatever its step.
 - **`TPE`** evaluates and returns only points of the grid of an integer or a real with a step:
   the value its model draws goes to the nearest point of the grid. Variables without a step
   give the same results.
 - **`KernelTPE`** proposes only points of the grid of a variable with a step, also when the
   step does not divide the range, as in `define_integer("i", 0, 11, 4)`.
-- **`TPE`** fits its model once per iteration instead of once per candidate, and computes the
-  normal density with the operations of SciPy without its generic machinery. It runs two to
-  four times faster, with the same results.
-- **CVOA** keeps the recovered, the dead and the isolated of a pandemic by a key of their
-  values rather than as whole solutions, since it only asks whether one is there and how many:
-  a long pandemic takes less memory and less time, with the same results.
-- **`KernelTPE`** scores its candidates in one step per variable, and draws its kernels from a
-  cumulative table built once per model. It runs two to three times faster, with the same
-  results.
-- **Log messages** are built only when the log level emits them: with the log off, the
-  default, a run spends no time formatting its population every iteration, and CVOA does not
-  read the state of the pandemic for a report nobody sees. Results are the same.
+- **Simulated annealing** begins its walk from the best solution evaluated before it, the
+  warmup's included, as `warmup_iterations` says, so its seeded runs give different results.
+- **Hill climbing** draws `population_size` neighbors every iteration, also on a discrete
+  domain where neighbors repeat visited solutions, so its seeded runs on such domains give
+  different results.
+- **A CVOA strain** runs exactly `pandemic_duration` iterations, as in the original
+  implementation of the algorithm. Seeded runs give different results; a run that should
+  search as much as before asks for one iteration more.
+- **`RandomSearch`** needs a population of at least two, as the genetic algorithms do, and a
+  `ValueError` says so when it is given one.
+
+### Performance
+
+The results of a seeded run are the same.
+
 - **Copying a solution** shares its domain definition and its connector with the original
   instead of copying them, as its variables already did. Hill climbing, tabu search,
   simulated annealing, the memetic algorithm and CVOA run faster on a cheap fitness, and what
-  a distributed run sends to its workers and a checkpoint writes is smaller. Results are the
-  same.
+  a distributed run sends to its workers and a checkpoint writes is smaller.
+- **`TPE`** fits its model once per iteration instead of once per candidate, and computes the
+  normal density with the operations of SciPy without its generic machinery.
+- **`KernelTPE`** scores its candidates in one step per variable, and draws its kernels from a
+  cumulative table built once per model.
+- **CVOA** keeps the recovered, the dead and the isolated of a pandemic by a key of their
+  values rather than as whole solutions, since it only asks whether one is there and how many:
+  a long pandemic takes less memory and less time.
+- **Log messages** are built only when the log level emits them: with the log off, the
+  default, a run spends no time formatting its population every iteration, and CVOA does not
+  read the state of the pandemic for a report nobody sees.
+- **The crossover of the genetic algorithms** does not copy the children it has just built.
 
 ## 1.4.0
 
