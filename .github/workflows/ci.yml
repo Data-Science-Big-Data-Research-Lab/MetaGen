@@ -98,6 +98,30 @@ jobs:
       - name: Check the sources
         run: ruff check src --select F
 
+  docs:
+    name: documentation
+    runs-on: ubuntu-latest
+    # What Read the Docs does, with warnings as errors: Python 3.11 and the requirements of
+    # docs/ only, the package's own dependencies mocked by conf.py. A module that cannot be
+    # imported under those mocks leaves its API reference empty while the build still
+    # succeeds, which is how a constant computed with numpy at import time got as far as a
+    # release candidate.
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install what Read the Docs installs
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r docs/requirements.txt
+
+      - name: Build the documentation
+        run: sphinx-build -W --keep-going -b html docs/source docs/_build/html
+
   types:
     name: mypy
     runs-on: ubuntu-latest
