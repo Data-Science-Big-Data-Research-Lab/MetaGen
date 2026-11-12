@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import numbers
 from abc import ABC, abstractmethod
+from collections.abc import Mapping
 from typing import Any, Dict, Optional, Sized, Tuple, cast
 
 from metagen.framework.domain.literals import (DF, METAGEN_TYPE, Attributes, C,
@@ -545,6 +546,10 @@ class BaseDefinition(Base):
 
         :return: A boolean indicating whether the given value is valid based on the current definition.
         """
+        # Not a mapping is not a value of a group: asking it for its keys raised AttributeError
+        # where the error documented is ValueError (F-74).
+        if not isinstance(value, Mapping):
+            return False
         res: bool = True
         names: List[str] = list(value.keys())
         i: int = 0

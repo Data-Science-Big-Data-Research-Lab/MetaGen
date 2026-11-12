@@ -4,6 +4,9 @@
 
 ### Changes
 
+- **Setting part of a group**, as `solution["g"] = {"a": 2}`, changes the variables given and
+  keeps the others, and an initial solution that gives part of a group draws the rest. A group
+  given something other than a `dict` raises a `ValueError`.
 - **A dynamic structure** keeps its elements within the alteration limit in every mutation,
   also when the mutation changes its length, so its seeded runs under a neighborhood give
   different results.

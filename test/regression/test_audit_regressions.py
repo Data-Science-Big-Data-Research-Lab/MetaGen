@@ -3756,3 +3756,46 @@ def test_f73_los_pasos_de_un_prisma_de_trigen_se_resortean_al_cambiar_de_longitu
     hijo, _ = padre.get("steps").crossover(madre.get("steps"))
     assert type(hijo) is _PrismSteps
 
+
+# --------------------------------------------------------------------------------
+# F-74 · Asignar un grupo con un diccionario parcial borra sus otras variables
+# --------------------------------------------------------------------------------
+
+def _f74_dominio():
+    dominio = Domain()
+    dominio.define_group("g")
+    dominio.define_integer_in_group("g", "a", 0, 5)
+    dominio.define_real_in_group("g", "b", 0.0, 1.0)
+    return dominio
+
+
+def test_f74_asignar_parte_de_un_grupo_conserva_el_resto():
+    """F-74: `_set_sub_solution` vaciaba el grupo antes de poner lo dado, asi que
+    `s['g'] = {'a': 2}` dejaba el grupo sin `b`. Se cambian solo las variables dadas."""
+    set_seed(0)
+    solucion = Solution(_f74_dominio())
+    antes = solucion["g"]["b"]
+    solucion["g"] = {"a": 2}
+    assert solucion["g"] == {"a": 2, "b": antes}
+    with pytest.raises(ValueError):
+        solucion["g"] = 3
+
+
+def test_f74_una_solucion_inicial_con_parte_de_un_grupo_rellena_el_resto():
+    """F-74: `initial_solutions=[{'g': {'a': 2}}]`, que la documentacion dice que sortea lo que
+    falta, acababa en un KeyError dentro de la fitness; y un valor que no es un diccionario
+    daba un AttributeError en vez de un ValueError."""
+    from metagen.metaheuristics import RandomSearch
+
+    vistos = []
+
+    def fitness(solucion):
+        vistos.append(dict(solucion["g"]))
+        return solucion["g"]["a"] + solucion["g"]["b"]
+
+    RandomSearch(_f74_dominio(), fitness, population_size=4, max_iterations=1, initial_solutions=[{"g": {"a": 2}}],
+                 seed=0).run()
+    assert vistos[0]["a"] == 2 and 0.0 <= vistos[0]["b"] <= 1.0
+    with pytest.raises(ValueError):
+        RandomSearch(_f74_dominio(), fitness, population_size=4, max_iterations=1, initial_solutions=[{"g": 3}],
+                     seed=0).run()
