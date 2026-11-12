@@ -98,12 +98,12 @@ class TriGenGA(Metaheuristic):
     :param seed: Seed for MetaGen's generators, defaults to None.
     :type seed: int or None, optional
     :param checkpoint: File the run saves its state to; see
-        :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+        :py:class:`~metagen.metaheuristics.Metaheuristic`.
     :type checkpoint: str or None, optional
     :param checkpoint_every: Iterations between two saves, defaults to 1.
     :type checkpoint_every: int, optional
     :param history: File the run writes its history to; see
-        :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
+        :py:class:`~metagen.metaheuristics.Metaheuristic`.
     :type history: str or None, optional
     :raises ValueError: if a parameter is out of its range.
     """

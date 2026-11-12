@@ -2,13 +2,15 @@ from datetime import timedelta
 from time import time
 from typing import Any, Callable, List, Optional, cast
 
+from metagen.metaheuristics.import_helper import ray_missing, start_ray
+
 # Imported, not asked about: the documentation is built with Ray mocked, which is found
 # without a file, and is_package_installed answered no, so autodoc could not import the
 # launcher. Whether the package exports it is still decided in cvoa/__init__.py.
 try:
     import ray
 except ImportError as error:
-    raise ImportError("Ray is not installed. Please install it to use distributed CVOA.") from error
+    raise ImportError(ray_missing("the distributed CVOA")) from error
 
 from metagen.framework import Domain, Solution
 from metagen.framework.rng import set_seed, spawn_seed
@@ -71,14 +73,11 @@ def distributed_cvoa_launcher(strains: List[StrainProperties], domain: Domain, f
     # Started here only when nobody had started it, and stopped here only in that
     # case, also when a strain fails: the launcher used to leave a runtime it had
     # started running for the rest of the process (F-44), the mirror of F-21.
-    started_ray = not ray.is_initialized()
-    if started_ray:
-        ray.init()
+    stop_ray = start_ray(True)
     try:
         return _run_pandemic(strains, domain, fitness_function, update_isolated, log_dir, strain_class)
     finally:
-        if started_ray and ray.is_initialized():
-            ray.shutdown()
+        stop_ray()
 
 
 def _run_pandemic(strains: List[StrainProperties], domain: Domain,

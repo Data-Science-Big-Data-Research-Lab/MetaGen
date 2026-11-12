@@ -51,7 +51,7 @@ def plant(shape: Sequence[int], sizes: Sequence[Sequence[int]], pattern: Pattern
     ``noise`` is the standard deviation of normal noise added inside the triclusters.
 
     With a ``seed``, the cube is drawn from a generator of its own seeded with it; without
-    one, from MetaGen's generator, the one :py:func:`~metagen.framework.rng.set_seed` seeds.
+    one, from MetaGen's generator, the one :py:func:`~metagen.framework.set_seed` seeds.
 
     .. code-block:: python
 

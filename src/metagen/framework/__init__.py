@@ -17,9 +17,10 @@
 from .alteration import RelativeAlteration
 from .connector import BaseConnector
 from .facades import Domain
+from .rng import get_numpy_rng, get_rng, set_seed
 from .solution import Solution
 
-__all__ = ["Domain", "Solution", "BaseConnector", "RelativeAlteration"]
+__all__ = ["Domain", "Solution", "BaseConnector", "RelativeAlteration", "get_numpy_rng", "get_rng", "set_seed"]
 
 
 

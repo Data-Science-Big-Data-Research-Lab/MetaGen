@@ -14,3 +14,10 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
+from importlib import metadata as _metadata
+
+try:
+    #: The version of the installed package.
+    __version__: str = _metadata.version("pymetagen-datalabupo")
+except _metadata.PackageNotFoundError:  # a source tree that was never installed
+    __version__ = "unknown"

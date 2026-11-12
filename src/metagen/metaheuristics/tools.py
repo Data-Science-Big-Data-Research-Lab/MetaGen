@@ -79,7 +79,7 @@ class CountingFitness:
 
     A fitness function may also yield its steps one at a time, such as the loss of each
     fold of a cross-validation: its value is then their mean, and with a
-    :py:class:`~metagen.metaheuristics.racing.Racing` a solution that falls significantly
+    :py:class:`~metagen.metaheuristics.Racing` a solution that falls significantly
     behind ``references``, the values per step of the population it races against, gets
     no more steps. Every solution so evaluated keeps its values per step in
     ``step_values`` and whether it was stopped in ``raced_out``.
@@ -184,9 +184,21 @@ def add_calls(fitness_function: Callable[[Solution], Any], counts: Any) -> None:
             fitness_function.best = _better(fitness_function.best, counts.best)
 
 
-def random_exploration (domain: Domain, fitness_function: Callable[[Solution], float], num_solutions: int) \
-                                                                            -> Tuple[List[Solution], Solution]:
+def random_exploration(domain: Domain, fitness_function: Callable[[Solution], float], num_solutions: int) \
+        -> Tuple[List[Solution], Solution]:
+    """
+    Draw solutions of the domain at random and evaluate them: how most metaheuristics build
+    their first population.
 
+    :param domain: The domain to draw from; its connector gives the class of the solutions.
+    :type domain: Domain
+    :param fitness_function: The function that evaluates a solution.
+    :type fitness_function: Callable[[Solution], float]
+    :param num_solutions: How many solutions to draw, at least one.
+    :type num_solutions: int
+    :return: The solutions drawn, in order, and the best of them, the first on a tie.
+    :rtype: Tuple[List[Solution], Solution]
+    """
     solution_type = solution_class(domain)
 
     potential:Solution = solution_type(domain, connector=domain.get_connector())
@@ -207,8 +219,24 @@ def random_exploration (domain: Domain, fitness_function: Callable[[Solution], f
     return solutions, best
 
 
-def local_search(solution: Solution, fitness_function: Callable[[Solution], float], neighbor_population_size: int
-                             , alteration_limit: float) -> Solution:
+def local_search(solution: Solution, fitness_function: Callable[[Solution], float], neighbor_population_size: int,
+                 alteration_limit: Any) -> Solution:
+    """
+    Mutate copies of a solution and keep the best: each neighbor is the solution mutated once
+    within ``alteration_limit``, and it replaces the best so far only when it is strictly better.
+
+    :param solution: The solution to search around, which is not changed.
+    :type solution: Solution
+    :param fitness_function: The function that evaluates a solution.
+    :type fitness_function: Callable[[Solution], float]
+    :param neighbor_population_size: How many neighbors to draw and evaluate.
+    :type neighbor_population_size: int
+    :param alteration_limit: How far a mutation may move each variable: a number, a
+        :py:class:`~metagen.framework.RelativeAlteration`, or None for the whole domain.
+    :type alteration_limit: float or RelativeAlteration or None
+    :return: The best neighbor, or a copy of the solution when none is better.
+    :rtype: Solution
+    """
     best_neighbor = deepcopy(solution)
     for _ in range(neighbor_population_size):
         neighbor = deepcopy(solution)
@@ -219,8 +247,29 @@ def local_search(solution: Solution, fitness_function: Callable[[Solution], floa
     return best_neighbor
 
 
-def local_search_with_tabu (solution: Solution, fitness_function: Callable[[Solution], float],
-                            neighbor_population_size: int, alteration_limit: float, tabu_list:List[Solution]) -> Tuple[List[Solution], Solution]:
+def local_search_with_tabu(solution: Solution, fitness_function: Callable[[Solution], float],
+                           neighbor_population_size: int, alteration_limit: Any,
+                           tabu_list: List[Solution]) -> Tuple[List[Solution], Solution]:
+    """
+    The local search of hill climbing: each neighbor is the best one so far mutated once, so the
+    search moves on as soon as it improves, and the neighbors equal to a solution of
+    ``tabu_list`` are evaluated but left out of the neighborhood and never become the best.
+
+    :param solution: The solution to search around, which is not changed.
+    :type solution: Solution
+    :param fitness_function: The function that evaluates a solution.
+    :type fitness_function: Callable[[Solution], float]
+    :param neighbor_population_size: How many neighbors to draw and evaluate.
+    :type neighbor_population_size: int
+    :param alteration_limit: How far a mutation may move each variable: a number, a
+        :py:class:`~metagen.framework.RelativeAlteration`, or None for the whole domain.
+    :type alteration_limit: float or RelativeAlteration or None
+    :param tabu_list: The solutions already visited.
+    :type tabu_list: List[Solution]
+    :return: The neighbors not in the tabu list, and the best of them, or a copy of the
+        solution when none is better.
+    :rtype: Tuple[List[Solution], Solution]
+    """
     tabu_set: Set[Solution] = set(tabu_list)
     best_neighbor = deepcopy(solution)
     neighborhood = []

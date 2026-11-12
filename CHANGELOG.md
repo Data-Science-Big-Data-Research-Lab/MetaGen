@@ -1,5 +1,32 @@
 # Changelog
 
+## 1.6.0
+
+MetaGen 1.6.0 gives the package a public API: the names a program imports, from a few
+packages, with the version of the package among them. The documentation imports from them
+and its API reference shows every parameter of each metaheuristic.
+
+### New
+
+- **A public API**: what a program needs is imported from `metagen.framework`,
+  `metagen.framework.domain`, `metagen.framework.solution`, `metagen.metaheuristics`,
+  `metagen.triclustering`, `metagen.triclustering.data`, `metagen.reporting` and
+  `metagen.logging`, and the names in their `__all__` are the public API. Among the names they
+  add are `Metaheuristic`, `CVOA`, `DistributedCVOA`, `GammaConfig`, `random_exploration`,
+  `local_search`, `solution_class` and the types of the genetic algorithms in
+  `metagen.metaheuristics`, and `set_seed`, `get_rng` and `get_numpy_rng` in
+  `metagen.framework`. The documentation imports from them, and its API reference documents
+  each name where it is public. The import paths of earlier releases keep working.
+- **`metagen.__version__`** is the version of the installed package.
+
+### Changes
+
+- **The API reference of each metaheuristic** lists all of its parameters, the options of a
+  run that every metaheuristic takes among them, each one once.
+- **A distributed run without Ray** raises an `ImportError` that says how to install it,
+  `pip install pymetagen-datalabupo[distributed]`, the same for every metaheuristic and for
+  the distributed launcher of CVOA.
+
 ## 1.5.0
 
 MetaGen 1.5.0 makes runs more robust and faster: a fitness that returns NaN, a checkpoint of

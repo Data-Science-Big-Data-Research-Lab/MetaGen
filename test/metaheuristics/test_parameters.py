@@ -153,3 +153,84 @@ def test_the_file_log_is_written_once_however_many_times_it_is_asked_for(tmp_pat
             logger.removeHandler(handler)
             handler.close()
         logger.setLevel(level)
+
+
+# --------------------------------------------------------------------------------------------
+# Every metaheuristic takes the options of the base class, with the same defaults, and hands
+# them on to it: an option added to Metaheuristic and forgotten in one of the ten constructors
+# would leave that algorithm without it, with no error.
+# --------------------------------------------------------------------------------------------
+
+import inspect
+
+from metagen.metaheuristics import (SA, TPE, Metaheuristic, Racing, RandomSearch, TabuSearch)
+
+#: The options of a run, which every metaheuristic takes as Metaheuristic does.
+_COMMON = ("distributed", "log_dir", "seed", "distribution_model", "checkpoint", "checkpoint_every", "history",
+           "max_evaluations", "timeout", "initial_solutions", "racing", "refit")
+
+#: What an algorithm leaves out on purpose. Its own size of population, warmup and iterations
+#: are its own choice; these are the base options it does not take at all.
+_LEFT_OUT = {
+    # A first population drawn at random: a warmup of random solutions adds nothing to it.
+    RandomSearch: {"warmup_iterations"}, GA: {"warmup_iterations"}, SSGA: {"warmup_iterations"},
+    Memetic: {"warmup_iterations"},
+    # A single walker.
+    SA: {"population_size"},
+}
+
+_ALGORITHMS = (RandomSearch, GA, SSGA, SA, HillClimbing, TabuSearch, TPE, KernelTPE, Memetic)
+
+
+def _base_options():
+    return [name for name in inspect.signature(Metaheuristic.__init__).parameters
+            if name not in ("self", "domain", "fitness_function")]
+
+
+@pytest.mark.parametrize("algorithm", _ALGORITHMS, ids=lambda c: c.__name__)
+def test_a_metaheuristic_takes_every_option_of_the_base_class(algorithm):
+    base = inspect.signature(Metaheuristic.__init__).parameters
+    own = inspect.signature(algorithm.__init__).parameters
+    missing = [name for name in _base_options() if name not in own and name not in _LEFT_OUT.get(algorithm, set())]
+    assert not missing, f"{algorithm.__name__} does not take {missing}"
+    for name in _COMMON:
+        assert repr(own[name].default) == repr(base[name].default), (
+            f"{algorithm.__name__}.{name} defaults to {own[name].default!r}, the base to {base[name].default!r}")
+
+
+@pytest.mark.parametrize("algorithm", _ALGORITHMS, ids=lambda c: c.__name__)
+def test_a_metaheuristic_hands_every_option_of_a_run_on_to_the_base_class(algorithm, tmp_path, monkeypatch):
+    received = {}
+    original = Metaheuristic.__init__
+
+    def spy(self, *args, **kwargs):
+        bound = inspect.signature(original).bind(self, *args, **kwargs)
+        received.update(bound.arguments)
+        # Built for real, but not distributed: the value is what is checked, Ray is not needed.
+        bound.arguments["distributed"] = False
+        original(*bound.args, **bound.kwargs)
+
+    monkeypatch.setattr(Metaheuristic, "__init__", spy)
+    given = {"distributed": True, "log_dir": str(tmp_path / "logs"), "seed": 1234, "distribution_model": "islands",
+             "checkpoint": str(tmp_path / "run.ckpt"), "checkpoint_every": 3, "history": str(tmp_path / "run.jsonl"),
+             "max_evaluations": 77, "timeout": 9.5, "initial_solutions": [], "racing": Racing(first_steps=4),
+             "refit": len}
+    connector = GAConnector() if algorithm in (GA, SSGA, Memetic) else None
+    domain, fitness = _sphere(connector)
+    algorithm(domain, fitness, **given)
+    wrong = {name: received.get(name, "<not handed on>") for name in _COMMON if received.get(name) is not given[name]}
+    assert not wrong, f"{algorithm.__name__} hands on {wrong}"
+
+
+@pytest.mark.parametrize("algorithm", _ALGORITHMS, ids=lambda c: c.__name__)
+def test_the_docstring_of_a_metaheuristic_documents_each_of_its_parameters_once(algorithm):
+    import re
+
+    documented = re.findall(r":param (\w+):", algorithm.__doc__)
+    taken = [name for name in inspect.signature(algorithm.__init__).parameters if name != "self"]
+    assert sorted(documented) == sorted(taken), (
+        f"{algorithm.__name__}: documented and not taken {sorted(set(documented) - set(taken))}, "
+        f"taken and not documented {sorted(set(taken) - set(documented))}, "
+        f"documented twice {sorted({name for name in documented if documented.count(name) > 1})}")
+    assert algorithm.__init__.__doc__ is None or ":param" not in algorithm.__init__.__doc__, (
+        f"{algorithm.__name__}.__init__ documents parameters again: the reference shows both docstrings")

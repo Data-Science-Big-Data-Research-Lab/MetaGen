@@ -25,7 +25,7 @@ iteration, by the name of one of four functions:
 
     from metagen.framework import Domain, Solution
     from metagen.metaheuristics import TPE
-    from metagen.metaheuristics.gamma_schedules import GammaConfig
+    from metagen.metaheuristics import GammaConfig
 
     domain = Domain()
     domain.define_real("x", -5.0, 5.0)
@@ -36,4 +36,4 @@ iteration, by the name of one of four functions:
     schedule = GammaConfig("linear", minimum=0.1, maximum=0.3)
     best_solution = TPE(domain, fitness_function, gamma_config=schedule, seed=0).run()
 
-.. autoclass:: metagen.metaheuristics.gamma_schedules.GammaConfig
+.. autoclass:: metagen.metaheuristics.GammaConfig

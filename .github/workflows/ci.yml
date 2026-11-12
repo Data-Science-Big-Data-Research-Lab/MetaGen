@@ -100,7 +100,10 @@ jobs:
 
   docs:
     name: documentation
-    runs-on: ubuntu-latest
+    # Pinned: the archives of Ubuntu could not be reached from the first images of 26.04,
+    # where ubuntu-latest moved in November 2026, and this is the one job that installs a
+    # package from them. Read the Docs builds on 22.04.
+    runs-on: ubuntu-24.04
     # What Read the Docs does, with warnings as errors: Python 3.11 and the requirements of
     # docs/ only, the package's own dependencies mocked by conf.py. A module that cannot be
     # imported under those mocks leaves its API reference empty while the build still
@@ -117,9 +120,11 @@ jobs:
       - name: Install what Read the Docs installs
         # Graphviz draws the inheritance diagrams of the API reference; the build image of
         # Read the Docs has it, the runner does not.
+        # Every download retried: an archive of Ubuntu that stops answering for a few minutes
+        # made the job fail while the documentation was fine.
         run: |
-          sudo apt-get update
-          sudo apt-get install -y graphviz
+          sudo apt-get -o Acquire::Retries=5 -o Acquire::http::Timeout=30 update
+          sudo apt-get -o Acquire::Retries=5 -o Acquire::http::Timeout=30 install -y --no-install-recommends graphviz
           python -m pip install --upgrade pip
           pip install -r docs/requirements.txt
 

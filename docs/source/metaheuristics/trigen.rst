@@ -193,7 +193,7 @@ With a prism, ``disjoint=True`` keeps the pixels apart instead, at any time: the
 .. code-block:: python
 
     from metagen.metaheuristics import TriGen
-    from metagen.metaheuristics.trigen.shape import prism_parts
+    from metagen.metaheuristics import prism_parts
     from metagen.triclustering import plant_prisms
 
     cube, planted = plant_prisms((24, 24, 10), [(60, 5), (45, 4), (50, 6)], noise=0.05, seed=3)
@@ -314,11 +314,11 @@ Reference
 .. autoclass:: metagen.metaheuristics.TriGenResult
     :members: load, save, matches, trigen, to_csv, report, from_run
 
-.. autofunction:: metagen.metaheuristics.trigen.report.trigen_report
+.. autofunction:: metagen.metaheuristics.trigen_report
 
 .. autoclass:: metagen.metaheuristics.TriclusterFitness
     :members: evaluate, terms, quality, significance, fit_chance
 
-.. autoclass:: metagen.metaheuristics.trigen.trigen_ga.TriGenGA
+.. autoclass:: metagen.metaheuristics.TriGenGA
     :members: initialize, iterate
     :show-inheritance:

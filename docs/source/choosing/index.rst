@@ -209,7 +209,7 @@ Running CVOA
 
 CVOA is the one metaheuristic that is not run through a class but through a **launcher**, because a pandemic is several strains searching at once over a shared state.
 
-CVOA is a metaheuristic inspired by the spreading of the coronavirus: a pandemic starts from a patient zero, each infected individual spreads the infection to new individuals (mutations of itself), and the pandemic state (recovered, dead and isolated individuals) is shared by every strain. A strain is configured with :py:class:`~metagen.metaheuristics.cvoa.common_tools.StrainProperties`, whose defaults are the values suggested in the paper, and a pandemic is run with a launcher:
+CVOA is a metaheuristic inspired by the spreading of the coronavirus: a pandemic starts from a patient zero, each infected individual spreads the infection to new individuals (mutations of itself), and the pandemic state (recovered, dead and isolated individuals) is shared by every strain. A strain is configured with :py:class:`~metagen.metaheuristics.StrainProperties`, whose defaults are the values suggested in the paper, and a pandemic is run with a launcher:
 
 .. code-block:: python
 

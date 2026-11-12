@@ -15,8 +15,8 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 from .core import (Base, BaseDefinition, BaseStructureDefinition,
-                   CategoricalDefinition, DynamicStructureDefinition,
+                   CategoricalDefinition, Definition, DynamicStructureDefinition,
                    IntegerDefinition, PermutationDefinition, RealDefinition,
                    StaticStructureDefinition, SubsetDefinition)
 
-__all__ = ["Base", "BaseDefinition", "BaseStructureDefinition", "CategoricalDefinition", "RealDefinition", "IntegerDefinition", "DynamicStructureDefinition", "StaticStructureDefinition", "PermutationDefinition", "SubsetDefinition"]
+__all__ = ["Base", "BaseDefinition", "Definition", "BaseStructureDefinition", "CategoricalDefinition", "RealDefinition", "IntegerDefinition", "DynamicStructureDefinition", "StaticStructureDefinition", "PermutationDefinition", "SubsetDefinition"]

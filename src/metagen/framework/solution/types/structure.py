@@ -49,7 +49,7 @@ class Structure(BaseType):
         """
         The definition this structure was built from, static or dynamic.
 
-        Narrows what :py:meth:`~metagen.framework.solution.types.base.BaseType.get_definition`
+        Narrows what :py:meth:`~metagen.framework.solution.BaseType.get_definition`
         declares. Two things need it: ``get_base`` lives on the structure definitions
         and not on ``Base``, and the attribute tuples of the two have different widths,
         five for the dynamic one and three for the static.

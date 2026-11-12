@@ -11,6 +11,6 @@ Connector
     ~BaseConnector.get_builtin
 
 
-.. autoclass:: metagen.framework.connector.connector.BaseConnector
+.. autoclass:: metagen.framework.BaseConnector
     :members:
     :show-inheritance:

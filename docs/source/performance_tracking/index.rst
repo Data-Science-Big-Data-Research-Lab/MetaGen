@@ -116,13 +116,12 @@ Console and file logs
 ---------------------
 
 Apart from TensorBoard, the package reports its progress through Python's ``logging``. It is
-silent by default; two functions of ``metagen.logging.metagen_logger`` turn it on:
+silent by default; two functions of ``metagen.logging`` turn it on:
 
 .. code-block:: python
 
     import logging
-    from metagen.logging.metagen_logger import (set_metagen_logger_level,
-                                                set_metagen_logger_file_handler)
+    from metagen.logging import set_metagen_logger_file_handler, set_metagen_logger_level
 
     set_metagen_logger_level(logging.INFO)             # print to the console from INFO up
     set_metagen_logger_file_handler("metagen_logs")    # and write a log file in that directory

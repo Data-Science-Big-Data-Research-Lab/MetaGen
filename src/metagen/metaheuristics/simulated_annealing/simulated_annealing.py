@@ -56,6 +56,9 @@ class SA(Metaheuristic):
     gradually decreases according to a cooling schedule, reducing the probability of
     accepting worse solutions over time.
 
+    With ``racing``, every candidate is evaluated whole: a race needs at least two solutions
+    to compare a candidate with, and this algorithm walks a single one.
+
     :param domain: The problem domain that defines the solution space
     :type domain: Domain
     :param fitness_function: Function to evaluate solutions
@@ -78,44 +81,7 @@ class SA(Metaheuristic):
     :param warmup_iterations: Random solutions evaluated before the search starts, the best
         of which the walk begins from, defaults to 5
     :type warmup_iterations: int, optional
-    :param distributed: Whether to use distributed computation, defaults to False
-    :type distributed: bool, optional
-    :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
-    :type log_dir: str or None, optional
-    :param seed: Seed for the package's random generators, applied at the start of
-        ``run()``; the same seed reproduces the run. None, the default, draws a different
-        run every time.
-    :type seed: int or None, optional
-    :param distribution_model: How a distributed run makes up the next population out of
-        the slices, ``"global"`` (the default: shuffled, selected among all workers) or
-        ``"islands"``; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
-    :type distribution_model: str, optional
-    :param checkpoint: File the run saves its state to every ``checkpoint_every``
-        iterations, and continues from if it exists when ``run()`` starts; None, the
-        default, saves nothing. See :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
-    :type checkpoint: str or None, optional
-    :param checkpoint_every: Iterations between two saves (default is 1).
-    :type checkpoint_every: int, optional
-    :param history: File the run writes its history to, one JSON line per iteration;
-        None, the default, writes nothing. See :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
-    :type history: str or None, optional
-    :param max_evaluations: Stop once the run has evaluated the fitness at least this
-        many times; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
-    :type max_evaluations: int or None, optional
-    :param timeout: Stop once the run has lasted at least this many seconds; see
-        :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
-    :type timeout: float or None, optional
-    :param initial_solutions: Solutions to start from, each a mapping from variable names to
-        values; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
-    :type initial_solutions: Sequence[Mapping[str, Any]] or None, optional
-    :param racing: Stop evaluating a candidate as soon as it is significantly worse than the
-        population; see :py:class:`~metagen.metaheuristics.racing.Racing`. A race needs at
-        least two solutions to compare a candidate with, and this algorithm walks a single
-        one, so every candidate is evaluated whole.
-    :type racing: Racing or None, optional
-    :param refit: A function that trains the model of the best solution when the run ends;
-        see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
-    :type refit: Callable[[Solution], Any] or None, optional
+    {options_of_a_run}
 
     :ivar max_iterations: Maximum number of iterations
     :vartype max_iterations: int
@@ -157,34 +123,6 @@ class SA(Metaheuristic):
                  max_evaluations: Optional[int] = None, timeout: Optional[float] = None,
                  initial_solutions: Optional[Sequence[Mapping[str, Any]]] = None, racing: Optional[Racing] = None,
                  refit: Optional[Callable[[Solution], Any]] = None) -> None:
-        """
-        Initialize the Simulated Annealing algorithm.
-
-        :param domain: The problem domain that defines the solution space
-        :type domain: Domain
-        :param fitness_function: Function to evaluate solutions
-        :type fitness_function: Callable[[Solution], float]
-        :param max_iterations: Maximum number of iterations to run, defaults to 20. With
-            ``max_evaluations`` and no value, the iterations the budget buys, so that the
-            cooling schedule spans it; with ``timeout`` alone, 20
-        :type max_iterations: int or None, optional
-        :param alteration_limit: How far a neighbor may move from the current solution,
-            defaults to a fifth of each variable's own range
-        :type alteration_limit: RelativeAlteration or float or None, optional
-        :param initial_temp: Initial temperature for annealing process, defaults to 50.0
-        :type initial_temp: float, optional
-        :param cooling_rate: Rate at which the temperature decreases each iteration.
-            Derived from the budget when not given, so that the temperature travels
-            from initial_temp down to T_min over max_iterations
-        :type cooling_rate: float or None, optional
-        :param neighbor_population_size: Number of neighbors to generate in each
-            iteration, defaults to 5. One leaves nothing to choose between
-        :type neighbor_population_size: int, optional
-        :param distributed: Whether to use distributed computation, defaults to False
-        :type distributed: bool, optional
-        :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
-        :type log_dir: str or None, optional
-        """
         # F-30: cooling_rate is derived from the budget. F-25: with one neighbor there is
         # nothing to choose between; over the nine functions and thirty seeds, one neighbor
         # won 161 of 270 against random sampling and five won 214, so the default is 5.

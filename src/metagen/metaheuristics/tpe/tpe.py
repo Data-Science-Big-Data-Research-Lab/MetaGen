@@ -22,6 +22,12 @@ class TPE(Metaheuristic):
     samples new solutions from regions of the search space that are more likely to
     contain good solutions.
 
+    What a run costs, in fitness evaluations: ``population_size * (warmup_iterations
+    + 1)`` before the first iteration, then ``candidate_pool_size`` per iteration.
+    With the defaults that is 220 evaluations before iterating and 24 per
+    iteration; ``max_iterations=10, candidate_pool_size=10`` is 320 evaluations,
+    not 100.
+
     :param domain: The problem domain that defines the solution space
     :type domain: Domain
     :param fitness_function: Function to evaluate solutions
@@ -29,48 +35,21 @@ class TPE(Metaheuristic):
     :param population_size: Solutions evaluated by the initialization and by each
         warmup round, defaults to 20
     :type population_size: int, optional
-    :param max_iterations: Maximum number of iterations to run, defaults to 50
-    :type max_iterations: int, optional
+    :param max_iterations: Maximum number of iterations to run, defaults to 50. With
+        ``max_evaluations`` and no value, the iterations the budget buys after the
+        warmup and the initialization; with ``timeout`` alone, 50
+    :type max_iterations: int or None, optional
+    :param warmup_iterations: Rounds of random exploration before the search, each
+        evaluating ``population_size`` solutions; their best is kept as the best
+        of the run so far, defaults to 10
+    :type warmup_iterations: int, optional
+    :param candidate_pool_size: Solutions evaluated per iteration, defaults to 24
+    :type candidate_pool_size: int, optional
     :param gamma_config: How the fraction of best solutions used to build the models is
-        scheduled over the run; see :py:class:`~metagen.metaheuristics.gamma_schedules.GammaConfig`.
+        scheduled over the run; see :py:class:`~metagen.metaheuristics.GammaConfig`.
         None, the default, is the sample-based schedule.
     :type gamma_config: GammaConfig or None, optional
-    :param distributed: Whether to use distributed computation, defaults to False
-    :type distributed: bool, optional
-    :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
-    :type log_dir: str or None, optional
-    :param seed: Seed for the package's random generators, applied at the start of
-        ``run()``; the same seed reproduces the run. None, the default, draws a different
-        run every time.
-    :type seed: int or None, optional
-    :param distribution_model: How a distributed run makes up the next population out of
-        the slices, ``"global"`` (the default: shuffled, selected among all workers) or
-        ``"islands"``; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
-    :type distribution_model: str, optional
-    :param checkpoint: File the run saves its state to every ``checkpoint_every``
-        iterations, and continues from if it exists when ``run()`` starts; None, the
-        default, saves nothing. See :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
-    :type checkpoint: str or None, optional
-    :param checkpoint_every: Iterations between two saves (default is 1).
-    :type checkpoint_every: int, optional
-    :param history: File the run writes its history to, one JSON line per iteration;
-        None, the default, writes nothing. See :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
-    :type history: str or None, optional
-    :param max_evaluations: Stop once the run has evaluated the fitness at least this
-        many times; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
-    :type max_evaluations: int or None, optional
-    :param timeout: Stop once the run has lasted at least this many seconds; see
-        :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
-    :type timeout: float or None, optional
-    :param initial_solutions: Solutions to start from, each a mapping from variable names to
-        values; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
-    :type initial_solutions: Sequence[Mapping[str, Any]] or None, optional
-    :param racing: Stop evaluating a candidate as soon as it is significantly worse than the
-        population; see :py:class:`~metagen.metaheuristics.racing.Racing`.
-    :type racing: Racing or None, optional
-    :param refit: A function that trains the model of the best solution when the run ends;
-        see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
-    :type refit: Callable[[Solution], Any] or None, optional
+    {options_of_a_run}
 
     :ivar max_iterations: Maximum number of iterations
     :vartype max_iterations: int
@@ -106,40 +85,6 @@ class TPE(Metaheuristic):
                  max_evaluations: Optional[int] = None, timeout: Optional[float] = None,
                  initial_solutions: Optional[Sequence[Mapping[str, Any]]] = None, racing: Optional[Racing] = None,
                  refit: Optional[Callable[[Solution], Any]] = None) -> None:
-        """
-        Initialize the TPE algorithm.
-
-        What a run costs, in fitness evaluations: ``population_size * (warmup_iterations
-        + 1)`` before the first iteration, then ``candidate_pool_size`` per iteration.
-        With the defaults that is 220 evaluations before iterating and 24 per
-        iteration; ``max_iterations=10, candidate_pool_size=10`` is 320 evaluations,
-        not 100.
-
-        :param domain: The problem domain that defines the solution space
-        :type domain: Domain
-        :param fitness_function: Function to evaluate solutions
-        :type fitness_function: Callable[[Solution], float]
-        :param max_iterations: Maximum number of iterations to run, defaults to 50. With
-            ``max_evaluations`` and no value, the iterations the budget buys after the
-            warmup and the initialization; with ``timeout`` alone, 50
-        :type max_iterations: int or None, optional
-        :param warmup_iterations: Rounds of random exploration before the search, each
-            evaluating ``population_size`` solutions; their best is kept as the best
-            of the run so far, defaults to 10
-        :type warmup_iterations: int, optional
-        :param candidate_pool_size: Solutions evaluated per iteration, defaults to 24
-        :type candidate_pool_size: int, optional
-        :param population_size: Solutions evaluated by the initialization and by each
-            warmup round, defaults to 20
-        :type population_size: int, optional
-        :param gamma_config: How the fraction of best solutions used to build the models
-            is scheduled over the run. None, the default, is the sample-based schedule.
-        :type gamma_config: GammaConfig or None, optional
-        :param distributed: Whether to use distributed computation, defaults to False
-        :type distributed: bool, optional
-        :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
-        :type log_dir: str or None, optional
-        """
         # F-47: population_size used to be inherited from the base class and could not
         # be set, and the docstring said it was 10. The warmup pays for itself: on the
         # behavior bench, 78 wins of 110 with warmup 5, 66 with 2 and 66 with 0. It pays

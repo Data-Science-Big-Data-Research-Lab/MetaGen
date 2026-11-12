@@ -51,6 +51,10 @@ class TabuSearch(Metaheuristic):
     evaluations: the same as :py:class:`~metagen.metaheuristics.HillClimbing` with
     the same arguments, so the two compare on equal budgets.
 
+    Distributed, the slices sample the neighborhood on Ray around the same current solution
+    and the driver picks the move among every neighbor they return, so distributing changes
+    the budget and not the algorithm.
+
     :param domain: The problem's domain to explore
     :type domain: Domain
     :param fitness_function: Function to evaluate solutions
@@ -75,43 +79,7 @@ class TabuSearch(Metaheuristic):
         Defaults to a fifth of each variable's own range; a plain number is an
         absolute amount, and None lets a mutation land anywhere in the domain.
     :type alteration_limit: RelativeAlteration or float or None, optional
-    :param distributed: Whether to sample the neighborhood on Ray, defaults to False.
-        The islands share the current solution and the driver picks the move among
-        every neighbor they return, so distributing changes the budget and not the
-        algorithm.
-    :type distributed: bool, optional
-    :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
-    :type log_dir: str or None, optional
-    :param distribution_model: How a distributed run makes up the next population out of
-        the slices, ``"global"`` (the default: shuffled, selected among all workers) or
-        ``"islands"``; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
-    :type distribution_model: str, optional
-    :param checkpoint: File the run saves its state to every ``checkpoint_every``
-        iterations, and continues from if it exists when ``run()`` starts; None, the
-        default, saves nothing. See :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
-    :type checkpoint: str or None, optional
-    :param checkpoint_every: Iterations between two saves (default is 1).
-    :type checkpoint_every: int, optional
-    :param history: File the run writes its history to, one JSON line per iteration;
-        None, the default, writes nothing. See :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
-    :type history: str or None, optional
-    :param max_evaluations: Stop once the run has evaluated the fitness at least this
-        many times; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
-    :type max_evaluations: int or None, optional
-    :param timeout: Stop once the run has lasted at least this many seconds; see
-        :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
-    :type timeout: float or None, optional
-    :param initial_solutions: Solutions to start from, each a mapping from variable names to
-        values; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
-    :type initial_solutions: Sequence[Mapping[str, Any]] or None, optional
-    :param racing: Stop evaluating a candidate as soon as it is significantly worse than the
-        population; see :py:class:`~metagen.metaheuristics.racing.Racing`.
-    :type racing: Racing or None, optional
-    :param refit: A function that trains the model of the best solution when the run ends;
-        see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
-    :type refit: Callable[[Solution], Any] or None, optional
-    :param seed: Seed for MetaGen's generators, defaults to None
-    :type seed: int or None, optional
+    {options_of_a_run}
 
     :ivar current_solution: Where the walk stands; None until the first iteration
     :vartype current_solution: Optional[Solution]

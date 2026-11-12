@@ -66,7 +66,7 @@ A real or an integer that spans several orders of magnitude, such as a learning 
 .. code-block:: python
 
     from metagen.framework import Domain, Solution
-    from metagen.framework.rng import set_seed
+    from metagen.framework import set_seed
 
     domain = Domain()
     domain.define_real("learning_rate", 1e-5, 1e-1, log=True)
@@ -94,7 +94,7 @@ A knapsack is a subset of the items whose weight must not exceed a capacity. The
 
     from metagen.framework import Domain, Solution
     from metagen.metaheuristics import GA
-    from metagen.metaheuristics.genetic.genetic_tools import GAConnector
+    from metagen.metaheuristics import GAConnector
 
     weights = [12, 7, 11, 8, 9, 6, 14, 5, 10, 13, 4, 15, 3, 9, 7, 11, 6, 8, 12, 5]
     values = [24, 13, 23, 15, 16, 11, 28, 9, 20, 25, 7, 30, 5, 17, 14, 21, 12, 15, 22, 10]
@@ -193,64 +193,64 @@ Core
 
 Base
 ----------
-.. autoclass:: metagen.framework.domain.core.Base
+.. autoclass:: metagen.framework.domain.Base
     :members:
     :show-inheritance:
 
-.. autoclass:: metagen.framework.domain.core.BaseDefinition
+.. autoclass:: metagen.framework.domain.BaseDefinition
     :members:
     :show-inheritance:
 
-.. autoclass:: metagen.framework.domain.core.BaseStructureDefinition
+.. autoclass:: metagen.framework.domain.BaseStructureDefinition
     :members:
     :show-inheritance:
 
 
 IntegerDefinition
 ----------------------------
-.. autoclass:: metagen.framework.domain.core.IntegerDefinition
+.. autoclass:: metagen.framework.domain.IntegerDefinition
     :members:
     :show-inheritance:
 
 RealDefinition
 ----------------------------
-.. autoclass:: metagen.framework.domain.core.RealDefinition
+.. autoclass:: metagen.framework.domain.RealDefinition
     :members:
     :show-inheritance:
 
 CategoricalDefinition
 ----------------------------
-.. autoclass:: metagen.framework.domain.core.CategoricalDefinition
+.. autoclass:: metagen.framework.domain.CategoricalDefinition
     :members:
     :show-inheritance:
 
 PermutationDefinition
 ----------------------------
-.. autoclass:: metagen.framework.domain.core.PermutationDefinition
+.. autoclass:: metagen.framework.domain.PermutationDefinition
     :members:
     :show-inheritance:
 
 SubsetDefinition
 ----------------------------
-.. autoclass:: metagen.framework.domain.core.SubsetDefinition
+.. autoclass:: metagen.framework.domain.SubsetDefinition
     :members:
     :show-inheritance:
 
 DynamicStructureDefinition
 ----------------------------
-.. autoclass:: metagen.framework.domain.core.DynamicStructureDefinition
+.. autoclass:: metagen.framework.domain.DynamicStructureDefinition
     :members:
     :show-inheritance:
 
 StaticStructureDefinition
 ----------------------------
-.. autoclass:: metagen.framework.domain.core.StaticStructureDefinition
+.. autoclass:: metagen.framework.domain.StaticStructureDefinition
     :members:
     :show-inheritance:
 
 Definition
 ----------------------------
-.. autoclass:: metagen.framework.domain.core.Definition
+.. autoclass:: metagen.framework.domain.Definition
     :members:
     :show-inheritance:
 

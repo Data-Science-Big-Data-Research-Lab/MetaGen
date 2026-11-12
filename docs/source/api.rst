@@ -18,6 +18,28 @@ Core Components
     connector/connector
     triclustering/reference
 
+Public API
+----------
+
+What a program imports comes from these packages, and the names each of them lists in its
+``__all__`` are the public API:
+
+- ``metagen.framework``, with ``metagen.framework.domain`` (the definitions) and
+  ``metagen.framework.solution`` (the solution types), for extending the framework
+- ``metagen.metaheuristics``, the algorithms and what writing one of your own takes
+- ``metagen.triclustering``, with ``metagen.triclustering.data`` for loading data
+- ``metagen.reporting`` and ``metagen.logging``
+
+The modules inside them are where each name is implemented, and they may be reorganized
+between releases. The version of the installed package is ``metagen.__version__``:
+
+.. code-block:: python
+
+    import metagen
+    from metagen.metaheuristics import CVOA, Metaheuristic, random_exploration
+
+    print(metagen.__version__)
+
 Component Overview
 ------------------
 

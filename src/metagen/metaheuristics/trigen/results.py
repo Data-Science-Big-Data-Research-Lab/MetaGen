@@ -297,7 +297,7 @@ class TriGenResult:
         """
         Write a report of the run, an HTML page or a PDF by the extension of ``path``, and
         next to it the triclusters as a CSV table; see
-        :py:func:`~metagen.metaheuristics.trigen.report.trigen_report`. With the cube the
+        :py:func:`~metagen.metaheuristics.trigen_report`. With the cube the
         run worked on, it also draws the values of the triclusters. Needs matplotlib, the
         ``report`` extra.
 

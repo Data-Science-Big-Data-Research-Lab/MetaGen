@@ -64,7 +64,7 @@ class TriGen:
     """
     TriGen: a genetic algorithm that finds ``n_triclusters`` triclusters in a cube, one
     after another. Each is the outcome of a search of its own, a
-    :py:class:`~metagen.metaheuristics.trigen.trigen_ga.TriGenGA`, and what is found
+    :py:class:`~metagen.metaheuristics.TriGenGA`, and what is found
     shapes the searches that follow in two ways: the fitness penalizes repeating the
     coordinates of the triclusters found (see :py:class:`TriclusterFitness`), and every
     search after the first starts mostly from what they have explored least (``hierarchy``).
@@ -659,7 +659,7 @@ class TriGen:
         Write a report of the last run, an HTML page or a PDF by the extension of ``path``,
         with the values of its triclusters drawn from the cube, and next to it the
         triclusters as a CSV table; see
-        :py:func:`~metagen.metaheuristics.trigen.report.trigen_report`. Needs matplotlib,
+        :py:func:`~metagen.metaheuristics.trigen_report`. Needs matplotlib,
         the ``report`` extra.
 
         :param path: The file, ``.html`` or ``.pdf``.

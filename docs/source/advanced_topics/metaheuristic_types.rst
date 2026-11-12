@@ -35,7 +35,7 @@ Example:
 
     from metagen.framework import Domain, Solution
     from metagen.metaheuristics import GAConnector
-    from metagen.metaheuristics.tools import solution_class
+    from metagen.metaheuristics import solution_class
 
     def new_solution(domain: Domain) -> Solution:
         # The class the domain's connector maps it to, whichever connector that is
@@ -71,7 +71,7 @@ Example (GA with a custom `Solution` class):
 
     from metagen.framework import Domain, Solution
     from metagen.metaheuristics import GA, GAConnector
-    from metagen.metaheuristics.tools import solution_class
+    from metagen.metaheuristics import solution_class
 
     # Define a domain using the GA-specific connector
     domain = Domain(connector=GAConnector())

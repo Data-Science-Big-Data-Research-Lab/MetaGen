@@ -40,8 +40,7 @@ class Memetic(Metaheuristic):
         crossover left it. None, the default, redraws each mutated variable over its whole
         domain: the local search already works the neighborhood, and the wide mutation is
         what lets the algorithm leave it
-    :param distributed: Whether to use distributed computation, defaults to False
-    :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
+    {options_of_a_run}
     :param distribution_level: The level of distribution (0=none), defaults to 0
     :type domain: :py:class:`~metagen.framework.Domain`
     :type fitness_function: Callable[[:py:class:`~metagen.framework.Solution`], float]
@@ -52,40 +51,6 @@ class Memetic(Metaheuristic):
     :type neighbor_population_size: int
     :type alteration_limit: RelativeAlteration or float or None
     :type mutation_alteration_limit: RelativeAlteration or float or None, optional
-    :type distributed: bool
-    :type log_dir: str or None, optional
-    :param seed: Seed for the package's random generators, applied at the start of
-        ``run()``; the same seed reproduces the run. None, the default, draws a different
-        run every time.
-    :type seed: int or None, optional
-    :param distribution_model: How a distributed run makes up the next population out of
-        the slices, ``"global"`` (the default: shuffled, selected among all workers) or
-        ``"islands"``; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
-    :type distribution_model: str, optional
-    :param checkpoint: File the run saves its state to every ``checkpoint_every``
-        iterations, and continues from if it exists when ``run()`` starts; None, the
-        default, saves nothing. See :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
-    :type checkpoint: str or None, optional
-    :param checkpoint_every: Iterations between two saves (default is 1).
-    :type checkpoint_every: int, optional
-    :param history: File the run writes its history to, one JSON line per iteration;
-        None, the default, writes nothing. See :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
-    :type history: str or None, optional
-    :param max_evaluations: Stop once the run has evaluated the fitness at least this
-        many times; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
-    :type max_evaluations: int or None, optional
-    :param timeout: Stop once the run has lasted at least this many seconds; see
-        :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
-    :type timeout: float or None, optional
-    :param initial_solutions: Solutions to start from, each a mapping from variable names to
-        values; see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
-    :type initial_solutions: Sequence[Mapping[str, Any]] or None, optional
-    :param racing: Stop evaluating a candidate as soon as it is significantly worse than the
-        population; see :py:class:`~metagen.metaheuristics.racing.Racing`.
-    :type racing: Racing or None, optional
-    :param refit: A function that trains the model of the best solution when the run ends;
-        see :py:class:`~metagen.metaheuristics.base.Metaheuristic`.
-    :type refit: Callable[[Solution], Any] or None, optional
     :type distribution_level: int
 
     **Code example**

@@ -28,6 +28,8 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence, Tuple, Un
 if TYPE_CHECKING:
     from metagen.metaheuristics.base import Metaheuristic
 
+__all__ = ["report"]
+
 # The categorical colors in a fixed order, the same series always taking the same one; the
 # first three can share a plot with every pair in view.
 SERIES = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#6250d6", "#e34948"]

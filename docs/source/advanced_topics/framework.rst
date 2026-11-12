@@ -36,8 +36,8 @@ The three steps below are the outline of ``metagen/metaheuristics/genetic/geneti
     from metagen.framework import BaseConnector, Solution
     from metagen.framework.domain import (BaseDefinition, CategoricalDefinition, DynamicStructureDefinition,
                                           IntegerDefinition, RealDefinition, StaticStructureDefinition)
-    from metagen.framework.solution.types import Structure
-    from metagen.metaheuristics.genetic.genetic_tools import GAInteger, GAReal
+    from metagen.framework.solution import Structure
+    from metagen.metaheuristics import GAInteger, GAReal
 
 1. Extending the Structure Type in GA
 The **Genetic Algorithm (GA)** in |metagen| introduces a custom `GAStructure`, which extends the standard `Structure` class and supports crossover operations:
@@ -90,7 +90,7 @@ For example, when defining a **Random Forest Regressor optimization domain**, th
 .. code-block:: python
 
     from metagen.framework import Domain
-    from metagen.metaheuristics.genetic.genetic_tools import GAConnector
+    from metagen.metaheuristics import GAConnector
 
     domain = Domain(GAConnector())
     domain.define_integer("max_depth", 2, 8)

@@ -25,7 +25,7 @@ from .base import BaseType
 
 class Permutation(BaseType):
     """
-    An ordering of the elements of a :py:class:`~metagen.framework.domain.core.PermutationDefinition`:
+    An ordering of the elements of a :py:class:`~metagen.framework.domain.PermutationDefinition`:
     every value holds each element exactly once. It reads as a list.
 
     :param definition: The definition of the permutation.
@@ -68,7 +68,7 @@ class Permutation(BaseType):
 
         :param alteration_limit: How far the ordering may move, counted in swaps of two
             positions. A number is the most swaps, a
-            :py:class:`~metagen.framework.alteration.RelativeAlteration` a fraction of the
+            :py:class:`~metagen.framework.RelativeAlteration` a fraction of the
             length (at least one swap), and None, the default, draws a new ordering at
             random.
         :type alteration_limit: int or RelativeAlteration or None
