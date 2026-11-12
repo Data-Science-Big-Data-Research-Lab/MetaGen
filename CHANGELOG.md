@@ -4,6 +4,10 @@
 
 ### Changes
 
+- **`TPE` and `KernelTPE` with `max_evaluations`** and no `warmup_iterations` shorten their
+  warmup so that it and the initial population take at most a quarter of the budget, and
+  their model has evaluations left to work with. A `warmup_iterations` given is kept, and runs
+  without `max_evaluations` give the same results.
 - **`KernelTPE` on a dynamic structure** draws the length of each candidate from a model of
   the lengths of the best solutions, and scores it, before drawing its elements, so its
   proposals follow the lengths that work. Seeded runs over dynamic structures give different

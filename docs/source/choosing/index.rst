@@ -51,7 +51,7 @@ Which one to use
 
 **The genetic algorithms need their connector.** |ga|, |ssga| and |mm| cross solutions over, so their domain is created with ``Domain(connector=GAConnector())``; with a plain ``Domain()`` their constructor raises an error that says so. Every other metaheuristic takes a plain ``Domain()``.
 
-**The warmup is part of the budget.** Several metaheuristics sample the domain at random for a few rounds before the search starts, and those evaluations cost the same as any other: with its defaults ``HillClimbing`` spends ``population_size × (warmup_iterations + 1)`` evaluations before its first iteration, and ``TPE`` spends 220. When the fitness function takes seconds or minutes, check that figure first and lower ``warmup_iterations`` or ``population_size`` if needed.
+**The warmup is part of the budget.** Several metaheuristics sample the domain at random for a few rounds before the search starts, and those evaluations cost the same as any other: with its defaults ``HillClimbing`` spends ``population_size × (warmup_iterations + 1)`` evaluations before its first iteration, and ``TPE`` spends 220. Given ``max_evaluations`` and no ``warmup_iterations``, |tpe| and |kernel_tpe| shorten their warmup so that it and the initial population take at most a quarter of the budget, and their model has evaluations left to work with. When the fitness function takes seconds or minutes, check that figure first and lower ``warmup_iterations`` or ``population_size`` if needed.
 
 
 Setting a budget

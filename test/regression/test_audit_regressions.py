@@ -3685,3 +3685,33 @@ def test_f71_kernel_tpe_aprende_la_longitud_de_una_estructura_dinamica():
         KernelTPE(dominio, fitness, seed=semilla, max_iterations=120).run()
         proporciones.append(Counter(longitudes[-60:])[1] / 60)
     assert sum(proporciones) / len(proporciones) < 0.5, proporciones
+
+
+# --------------------------------------------------------------------------------
+# F-72 · Con un presupuesto pequeno, TPE y KernelTPE no llegan a usar su modelo
+# --------------------------------------------------------------------------------
+
+@pytest.mark.parametrize("nombre", ["TPE", "KernelTPE"])
+def test_f72_con_presupuesto_el_modelo_llega_a_usarse(nombre):
+    """F-72: con los valores por defecto, el warmup y la inicializacion costaban 220
+    evaluaciones en TPE y 120 en KernelTPE, asi que `max_evaluations=100` era muestreo
+    aleatorio: cero iteraciones del modelo. Sin `warmup_iterations`, el warmup se reduce para
+    que con la inicializacion no pase de una cuarta parte del presupuesto; si se da, se
+    respeta."""
+    from metagen.metaheuristics import TPE, KernelTPE
+
+    clase = {"TPE": TPE, "KernelTPE": KernelTPE}[nombre]
+    dominio = Domain()
+    dominio.define_real("x", -5.0, 5.0)
+
+    def fitness(solucion):
+        return solucion["x"] ** 2
+
+    acotado = clase(dominio, fitness, max_evaluations=100, seed=0)
+    acotado.run()
+    assert len(acotado.history) > 0, "el modelo no llega a ejecutarse"
+    assert acotado.population_size * (acotado.warmup_iterations + 1) <= 100 // 4 or acotado.warmup_iterations == 0
+    dado = clase(dominio, fitness, max_evaluations=100, warmup_iterations=3, seed=0)
+    assert dado.warmup_iterations == 3
+    sin_presupuesto = clase(dominio, fitness, seed=0)
+    assert sin_presupuesto.warmup_iterations == clase.default_warmup_iterations

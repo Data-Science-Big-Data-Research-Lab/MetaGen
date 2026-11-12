@@ -78,7 +78,10 @@ def test_a_budget_smaller_than_the_warmup_ends_it_early(algorithm):
     # Ten rounds of 20 for TPE and five for KernelTPE by default: three rounds reach 60, and
     # the initial population of 20 is evaluated whole.
     calls = []
-    run = algorithm(_domain(algorithm), lambda solution: calls.append(1) or _sphere(solution), max_evaluations=60, seed=0)
+    # The warmup is given: without it, the default is cut to fit a quarter of the budget (F-72),
+    # and this is about how a budget ends a warmup.
+    run = algorithm(_domain(algorithm), lambda solution: calls.append(1) or _sphere(solution), max_evaluations=60,
+                    warmup_iterations=algorithm.default_warmup_iterations, seed=0)
     best = run.run()
     assert run.stop_reason == "max_evaluations" and run.evaluations == len(calls) == 80
     assert best.get_fitness() == min(run.best_solution_fitnesses or [best.get_fitness()])
@@ -88,7 +91,8 @@ def test_a_budget_smaller_than_the_warmup_ends_it_early(algorithm):
 def test_a_budget_reached_inside_a_round_of_the_warmup_goes_past_by_that_round_and_the_initial_population(algorithm):
     # 30 is reached in the second round of 20 (40), and the initial population of 20 follows:
     # 30 past the limit, more than either step alone and no more than both, as documented
-    run = algorithm(_domain(algorithm), _sphere, max_evaluations=30, seed=0)
+    run = algorithm(_domain(algorithm), _sphere, max_evaluations=30,
+                    warmup_iterations=algorithm.default_warmup_iterations, seed=0)
     run.run()
     assert run.stop_reason == "max_evaluations" and run.evaluations == 60
     assert run.evaluations - 30 > 20 and run.evaluations <= 30 + 20 + 20
@@ -97,7 +101,7 @@ def test_a_budget_reached_inside_a_round_of_the_warmup_goes_past_by_that_round_a
 def test_a_budget_larger_than_the_warmup_runs_all_of_it():
     calls = []
     TPE(_domain(TPE), lambda solution: calls.append(1) or _sphere(solution), max_evaluations=230,
-        max_iterations=1, seed=0).run()
+        max_iterations=1, warmup_iterations=10, seed=0).run()
     assert len(calls) == 200 + 20 + 24
 
 

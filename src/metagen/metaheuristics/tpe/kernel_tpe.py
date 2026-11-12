@@ -78,8 +78,9 @@ class KernelTPE(TPE):
     :type max_iterations: int or None, optional
     :param warmup_iterations: Rounds of random exploration before the search, each
         evaluating ``population_size`` solutions, all of which join the history the
-        model is built on, defaults to 5
-    :type warmup_iterations: int, optional
+        model is built on. None, the default, is 5, or fewer with ``max_evaluations``:
+        the warmup and the initialization then take at most a quarter of the budget.
+    :type warmup_iterations: int or None, optional
     :param n_candidates: Candidates drawn from the model of the best solutions per
         iteration, of which the best scoring one is evaluated, defaults to 24
     :type n_candidates: int, optional
@@ -115,6 +116,7 @@ class KernelTPE(TPE):
     # F-35: the length of a dynamic structure is not modeled, here or in TPE.
 
     default_max_iterations = 100
+    default_warmup_iterations = 5
 
     # Its history is never trimmed and every observation is a kernel, so the warmup's
     # samples join it (F-53): on the behavior bench, 30 seeds, 296 -> 301 wins of 330
@@ -123,7 +125,7 @@ class KernelTPE(TPE):
     keeps_warmup = True
 
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
-                 max_iterations: Optional[int] = None, warmup_iterations: int = 5, n_candidates: int = 24,
+                 max_iterations: Optional[int] = None, warmup_iterations: Optional[int] = None, n_candidates: int = 24,
                  prior_weight: float = 1.0, gamma_config: Optional[GammaConfig] = None,
                  population_size: int = 20, distributed: bool = False, log_dir: Optional[str] = None,
                  seed: Optional[int] = None, distribution_model: str = "global",
