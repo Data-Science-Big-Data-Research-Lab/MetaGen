@@ -72,9 +72,9 @@ The **Coronavirus Optimization Algorithm (CVOA)** in |metagen| follows an **epid
 How CVOA Executes in a Distributed Environment
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Under ``distributed_cvoa_launcher`` the global pandemic state lives in a **Ray actor**, each strain runs as a Ray task, and within a strain the spreading of the infection is dispatched as **one task per carrier**. Each strain operates independently while interacting with the shared state.
+Under ``distributed_cvoa_launcher`` the global pandemic state lives in a **Ray actor**, each strain runs as a Ray task, and within a strain the spreading of the infection of each iteration is split into **one task per CPU**, each with a share of the carriers. Each strain operates independently while interacting with the shared state. Every task sees the pandemic as it was when the iteration started, with its own changes on top, and what the tasks change reaches the shared state together, in the order of the tasks, once all have finished.
 
-A ``seed`` fixes what every strain and every task draws. The strains, and on Ray the tasks of their carriers, read and change the pandemic state while they run, so when two of them reach the same point at once, which one comes first decides what happens to it. On a domain small enough for that to happen, two runs with the same ``seed`` can differ; with ``cvoa_launcher``, a single strain always reproduces.
+A ``seed`` fixes what every strain and every carrier draws. Several strains read and change the pandemic state while they run, so when two of them reach the same point at once, which one comes first decides what happens to it. On a domain small enough for that to happen, two runs with the same ``seed`` and several strains can differ. A single strain always reproduces: with ``cvoa_launcher``, and with ``distributed_cvoa_launcher`` on the same number of CPUs.
 
 Launching Distributed CVOA
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -115,7 +115,7 @@ Key Features of Distributed CVOA
 - **Remote Pandemic State Management**
   A global state tracks recovered, dead, and infected individuals across all strains.
 - **Ray-Based Worker Management**
-  Each strain is a Ray task, and the infection spread by each carrier is another.
+  Each strain is a Ray task, and the spreading of each of its iterations is split into one task per CPU.
 
 Example Log Output
 ^^^^^^^^^^^^^^^^^^

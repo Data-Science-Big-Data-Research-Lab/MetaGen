@@ -70,9 +70,12 @@ class LocalPandemicState:
 
     # Best Individual
     def update_best_individual(self, individual:Solution) -> None:
+        # Only if it is better: a strain decides it is from the best it read, and another
+        # thread may have put a better one in between (E-09).
         with self.lock:
-            self.best_individual_found = True
-            self.best_individual = individual
+            if individual.get_fitness() < self.best_individual.get_fitness():
+                self.best_individual_found = True
+                self.best_individual = individual
 
     def get_best_individual(self) -> Solution:
         with self.lock:
@@ -97,3 +100,6 @@ class LocalPandemicState:
             return False
         with self.lock:
             return self.budget.spent()
+
+    def flush(self) -> None:
+        """Nothing: every write is already in the state."""

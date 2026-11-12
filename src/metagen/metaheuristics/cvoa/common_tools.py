@@ -46,6 +46,18 @@ class SolutionKeys:
     def difference_update(self, other: "SolutionKeys") -> None:
         self._keys -= other._keys
 
+    def keys(self) -> Set[Tuple[Any, ...]]:
+        """The keys of the solutions in the set, as a new set."""
+        return set(self._keys)
+
+    def add_key(self, key: Tuple[Any, ...]) -> None:
+        """Add the solution with this key."""
+        self._keys.add(key)
+
+    def discard_key(self, key: Tuple[Any, ...]) -> None:
+        """Remove the solution with this key, if it is in the set."""
+        self._keys.discard(key)
+
 
 class SolutionSet(MutableSet[Solution]):
     """
@@ -253,6 +265,8 @@ class PandemicState(Protocol):
     def take_evaluation(self) -> bool: ...
 
     def budget_spent(self) -> bool: ...
+
+    def flush(self) -> None: ...
 
 
 

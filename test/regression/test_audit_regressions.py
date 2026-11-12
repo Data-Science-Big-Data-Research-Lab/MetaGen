@@ -2968,6 +2968,8 @@ def test_f45_el_aislado_se_cuenta_en_distribuido():
         cepa.time = 1
         nuevos = cepa.infect_individuals(portador, 1, 5)
         assert len(nuevos) == 0
+        # La cepa envia al actor lo que ha escrito antes de la siguiente lectura y al terminar (E-09).
+        cepa.global_state.flush()
         assert ray.get(estado.get_pandemic_report.remote())["isolated"] == 5, (
             "el metodo del gemelo distribuido no cuenta a los aislados")
         assert ray.get(estado.get_recovered_len.remote()) == 0

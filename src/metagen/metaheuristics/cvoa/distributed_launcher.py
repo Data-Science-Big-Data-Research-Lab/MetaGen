@@ -54,10 +54,10 @@ def distributed_cvoa_launcher(strains: List[StrainProperties], domain: Domain, f
     :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
     :type log_dir: str or None, optional
     :param seed: Seed making the pandemic reproducible (default is None). Each
-        strain's worker and each carrier's task is seeded from a value drawn in the
-        driver; the order in which they reach the shared state still depends on timing,
-        which can change a run on a domain small enough for two of them to reach the
-        same point at once.
+        strain's worker and each carrier is seeded from a value drawn in the driver. A
+        single strain reproduces on the same number of CPUs; with several, the order in
+        which they reach the shared state still depends on timing, which can change a run
+        on a domain small enough for two of them to reach the same point at once.
     :type seed: Optional[int], optional
     :param strain_class: The class every strain is built from, run with ``distributed=True``
         (default is CVOA).

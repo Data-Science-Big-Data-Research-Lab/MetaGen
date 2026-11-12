@@ -92,7 +92,7 @@ class CVOA(Metaheuristic):
         :param global_state: The state every strain of the pandemic shares. With
             ``distributed=True`` it may be the handle of the RemotePandemicState actor,
             which is wrapped here.
-        :param distributed: Whether the contagion step runs on Ray, one task per carrier
+        :param distributed: Whether the contagion step runs on Ray, one task per CPU
             (default is False: it runs in this thread). This is CVOA's own switch and is
             not handed to Metaheuristic, whose distributed mode splits a population into
             one slice per CPU and is not what a strain does.
@@ -257,7 +257,8 @@ class CVOA(Metaheuristic):
         infects, before the strain's best is added.
 
         In thread mode it runs infect_from_carrier for each carrier here; on Ray,
-        spread_on_ray runs the same function in one task per carrier.
+        spread_on_ray runs the same function for a share of the carriers in each of one
+        task per CPU.
 
         :return: The newly infected population.
         :rtype: SolutionSet
@@ -467,6 +468,8 @@ class CVOA(Metaheuristic):
         return first_condition or second_condition or third_condition or self.global_state.budget_spent()
 
     def post_execution(self) -> None:
+        # On Ray, what the strain wrote last on the shared state reaches it now (E-09).
+        self.global_state.flush()
         self._log(f"Pandemic finished at {self.time} with best individual: {self.best_strain_solution}")
         super().post_execution()
 
