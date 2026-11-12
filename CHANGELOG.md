@@ -4,6 +4,9 @@
 
 ### Changes
 
+- **A dynamic structure** keeps its elements within the alteration limit in every mutation,
+  also when the mutation changes its length, so its seeded runs under a neighborhood give
+  different results.
 - **`TPE` and `KernelTPE` with `max_evaluations`** and no `warmup_iterations` shorten their
   warmup so that it and the initial population take at most a quarter of the budget, and
   their model has evaluations left to work with. A `warmup_iterations` given is kept, and runs

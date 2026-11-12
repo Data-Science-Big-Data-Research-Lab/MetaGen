@@ -3715,3 +3715,44 @@ def test_f72_con_presupuesto_el_modelo_llega_a_usarse(nombre):
     assert dado.warmup_iterations == 3
     sin_presupuesto = clase(dominio, fitness, seed=0)
     assert sin_presupuesto.warmup_iterations == clase.default_warmup_iterations
+
+
+# --------------------------------------------------------------------------------
+# F-73 · La mutacion de una estructura dinamica ignora el limite de alteracion en un tercio
+# --------------------------------------------------------------------------------
+
+def test_f73_la_mutacion_de_una_estructura_dinamica_respeta_el_limite():
+    """F-73: de las tres acciones de `Structure.mutate` en una dinamica, la tercera (cambiar
+    la longitud y alterar) llamaba a `_alterate()` sin el limite, asi que resorteaba los
+    elementos en todo su dominio: con `RelativeAlteration(0.1)` sobre reales en [0, 100], 904
+    de 3000 mutaciones movian un elemento mas de 10. Ninguna tiene que pasarse."""
+    from metagen.framework import RelativeAlteration
+
+    set_seed(0)
+    dominio = Domain()
+    dominio.define_dynamic_structure("v", 5, 6)
+    dominio.set_structure_to_real("v", 0.0, 100.0)
+    lejos = 0
+    for _ in range(1500):
+        solucion = Solution(dominio)
+        solucion["v"] = [50.0] * 5
+        solucion.get("v").mutate(alteration_limit=RelativeAlteration(0.1))
+        lejos += any(abs(x - 50.0) > 10.0 + 1e-9 for x in solucion["v"][:5])
+    assert lejos == 0, f"{lejos} de 1500 mutaciones se salen del limite"
+
+
+def test_f73_los_pasos_de_un_prisma_de_trigen_se_resortean_al_cambiar_de_longitud():
+    """F-73 deja a los pasos de un prisma de TriGen como estaban: al cambiar de longitud, se
+    resortean en todo su dominio, que es como su busqueda explora las formas (con el limite,
+    la recuperacion media del ejemplo de la documentacion bajaba de 0,645 a 0,535). Tambien los
+    hijos de un cruce, que antes nacian como GAStructure."""
+    from metagen.metaheuristics.trigen.shape import PrismShape, _PrismSteps
+
+    forma = PrismShape(neighborhood=4, pixels=(4, 20))
+    dominio = forma.domain((10, 10, 6), [(2, 5), (2, 5), (3, 6)])
+    set_seed(1)
+    padre, madre = Solution(dominio, connector=dominio.get_connector()), Solution(dominio, connector=dominio.get_connector())
+    assert type(padre.get("steps")) is _PrismSteps and _PrismSteps.limit_after_resizing is False
+    hijo, _ = padre.get("steps").crossover(madre.get("steps"))
+    assert type(hijo) is _PrismSteps
+
