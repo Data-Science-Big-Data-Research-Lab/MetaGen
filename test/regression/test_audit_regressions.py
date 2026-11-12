@@ -3655,3 +3655,33 @@ def test_f70_distributed_cvoa_sin_ray_dice_como_instalarlo(importacion):
     hecho = subprocess.run([sys.executable, "-c", codigo], capture_output=True, text=True)
     assert hecho.returncode != 0
     assert "pip install pymetagen-datalabupo[distributed]" in hecho.stderr, hecho.stderr[-400:]
+
+
+# --------------------------------------------------------------------------------
+# F-71 · KernelTPE colapsa sus propuestas a la longitud minima en una estructura dinamica
+# --------------------------------------------------------------------------------
+
+def test_f71_kernel_tpe_aprende_la_longitud_de_una_estructura_dinamica():
+    """F-71: la longitud de cada candidato salia de su inicializacion al azar, no del modelo,
+    y las propuestas acababan en la longitud 1, la peor region: con una estructura de 1 a 10
+    enteros cuya mejor longitud es 8, el 78 % de las ultimas propuestas (cinco semillas; entre
+    el 62 % y el 93 % en cada una). La longitud se saca ahora de un modelo de las longitudes de
+    los mejores y puntua una vez: el 24 % (ninguna semilla por encima del 37 %)."""
+    from collections import Counter
+
+    from metagen.metaheuristics import KernelTPE
+
+    dominio = Domain()
+    dominio.define_dynamic_structure("v", 1, 10)
+    dominio.set_structure_to_integer("v", 0, 6)
+    proporciones = []
+    for semilla in range(5):
+        longitudes = []
+
+        def fitness(solucion):
+            longitudes.append(len(solucion["v"]))
+            return 3 * abs(len(solucion["v"]) - 8) + sum(abs(x - 3) for x in solucion["v"])
+
+        KernelTPE(dominio, fitness, seed=semilla, max_iterations=120).run()
+        proporciones.append(Counter(longitudes[-60:])[1] / 60)
+    assert sum(proporciones) / len(proporciones) < 0.5, proporciones

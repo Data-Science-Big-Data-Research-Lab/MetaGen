@@ -4,6 +4,10 @@
 
 ### Changes
 
+- **`KernelTPE` on a dynamic structure** draws the length of each candidate from a model of
+  the lengths of the best solutions, and scores it, before drawing its elements, so its
+  proposals follow the lengths that work. Seeded runs over dynamic structures give different
+  results.
 - **`DistributedCVOA` without Ray** raises an `ImportError` that says how to install it, as a
   distributed run and the distributed launcher of CVOA do.
 
