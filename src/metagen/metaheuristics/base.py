@@ -17,21 +17,17 @@
 
 import heapq
 import inspect
-import json
 import math
 import numbers
 import os
-import pickle
-import warnings
-import statistics
 import time
 from abc import ABC, abstractmethod
-from importlib import metadata
 
+from ._budget import _Budget
+from ._checkpoint import _Checkpointing
 from .import_helper import is_package_installed, require_ray, start_ray
 from typing import Any, Dict, List, Mapping, Sequence, Tuple, Optional, Callable, cast
 from metagen.framework import Domain, Solution
-from metagen.framework import rng as rng_state
 from metagen.framework.rng import get_rng, set_seed, spawn_seed
 from copy import deepcopy
 
@@ -50,12 +46,6 @@ if IS_RAY_INSTALLED:
     from .distributed_tools import assign_load_equally, call_distributed, distributed_random_exploration
 
 
-#: What a checkpoint does not keep: the fitness function, which may be a lambda or a
-#: nested function and cannot be pickled, the TensorBoard writer, and where and how
-#: often to save, which the resumed run is given again.
-_NOT_CHECKPOINTED = frozenset({"fitness_function", "logger", "checkpoint", "checkpoint_every",
-                               "_stop_requested", "refit"})
-
 #: The arguments of a constructor that are not part of what :py:meth:`Metaheuristic.parameters`
 #: reports: the problem itself, and the shared state of a CVOA pandemic.
 _NOT_PARAMETERS = frozenset({"self", "domain", "fitness_function", "refit", "initial_solutions", "global_state"})
@@ -63,20 +53,6 @@ _NOT_PARAMETERS = frozenset({"self", "domain", "fitness_function", "refit", "ini
 #: The arguments of a constructor kept under another name.
 _PARAMETER_ATTRIBUTES = {"history": "history_file"}
 
-#: What is not configuration: the state of a run, and where to write. A checkpoint keeps
-#: a description of everything else, and a run with another configuration is not
-#: continued from it.
-_NOT_CONFIGURATION = _NOT_CHECKPOINTED | frozenset({
-    "_configuration", "current_iteration", "best_solution", "current_solutions", "best_solution_fitnesses",
-    "history", "_evaluations", "_steps", "_seconds", "best_model", "_best_model_value", "_step_count",
-    "stop_reason", "log_dir", "history_file"})
-
-
-def _package_version() -> str:
-    try:
-        return metadata.version("pymetagen-datalabupo")
-    except metadata.PackageNotFoundError:
-        return "unknown"
 
 
 #: The two ways the slices of a distributed run make up the next population.
@@ -144,7 +120,7 @@ def _with_options_of_a_run(doc: Optional[str]) -> Optional[str]:
     return "\n".join(lines)
 
 
-class Metaheuristic(ABC):
+class Metaheuristic(_Checkpointing, _Budget, ABC):
     """
     Abstract base class for metaheuristic algorithms.
 
@@ -909,57 +885,9 @@ class Metaheuristic(ABC):
                              "and no refit was given.")
         return save_model(self.best_model, path)
 
-    def _iterations(self, max_iterations: Optional[int], default: int,
-                    horizon: Optional[Callable[[int], int]] = None) -> Optional[int]:
-        """
-        The ``max_iterations`` of an algorithm, and the limit of iterations its criterion
-        enforces, kept in ``_iteration_limit``. Given, it is both. Not given, without a
-        budget it is ``default``; with one, there is no limit of iterations. An algorithm
-        that also plans its search over ``max_iterations`` (a cooling or a gamma schedule)
-        passes ``horizon``, which turns ``max_evaluations`` into the iterations it buys:
-        that is its ``max_iterations`` then, and only the budget stops the run. With a
-        ``timeout`` alone it keeps ``default``, as limit and as horizon.
 
-        :param max_iterations: The iterations the user gave, or None.
-        :type max_iterations: int or None
-        :param default: The iterations without a budget.
-        :type default: int
-        :param horizon: The iterations ``max_evaluations`` buys, for an algorithm that plans
-            over its iterations.
-        :type horizon: Callable[[int], int], optional
-        :return: The ``max_iterations`` to keep: the limit, the horizon, or None.
-        :rtype: int or None
-        """
-        if max_iterations is not None or (self.max_evaluations is None and self.timeout is None):
-            chosen = default if max_iterations is None else max_iterations
-            self._iteration_limit = chosen
-            return chosen
-        self._iteration_limit = None
-        if horizon is None:
-            return None
-        if self.max_evaluations is None:
-            self._iteration_limit = default
-            return default
-        return max(1, horizon(self.max_evaluations))
 
-    def _iterations_done(self) -> bool:
-        """Whether the run has made the iterations its criterion allows."""
-        return self._iteration_limit is not None and self.current_iteration >= self._iteration_limit
 
-    def _limit_reached(self) -> Optional[str]:
-        """The budget the run has spent, ``"max_evaluations"`` or ``"timeout"``, or None."""
-        if self.max_evaluations is not None and self._spent() >= self.max_evaluations:
-            return "max_evaluations"
-        if self.timeout is not None and self._seconds >= self.timeout:
-            return "timeout"
-        return None
-
-    def _spent(self) -> float:
-        """The evaluations a budget counts: whole ones, or steps over the steps of one for a
-        fitness function that yields them, so that a candidate stopped early spends less."""
-        if self._step_count:
-            return self._steps / self._step_count
-        return self._evaluations
 
     @property
     def evaluations(self) -> int:
@@ -981,46 +909,7 @@ class Metaheuristic(ABC):
         """
         return self._seconds
 
-    def _record_history(self) -> None:
-        """
-        Add the record of the iteration just completed to ``history``, and to the
-        ``history`` file if the run has one.
-        """
-        fitnesses = [solution.get_fitness() for solution in self.current_solutions]
-        finite = [value for value in fitnesses if math.isfinite(value)]
-        best = self._best_so_far()
-        record = {
-            "iteration": self.current_iteration,
-            "evaluations": self._evaluations,
-            **({"steps": self._steps} if self._step_count else {}),
-            "seconds": self._seconds,
-            "best": best.get_fitness(),
-            "iteration_best": min(finite) if finite else None,
-            "mean": statistics.fmean(finite) if finite else None,
-            "std": statistics.pstdev(finite) if finite else None,
-            "worst": max(finite) if finite else None,
-            "population_size": len(self.current_solutions),
-            "best_solution": {name: best[name] for name in best},
-        }
-        self.history.append(record)
-        if self.history_file is not None:
-            directory = os.path.dirname(os.path.abspath(self.history_file))
-            os.makedirs(directory, exist_ok=True)
-            with open(self.history_file, "a") as handle:
-                handle.write(json.dumps(record) + "\n")
 
-    def _trim_history_file(self) -> None:
-        """
-        On resuming, drop the lines a run wrote after its last checkpoint: they are
-        written again as the run repeats those iterations.
-        """
-        if self.history_file is None or not os.path.exists(self.history_file):
-            return
-        with open(self.history_file) as handle:
-            kept = [line for line in handle
-                    if line.strip() and json.loads(line)["iteration"] < self.current_iteration]
-        with open(self.history_file, "w") as handle:
-            handle.writelines(kept)
 
     def parameters(self) -> Dict[str, Any]:
         """
@@ -1101,107 +990,8 @@ class Metaheuristic(ABC):
         algorithm.logger = None
         return algorithm
 
-    def _checkpoint_state(self) -> Dict[str, Any]:
-        """
-        What a checkpoint holds: the algorithm's attributes but the ones in
-        ``_NOT_CHECKPOINTED``, the state of both generators, the class, the version of
-        the package and the TensorBoard run, so that its curves continue in the same
-        directory. A subclass whose state is not all in its attributes extends it.
-        """
-        attributes = {name: value for name, value in self.__dict__.items() if name not in _NOT_CHECKPOINTED}
-        if self.best_model is not None:
-            try:
-                pickle.dumps(self.best_model)
-            except Exception as error:
-                # A model the checkpoint cannot hold is left out, not the checkpoint: a run
-                # resumed from it keeps the best model it finds from then on.
-                warnings.warn(f"The best model cannot be saved in the checkpoint ({error}); it is left out.",
-                              RuntimeWarning, stacklevel=2)
-                attributes["best_model"], attributes["_best_model_value"] = None, None
-        return {
-            "version": _package_version(),
-            "class": type(self),
-            "algorithm": attributes,
-            "rng": rng_state.get_state(),
-            "checkpoint_every": self.checkpoint_every,
-            "tensorboard_run": self.logger.run_id if self.logger else None,
-        }
 
-    def _describe_configuration(self) -> Dict[str, str]:
-        """
-        The configuration of the run, as text: every attribute but the state of a run and
-        where to write (``_NOT_CONFIGURATION``), the domain by its definitions and any
-        other value by its representation, or by its type when that only says where it is
-        in memory.
-        """
-        described: Dict[str, str] = {}
-        for name, value in sorted(self.__dict__.items()):
-            if name in _NOT_CONFIGURATION:
-                continue
-            text = str(value) if isinstance(value, Domain) else repr(value)
-            described[name] = type(value).__qualname__ if " at 0x" in text else text
-        return described
 
-    def _check_configuration(self, state: Dict[str, Any]) -> None:
-        """
-        Refuse to continue, from a checkpoint, a run with another configuration than this
-        one. A metaheuristic that already ran, or that :py:meth:`resume` rebuilt, holds
-        the run of the checkpoint and is not checked; nor is a checkpoint that holds no
-        description of its configuration.
 
-        :raises ValueError: if the configurations differ, naming what differs.
-        """
-        # Only the class and the version were checked, and the attributes of the
-        # checkpoint then replaced the domain, the seed and the parameters given: a new
-        # experiment that found an old file at its path went on with the old one, and
-        # returned a solution of another domain without a word (F-64).
-        saved = state["algorithm"].get("_configuration")
-        # A checkpoint of another class is refused by _restore, saying so.
-        if saved is None or "_configuration" in self.__dict__ or state["class"] is not type(self):
-            return
-        current = self._describe_configuration()
-        differ = sorted(name for name in saved.keys() | current.keys() if saved.get(name) != current.get(name))
-        if differ:
-            raise ValueError(f"The checkpoint {self.checkpoint} belongs to another run: {', '.join(differ)} "
-                             f"differ. Remove it, or give this run another checkpoint file, to start this run; "
-                             f"to continue the one it holds, use resume().")
 
-    def _restore(self, state: Dict[str, Any]) -> None:
-        """
-        Put the algorithm back in the state of a checkpoint: the inverse of
-        :py:meth:`_checkpoint_state`.
-        """
-        if state["class"] is not type(self):
-            raise ValueError(f"The checkpoint {self.checkpoint} is of {state['class'].__name__}, "
-                             f"not of {type(self).__name__}.")
-        self.__dict__.update(state["algorithm"])
-        rng_state.set_state(state["rng"])
-        if self.log_dir is not None and is_package_installed("tensorboard"):
-            if self.logger:
-                self.logger.close()
-            self.logger = TensorBoardLogger(log_dir=self.log_dir, run_id=state["tensorboard_run"])
 
-    def _write_checkpoint(self) -> None:
-        """
-        Write the checkpoint atomically: to a temporary file in the same directory,
-        synced to disk, then renamed over the previous one, so that a cut while
-        writing leaves the previous checkpoint whole.
-        """
-        path = cast(str, self.checkpoint)
-        directory = os.path.dirname(os.path.abspath(path))
-        os.makedirs(directory, exist_ok=True)
-        temporary = path + ".tmp"
-        with open(temporary, "wb") as handle:
-            pickle.dump(self._checkpoint_state(), handle)
-            handle.flush()
-            os.fsync(handle.fileno())
-        os.replace(temporary, path)
-
-    @staticmethod
-    def _read_checkpoint(path: str) -> Dict[str, Any]:
-        with open(path, "rb") as handle:
-            state: Dict[str, Any] = pickle.load(handle)
-        if state.get("version") != _package_version():
-            raise ValueError(f"The checkpoint {path} was written by version {state.get('version')} "
-                             f"of the package and this is version {_package_version()}.")
-        return state
