@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, TypeAlias
+from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, Optional, TypeAlias
 
 from metagen.metaheuristics.import_helper import ray_missing
 
@@ -9,7 +9,8 @@ try:
 except ImportError as error:
     raise ImportError(ray_missing("the distributed CVOA")) from error
 from metagen.framework import Solution, Domain
-from metagen.metaheuristics.cvoa.common_tools import IndividualState, PandemicState, SolutionKeys, StrainProperties, SolutionSet
+from metagen.metaheuristics.cvoa.common_tools import (IndividualState, PandemicBudget, PandemicState, SolutionKeys,
+                                                     StrainProperties, SolutionSet)
 from metagen.framework.rng import set_seed, spawn_seed
 
 if TYPE_CHECKING:
@@ -24,7 +25,9 @@ PandemicStateHandle: TypeAlias = Any
 # Remote pandemic state (ray support)
 @ray.remote
 class RemotePandemicState:
-    def __init__(self, initial_individual: Solution):
+    def __init__(self, initial_individual: Solution, max_evaluations: Optional[int] = None,
+                 timeout: Optional[float] = None):
+        self.budget = PandemicBudget(max_evaluations, timeout)
         self.recovered: SolutionKeys = SolutionKeys()
         self.deaths: SolutionKeys = SolutionKeys()
         self.isolated: SolutionKeys = SolutionKeys()
@@ -82,6 +85,16 @@ class RemotePandemicState:
             "best_individual": self.best_individual
         }
 
+    # Budget
+    def take_evaluation(self) -> bool:
+        return self.budget.take()
+
+    def budget_spent(self) -> bool:
+        return self.budget.spent()
+
+    def budget_limited(self) -> bool:
+        return self.budget.limited()
+
 
 class RemotePandemicStateProxy:
     """
@@ -95,6 +108,9 @@ class RemotePandemicStateProxy:
 
     def __init__(self, handle: PandemicStateHandle):
         self.handle = handle
+        # Whether the pandemic has a budget, asked once: without one, the strains do not
+        # call the actor to know whether it is spent.
+        self._limited: Optional[bool] = None
 
     def get_individual_state(self, individual: Solution) -> IndividualState:
         state: IndividualState = ray.get(self.handle.get_individual_state.remote(individual))
@@ -131,6 +147,18 @@ class RemotePandemicStateProxy:
         report: Dict[str, Any] = ray.get(self.handle.get_pandemic_report.remote())
         return report
 
+    def take_evaluation(self) -> bool:
+        allowed: bool = ray.get(self.handle.take_evaluation.remote())
+        return allowed
+
+    def budget_spent(self) -> bool:
+        if self._limited is None:
+            self._limited = bool(ray.get(self.handle.budget_limited.remote()))
+        if not self._limited:
+            return False
+        spent: bool = ray.get(self.handle.budget_spent.remote())
+        return spent
+
 
 @ray.remote
 def _infect_from_carrier(seed: int, strain_class: "type[CVOA]", state: PandemicState, domain: Domain,
@@ -138,6 +166,11 @@ def _infect_from_carrier(seed: int, strain_class: "type[CVOA]", state: PandemicS
                          carrier: Solution, superspreaders: SolutionSet, time: int) -> SolutionSet:
     # Seeded from the strain's generator, so the strain's seed reaches every task (A-06).
     set_seed(seed)
+    # A task that starts with the budget spent would infect without evaluating, asking the
+    # actor at every step: it gives nobody instead, as the loop of a strain in threads does
+    # (F-76). Without a budget the proxy knows it already and asks nothing.
+    if state.budget_spent():
+        return SolutionSet()
     return strain_class.infect_from_carrier(state, domain, fitness_function, strain_properties, carrier,
                                             superspreaders, time)
 

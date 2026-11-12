@@ -7,7 +7,8 @@ from metagen.framework import Domain, Solution
 from metagen.framework.rng import own_generators, set_seed, spawn_seed
 from metagen.logging.metagen_logger import metagen_logger
 
-from metagen.metaheuristics.cvoa.common_tools import StrainProperties
+from metagen.metaheuristics._parameters import require_integer, require_number
+from metagen.metaheuristics.cvoa.common_tools import BudgetedFitness, StrainProperties
 from metagen.metaheuristics.cvoa.cvoa import CVOA
 from metagen.metaheuristics.cvoa.local_state import LocalPandemicState
 from metagen.metaheuristics.tools import solution_class
@@ -25,7 +26,8 @@ def run_strain(global_state: LocalPandemicState, domain: Domain, fitness_functio
 
 def cvoa_launcher(strains: List[StrainProperties], domain: Domain, fitness_function: Callable[[Solution], float],
                   update_isolated: bool = False, log_dir: Optional[str] = None,
-                  seed: Optional[int] = None, strain_class: type[CVOA] = CVOA) -> Solution:
+                  seed: Optional[int] = None, strain_class: type[CVOA] = CVOA,
+                  max_evaluations: Optional[int] = None, timeout: Optional[float] = None) -> Solution:
     """
     Run a CVOA pandemic over the given strains, one thread per strain, and return the best solution.
 
@@ -46,15 +48,32 @@ def cvoa_launcher(strains: List[StrainProperties], domain: Domain, fitness_funct
     :type seed: Optional[int], optional
     :param strain_class: The class every strain is built from (default is CVOA). A subclass of CVOA changes what a strain does; the launcher does not.
     :type strain_class: type[CVOA], optional
+    :param max_evaluations: The most evaluations of the fitness function the whole pandemic
+        may make, shared by every strain; None, the default, sets no limit. See
+        :py:class:`~metagen.metaheuristics.StrainProperties` for what a pandemic costs.
+    :type max_evaluations: int or None, optional
+    :param timeout: The most seconds the pandemic may evaluate for; None, the default, sets
+        no limit.
+    :type timeout: float or None, optional
     :return: The best solution found across every strain.
     :rtype: Solution
+    :raises ValueError: If ``max_evaluations`` is not a positive integer or ``timeout`` a
+        positive number.
+
+    Once the budget is spent, nothing more is evaluated: the iteration in course ends
+    without calling the fitness function, and every strain stops after it.
     """
+    require_integer("max_evaluations", max_evaluations, 1, optional=True)
+    require_number("timeout", timeout, above=0, optional=True)
     if seed is not None:
         set_seed(seed)
 
     # Initialize the global state
     solution_type = solution_class(domain)
-    global_state = LocalPandemicState(solution_type(domain, connector=domain.get_connector()))
+    global_state = LocalPandemicState(solution_type(domain, connector=domain.get_connector()), max_evaluations,
+                                      timeout)
+    if global_state.budget.limited():
+        fitness_function = BudgetedFitness(fitness_function, global_state)
 
     # One strain has nobody to share the generators with and stays on the process's, so
     # what a seed gives a single strain does not change. Several sharing them made the

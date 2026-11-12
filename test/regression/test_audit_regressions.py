@@ -3888,3 +3888,104 @@ def test_f75_una_fitness_que_no_devuelve_un_numero_lo_dice(valor):
     resultado = RandomSearch(_f75_dominio(False), lambda solucion: np.array(2.5), population_size=3,
                              max_iterations=1, seed=0).run()
     assert resultado.get_fitness() == 2.5
+
+
+# --------------------------------------------------------------------------------
+# F-76: CVOA no admitia presupuesto, y con las propiedades por defecto una pandemia
+# sobre un dominio continuo hace cientos de miles de evaluaciones (Y-12 de la auditoria
+# independiente).
+# --------------------------------------------------------------------------------
+
+def _f76_dominio():
+    dominio = Domain()
+    for nombre in "abcd":
+        dominio.define_real(nombre, -5.0, 5.0)
+    return dominio
+
+
+@pytest.mark.parametrize("cepas", [1, 3])
+@pytest.mark.parametrize("clase", ["CVOA", "ProbabilisticCVOA"])
+def test_f76_cvoa_no_pasa_de_max_evaluations(clase, cepas):
+    """F-76: `cvoa_launcher` no tenia `max_evaluations` ni `timeout`; con una fitness que
+    entrena un modelo, la configuracion por defecto no terminaba en la practica. El
+    presupuesto es de toda la pandemia y se comprueba antes de cada evaluacion: una
+    iteracion llega a hacer decenas de miles."""
+    import threading
+
+    import metagen.metaheuristics as metaheuristicas
+    from metagen.metaheuristics import StrainProperties, cvoa_launcher
+
+    valores = []
+    cerrojo = threading.Lock()
+
+    def fitness(solucion):
+        valor = sum((solucion[nombre] - 0.3) ** 2 for nombre in "abcd")
+        with cerrojo:
+            valores.append(valor)
+        return valor
+
+    mejor = cvoa_launcher([StrainProperties(f"S{i}") for i in range(cepas)], _f76_dominio(), fitness, seed=3,
+                          strain_class=getattr(metaheuristicas, clase), max_evaluations=1000)
+    assert len(valores) == 1000
+    assert mejor.get_fitness() == min(valores)
+
+
+def test_f76_cvoa_con_timeout_termina_a_tiempo():
+    """F-76: sin presupuesto esta pandemia tarda mas de medio minuto; con `timeout` acaba
+    poco despues de el, porque lo que queda de la iteracion no se recorre."""
+    import time
+
+    from metagen.metaheuristics import StrainProperties, cvoa_launcher
+
+    inicio = time.perf_counter()
+    mejor = cvoa_launcher([StrainProperties()], _f76_dominio(), lambda s: sum(s[n] ** 2 for n in "abcd"), seed=3,
+                          timeout=0.5)
+    assert time.perf_counter() - inicio < 10
+    assert mejor.get_fitness() < math.inf
+
+
+@pytest.mark.parametrize("presupuesto", [{"max_evaluations": 0}, {"max_evaluations": 2.5}, {"timeout": -1},
+                                         {"timeout": math.inf}])
+def test_f76_un_presupuesto_invalido_se_rechaza(presupuesto):
+    from metagen.metaheuristics import StrainProperties, cvoa_launcher
+
+    with pytest.raises(ValueError):
+        cvoa_launcher([StrainProperties()], _f76_dominio(), lambda s: s["a"], **presupuesto)
+
+
+def test_f76_cvoa_distribuido_no_pasa_de_max_evaluations():
+    """F-76: en Ray el presupuesto lo lleva el actor del estado de la pandemia, y lo
+    comparten la cepa y todas sus tareas."""
+    ray = pytest.importorskip("ray")
+    from metagen.metaheuristics import StrainProperties, distributed_cvoa_launcher
+
+    arrancado_aqui = not ray.is_initialized()
+    if arrancado_aqui:
+        ray.init(num_cpus=2, include_dashboard=False, ignore_reinit_error=True)
+    try:
+        @ray.remote
+        class Contador:
+            def __init__(self):
+                self.n = 0
+
+            def sumar(self):
+                self.n += 1
+
+            def total(self):
+                return self.n
+
+        contador = Contador.remote()
+
+        def fitness(solucion):
+            ray.get(contador.sumar.remote())
+            return (solucion["a"] - 0.3) ** 2 + solucion["b"] ** 2
+
+        dominio = Domain()
+        dominio.define_real("a", -5.0, 5.0)
+        dominio.define_real("b", -5.0, 5.0)
+        mejor = distributed_cvoa_launcher([StrainProperties("S1")], dominio, fitness, seed=2, max_evaluations=150)
+        assert ray.get(contador.total.remote()) == 150
+        assert mejor.get_fitness() < math.inf
+    finally:
+        if arrancado_aqui and ray.is_initialized():
+            ray.shutdown()

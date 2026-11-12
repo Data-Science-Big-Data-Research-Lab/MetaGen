@@ -4,6 +4,11 @@
 
 ### Changes
 
+- **A budget for CVOA.** `cvoa_launcher` and `distributed_cvoa_launcher` take
+  `max_evaluations` and `timeout` for the whole pandemic, shared by all its strains and
+  checked before every evaluation: once it is spent, nothing more is evaluated and every
+  strain stops at the end of the iteration in course. Without them, runs give the same
+  results.
 - **Domains are validated further.** The bounds of a real are finite numbers, and the bounds
   and the step of an integer are integers. With a step, only the values on its grid from the
   minimum are valid, and a NaN never is: setting one of them raises a `ValueError` that names

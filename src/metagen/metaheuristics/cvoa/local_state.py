@@ -1,13 +1,14 @@
 import threading
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from metagen.framework import Solution
-from metagen.metaheuristics.cvoa.common_tools import IndividualState, SolutionKeys, SolutionSet
+from metagen.metaheuristics.cvoa.common_tools import IndividualState, PandemicBudget, SolutionKeys, SolutionSet
 
 
 # Local pandemic state (multi-threading)
 class LocalPandemicState:
-    def __init__(self, initial_individual:Solution):
+    def __init__(self, initial_individual: Solution, max_evaluations: Optional[int] = None,
+                 timeout: Optional[float] = None):
         # Lock fot multi-threading safety access to the shared structures.
         # Reentrant on purpose: isolate_individual_conditional_state holds it and
         # calls get_individual_state, which takes it again. A plain Lock is not
@@ -20,6 +21,7 @@ class LocalPandemicState:
         self.isolated: SolutionKeys = SolutionKeys()
         self.best_individual_found:bool = False
         self.best_individual:Solution = initial_individual
+        self.budget = PandemicBudget(max_evaluations, timeout)
 
     def get_individual_state(self, individual: Solution) -> IndividualState:
         with self.lock:
@@ -84,3 +86,14 @@ class LocalPandemicState:
                  "isolated": len(self.isolated),
                 "best_individual": self.best_individual
             }
+
+    # Budget
+    def take_evaluation(self) -> bool:
+        with self.lock:
+            return self.budget.take()
+
+    def budget_spent(self) -> bool:
+        if not self.budget.limited():
+            return False
+        with self.lock:
+            return self.budget.spent()

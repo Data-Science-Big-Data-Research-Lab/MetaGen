@@ -270,6 +270,10 @@ class CVOA(Metaheuristic):
 
         new_infected_population: SolutionSet = SolutionSet()
         for carrier in self.infected:
+            # With the budget spent, the carriers left would infect without evaluating: the
+            # iteration ends here instead (F-76). Without a budget this asks nothing.
+            if self.global_state.budget_spent():
+                break
             new_infected_population.update(
                 type(self).infect_from_carrier(self.global_state, self.domain, self.fitness_function,
                                                self.strain_properties, carrier, self.superspreaders, self.time))
@@ -458,7 +462,9 @@ class CVOA(Metaheuristic):
         third_condition = (stagnation_limit is not None
                            and self.iterations_without_improvement >= stagnation_limit)
 
-        return first_condition or second_condition or third_condition
+        # Fourth condition: when the pandemic has spent the budget its launcher gave it,
+        # shared by every strain (F-76).
+        return first_condition or second_condition or third_condition or self.global_state.budget_spent()
 
     def post_execution(self) -> None:
         self._log(f"Pandemic finished at {self.time} with best individual: {self.best_strain_solution}")
