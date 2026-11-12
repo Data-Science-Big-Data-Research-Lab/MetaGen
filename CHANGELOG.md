@@ -4,6 +4,15 @@
 
 ### Changes
 
+- **Domains are validated further.** The bounds of a real are finite numbers, and the bounds
+  and the step of an integer are integers. With a step, only the values on its grid from the
+  minimum are valid, and a NaN never is: setting one of them raises a `ValueError` that names
+  the grid.
+- **The parameters of the metaheuristics are checked when they are built.** A value outside
+  the ones a parameter takes, such as `tournament_size=0`, `cooling_rate=1.5`, a negative
+  `alteration_limit` or a `max_iterations` that is not an integer, raises a `ValueError` that
+  names the parameter. A fitness function that returns something that is not a number, such as
+  `None`, raises a `TypeError` that names the function.
 - **Setting part of a group**, as `solution["g"] = {"a": 2}`, changes the variables given and
   keeps the others, and an initial solution that gives part of a group draws the rest. A group
   given something other than a `dict` raises a `ValueError`.

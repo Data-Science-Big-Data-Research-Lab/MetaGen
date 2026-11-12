@@ -6,6 +6,7 @@ from typing import Any, List, Tuple, Deque, Optional, Mapping, Sequence
 from metagen.metaheuristics.racing import Racing
 from metagen.metaheuristics.tools import local_search_with_tabu, solution_class
 from metagen.metaheuristics.base import Metaheuristic
+from metagen.metaheuristics._parameters import require_alteration, require_integer
 from copy import deepcopy
 
 from metagen.metaheuristics.gamma_schedules import GammaConfig, compute_gamma
@@ -89,6 +90,8 @@ class HillClimbing(Metaheuristic):
                  max_evaluations: Optional[int] = None, timeout: Optional[float] = None,
                  initial_solutions: Optional[Sequence[Mapping[str, Any]]] = None, racing: Optional[Racing] = None,
                  refit: Optional[Callable[[Solution], Any]] = None):
+        require_integer("tabu_size", tabu_size, 0)
+        require_alteration("alteration_limit", alteration_limit)
         super().__init__(domain, fitness_function, population_size, warmup_iterations, distributed, log_dir, seed=seed,
                          distribution_model=distribution_model,
                          checkpoint=checkpoint, checkpoint_every=checkpoint_every,

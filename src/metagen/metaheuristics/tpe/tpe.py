@@ -3,6 +3,7 @@ import heapq
 
 from metagen.metaheuristics.racing import Racing
 from metagen.metaheuristics.base import Metaheuristic
+from metagen.metaheuristics._parameters import require_integer
 import math
 from typing import Callable, List, Tuple, Optional, cast, Any, Mapping, Sequence
 from metagen.framework import Domain, Solution
@@ -104,6 +105,9 @@ class TPE(Metaheuristic):
         domain = deepcopy(domain)
         domain._connector = TPEConnector()
 
+        require_integer("population_size", population_size, 1)
+        require_integer("warmup_iterations", warmup_iterations, 0, optional=True)
+        require_integer("candidate_pool_size", candidate_pool_size, 1)
         warmup_iterations = self._warmup_for(warmup_iterations, population_size, max_evaluations)
 
         super().__init__(domain, fitness_function, population_size=population_size,

@@ -15,6 +15,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 import math
+import numbers
 from itertools import pairwise
 from typing import Any, Final, Literal, Tuple, final
 
@@ -154,6 +155,11 @@ class Preconditions:
     class Integer:
         @staticmethod
         def range(min_value: int, max_value: int, step: int | None):
+            # Bounds and a step that are not integers were accepted and failed at the first
+            # draw, inside randrange, without naming the variable (F-75).
+            for name, number in (("minimum", min_value), ("maximum", max_value), ("step", step)):
+                if number is not None and (isinstance(number, bool) or not isinstance(number, numbers.Integral)):
+                    raise ValueError(f"[DEFINITION error] The {name} of an integer must be an integer, not {number!r}.")
             if min_value >= max_value:
                 raise ValueError(Messages.min_max(min_value, max_value, "i"))
             if step is not None:
@@ -173,6 +179,11 @@ class Preconditions:
     class Real:
         @staticmethod
         def range(min_value: float, max_value: float, step: float | None):
+            # NaN passed min >= max, and an infinite bound made every solution infinite (F-75).
+            for name, number in (("minimum", min_value), ("maximum", max_value), ("step", step)):
+                if number is not None and (isinstance(number, bool) or not isinstance(number, numbers.Real)
+                                           or not math.isfinite(number)):
+                    raise ValueError(f"[DEFINITION error] The {name} of a real must be a finite number, not {number!r}.")
             if min_value >= max_value:
                 raise ValueError(Messages.min_max(min_value, max_value, "r"))
             if step is not None:

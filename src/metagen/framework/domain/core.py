@@ -16,6 +16,7 @@
 """
 from __future__ import annotations
 
+import math
 import numbers
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
@@ -167,6 +168,10 @@ class IntegerDefinition(Base):
             numeric = int(value)
             if numeric < self.__min_value or numeric > self.__max_value:
                 res = False
+            # On the grid of the step, from the minimum: with a step of 5 from 0, 3 was taken
+            # and reached the user's fitness function (F-75).
+            elif self.__step is not None and (numeric - self.__min_value) % self.__step != 0:
+                res = False
         return res
 
     def __str__(self):
@@ -267,8 +272,14 @@ class RealDefinition(Base):
             res = False
         else:
             numeric = float(value)
-            if numeric < self.__min_value or numeric > self.__max_value:
+            # NaN is no number of any range: every comparison with it is false, so it passed (F-75).
+            if math.isnan(numeric) or numeric < self.__min_value or numeric > self.__max_value:
                 res = False
+            # On the grid of the step, from the minimum, up to the rounding of the division:
+            # with a step of 0.25, 0.3 was taken (F-75).
+            elif self.__step is not None:
+                position = (numeric - self.__min_value) / self.__step
+                res = abs(position - round(position)) <= 1e-9 * max(1.0, abs(position))
         return res
 
     def __str__(self):

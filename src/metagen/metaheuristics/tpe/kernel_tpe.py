@@ -26,6 +26,7 @@ from metagen.framework.domain import DynamicStructureDefinition
 from metagen.framework.rng import get_numpy_rng
 from metagen.framework.solution.types import Categorical, Integer, Permutation, Real, Structure, Subset
 from metagen.metaheuristics.racing import Racing
+from metagen.metaheuristics._parameters import require_integer, require_number
 from metagen.metaheuristics.gamma_schedules import GammaConfig, compute_gamma
 from metagen.metaheuristics.tools import solution_class
 from metagen.metaheuristics.tpe.subset_model import SubsetModel
@@ -133,6 +134,8 @@ class KernelTPE(TPE):
                  max_evaluations: Optional[int] = None, timeout: Optional[float] = None,
                  initial_solutions: Optional[Sequence[Mapping[str, Any]]] = None, racing: Optional[Racing] = None,
                  refit: Optional[Callable[[Solution], Any]] = None) -> None:
+        require_integer("n_candidates", n_candidates, 1)
+        require_number("prior_weight", prior_weight, above=0)
         super().__init__(domain, fitness_function, max_iterations=max_iterations,
                          warmup_iterations=warmup_iterations, candidate_pool_size=1, gamma_config=gamma_config,
                          distributed=distributed, log_dir=log_dir, seed=seed, population_size=population_size,

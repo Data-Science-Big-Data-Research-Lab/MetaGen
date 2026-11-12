@@ -6,6 +6,7 @@ from metagen.framework import Domain, RelativeAlteration, Solution
 from metagen.metaheuristics.racing import Racing
 from metagen.metaheuristics.tools import random_exploration
 from metagen.metaheuristics.base import Metaheuristic
+from metagen.metaheuristics._parameters import require_alteration, require_integer, require_probability
 from metagen.metaheuristics.genetic import GASolution
 from metagen.metaheuristics.genetic.genetic_tools import (yield_two_children, require_crossover,
                                                 tournament_selection)
@@ -98,6 +99,12 @@ class Memetic(Metaheuristic):
                  refit: Optional[Callable[[Solution], Any]] = None,
                  mutation_alteration_limit: Any = None) -> None:
         """Initialize the Memetic Algorithm with the given parameters."""
+        require_probability("mutation_rate", mutation_rate)
+        require_integer("tournament_size", tournament_size, 1)
+        require_integer("neighbor_population_size", neighbor_population_size, 1)
+        require_alteration("alteration_limit", alteration_limit)
+        require_alteration("mutation_alteration_limit", mutation_alteration_limit)
+        require_integer("distribution_level", distribution_level, 0)
         super().__init__(domain, fitness_function, population_size=population_size, distributed=distributed, log_dir=log_dir, seed=seed,
                          distribution_model=distribution_model,
                          checkpoint=checkpoint, checkpoint_every=checkpoint_every,

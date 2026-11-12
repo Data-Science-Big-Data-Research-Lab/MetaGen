@@ -43,7 +43,13 @@ def test_an_integer_is_defined_with_its_range(name, minimum, maximum, step):
     definition = domain.get_core().get(name)
     kind, low, high, _ = definition.get_attributes()
     assert (kind, low, high) == (INTEGER, minimum, maximum)
-    for value in (minimum, maximum, (maximum - minimum) // 2, maximum - 1, minimum + 1):
+    if step is None:
+        accepted = (minimum, maximum, (maximum - minimum) // 2, maximum - 1, minimum + 1)
+    else:
+        # With a step, the values on its grid from the minimum, and none between (F-75).
+        accepted = (minimum, minimum + step, minimum + (maximum - minimum) // step * step)
+        assert not definition.check_value(minimum + 1)
+    for value in accepted:
         assert definition.check_value(value)
     assert not definition.check_value(minimum - 1)
     assert not definition.check_value(maximum + 1)
@@ -58,7 +64,13 @@ def test_a_real_is_defined_with_its_range(name, minimum, maximum, step):
     definition = domain.get_core().get(name)
     kind, low, high, _ = definition.get_attributes()
     assert (kind, low, high) == (REAL, minimum, maximum)
-    for value in (minimum, maximum, (maximum - minimum) // 2, maximum - 1, minimum + 1):
+    if step is None:
+        accepted = (minimum, maximum, (maximum - minimum) // 2, maximum - 1, minimum + 1)
+    else:
+        # With a step, the values on its grid from the minimum, and none between (F-75).
+        accepted = (minimum, minimum + step, minimum + (maximum - minimum) // step * step)
+        assert not definition.check_value(minimum + 1)
+    for value in accepted:
         assert definition.check_value(value)
     assert not definition.check_value(minimum - 0.001)
     assert not definition.check_value(maximum + 0.001)

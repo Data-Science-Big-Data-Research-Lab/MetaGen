@@ -22,6 +22,8 @@ import os
 import statistics
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
 
+from ._parameters import require_integer
+
 if TYPE_CHECKING:
     from metagen.framework import Solution
 
@@ -74,6 +76,7 @@ class _Budget:
         :return: The ``max_iterations`` to keep: the limit, the horizon, or None.
         :rtype: int or None
         """
+        require_integer("max_iterations", max_iterations, 0, optional=True)
         if max_iterations is not None or (self.max_evaluations is None and self.timeout is None):
             chosen = default if max_iterations is None else max_iterations
             self._iteration_limit = chosen

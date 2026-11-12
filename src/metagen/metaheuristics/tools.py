@@ -117,10 +117,21 @@ class CountingFitness:
             return self._worst_if_nan(value)
         return self._worst_if_nan(self._steps_of(solution, value))
 
-    def _worst_if_nan(self, value: Any) -> Any:
+    def _worst_if_nan(self, value: Any) -> float:
+        # A value that is not a number failed far from the fitness function: None in the
+        # first comparison, a NumPy array when the history was written (F-75). It is
+        # converted here, and what does not convert names the function that returned it.
+        if isinstance(value, bool) or not isinstance(value, numbers.Real):
+            try:
+                if isinstance(value, (str, bytes)):
+                    raise TypeError
+                value = float(value)
+            except (TypeError, ValueError):
+                name = getattr(self.function, "__qualname__", repr(self.function))
+                raise TypeError(f"The fitness function {name} must return a number, not {value!r}.") from None
         # Every comparison with NaN is false, so a NaN that became the best could not be
         # replaced and the whole run returned it, the best model too (F-59).
-        if isinstance(value, numbers.Real) and math.isnan(value):
+        if math.isnan(value):
             if not self.warned_nan:
                 self.warned_nan = True
                 metagen_logger.warning("The fitness function returned NaN; it counts as the worst value, inf.")

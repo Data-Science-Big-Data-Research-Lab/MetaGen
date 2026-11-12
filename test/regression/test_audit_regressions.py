@@ -3799,3 +3799,92 @@ def test_f74_una_solucion_inicial_con_parte_de_un_grupo_rellena_el_resto():
     with pytest.raises(ValueError):
         RandomSearch(_f74_dominio(), fitness, population_size=4, max_iterations=1, initial_solutions=[{"g": 3}],
                      seed=0).run()
+
+
+# --------------------------------------------------------------------------------
+# F-75: el dominio aceptaba limites NaN o infinitos y valores fuera de la rejilla del
+# paso, y los parametros de las metaheuristicas no se validaban (X-11/Y-14 y X-12/Y-15
+# de la auditoria independiente).
+# --------------------------------------------------------------------------------
+
+def test_f75_el_dominio_rechaza_limites_no_finitos_y_valores_fuera_de_la_rejilla():
+    """F-75: `define_real('x', 0, nan)` se aceptaba y cada sorteo daba NaN;
+    `define_integer('n', 0, 10.5)` tambien; y un valor fuera de la rejilla del paso, o NaN,
+    pasaba la comprobacion del dominio."""
+    import math
+
+    for limites in ((0.0, math.nan), (-math.inf, 1.0), (0.0, math.inf)):
+        with pytest.raises(ValueError):
+            Domain().define_real("x", *limites)
+    for limites in ((0, 10.5), (0.5, 10), (True, 10)):
+        with pytest.raises(ValueError):
+            Domain().define_integer("n", *limites)
+    with pytest.raises(ValueError):
+        Domain().define_integer("n", 0, 10, 2.5)
+
+    dominio = Domain()
+    dominio.define_real("x", 0.0, 1.0, 0.1)
+    dominio.define_integer("n", 1, 10, 3)
+    dominio.define_real("y", 0.0, 1.0)
+    nucleo = dominio.get_core()
+    assert nucleo.check("x", 0.1 * 3)  # 0.30000000000000004: en la rejilla, con su redondeo
+    assert not nucleo.check("x", 0.25)
+    assert nucleo.check("n", 7) and not nucleo.check("n", 6)
+    assert not nucleo.check("y", math.nan)
+    solucion = Solution(dominio)
+    for nombre, valor in (("x", 0.25), ("n", 6), ("y", math.nan)):
+        with pytest.raises(ValueError):
+            solucion.set(nombre, valor)
+
+
+def _f75_dominio(genetico):
+    from metagen.metaheuristics import GAConnector
+
+    dominio = Domain(GAConnector()) if genetico else Domain()
+    dominio.define_real("x", -5.0, 5.0)
+    return dominio
+
+
+_F75_PARAMETROS = [
+    ("GA", {"tournament_size": 0}), ("GA", {"mutation_rate": 7}), ("GA", {"max_iterations": -3}),
+    ("GA", {"population_size": 2.5}), ("SSGA", {"mutation_rate": -1}), ("SA", {"initial_temp": 0}),
+    ("SA", {"initial_temp": -5}), ("SA", {"cooling_rate": 1.5}), ("SA", {"neighbor_population_size": 0}),
+    ("HillClimbing", {"alteration_limit": -1}), ("HillClimbing", {"warmup_iterations": -2}),
+    ("TabuSearch", {"tabu_radius": -0.1}), ("TPE", {"candidate_pool_size": 0}), ("KernelTPE", {"n_candidates": 0}),
+    ("Memetic", {"neighbor_population_size": 0}), ("RandomSearch", {"max_iterations": 2.5}),
+]
+
+
+@pytest.mark.parametrize("nombre,parametros", _F75_PARAMETROS,
+                         ids=[f"{nombre}-{next(iter(p))}={next(iter(p.values()))}" for nombre, p in _F75_PARAMETROS])
+def test_f75_un_parametro_invalido_se_rechaza_al_construir(nombre, parametros):
+    """F-75: GA con `tournament_size=0` fallaba en la primera iteracion con
+    'min() arg is an empty sequence'; SA con `initial_temp=-5` comparaba con un complejo; y
+    `cooling_rate=1.5` o un `alteration_limit` negativo corrian sin buscar y sin avisar."""
+    import metagen.metaheuristics as metaheuristicas
+
+    clase = getattr(metaheuristicas, nombre)
+    dominio = _f75_dominio(nombre in ("GA", "SSGA", "Memetic"))
+    with pytest.raises(ValueError, match=next(iter(parametros))):
+        clase(dominio, lambda solucion: solucion["x"] ** 2, **parametros)
+
+
+@pytest.mark.parametrize("valor", [None, "3.5", [1.0, 2.0]])
+def test_f75_una_fitness_que_no_devuelve_un_numero_lo_dice(valor):
+    """F-75: una fitness que devolvia None fallaba en la primera comparacion
+    ('<' not supported between NoneType...), y un array al escribir el historial, lejos de la
+    funcion que lo devolvio."""
+    import numpy as np
+    from metagen.metaheuristics import RandomSearch
+
+    devuelto = np.array(valor) if isinstance(valor, list) else valor
+
+    def mi_fitness(solucion):
+        return devuelto
+
+    with pytest.raises(TypeError, match="mi_fitness"):
+        RandomSearch(_f75_dominio(False), mi_fitness, population_size=3, max_iterations=1, seed=0).run()
+    # Lo que si es un numero se acepta tal cual o convertido: un array de NumPy de dimension 0.
+    resultado = RandomSearch(_f75_dominio(False), lambda solucion: np.array(2.5), population_size=3,
+                             max_iterations=1, seed=0).run()
+    assert resultado.get_fitness() == 2.5

@@ -25,6 +25,7 @@ from abc import ABC, abstractmethod
 
 from ._budget import _Budget
 from ._checkpoint import _Checkpointing
+from ._parameters import require_integer
 from .import_helper import is_package_installed, require_ray, start_ray
 from typing import Any, Dict, List, Mapping, Sequence, Tuple, Optional, Callable, cast
 from metagen.framework import Domain, Solution
@@ -102,7 +103,9 @@ _OPTIONS_OF_A_RUN_DOC = """\
 :type racing: Racing or None, optional
 :param refit: A function that trains the model of the best solution when the run ends;
     see :py:class:`~metagen.metaheuristics.Metaheuristic`.
-:type refit: Callable[[Solution], Any] or None, optional"""
+:type refit: Callable[[Solution], Any] or None, optional
+:raises ValueError: If a parameter is outside the values it takes, such as a negative
+    ``max_iterations`` or a probability greater than 1."""
 
 
 def _with_options_of_a_run(doc: Optional[str]) -> Optional[str]:
@@ -287,6 +290,9 @@ class Metaheuristic(_Checkpointing, _Budget, ABC):
                  racing: Optional[Racing] = None, refit: Optional[Callable[[Solution], Any]] = None) -> None:
         super().__init__()
 
+        require_integer("population_size", population_size, 1)
+        require_integer("warmup_iterations", warmup_iterations, 0)
+        require_integer("checkpoint_every", checkpoint_every, 1)
         if max_evaluations is not None and (isinstance(max_evaluations, bool)
                                             or not isinstance(max_evaluations, numbers.Integral)
                                             or max_evaluations < 1):
@@ -361,8 +367,6 @@ class Metaheuristic(_Checkpointing, _Budget, ABC):
         self.logger = (TensorBoardLogger(log_dir=log_dir)
                        if log_dir is not None and is_package_installed("tensorboard")
                        else None)
-        if checkpoint_every < 1:
-            raise ValueError(f"checkpoint_every must be at least 1, not {checkpoint_every}")
         self.checkpoint = checkpoint
         self.checkpoint_every = checkpoint_every
         self._stop_requested = False
@@ -719,6 +723,7 @@ class Metaheuristic(_Checkpointing, _Budget, ABC):
         :return: The best solution found, or the best found so far when
             :py:meth:`request_stop` stopped the run.
         :rtype: Solution
+        :raises TypeError: If the fitness function returns something that is not a number.
         """
         self.stop_reason = None
         resuming = self.checkpoint is not None and os.path.exists(self.checkpoint)

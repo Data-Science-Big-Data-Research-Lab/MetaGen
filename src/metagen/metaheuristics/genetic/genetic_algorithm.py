@@ -21,6 +21,7 @@ from .genetic_tools import (GASolution, yield_two_children, require_crossover,
                        tournament_selection)
 from metagen.metaheuristics.racing import Racing
 from metagen.metaheuristics.base import Metaheuristic
+from metagen.metaheuristics._parameters import require_alteration, require_integer, require_probability
 from typing import Any, Optional, Callable, List, Tuple, cast, Mapping, Sequence
 from copy import deepcopy
 
@@ -110,6 +111,9 @@ class GA(Metaheuristic):
                  initial_solutions: Optional[Sequence[Mapping[str, Any]]] = None, racing: Optional[Racing] = None,
                  refit: Optional[Callable[[Solution], Any]] = None,
                  mutation_alteration_limit: Any = RelativeAlteration(0.2)):
+        require_probability("mutation_rate", mutation_rate)
+        require_integer("tournament_size", tournament_size, 1)
+        require_alteration("mutation_alteration_limit", mutation_alteration_limit)
         super().__init__(domain, fitness_function, population_size=population_size, distributed=distributed, log_dir=log_dir, seed=seed,
                          distribution_model=distribution_model,
                          checkpoint=checkpoint, checkpoint_every=checkpoint_every,
