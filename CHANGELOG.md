@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Changes
+
+- **`DistributedCVOA` without Ray** raises an `ImportError` that says how to install it, as a
+  distributed run and the distributed launcher of CVOA do.
+
 ## 1.6.0
 
 MetaGen 1.6.0 gives the package a public API: the names a program imports, from a few

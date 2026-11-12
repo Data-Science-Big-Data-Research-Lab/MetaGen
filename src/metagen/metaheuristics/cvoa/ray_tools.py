@@ -1,5 +1,13 @@
 from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, TypeAlias
-import ray
+
+from metagen.metaheuristics.import_helper import ray_missing
+
+# Wrapped, as in the distributed launcher: imported bare, asking for DistributedCVOA without
+# Ray gave Python's own "No module named 'ray'", with nothing about what to install (F-70).
+try:
+    import ray
+except ImportError as error:
+    raise ImportError(ray_missing("the distributed CVOA")) from error
 from metagen.framework import Solution, Domain
 from metagen.metaheuristics.cvoa.common_tools import IndividualState, PandemicState, SolutionKeys, StrainProperties, SolutionSet
 from metagen.framework.rng import set_seed, spawn_seed

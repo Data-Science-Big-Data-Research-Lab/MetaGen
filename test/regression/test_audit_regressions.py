@@ -3637,3 +3637,21 @@ def test_f69_una_cepa_hace_tantas_iteraciones_como_pandemic_duration(nombre, dur
     estado = LocalPandemicState(Solution(dominio))
     Contada(estado, dominio, fitness, StrainProperties("S1", pandemic_duration=duracion)).run()
     assert len(iteraciones) == duracion, iteraciones
+
+
+# --------------------------------------------------------------------------------
+# F-70 · DistributedCVOA sin Ray no dice que hay que instalarlo
+# --------------------------------------------------------------------------------
+
+@pytest.mark.parametrize("importacion", [
+    "from metagen.metaheuristics import DistributedCVOA",
+    "from metagen.metaheuristics.cvoa.distributed_cvoa import DistributedCVOA",
+])
+def test_f70_distributed_cvoa_sin_ray_dice_como_instalarlo(importacion):
+    """F-70: `cvoa/ray_tools.py` importaba Ray sin mas, asi que pedir `DistributedCVOA` sin Ray
+    daba el «No module named 'ray'» de Python, mientras que el lanzador distribuido y una
+    ejecucion distribuida decian que extra instalar. Las dos rutas tienen que decirlo."""
+    codigo = f"import sys\nsys.modules['ray'] = None\n{importacion}\n"
+    hecho = subprocess.run([sys.executable, "-c", codigo], capture_output=True, text=True)
+    assert hecho.returncode != 0
+    assert "pip install pymetagen-datalabupo[distributed]" in hecho.stderr, hecho.stderr[-400:]
