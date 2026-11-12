@@ -29,7 +29,7 @@ from ._parameters import require_integer
 from .import_helper import is_package_installed, require_ray, start_ray
 from typing import Any, Dict, List, Mapping, Sequence, Tuple, Optional, Callable, cast
 from metagen.framework import Domain, Solution
-from metagen.framework.rng import get_rng, set_seed, spawn_seed
+from metagen.framework.rng import get_rng, seeded, set_seed, spawn_seed
 from copy import deepcopy
 
 from metagen.logging.metagen_logger import metagen_logger
@@ -73,8 +73,8 @@ _OPTIONS_OF_A_RUN_DOC = """\
 :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
 :type log_dir: str or None, optional
 :param seed: Seed for the package's random generators, applied at the start of
-    ``run()``; the same seed reproduces the run. None, the default, draws a different
-    run every time.
+    ``run()``; the same seed reproduces the run, also when several run at once in threads.
+    None, the default, draws a different run every time.
 :type seed: int or None, optional
 :param distribution_model: How a distributed run makes up the next population out of
     the slices, ``"global"`` (the default: shuffled, selected among all workers) or
@@ -725,6 +725,12 @@ class Metaheuristic(_Checkpointing, _Budget, ABC):
         :rtype: Solution
         :raises TypeError: If the fitness function returns something that is not a number.
         """
+        # On a thread other than the main one, a run with a seed draws from generators of
+        # its own, so that several at once give what each gives alone (F-77).
+        with seeded(self.seed):
+            return self._run_seeded()
+
+    def _run_seeded(self) -> Solution:
         self.stop_reason = None
         resuming = self.checkpoint is not None and os.path.exists(self.checkpoint)
         if resuming:

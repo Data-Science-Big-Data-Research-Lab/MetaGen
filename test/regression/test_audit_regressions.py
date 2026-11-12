@@ -3989,3 +3989,89 @@ def test_f76_cvoa_distribuido_no_pasa_de_max_evaluations():
     finally:
         if arrancado_aqui and ray.is_initialized():
             ray.shutdown()
+
+
+# --------------------------------------------------------------------------------
+# F-77: dos ejecuciones con semilla en hilos simultaneos se resembraban los generadores
+# del proceso y se robaban numeros la una a la otra (X-04 de la auditoria independiente).
+# --------------------------------------------------------------------------------
+
+def _f77_dominio():
+    from metagen.metaheuristics import GAConnector
+
+    dominio = Domain(GAConnector())
+    dominio.define_real("x", -5.0, 5.0)
+    dominio.define_integer("n", 0, 50)
+    return dominio
+
+
+def _f77_fitness(solucion):
+    import time
+
+    # Suelta el GIL, como cualquier entrenamiento de NumPy o scikit-learn: los hilos se
+    # alternan en mitad de la ejecucion.
+    time.sleep(0.0003)
+    return (solucion["x"] - 1.0) ** 2 + abs(solucion["n"] - 7)
+
+
+@pytest.mark.parametrize("nombre", ["RandomSearch", "GA", "SA", "TPE"])
+def test_f77_ejecuciones_con_semilla_en_hilos_dan_lo_mismo_que_solas(nombre):
+    """F-77: `run()` sembraba los generadores del proceso, compartidos por todos los hilos;
+    cuatro ejecuciones en un ThreadPoolExecutor daban otra cosa que en secuencia, 12 de 12
+    veces en cada algoritmo."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    import metagen.metaheuristics as metaheuristicas
+
+    clase = getattr(metaheuristicas, nombre)
+
+    def mejor(semilla):
+        return clase(_f77_dominio(), _f77_fitness, seed=semilla, max_iterations=6).run().get_fitness()
+
+    solas = [mejor(semilla) for semilla in range(4)]
+    with ThreadPoolExecutor(4) as hilos:
+        assert list(hilos.map(mejor, range(4))) == solas
+
+
+def test_f77_trigen_con_semilla_en_hilos_da_lo_mismo_que_solo():
+    from concurrent.futures import ThreadPoolExecutor
+
+    from metagen.metaheuristics import TriGen
+    from metagen.triclustering import plant
+
+    cubo, _ = plant((40, 8, 8), [(10, 3, 4)], pattern="additive", noise=0.05, seed=0)
+
+    def encontrados(semilla):
+        return [t.fitness for t in TriGen(cubo, n_triclusters=2, generations=5, population_size=20,
+                                          min_sizes=(3, 2, 2), seed=semilla).run()]
+
+    solos = [encontrados(semilla) for semilla in range(3)]
+    with ThreadPoolExecutor(3) as hilos:
+        assert list(hilos.map(encontrados, range(3))) == solos
+
+
+def test_f77_los_generadores_del_hilo_se_anidan_y_guardan_su_estado():
+    """F-77: al salir de un `own_generators` anidado se borraban los del hilo, y el de fuera
+    seguia con los del proceso; `get_state`, `set_state`, `set_seed` y `spawn_seed`
+    trabajaban siempre sobre los del proceso, asi que un checkpoint o una ejecucion en Ray
+    dentro de un hilo con semilla no se reproducian."""
+    from metagen.framework.rng import get_rng, get_state, own_generators, set_state, spawn_seed
+
+    set_seed(5)
+    proceso = random.Random(5)
+    assert get_rng().random() == proceso.random()
+    with own_generators(1):
+        referencia = random.Random(1)
+        assert get_rng().random() == referencia.random()
+        with own_generators(2):
+            assert get_rng().random() == random.Random(2).random()
+        # El de fuera sigue donde estaba, no en los del proceso.
+        assert get_rng().random() == referencia.random()
+        estado = get_state()
+        siguiente = (get_rng().random(), spawn_seed())
+        set_state(estado)
+        assert (get_rng().random(), spawn_seed()) == siguiente
+        set_seed(1)
+        assert get_rng().random() == random.Random(1).random()
+    # Nada de lo de dentro ha tocado los del proceso.
+    assert get_rng().random() == proceso.random()

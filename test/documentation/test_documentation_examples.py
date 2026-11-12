@@ -146,6 +146,7 @@ def short_searches(monkeypatch):
     "index.rst",
     "advanced_topics/interface.rst",
     "metaheuristics/tpe.rst",
+    "metaheuristics/base.rst",
     "metagen_in_action/duc/rs.rst",
     "metagen_in_action/duc/sa.rst",
     "metagen_in_action/suc/index.rst",

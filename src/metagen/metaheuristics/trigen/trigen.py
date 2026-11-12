@@ -25,7 +25,7 @@ from typing import Any, Dict, List, Literal, Mapping, Optional, Sequence, Set, T
 import numpy as np
 
 from metagen.framework import Solution
-from metagen.framework.rng import get_numpy_rng, set_seed
+from metagen.framework.rng import get_numpy_rng, seeded, set_seed
 from metagen.logging.metagen_logger import metagen_logger
 from metagen.metaheuristics.trigen.fitness import (NULL_SAMPLES, NULL_SIZES, Measure, Overlap, Scoring,
                                                    SizeReference, TriclusterFitness)
@@ -141,7 +141,8 @@ class TriGen:
     :param size_reference: What the size term measures against, ``"dataset"`` or ``"max"``,
         defaults to ``"dataset"``.
     :type size_reference: str, optional
-    :param seed: Seed for MetaGen's generators, set once for the whole run, defaults to None.
+    :param seed: Seed for MetaGen's generators, set once for the whole run, defaults to None; the
+        same seed reproduces the run, also when several run at once in threads.
     :type seed: int or None, optional
     :param history: File the run writes a JSON line to per search: the tricluster found,
         its sizes, fitness and terms, the best fitness after each generation, the
@@ -402,7 +403,9 @@ class TriGen:
         self.started = {"configuration": self.configuration(), "chance_evaluations": 0,
                         "date": datetime.datetime.now().astimezone().isoformat(timespec="seconds")}
         try:
-            return self._run()
+            # On a thread other than the main one, with a seed, generators of its own (F-77).
+            with seeded(self.seed):
+                return self._run()
         finally:
             self.seconds = time.perf_counter() - clock
 

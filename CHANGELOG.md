@@ -4,6 +4,9 @@
 
 ### Changes
 
+- **Runs with a seed in several threads at once**, as in a comparison spread over a
+  `ThreadPoolExecutor`, each give what they give alone: on a thread other than the main one, a
+  run with a seed draws from generators of its own. On the main thread nothing changes.
 - **A budget for CVOA.** `cvoa_launcher` and `distributed_cvoa_launcher` take
   `max_evaluations` and `timeout` for the whole pandemic, shared by all its strains and
   checked before every evaluation: once it is spent, nothing more is evaluated and every
