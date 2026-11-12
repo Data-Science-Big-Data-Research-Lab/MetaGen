@@ -15,6 +15,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import copy
 import heapq
 import inspect
 import math
@@ -44,7 +45,7 @@ if is_package_installed("tensorboard"):
 
 if IS_RAY_INSTALLED:
     import ray
-    from .distributed_tools import assign_load_equally, call_distributed, distributed_random_exploration
+    from .distributed_tools import assign_load_equally, call_method, distributed_random_exploration
 
 
 #: The arguments of a constructor that are not part of what :py:meth:`Metaheuristic.parameters`
@@ -428,16 +429,18 @@ class Metaheuristic(_Checkpointing, _Budget, ABC):
             metagen_logger.info(
                 f"Distributing the initialization with {ray.cluster_resources().get('CPU', 0)} CPUs -- {distribution}")
 
+        # The algorithm goes to the object store once for every task of the iteration, and
+        # without what no worker reads: the history, the curve of bests and the whole
+        # population, of which a task gets its slice as an argument. Sent with every task,
+        # it took the data its fitness function closes over along, once per task (E-06 of
+        # the independent audit). Each task still gets a copy of its own (F-40).
+        algorithm = ray.put(self._worker_copy())
         for index, count in enumerate(distribution):
-            # The method is sent with a copy of the metaheuristic, made when the task is
-            # submitted: each copy knows which slice it runs.
-            self.distributed_slice = index
             if iterating:
-                futures.append(call_distributed.remote(spawn_seed(), method, population[:count]))
+                futures.append(call_method.remote(spawn_seed(), algorithm, method.__name__, index, population[:count]))
                 population = population[count:]
             else:
-                futures.append(call_distributed.remote(spawn_seed(), method, count))
-        self.distributed_slice = 0
+                futures.append(call_method.remote(spawn_seed(), algorithm, method.__name__, index, count))
 
         answers = ray.get(futures)
         # Each worker evaluates on a copy of the fitness function and says how many.
@@ -449,6 +452,22 @@ class Metaheuristic(_Checkpointing, _Budget, ABC):
         if iterating and self.distribution_model == "global":
             return self.select_survivors(parents, offspring), best_individual
         return offspring, best_individual
+
+    def _worker_copy(self) -> "Metaheuristic":
+        """
+        The copy of the algorithm a distributed iteration sends to its workers: the same
+        object, without the history, the curve of bests, the population and the logger,
+        which the methods run on the workers do not read.
+
+        :return: A shallow copy that shares everything else with this one.
+        :rtype: Metaheuristic
+        """
+        worker = copy.copy(self)
+        worker.history = []
+        worker.best_solution_fitnesses = []
+        worker.current_solutions = []
+        worker.logger = None
+        return worker
 
     def select_survivors(self, parents: List[Solution], offspring: List[Solution]) -> List[Solution]:
         """

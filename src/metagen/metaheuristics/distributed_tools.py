@@ -8,23 +8,26 @@ from metagen.metaheuristics.tools import Counts, add_calls, calls_of, random_exp
 
 
 @ray.remote
-def call_distributed(seed: int, function: Callable, *args: Any, **kargs: Any) -> Any:
+def call_method(seed: int, algorithm: Any, name: str, slice_index: int, *args: Any) -> Any:
     """
-    Run a method of the algorithm in a worker, on generators seeded for this task.
+    Run a method of the algorithm in a worker, on generators seeded for this task, as the
+    copy that runs slice ``slice_index``.
 
-    The worker is another process with its own generator state, so it is seeded
-    here to make a distributed run reproducible. The seed comes from spawn_seed() in
-    the driver, so the driver's seed decides it.
+    The algorithm arrives as one object for all the tasks of an iteration, put in the
+    object store once by the driver; each task works on its own copy of it, so what the
+    method writes on it stays in the worker (F-40).
 
     :return: What the method returns, and the evaluations of the fitness it made, which
-        the worker counts on its copy of the algorithm and the driver adds to its own.
+        the driver adds to its own.
     """
-    # A-06: without the seed no distributed run was reproducible.
+    # E-06 of the independent audit: the bound method sent with every task carried the
+    # whole algorithm, the data its fitness function closes over included, once per task.
     set_seed(seed)
-    fitness_function = getattr(getattr(function, "__self__", None), "fitness_function", None)
-    before = calls_of(fitness_function) if fitness_function is not None else Counts()
-    result = function(*args, **kargs)
-    return result, (calls_of(fitness_function) - before if fitness_function is not None else Counts())
+    algorithm.distributed_slice = slice_index
+    fitness_function = algorithm.fitness_function
+    before = calls_of(fitness_function)
+    result = getattr(algorithm, name)(*args)
+    return result, calls_of(fitness_function) - before
 
 
 def assign_load_equally(neighbor_population_size: int, minimum_chunk: int = 1) -> List[int]:
