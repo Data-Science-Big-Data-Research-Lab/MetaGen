@@ -4,6 +4,11 @@
 
 ### Changes
 
+- **A search of TriGen does not evaluate again a child equal to an individual it has
+  already evaluated**: the child takes its fitness, so a search makes fewer evaluations
+  and finds the same triclusters. `TriGenGA.evaluated` keeps the best triclusters
+  evaluated, one more than the triclusters found before the search, which is what TriGen
+  chooses from, instead of all of them.
 - **Runs with a seed in several threads at once**, as in a comparison spread over a
   `ThreadPoolExecutor`, each give what they give alone: on a thread other than the main one, a
   run with a seed draws from generators of its own. On the main thread nothing changes.

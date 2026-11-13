@@ -69,11 +69,14 @@ class TriGenGA(Metaheuristic):
       parents; breeds the rest of the population from pairs of distinct parents, crossing
       the genes, the conditions and the times each at one point; mutates each child, with
       probability ``mutation_probability``, by one step in one of its three dimensions
-      (adding, removing or changing one coordinate); and evaluates the children.
+      (adding, removing or changing one coordinate); and evaluates the children. A child
+      equal to an individual already evaluated in the search takes its fitness without
+      being evaluated again: the triclusters found before the search do not change during it.
     - **It stops** after ``generations`` generations.
 
-    Every tricluster it evaluates is kept in :py:attr:`evaluated`, with its fitness, so
-    that TriGen can take the best one that does not repeat a tricluster already found.
+    The best triclusters it evaluates, one more than the triclusters found before it, are
+    kept in :py:attr:`evaluated`, with their fitness, so that TriGen can take the best one
+    that does not repeat a tricluster already found.
 
     :param fitness: The fitness, with the cube and the triclusters already found.
     :type fitness: TriclusterFitness
@@ -127,9 +130,21 @@ class TriGenGA(Metaheuristic):
         self.random_fraction = random_fraction
         self.selection_count = exact_floor(selection_rate, population_size)
         self.mutation_probability = mutation_probability
-        #: Every tricluster evaluated, with its fitness. Filled on the driver, from the
+        #: The best triclusters evaluated, as many as triclusters had been found before
+        #: the search plus one, with their fitness, in the order they were first evaluated:
+        #: among them is always the best one not found yet. Filled on the driver, from the
         #: population after each step, which holds every individual just evaluated.
         self.evaluated: Dict[Tricluster, float] = {}
+        # Every tricluster evaluated was kept, arrays included: 45 MB in 1400 evaluations of
+        # a toy cube, gigabytes with the prisms of real data, for _choose, which only needs
+        # the best one not found (E-13 and EF-09 of the independent audit).
+        self._keep = len(fitness.found) + 1
+        # The fitness of every individual evaluated in the search, by the values of its
+        # variables: a child that repeats one is not evaluated again, which was 11 % of the
+        # evaluations on a small cube (E-13). Small: a key is a tuple of numbers.
+        self._values: Dict[Tuple[Any, ...], float] = {}
+        # The population of the last step, to tell its individuals from the new ones.
+        self._previous: List[Solution] = []
 
     def _solution(self, tricluster: Tricluster) -> Solution:
         return self.form.to_solution(tricluster, self.domain)
@@ -163,20 +178,30 @@ class TriGenGA(Metaheuristic):
         selected = select_by_groups(solutions, self.selection_count)
         wanted = len(solutions) - len(selected)
         children: List[Solution] = []
+        bred: Dict[Tuple[Any, ...], float] = {}
         while len(children) < wanted:
             father, mother = get_rng().sample(selected, 2)
             # With an odd number to breed, the last pair gives one child.
             for child in cast(GASolution, father).crossover(cast(GASolution, mother))[:wanted - len(children)]:
                 if get_rng().random() < self.mutation_probability:
                     child.mutate(alterations_number=1, alteration_limit=1)
-                child.evaluate(self.fitness_function)
+                # The fitness draws nothing, so a child that takes a value already known leaves
+                # the search as it was. Written here only for the children of this step: what
+                # persists is filled in post_iteration, on the driver (F-40).
+                key = child._key()
+                known = self._values.get(key, bred.get(key))
+                if known is None:
+                    child.evaluate(self.fitness_function)
+                    bred[key] = child.get_fitness()
+                else:
+                    child.set_fitness(known)
                 children.append(child)
         population = selected + children
         return population, min(population, key=Solution.get_fitness)
 
     def _initialize(self) -> Tuple[List[Solution], Solution]:
         # A new run starts a new record; a resumed one does not come through here.
-        self.evaluated = {}
+        self.evaluated, self._values, self._previous = {}, {}, []
         result = super()._initialize()
         self._record(self.current_solutions)
         return result
@@ -187,9 +212,36 @@ class TriGenGA(Metaheuristic):
         super().post_iteration()
 
     def _record(self, population: Sequence[Solution]) -> None:
+        # Only the new individuals: the selected pass on untouched and were recorded when
+        # they were bred. Decoding the whole population every generation was a tenth of a
+        # search of prisms (EF-10 of the independent audit).
+        previous = {id(individual) for individual in self._previous}
         for individual in population:
-            tricluster = self.form.from_solution(individual)
-            self.evaluated.setdefault(tricluster, individual.get_fitness())
+            if id(individual) in previous:
+                continue
+            value = individual.get_fitness()
+            self._values.setdefault(individual._key(), value)
+            self._keep_if_among_the_best(individual, value)
+        self._previous = list(population)
+
+    def _keep_if_among_the_best(self, individual: Solution, value: float) -> None:
+        """
+        Keep an individual's tricluster in :py:attr:`evaluated` if it is among the best
+        ``_keep``, by fitness and then by order of arrival: among them is the best of all
+        those evaluated that is not one of the triclusters found before the search, and the
+        first evaluated of them if several tie, as when every one was kept.
+        """
+        if len(self.evaluated) >= self._keep and value >= max(self.evaluated.values()):
+            # Not better than the worst kept, and later than it: decoding it is not needed.
+            return
+        tricluster = self.form.from_solution(individual)
+        if tricluster in self.evaluated:
+            return
+        self.evaluated[tricluster] = value
+        if len(self.evaluated) > self._keep:
+            # The worst, and the latest of the worst: the one that would come last.
+            worst = max(enumerate(self.evaluated.items()), key=lambda item: (item[1][1], item[0]))[1][0]
+            del self.evaluated[worst]
 
     def stopping_criterion(self) -> bool:
         return self.current_iteration >= self.generations
