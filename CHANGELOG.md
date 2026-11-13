@@ -1,22 +1,25 @@
 # Changelog
 
-## Unreleased
+## 1.7.0
 
-### Changes
+MetaGen 1.7.0 checks domains and the parameters of the metaheuristics when they are defined,
+with messages that name what is wrong, gives CVOA a budget of evaluations and seconds, and
+makes runs with a seed reproducible also when several run at once in threads. Distributed
+runs, CVOA on Ray and TriGen spend less.
 
-- **A search of TriGen does not evaluate again a child equal to an individual it has
-  already evaluated**: the child takes its fitness, so a search makes fewer evaluations
-  and finds the same triclusters. `TriGenGA.evaluated` keeps the best triclusters
-  evaluated, one more than the triclusters found before the search, which is what TriGen
-  chooses from, instead of all of them.
-- **Runs with a seed in several threads at once**, as in a comparison spread over a
-  `ThreadPoolExecutor`, each give what they give alone: on a thread other than the main one, a
-  run with a seed draws from generators of its own. On the main thread nothing changes.
+### New
+
 - **A budget for CVOA.** `cvoa_launcher` and `distributed_cvoa_launcher` take
   `max_evaluations` and `timeout` for the whole pandemic, shared by all its strains and
   checked before every evaluation: once it is spent, nothing more is evaluated and every
   strain stops at the end of the iteration in course. Without them, runs give the same
   results.
+- **Runs with a seed in several threads at once**, as in a comparison spread over a
+  `ThreadPoolExecutor`, each give what they give alone: on a thread other than the main one, a
+  run with a seed draws from generators of its own. On the main thread nothing changes.
+
+### Changes
+
 - **Domains are validated further.** The bounds of a real are finite numbers, and the bounds
   and the step of an integer are integers. With a step, only the values on its grid from the
   minimum are valid, and a NaN never is: setting one of them raises a `ValueError` that names
@@ -42,6 +45,25 @@
   results.
 - **`DistributedCVOA` without Ray** raises an `ImportError` that says how to install it, as a
   distributed run and the distributed launcher of CVOA do.
+- **The best solution of a CVOA pandemic** is only replaced by a better one, also when several
+  strains find one at once.
+- **`TriGenGA.evaluated`** keeps the best triclusters a search evaluates, one more than the
+  triclusters found before it, which is what TriGen chooses from, instead of all of them.
+
+### Performance
+
+The results of a seeded run are the same.
+
+- **A distributed run** sends the metaheuristic to its workers once per iteration, without its
+  history and its population, instead of with every task, so the data a fitness function
+  holds travels once per iteration.
+- **CVOA on Ray** spreads each iteration in one task per CPU instead of one per carrier, every
+  task reading the pandemic as it was when the iteration started, and a strain sends what it
+  changes together. A single strain on Ray now reproduces on the same number of CPUs, also on
+  a small discrete domain.
+- **A search of TriGen** does not evaluate again a child equal to an individual it has already
+  evaluated: the child takes its fitness, so a search makes fewer evaluations and finds the
+  same triclusters.
 
 ## 1.6.0
 
