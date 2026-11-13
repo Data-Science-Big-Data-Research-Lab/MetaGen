@@ -32,6 +32,11 @@ from metagen.framework.rng import get_rng
 
 class Structure(BaseType):
 
+    #: Whether a mutation that changes the length of a dynamic structure keeps the elements it
+    #: then alters within the alteration limit, as every other mutation does. A structure that
+    #: explores by drawing them anew over their whole domain sets it to False.
+    limit_after_resizing: bool = True
+
     def __init__(self, definition: DynamicStructureDefinition | StaticStructureDefinition,
                  connector=None):
         """
@@ -203,7 +208,11 @@ class Structure(BaseType):
         # and change the vector with change_vector_variable
         else:
             self._resize()
-            self._alterate()
+            # The limit too: without it a third of the mutations of a dynamic structure drew its
+            # elements anew over their whole domain, whatever neighborhood was asked for (F-73,
+            # X-08 of metagen-auditoria/auditoria-independiente-2026-11/eficacia.md). The steps
+            # of a prism of TriGen keep drawing them anew: they find better shapes so.
+            self._alterate(alteration_limit=alteration_limit if self.limit_after_resizing else None)
 
     def get(self, index=None) -> Any:
         """

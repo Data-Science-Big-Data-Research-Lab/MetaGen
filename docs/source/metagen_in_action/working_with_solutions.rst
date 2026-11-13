@@ -66,7 +66,7 @@ A conditional variable (see :doc:`../domain/domain`) reads as ``None`` while it 
 Writing
 -------
 
-``solution.set("name", value)`` takes the same plain values that ``[]`` returns, and checks them against the definition: a value out of range, a list of the wrong length or a missing group field raises a ``ValueError`` and leaves the solution as it was.
+``solution.set("name", value)`` takes the same plain values that ``[]`` returns, and checks them against the definition: a value out of range, a list of the wrong length or a group given something other than a ``dict`` raises a ``ValueError`` and leaves the solution as it was. A group, alone or in a structure, takes the variables given and keeps the others.
 
 .. code-block:: python
 

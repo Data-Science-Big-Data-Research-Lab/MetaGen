@@ -84,9 +84,12 @@ INVALID = [
 
 @pytest.mark.parametrize("name,value", VALID)
 def test_a_valid_value_is_stored_as_given(solution, name, value):
+    # A group takes the variables given and keeps the others (F-74): it is the value it had,
+    # updated with the one given.
+    expected = {**solution[name], **value} if isinstance(value, dict) else value
     solution.set(name, value)
     assert solution.is_available(name)
-    assert solution[name] == value
+    assert solution[name] == expected
 
 
 @pytest.mark.parametrize("name,value", INVALID)

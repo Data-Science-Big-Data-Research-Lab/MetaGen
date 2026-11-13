@@ -21,6 +21,7 @@ import math
 from copy import deepcopy
 from typing import Any, Optional, Callable, Tuple, List, cast, Mapping, Sequence
 from metagen.metaheuristics.base import Metaheuristic
+from metagen.metaheuristics._parameters import require_alteration, require_integer, require_number
 from metagen.framework.rng import get_rng
 
 
@@ -130,6 +131,10 @@ class SA(Metaheuristic):
         # looks at solutions[0]. Inheriting the default of 20 meant the warmup drew
         # 5 x 20 solutions and the initialization 20 more, of which 39 were thrown
         # away — about 120 of SA's 135 evaluations (F-20).
+        require_alteration("alteration_limit", alteration_limit)
+        require_number("initial_temp", initial_temp, above=0)
+        require_number("cooling_rate", cooling_rate, above=0, at_most=1, optional=True)
+        require_integer("neighbor_population_size", neighbor_population_size, 1)
         super().__init__(domain, fitness_function, population_size=1,
                          warmup_iterations=warmup_iterations, distributed=distributed,
                          log_dir=log_dir, seed=seed,

@@ -3,6 +3,7 @@ import heapq
 
 from metagen.metaheuristics.racing import Racing
 from metagen.metaheuristics.base import Metaheuristic
+from metagen.metaheuristics._parameters import require_integer
 import math
 from typing import Callable, List, Tuple, Optional, cast, Any, Mapping, Sequence
 from metagen.framework import Domain, Solution
@@ -41,8 +42,9 @@ class TPE(Metaheuristic):
     :type max_iterations: int or None, optional
     :param warmup_iterations: Rounds of random exploration before the search, each
         evaluating ``population_size`` solutions; their best is kept as the best
-        of the run so far, defaults to 10
-    :type warmup_iterations: int, optional
+        of the run so far. None, the default, is 10, or fewer with ``max_evaluations``:
+        the warmup and the initialization then take at most a quarter of the budget.
+    :type warmup_iterations: int or None, optional
     :param candidate_pool_size: Solutions evaluated per iteration, defaults to 24
     :type candidate_pool_size: int, optional
     :param gamma_config: How the fraction of best solutions used to build the models is
@@ -75,9 +77,12 @@ class TPE(Metaheuristic):
 
     #: The iterations of a run that sets no budget and no max_iterations.
     default_max_iterations: int = 50
+    #: The warmup rounds when ``warmup_iterations`` is not given and the budget leaves room for them.
+    default_warmup_iterations: int = 10
 
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
-                 max_iterations: Optional[int] = None, warmup_iterations:int = 10, candidate_pool_size: int = 24,
+                 max_iterations: Optional[int] = None, warmup_iterations: Optional[int] = None,
+                 candidate_pool_size: int = 24,
                  gamma_config: Optional[GammaConfig] = None, distributed=False, log_dir: Optional[str] = None,
                  seed: Optional[int] = None, population_size: int = 20,
                  distribution_model: str = "global",
@@ -100,6 +105,11 @@ class TPE(Metaheuristic):
         domain = deepcopy(domain)
         domain._connector = TPEConnector()
 
+        require_integer("population_size", population_size, 1)
+        require_integer("warmup_iterations", warmup_iterations, 0, optional=True)
+        require_integer("candidate_pool_size", candidate_pool_size, 1)
+        warmup_iterations = self._warmup_for(warmup_iterations, population_size, max_evaluations)
+
         super().__init__(domain, fitness_function, population_size=population_size,
                          warmup_iterations=warmup_iterations, distributed=distributed, log_dir=log_dir, seed=seed,
                          distribution_model=distribution_model,
@@ -115,6 +125,24 @@ class TPE(Metaheuristic):
             horizon=lambda budget: math.ceil((budget - start) / candidate_pool_size)))
         self.candidate_pool_size = candidate_pool_size
         self.gamma_config = gamma_config if gamma_config else GammaConfig(gamma_function="sampled_based")
+
+    def _warmup_for(self, warmup_iterations: Optional[int], population_size: int,
+                    max_evaluations: Optional[int]) -> int:
+        """
+        The warmup rounds of the run: the ones given, or the default, reduced so that the
+        warmup and the initialization take at most a quarter of ``max_evaluations``.
+        """
+        # With the defaults the warmup and the initialization cost 220 evaluations (120 in
+        # KernelTPE), so a budget of 100, a usual one for tuning, was random sampling and the
+        # model never ran: 0 iterations of it, 44 wins of 90 against random sampling on the
+        # nine functions of the bench, 10 seeds (Y-10,
+        # metagen-auditoria/auditoria-independiente-2026-11/eficacia-fable.md). The runs of
+        # the article give max_iterations, not max_evaluations, and are not affected.
+        if warmup_iterations is not None:
+            return warmup_iterations
+        if max_evaluations is None:
+            return self.default_warmup_iterations
+        return min(self.default_warmup_iterations, max(0, max_evaluations // 4 // population_size - 1))
 
     def initialize(self, num_solutions=10) -> Tuple[List[Solution], Solution]:
         """

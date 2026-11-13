@@ -16,7 +16,7 @@ A tricluster is three subsets, of the genes, the conditions and the times of the
 
 Each search returns the best tricluster of its last population that is not one already found, and that tricluster then **grows**: TriGen adds to it, one at a time, the gene, condition or time that leaves its fitness lowest, as long as the fitness does not rise and the dimension is below its largest size. With ``growth="quality"`` the steps follow the quality term alone, and with ``growth=None`` the tricluster is kept as the search returned it.
 
-A search costs ``population_size`` evaluations to start and those of the children of each generation, ``population_size`` minus the selected, about half of it. Growing adds its own: each step scores every gene, condition and time not yet in the tricluster, in the dimensions below their largest size, and, with ``pruning``, every one it holds, so on a cube with thousands of genes growing can cost more than the search.
+A search costs ``population_size`` evaluations to start and those of the children of each generation, ``population_size`` minus the selected, about half of it; a child equal to an individual already evaluated in the search takes its fitness without being evaluated again. Growing adds its own: each step scores every gene, condition and time not yet in the tricluster, in the dimensions below their largest size, and, with ``pruning``, every one it holds, so on a cube with thousands of genes growing can cost more than the search.
 
 The fitness rewards size, so the largest sizes are what keeps the triclusters to the scale of the patterns sought: without ``max_sizes``, a tricluster may take in most of the cube, and growing it then costs many evaluations. Set them to the largest triclusters of interest.
 

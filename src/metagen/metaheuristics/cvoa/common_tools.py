@@ -1,5 +1,6 @@
 import copy
 import math
+import time
 from collections.abc import MutableSet
 from typing import Any, Callable, Dict, Iterable, Iterator, NamedTuple, Optional, Protocol, Set, Tuple
 
@@ -44,6 +45,18 @@ class SolutionKeys:
 
     def difference_update(self, other: "SolutionKeys") -> None:
         self._keys -= other._keys
+
+    def keys(self) -> Set[Tuple[Any, ...]]:
+        """The keys of the solutions in the set, as a new set."""
+        return set(self._keys)
+
+    def add_key(self, key: Tuple[Any, ...]) -> None:
+        """Add the solution with this key."""
+        self._keys.add(key)
+
+    def discard_key(self, key: Tuple[Any, ...]) -> None:
+        """Remove the solution with this key, if it is in the set."""
+        self._keys.discard(key)
 
 
 class SolutionSet(MutableSet[Solution]):
@@ -96,6 +109,12 @@ class StrainProperties(NamedTuple):
     them a pandemic spends twenty-two of its thirty iterations under social
     distancing, which is the phase in which it dies out.
 
+    Every newly infected individual is evaluated, and until social distancing the
+    population of a strain grows geometrically, so with these defaults a pandemic over a
+    continuous domain evaluates a great many solutions. With a fitness function that takes
+    long, such as one that trains a model, bound it with the ``max_evaluations`` or the
+    ``timeout`` of its launcher.
+
     :param strain_id: The name of the strain, used in the logs and in the reports.
     :param pandemic_duration: Iterations the strain runs, defaults to 30.
     :param spreading_rate: The most individuals an ordinary carrier infects per iteration,
@@ -146,6 +165,71 @@ class StrainProperties(NamedTuple):
 IndividualState = NamedTuple("IndividualState", [("recovered", bool), ("dead", bool), ("isolated", bool)])
 
 
+class PandemicBudget:
+    """
+    The evaluations and the seconds a whole pandemic may spend, shared by all its strains.
+    It holds no lock: the state that owns it does.
+
+    :param max_evaluations: The most evaluations of the fitness function, or None.
+    :type max_evaluations: int or None
+    :param timeout: The most seconds from its creation, or None.
+    :type timeout: float or None
+    """
+    # A pandemic over a continuous domain evaluates tens of thousands of solutions per
+    # iteration with the default properties, so a budget checked between iterations, as
+    # Metaheuristic.run does, could overrun by hours with a fitness function that trains a
+    # model: this one is checked before every evaluation (F-76, Y-12 of the independent audit).
+
+    def __init__(self, max_evaluations: Optional[int] = None, timeout: Optional[float] = None) -> None:
+        self.max_evaluations = max_evaluations
+        self.deadline = None if timeout is None else time.monotonic() + timeout
+        self.evaluations = 0
+
+    def limited(self) -> bool:
+        """Whether there is a budget at all."""
+        return self.max_evaluations is not None or self.deadline is not None
+
+    def spent(self) -> bool:
+        """Whether the pandemic has spent its evaluations or its seconds."""
+        return ((self.max_evaluations is not None and self.evaluations >= self.max_evaluations)
+                or (self.deadline is not None and time.monotonic() >= self.deadline))
+
+    def take(self) -> bool:
+        """Count one evaluation, if the budget allows it; say whether it did."""
+        if self.spent():
+            return False
+        self.evaluations += 1
+        return True
+
+
+class BudgetedFitness:
+    """
+    The fitness function of a pandemic with a budget: it evaluates while the shared state
+    allows one more evaluation, and from then on gives infinity without calling the
+    function, so that what is left of the iteration costs nothing and no solution it
+    touches competes for the best. The strains stop at the end of that iteration.
+
+    :param function: The fitness function.
+    :type function: Callable[[Solution], float]
+    :param state: The state the strains share, which keeps the budget.
+    :type state: PandemicState
+    """
+
+    def __init__(self, function: Callable[[Solution], float], state: "PandemicState") -> None:
+        self.function = function
+        self.state = state
+        self.spent = False
+        self.__qualname__ = getattr(function, "__qualname__", type(self).__name__)
+
+    def __call__(self, solution: Solution) -> float:
+        # Once spent, always spent: a copy on a worker of Ray asks the state no more.
+        if not self.spent and not self.state.take_evaluation():
+            self.spent = True
+        if self.spent:
+            return math.inf
+        return self.function(solution)
+
+
 class PandemicState(Protocol):
     """
     What a strain asks of the state every strain shares: the recovered, the dead,
@@ -177,6 +261,12 @@ class PandemicState(Protocol):
     def get_best_individual(self) -> Solution: ...
 
     def get_pandemic_report(self) -> Dict[str, Any]: ...
+
+    def take_evaluation(self) -> bool: ...
+
+    def budget_spent(self) -> bool: ...
+
+    def flush(self) -> None: ...
 
 
 

@@ -2968,6 +2968,8 @@ def test_f45_el_aislado_se_cuenta_en_distribuido():
         cepa.time = 1
         nuevos = cepa.infect_individuals(portador, 1, 5)
         assert len(nuevos) == 0
+        # La cepa envia al actor lo que ha escrito antes de la siguiente lectura y al terminar (E-09).
+        cepa.global_state.flush()
         assert ray.get(estado.get_pandemic_report.remote())["isolated"] == 5, (
             "el metodo del gemelo distribuido no cuenta a los aislados")
         assert ray.get(estado.get_recovered_len.remote()) == 0
@@ -3637,3 +3639,441 @@ def test_f69_una_cepa_hace_tantas_iteraciones_como_pandemic_duration(nombre, dur
     estado = LocalPandemicState(Solution(dominio))
     Contada(estado, dominio, fitness, StrainProperties("S1", pandemic_duration=duracion)).run()
     assert len(iteraciones) == duracion, iteraciones
+
+
+# --------------------------------------------------------------------------------
+# F-70 · DistributedCVOA sin Ray no dice que hay que instalarlo
+# --------------------------------------------------------------------------------
+
+@pytest.mark.parametrize("importacion", [
+    "from metagen.metaheuristics import DistributedCVOA",
+    "from metagen.metaheuristics.cvoa.distributed_cvoa import DistributedCVOA",
+])
+def test_f70_distributed_cvoa_sin_ray_dice_como_instalarlo(importacion):
+    """F-70: `cvoa/ray_tools.py` importaba Ray sin mas, asi que pedir `DistributedCVOA` sin Ray
+    daba el «No module named 'ray'» de Python, mientras que el lanzador distribuido y una
+    ejecucion distribuida decian que extra instalar. Las dos rutas tienen que decirlo."""
+    codigo = f"import sys\nsys.modules['ray'] = None\n{importacion}\n"
+    hecho = subprocess.run([sys.executable, "-c", codigo], capture_output=True, text=True)
+    assert hecho.returncode != 0
+    assert "pip install pymetagen-datalabupo[distributed]" in hecho.stderr, hecho.stderr[-400:]
+
+
+# --------------------------------------------------------------------------------
+# F-71 · KernelTPE colapsa sus propuestas a la longitud minima en una estructura dinamica
+# --------------------------------------------------------------------------------
+
+def test_f71_kernel_tpe_aprende_la_longitud_de_una_estructura_dinamica():
+    """F-71: la longitud de cada candidato salia de su inicializacion al azar, no del modelo,
+    y las propuestas acababan en la longitud 1, la peor region: con una estructura de 1 a 10
+    enteros cuya mejor longitud es 8, el 78 % de las ultimas propuestas (cinco semillas; entre
+    el 62 % y el 93 % en cada una). La longitud se saca ahora de un modelo de las longitudes de
+    los mejores y puntua una vez: el 24 % (ninguna semilla por encima del 37 %)."""
+    from collections import Counter
+
+    from metagen.metaheuristics import KernelTPE
+
+    dominio = Domain()
+    dominio.define_dynamic_structure("v", 1, 10)
+    dominio.set_structure_to_integer("v", 0, 6)
+    proporciones = []
+    for semilla in range(5):
+        longitudes = []
+
+        def fitness(solucion):
+            longitudes.append(len(solucion["v"]))
+            return 3 * abs(len(solucion["v"]) - 8) + sum(abs(x - 3) for x in solucion["v"])
+
+        KernelTPE(dominio, fitness, seed=semilla, max_iterations=120).run()
+        proporciones.append(Counter(longitudes[-60:])[1] / 60)
+    assert sum(proporciones) / len(proporciones) < 0.5, proporciones
+
+
+# --------------------------------------------------------------------------------
+# F-72 · Con un presupuesto pequeno, TPE y KernelTPE no llegan a usar su modelo
+# --------------------------------------------------------------------------------
+
+@pytest.mark.parametrize("nombre", ["TPE", "KernelTPE"])
+def test_f72_con_presupuesto_el_modelo_llega_a_usarse(nombre):
+    """F-72: con los valores por defecto, el warmup y la inicializacion costaban 220
+    evaluaciones en TPE y 120 en KernelTPE, asi que `max_evaluations=100` era muestreo
+    aleatorio: cero iteraciones del modelo. Sin `warmup_iterations`, el warmup se reduce para
+    que con la inicializacion no pase de una cuarta parte del presupuesto; si se da, se
+    respeta."""
+    from metagen.metaheuristics import TPE, KernelTPE
+
+    clase = {"TPE": TPE, "KernelTPE": KernelTPE}[nombre]
+    dominio = Domain()
+    dominio.define_real("x", -5.0, 5.0)
+
+    def fitness(solucion):
+        return solucion["x"] ** 2
+
+    acotado = clase(dominio, fitness, max_evaluations=100, seed=0)
+    acotado.run()
+    assert len(acotado.history) > 0, "el modelo no llega a ejecutarse"
+    assert acotado.population_size * (acotado.warmup_iterations + 1) <= 100 // 4 or acotado.warmup_iterations == 0
+    dado = clase(dominio, fitness, max_evaluations=100, warmup_iterations=3, seed=0)
+    assert dado.warmup_iterations == 3
+    sin_presupuesto = clase(dominio, fitness, seed=0)
+    assert sin_presupuesto.warmup_iterations == clase.default_warmup_iterations
+
+
+# --------------------------------------------------------------------------------
+# F-73 · La mutacion de una estructura dinamica ignora el limite de alteracion en un tercio
+# --------------------------------------------------------------------------------
+
+def test_f73_la_mutacion_de_una_estructura_dinamica_respeta_el_limite():
+    """F-73: de las tres acciones de `Structure.mutate` en una dinamica, la tercera (cambiar
+    la longitud y alterar) llamaba a `_alterate()` sin el limite, asi que resorteaba los
+    elementos en todo su dominio: con `RelativeAlteration(0.1)` sobre reales en [0, 100], 904
+    de 3000 mutaciones movian un elemento mas de 10. Ninguna tiene que pasarse."""
+    from metagen.framework import RelativeAlteration
+
+    set_seed(0)
+    dominio = Domain()
+    dominio.define_dynamic_structure("v", 5, 6)
+    dominio.set_structure_to_real("v", 0.0, 100.0)
+    lejos = 0
+    for _ in range(1500):
+        solucion = Solution(dominio)
+        solucion["v"] = [50.0] * 5
+        solucion.get("v").mutate(alteration_limit=RelativeAlteration(0.1))
+        lejos += any(abs(x - 50.0) > 10.0 + 1e-9 for x in solucion["v"][:5])
+    assert lejos == 0, f"{lejos} de 1500 mutaciones se salen del limite"
+
+
+def test_f73_los_pasos_de_un_prisma_de_trigen_se_resortean_al_cambiar_de_longitud():
+    """F-73 deja a los pasos de un prisma de TriGen como estaban: al cambiar de longitud, se
+    resortean en todo su dominio, que es como su busqueda explora las formas (con el limite,
+    la recuperacion media del ejemplo de la documentacion bajaba de 0,645 a 0,535). Tambien los
+    hijos de un cruce, que antes nacian como GAStructure."""
+    from metagen.metaheuristics.trigen.shape import PrismShape, _PrismSteps
+
+    forma = PrismShape(neighborhood=4, pixels=(4, 20))
+    dominio = forma.domain((10, 10, 6), [(2, 5), (2, 5), (3, 6)])
+    set_seed(1)
+    padre, madre = Solution(dominio, connector=dominio.get_connector()), Solution(dominio, connector=dominio.get_connector())
+    assert type(padre.get("steps")) is _PrismSteps and _PrismSteps.limit_after_resizing is False
+    hijo, _ = padre.get("steps").crossover(madre.get("steps"))
+    assert type(hijo) is _PrismSteps
+
+
+# --------------------------------------------------------------------------------
+# F-74 · Asignar un grupo con un diccionario parcial borra sus otras variables
+# --------------------------------------------------------------------------------
+
+def _f74_dominio():
+    dominio = Domain()
+    dominio.define_group("g")
+    dominio.define_integer_in_group("g", "a", 0, 5)
+    dominio.define_real_in_group("g", "b", 0.0, 1.0)
+    return dominio
+
+
+def test_f74_asignar_parte_de_un_grupo_conserva_el_resto():
+    """F-74: `_set_sub_solution` vaciaba el grupo antes de poner lo dado, asi que
+    `s['g'] = {'a': 2}` dejaba el grupo sin `b`. Se cambian solo las variables dadas."""
+    set_seed(0)
+    solucion = Solution(_f74_dominio())
+    antes = solucion["g"]["b"]
+    solucion["g"] = {"a": 2}
+    assert solucion["g"] == {"a": 2, "b": antes}
+    with pytest.raises(ValueError):
+        solucion["g"] = 3
+
+
+def test_f74_una_solucion_inicial_con_parte_de_un_grupo_rellena_el_resto():
+    """F-74: `initial_solutions=[{'g': {'a': 2}}]`, que la documentacion dice que sortea lo que
+    falta, acababa en un KeyError dentro de la fitness; y un valor que no es un diccionario
+    daba un AttributeError en vez de un ValueError."""
+    from metagen.metaheuristics import RandomSearch
+
+    vistos = []
+
+    def fitness(solucion):
+        vistos.append(dict(solucion["g"]))
+        return solucion["g"]["a"] + solucion["g"]["b"]
+
+    RandomSearch(_f74_dominio(), fitness, population_size=4, max_iterations=1, initial_solutions=[{"g": {"a": 2}}],
+                 seed=0).run()
+    assert vistos[0]["a"] == 2 and 0.0 <= vistos[0]["b"] <= 1.0
+    with pytest.raises(ValueError):
+        RandomSearch(_f74_dominio(), fitness, population_size=4, max_iterations=1, initial_solutions=[{"g": 3}],
+                     seed=0).run()
+
+
+# --------------------------------------------------------------------------------
+# F-75: el dominio aceptaba limites NaN o infinitos y valores fuera de la rejilla del
+# paso, y los parametros de las metaheuristicas no se validaban (X-11/Y-14 y X-12/Y-15
+# de la auditoria independiente).
+# --------------------------------------------------------------------------------
+
+def test_f75_el_dominio_rechaza_limites_no_finitos_y_valores_fuera_de_la_rejilla():
+    """F-75: `define_real('x', 0, nan)` se aceptaba y cada sorteo daba NaN;
+    `define_integer('n', 0, 10.5)` tambien; y un valor fuera de la rejilla del paso, o NaN,
+    pasaba la comprobacion del dominio."""
+    import math
+
+    for limites in ((0.0, math.nan), (-math.inf, 1.0), (0.0, math.inf)):
+        with pytest.raises(ValueError):
+            Domain().define_real("x", *limites)
+    for limites in ((0, 10.5), (0.5, 10), (True, 10)):
+        with pytest.raises(ValueError):
+            Domain().define_integer("n", *limites)
+    with pytest.raises(ValueError):
+        Domain().define_integer("n", 0, 10, 2.5)
+
+    dominio = Domain()
+    dominio.define_real("x", 0.0, 1.0, 0.1)
+    dominio.define_integer("n", 1, 10, 3)
+    dominio.define_real("y", 0.0, 1.0)
+    nucleo = dominio.get_core()
+    assert nucleo.check("x", 0.1 * 3)  # 0.30000000000000004: en la rejilla, con su redondeo
+    assert not nucleo.check("x", 0.25)
+    assert nucleo.check("n", 7) and not nucleo.check("n", 6)
+    assert not nucleo.check("y", math.nan)
+    solucion = Solution(dominio)
+    for nombre, valor in (("x", 0.25), ("n", 6), ("y", math.nan)):
+        with pytest.raises(ValueError):
+            solucion.set(nombre, valor)
+
+
+def _f75_dominio(genetico):
+    from metagen.metaheuristics import GAConnector
+
+    dominio = Domain(GAConnector()) if genetico else Domain()
+    dominio.define_real("x", -5.0, 5.0)
+    return dominio
+
+
+_F75_PARAMETROS = [
+    ("GA", {"tournament_size": 0}), ("GA", {"mutation_rate": 7}), ("GA", {"max_iterations": -3}),
+    ("GA", {"population_size": 2.5}), ("SSGA", {"mutation_rate": -1}), ("SA", {"initial_temp": 0}),
+    ("SA", {"initial_temp": -5}), ("SA", {"cooling_rate": 1.5}), ("SA", {"neighbor_population_size": 0}),
+    ("HillClimbing", {"alteration_limit": -1}), ("HillClimbing", {"warmup_iterations": -2}),
+    ("TabuSearch", {"tabu_radius": -0.1}), ("TPE", {"candidate_pool_size": 0}), ("KernelTPE", {"n_candidates": 0}),
+    ("Memetic", {"neighbor_population_size": 0}), ("RandomSearch", {"max_iterations": 2.5}),
+]
+
+
+@pytest.mark.parametrize("nombre,parametros", _F75_PARAMETROS,
+                         ids=[f"{nombre}-{next(iter(p))}={next(iter(p.values()))}" for nombre, p in _F75_PARAMETROS])
+def test_f75_un_parametro_invalido_se_rechaza_al_construir(nombre, parametros):
+    """F-75: GA con `tournament_size=0` fallaba en la primera iteracion con
+    'min() arg is an empty sequence'; SA con `initial_temp=-5` comparaba con un complejo; y
+    `cooling_rate=1.5` o un `alteration_limit` negativo corrian sin buscar y sin avisar."""
+    import metagen.metaheuristics as metaheuristicas
+
+    clase = getattr(metaheuristicas, nombre)
+    dominio = _f75_dominio(nombre in ("GA", "SSGA", "Memetic"))
+    with pytest.raises(ValueError, match=next(iter(parametros))):
+        clase(dominio, lambda solucion: solucion["x"] ** 2, **parametros)
+
+
+@pytest.mark.parametrize("valor", [None, "3.5", [1.0, 2.0]])
+def test_f75_una_fitness_que_no_devuelve_un_numero_lo_dice(valor):
+    """F-75: una fitness que devolvia None fallaba en la primera comparacion
+    ('<' not supported between NoneType...), y un array al escribir el historial, lejos de la
+    funcion que lo devolvio."""
+    import numpy as np
+    from metagen.metaheuristics import RandomSearch
+
+    devuelto = np.array(valor) if isinstance(valor, list) else valor
+
+    def mi_fitness(solucion):
+        return devuelto
+
+    with pytest.raises(TypeError, match="mi_fitness"):
+        RandomSearch(_f75_dominio(False), mi_fitness, population_size=3, max_iterations=1, seed=0).run()
+    # Lo que si es un numero se acepta tal cual o convertido: un array de NumPy de dimension 0.
+    resultado = RandomSearch(_f75_dominio(False), lambda solucion: np.array(2.5), population_size=3,
+                             max_iterations=1, seed=0).run()
+    assert resultado.get_fitness() == 2.5
+
+
+# --------------------------------------------------------------------------------
+# F-76: CVOA no admitia presupuesto, y con las propiedades por defecto una pandemia
+# sobre un dominio continuo hace cientos de miles de evaluaciones (Y-12 de la auditoria
+# independiente).
+# --------------------------------------------------------------------------------
+
+def _f76_dominio():
+    dominio = Domain()
+    for nombre in "abcd":
+        dominio.define_real(nombre, -5.0, 5.0)
+    return dominio
+
+
+@pytest.mark.parametrize("cepas", [1, 3])
+@pytest.mark.parametrize("clase", ["CVOA", "ProbabilisticCVOA"])
+def test_f76_cvoa_no_pasa_de_max_evaluations(clase, cepas):
+    """F-76: `cvoa_launcher` no tenia `max_evaluations` ni `timeout`; con una fitness que
+    entrena un modelo, la configuracion por defecto no terminaba en la practica. El
+    presupuesto es de toda la pandemia y se comprueba antes de cada evaluacion: una
+    iteracion llega a hacer decenas de miles."""
+    import threading
+
+    import metagen.metaheuristics as metaheuristicas
+    from metagen.metaheuristics import StrainProperties, cvoa_launcher
+
+    valores = []
+    cerrojo = threading.Lock()
+
+    def fitness(solucion):
+        valor = sum((solucion[nombre] - 0.3) ** 2 for nombre in "abcd")
+        with cerrojo:
+            valores.append(valor)
+        return valor
+
+    mejor = cvoa_launcher([StrainProperties(f"S{i}") for i in range(cepas)], _f76_dominio(), fitness, seed=3,
+                          strain_class=getattr(metaheuristicas, clase), max_evaluations=1000)
+    assert len(valores) == 1000
+    assert mejor.get_fitness() == min(valores)
+
+
+def test_f76_cvoa_con_timeout_termina_a_tiempo():
+    """F-76: sin presupuesto esta pandemia tarda mas de medio minuto; con `timeout` acaba
+    poco despues de el, porque lo que queda de la iteracion no se recorre."""
+    import time
+
+    from metagen.metaheuristics import StrainProperties, cvoa_launcher
+
+    inicio = time.perf_counter()
+    mejor = cvoa_launcher([StrainProperties()], _f76_dominio(), lambda s: sum(s[n] ** 2 for n in "abcd"), seed=3,
+                          timeout=0.5)
+    assert time.perf_counter() - inicio < 10
+    assert mejor.get_fitness() < math.inf
+
+
+@pytest.mark.parametrize("presupuesto", [{"max_evaluations": 0}, {"max_evaluations": 2.5}, {"timeout": -1},
+                                         {"timeout": math.inf}])
+def test_f76_un_presupuesto_invalido_se_rechaza(presupuesto):
+    from metagen.metaheuristics import StrainProperties, cvoa_launcher
+
+    with pytest.raises(ValueError):
+        cvoa_launcher([StrainProperties()], _f76_dominio(), lambda s: s["a"], **presupuesto)
+
+
+def test_f76_cvoa_distribuido_no_pasa_de_max_evaluations():
+    """F-76: en Ray el presupuesto lo lleva el actor del estado de la pandemia, y lo
+    comparten la cepa y todas sus tareas."""
+    ray = pytest.importorskip("ray")
+    from metagen.metaheuristics import StrainProperties, distributed_cvoa_launcher
+
+    arrancado_aqui = not ray.is_initialized()
+    if arrancado_aqui:
+        ray.init(num_cpus=2, include_dashboard=False, ignore_reinit_error=True)
+    try:
+        @ray.remote
+        class Contador:
+            def __init__(self):
+                self.n = 0
+
+            def sumar(self):
+                self.n += 1
+
+            def total(self):
+                return self.n
+
+        contador = Contador.remote()
+
+        def fitness(solucion):
+            ray.get(contador.sumar.remote())
+            return (solucion["a"] - 0.3) ** 2 + solucion["b"] ** 2
+
+        dominio = Domain()
+        dominio.define_real("a", -5.0, 5.0)
+        dominio.define_real("b", -5.0, 5.0)
+        mejor = distributed_cvoa_launcher([StrainProperties("S1")], dominio, fitness, seed=2, max_evaluations=150)
+        assert ray.get(contador.total.remote()) == 150
+        assert mejor.get_fitness() < math.inf
+    finally:
+        if arrancado_aqui and ray.is_initialized():
+            ray.shutdown()
+
+
+# --------------------------------------------------------------------------------
+# F-77: dos ejecuciones con semilla en hilos simultaneos se resembraban los generadores
+# del proceso y se robaban numeros la una a la otra (X-04 de la auditoria independiente).
+# --------------------------------------------------------------------------------
+
+def _f77_dominio():
+    from metagen.metaheuristics import GAConnector
+
+    dominio = Domain(GAConnector())
+    dominio.define_real("x", -5.0, 5.0)
+    dominio.define_integer("n", 0, 50)
+    return dominio
+
+
+def _f77_fitness(solucion):
+    import time
+
+    # Suelta el GIL, como cualquier entrenamiento de NumPy o scikit-learn: los hilos se
+    # alternan en mitad de la ejecucion.
+    time.sleep(0.0003)
+    return (solucion["x"] - 1.0) ** 2 + abs(solucion["n"] - 7)
+
+
+@pytest.mark.parametrize("nombre", ["RandomSearch", "GA", "SA", "TPE"])
+def test_f77_ejecuciones_con_semilla_en_hilos_dan_lo_mismo_que_solas(nombre):
+    """F-77: `run()` sembraba los generadores del proceso, compartidos por todos los hilos;
+    cuatro ejecuciones en un ThreadPoolExecutor daban otra cosa que en secuencia, 12 de 12
+    veces en cada algoritmo."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    import metagen.metaheuristics as metaheuristicas
+
+    clase = getattr(metaheuristicas, nombre)
+
+    def mejor(semilla):
+        return clase(_f77_dominio(), _f77_fitness, seed=semilla, max_iterations=6).run().get_fitness()
+
+    solas = [mejor(semilla) for semilla in range(4)]
+    with ThreadPoolExecutor(4) as hilos:
+        assert list(hilos.map(mejor, range(4))) == solas
+
+
+def test_f77_trigen_con_semilla_en_hilos_da_lo_mismo_que_solo():
+    from concurrent.futures import ThreadPoolExecutor
+
+    from metagen.metaheuristics import TriGen
+    from metagen.triclustering import plant
+
+    cubo, _ = plant((40, 8, 8), [(10, 3, 4)], pattern="additive", noise=0.05, seed=0)
+
+    def encontrados(semilla):
+        return [t.fitness for t in TriGen(cubo, n_triclusters=2, generations=5, population_size=20,
+                                          min_sizes=(3, 2, 2), seed=semilla).run()]
+
+    solos = [encontrados(semilla) for semilla in range(3)]
+    with ThreadPoolExecutor(3) as hilos:
+        assert list(hilos.map(encontrados, range(3))) == solos
+
+
+def test_f77_los_generadores_del_hilo_se_anidan_y_guardan_su_estado():
+    """F-77: al salir de un `own_generators` anidado se borraban los del hilo, y el de fuera
+    seguia con los del proceso; `get_state`, `set_state`, `set_seed` y `spawn_seed`
+    trabajaban siempre sobre los del proceso, asi que un checkpoint o una ejecucion en Ray
+    dentro de un hilo con semilla no se reproducian."""
+    from metagen.framework.rng import get_rng, get_state, own_generators, set_state, spawn_seed
+
+    set_seed(5)
+    proceso = random.Random(5)
+    assert get_rng().random() == proceso.random()
+    with own_generators(1):
+        referencia = random.Random(1)
+        assert get_rng().random() == referencia.random()
+        with own_generators(2):
+            assert get_rng().random() == random.Random(2).random()
+        # El de fuera sigue donde estaba, no en los del proceso.
+        assert get_rng().random() == referencia.random()
+        estado = get_state()
+        siguiente = (get_rng().random(), spawn_seed())
+        set_state(estado)
+        assert (get_rng().random(), spawn_seed()) == siguiente
+        set_seed(1)
+        assert get_rng().random() == random.Random(1).random()
+    # Nada de lo de dentro ha tocado los del proceso.
+    assert get_rng().random() == proceso.random()

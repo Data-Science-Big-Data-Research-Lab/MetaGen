@@ -15,6 +15,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import copy
 import heapq
 import inspect
 import math
@@ -25,10 +26,11 @@ from abc import ABC, abstractmethod
 
 from ._budget import _Budget
 from ._checkpoint import _Checkpointing
+from ._parameters import require_integer
 from .import_helper import is_package_installed, require_ray, start_ray
 from typing import Any, Dict, List, Mapping, Sequence, Tuple, Optional, Callable, cast
 from metagen.framework import Domain, Solution
-from metagen.framework.rng import get_rng, set_seed, spawn_seed
+from metagen.framework.rng import get_rng, seeded, set_seed, spawn_seed
 from copy import deepcopy
 
 from metagen.logging.metagen_logger import metagen_logger
@@ -43,7 +45,7 @@ if is_package_installed("tensorboard"):
 
 if IS_RAY_INSTALLED:
     import ray
-    from .distributed_tools import assign_load_equally, call_distributed, distributed_random_exploration
+    from .distributed_tools import assign_load_equally, call_method, distributed_random_exploration
 
 
 #: The arguments of a constructor that are not part of what :py:meth:`Metaheuristic.parameters`
@@ -72,8 +74,8 @@ _OPTIONS_OF_A_RUN_DOC = """\
 :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
 :type log_dir: str or None, optional
 :param seed: Seed for the package's random generators, applied at the start of
-    ``run()``; the same seed reproduces the run. None, the default, draws a different
-    run every time.
+    ``run()``; the same seed reproduces the run, also when several run at once in threads.
+    None, the default, draws a different run every time.
 :type seed: int or None, optional
 :param distribution_model: How a distributed run makes up the next population out of
     the slices, ``"global"`` (the default: shuffled, selected among all workers) or
@@ -102,7 +104,9 @@ _OPTIONS_OF_A_RUN_DOC = """\
 :type racing: Racing or None, optional
 :param refit: A function that trains the model of the best solution when the run ends;
     see :py:class:`~metagen.metaheuristics.Metaheuristic`.
-:type refit: Callable[[Solution], Any] or None, optional"""
+:type refit: Callable[[Solution], Any] or None, optional
+:raises ValueError: If a parameter is outside the values it takes, such as a negative
+    ``max_iterations`` or a probability greater than 1."""
 
 
 def _with_options_of_a_run(doc: Optional[str]) -> Optional[str]:
@@ -287,6 +291,9 @@ class Metaheuristic(_Checkpointing, _Budget, ABC):
                  racing: Optional[Racing] = None, refit: Optional[Callable[[Solution], Any]] = None) -> None:
         super().__init__()
 
+        require_integer("population_size", population_size, 1)
+        require_integer("warmup_iterations", warmup_iterations, 0)
+        require_integer("checkpoint_every", checkpoint_every, 1)
         if max_evaluations is not None and (isinstance(max_evaluations, bool)
                                             or not isinstance(max_evaluations, numbers.Integral)
                                             or max_evaluations < 1):
@@ -361,8 +368,6 @@ class Metaheuristic(_Checkpointing, _Budget, ABC):
         self.logger = (TensorBoardLogger(log_dir=log_dir)
                        if log_dir is not None and is_package_installed("tensorboard")
                        else None)
-        if checkpoint_every < 1:
-            raise ValueError(f"checkpoint_every must be at least 1, not {checkpoint_every}")
         self.checkpoint = checkpoint
         self.checkpoint_every = checkpoint_every
         self._stop_requested = False
@@ -424,16 +429,18 @@ class Metaheuristic(_Checkpointing, _Budget, ABC):
             metagen_logger.info(
                 f"Distributing the initialization with {ray.cluster_resources().get('CPU', 0)} CPUs -- {distribution}")
 
+        # The algorithm goes to the object store once for every task of the iteration, and
+        # without what no worker reads: the history, the curve of bests and the whole
+        # population, of which a task gets its slice as an argument. Sent with every task,
+        # it took the data its fitness function closes over along, once per task (E-06 of
+        # the independent audit). Each task still gets a copy of its own (F-40).
+        algorithm = ray.put(self._worker_copy())
         for index, count in enumerate(distribution):
-            # The method is sent with a copy of the metaheuristic, made when the task is
-            # submitted: each copy knows which slice it runs.
-            self.distributed_slice = index
             if iterating:
-                futures.append(call_distributed.remote(spawn_seed(), method, population[:count]))
+                futures.append(call_method.remote(spawn_seed(), algorithm, method.__name__, index, population[:count]))
                 population = population[count:]
             else:
-                futures.append(call_distributed.remote(spawn_seed(), method, count))
-        self.distributed_slice = 0
+                futures.append(call_method.remote(spawn_seed(), algorithm, method.__name__, index, count))
 
         answers = ray.get(futures)
         # Each worker evaluates on a copy of the fitness function and says how many.
@@ -445,6 +452,22 @@ class Metaheuristic(_Checkpointing, _Budget, ABC):
         if iterating and self.distribution_model == "global":
             return self.select_survivors(parents, offspring), best_individual
         return offspring, best_individual
+
+    def _worker_copy(self) -> "Metaheuristic":
+        """
+        The copy of the algorithm a distributed iteration sends to its workers: the same
+        object, without the history, the curve of bests, the population and the logger,
+        which the methods run on the workers do not read.
+
+        :return: A shallow copy that shares everything else with this one.
+        :rtype: Metaheuristic
+        """
+        worker = copy.copy(self)
+        worker.history = []
+        worker.best_solution_fitnesses = []
+        worker.current_solutions = []
+        worker.logger = None
+        return worker
 
     def select_survivors(self, parents: List[Solution], offspring: List[Solution]) -> List[Solution]:
         """
@@ -719,7 +742,14 @@ class Metaheuristic(_Checkpointing, _Budget, ABC):
         :return: The best solution found, or the best found so far when
             :py:meth:`request_stop` stopped the run.
         :rtype: Solution
+        :raises TypeError: If the fitness function returns something that is not a number.
         """
+        # On a thread other than the main one, a run with a seed draws from generators of
+        # its own, so that several at once give what each gives alone (F-77).
+        with seeded(self.seed):
+            return self._run_seeded()
+
+    def _run_seeded(self) -> Solution:
         self.stop_reason = None
         resuming = self.checkpoint is not None and os.path.exists(self.checkpoint)
         if resuming:

@@ -297,8 +297,10 @@ class GAStructure(types.Structure):
 
         # Built whole, from the elements: a child initializes at a random length,
         # so writing into it position by position would run off its end.
-        child1 = GAStructure(definition, connector=self.connector)
-        child2 = GAStructure(definition, connector=self.connector)
+        # Of the class of the parent, which may be a structure of its own (the steps of a prism
+        # of TriGen); built as a GAStructure is, with the same draws.
+        child1 = type(self)(definition, connector=self.connector)
+        child2 = type(self)(definition, connector=self.connector)
         child1.set(elements1)
         child2.set(elements2)
         return child1, child2

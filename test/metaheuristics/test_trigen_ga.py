@@ -1,5 +1,5 @@
-"""One search of TriGen: the selection by groups, one generation, the record of every
-tricluster evaluated, and the run as a whole."""
+"""One search of TriGen: the selection by groups, one generation, the record of the best
+triclusters evaluated, the children not evaluated again, and the run as a whole."""
 import math
 from collections import Counter
 
@@ -113,8 +113,12 @@ def test_a_run_lasts_its_generations_and_never_gets_worse():
     assert all(later <= earlier for earlier, later in zip(history, history[1:]))
 
 
-def test_every_tricluster_evaluated_is_recorded_with_its_fitness():
-    search = _search()
+@pytest.mark.parametrize("found", [0, 2])
+def test_the_best_triclusters_evaluated_are_recorded_with_their_fitness(found):
+    # As many as the triclusters found before the search plus one, the best by fitness and
+    # then by order of evaluation: among them is always the best one not found yet.
+    earlier = [Tricluster(range(4 * k, 4 * k + 6), range(3), range(4)) for k in range(found)]
+    search = _search(fitness=TriclusterFitness(CUBE, found=earlier))
     seen = []
     fitness = search.tricluster_fitness
 
@@ -124,11 +128,33 @@ def test_every_tricluster_evaluated_is_recorded_with_its_fitness():
 
     search.fitness_function = recording
     search.run()
-    assert set(search.evaluated) == set(seen)
+    first_seen = {}
+    for position, tricluster in enumerate(seen):
+        first_seen.setdefault(tricluster, (fitness.evaluate(tricluster), position))
+    best = sorted(first_seen, key=first_seen.__getitem__)[:found + 1]
+    assert list(search.evaluated) == sorted(best, key=lambda tricluster: first_seen[tricluster][1])
     for tricluster, value in search.evaluated.items():
         assert value == fitness.evaluate(tricluster)
-    best = search.best_solution
-    assert search.evaluated[_tricluster(best)] == best.get_fitness() == min(search.evaluated.values())
+    best_solution = search.best_solution
+    assert search.evaluated[_tricluster(best_solution)] == best_solution.get_fitness() == min(search.evaluated.values())
+
+
+def test_a_child_that_repeats_an_evaluated_individual_is_not_evaluated_again():
+    search = _search(population_size=30, generations=15)
+    seen = []
+    fitness = search.tricluster_fitness
+
+    def recording(solution):
+        seen.append(solution._key())
+        return fitness(solution)
+
+    search.fitness_function = recording
+    search.run()
+    assert len(seen) == len(set(seen))
+    assert search._evaluations == len(seen)
+    # Every individual has the fitness it would have if it had been evaluated.
+    for individual in search.current_solutions:
+        assert individual.get_fitness() == fitness(individual)
 
 
 def test_the_search_improves_on_where_it_starts():

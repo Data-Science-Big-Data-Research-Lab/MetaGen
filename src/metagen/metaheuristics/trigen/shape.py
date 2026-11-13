@@ -26,7 +26,8 @@ import numpy as np
 
 from metagen.framework import Domain, Solution
 from metagen.framework.rng import get_numpy_rng, get_rng
-from metagen.metaheuristics.genetic.genetic_tools import GAConnector
+from metagen.framework.domain import DynamicStructureDefinition
+from metagen.metaheuristics.genetic.genetic_tools import GAConnector, GAStructure
 from metagen.metaheuristics.tools import solution_class
 from metagen.triclustering import surface as plane
 from metagen.metaheuristics.trigen.population import DataHierarchy, Sizes, block, hierarchical, scattered
@@ -218,6 +219,26 @@ class CubeShape(Shape):
         return f"CubeShape(ordered={self.ordered!r})"
 
 
+class _PrismSteps(GAStructure):
+    """
+    The steps of growth of a prism. A mutation that changes how many there are draws the ones
+    it alters anew over their whole domain, not within the alteration limit: that is how the
+    search explores the shapes of a surface.
+    """
+    # Measured when the structures of the framework began to keep the limit after resizing
+    # (F-73): with it, the prisms of TriGen recovered 0.535 on average instead of 0.645, ten
+    # seeds of the example of the documentation; the cubes did not change.
+    limit_after_resizing = False
+
+
+class _PrismConnector(GAConnector):
+    """The connector of the genetic algorithms, with the steps of a prism as its dynamic structure."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.register(DynamicStructureDefinition, (_PrismSteps, "dynamic"), list)
+
+
 class PrismShape(Shape):
     """
     The prism: a surface of the plane of the first two dimensions, pixels that are one
@@ -318,7 +339,7 @@ class PrismShape(Shape):
     def domain(self, shape: Sequence[int], sizes: Sizes) -> Domain:
         rows, columns, times = shape
         low, high = self.pixels
-        domain = Domain(GAConnector())
+        domain = Domain(_PrismConnector())
         if self.seeds is None:
             _fixed_or_integer(domain, "seed_x", 0, rows - 1)
             _fixed_or_integer(domain, "seed_y", 0, columns - 1)

@@ -24,7 +24,7 @@ from typing import (TYPE_CHECKING, Any, Dict, KeysView, Optional, Tuple, Union,
                     ValuesView, cast)
 
 import metagen.framework.solution as types
-from metagen.framework.domain import SubsetDefinition
+from metagen.framework.domain import BaseDefinition as _GroupDefinition, SubsetDefinition
 from metagen.framework.rng import get_rng
 
 if TYPE_CHECKING:
@@ -222,6 +222,11 @@ class Solution:
             :func:`_set_sub_solution`
             :func:`_set_value`
         """
+        # A group takes a mapping of its variables: anything else used to reach the code for a
+        # plain value and fail there with an AttributeError (F-74).
+        if isinstance(self.get_definition().get(variable), _GroupDefinition) \
+                and not isinstance(value, (dict, Solution)):
+            raise ValueError(f"The group {variable} takes a dict of its variables, not {value!r}.")
         # A subset may also be given as a tuple or a set, in any order.
         is_selection = (isinstance(value, (tuple, set, frozenset))
                         and isinstance(self.get_definition().get(variable), SubsetDefinition))
@@ -457,7 +462,12 @@ class Solution:
                                    self.get_connector().get_type(value))
         subsolution: Solution = solution_definition(
             variable_definition, connector=self.get_connector())
-        subsolution.value = {}
+        # The variables not given keep the values the group had: emptied, s["g"] = {"a": 2}
+        # left the group without its other variables, and a partial initial solution failed
+        # in the user's fitness function (F-74). Built as before, with the same draws.
+        existing = self.value.get(variable)
+        if isinstance(existing, Solution):
+            subsolution.value = deepcopy(existing.value)
 
         for k, v in value.items():
             subsolution.set(k, v)

@@ -48,9 +48,10 @@ class Integer(BaseType):
         definition = self.get_definition()
 
         if not definition.check_value(value):
-            _, min_value, max_value, _ = definition.get_attributes()
+            _, min_value, max_value, step = definition.get_attributes()
+            grid = f", on the grid of step {step} from {min_value}" if step is not None else ""
             raise ValueError(
-                f"The value provided must be a int in the range [{min_value}, {max_value}]")
+                f"The value provided must be a int in the range [{min_value}, {max_value}]{grid}, not {value!r}")
 
     def get_definition(self) -> IntegerDefinition:
         """

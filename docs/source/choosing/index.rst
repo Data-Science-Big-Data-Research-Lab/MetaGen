@@ -51,13 +51,13 @@ Which one to use
 
 **The genetic algorithms need their connector.** |ga|, |ssga| and |mm| cross solutions over, so their domain is created with ``Domain(connector=GAConnector())``; with a plain ``Domain()`` their constructor raises an error that says so. Every other metaheuristic takes a plain ``Domain()``.
 
-**The warmup is part of the budget.** Several metaheuristics sample the domain at random for a few rounds before the search starts, and those evaluations cost the same as any other: with its defaults ``HillClimbing`` spends ``population_size × (warmup_iterations + 1)`` evaluations before its first iteration, and ``TPE`` spends 220. When the fitness function takes seconds or minutes, check that figure first and lower ``warmup_iterations`` or ``population_size`` if needed.
+**The warmup is part of the budget.** Several metaheuristics sample the domain at random for a few rounds before the search starts, and those evaluations cost the same as any other: with its defaults ``HillClimbing`` spends ``population_size × (warmup_iterations + 1)`` evaluations before its first iteration, and ``TPE`` spends 220. Given ``max_evaluations`` and no ``warmup_iterations``, |tpe| and |kernel_tpe| shorten their warmup so that it and the initial population take at most a quarter of the budget, and their model has evaluations left to work with. When the fitness function takes seconds or minutes, check that figure first and lower ``warmup_iterations`` or ``population_size`` if needed.
 
 
 Setting a budget
 ----------------
 
-Every metaheuristic but CVOA also takes ``max_evaluations``, the evaluations of the fitness function a run may make, warmup included, and ``timeout``, the seconds it may last. Without ``max_iterations``, a budget is what stops the run: the limit of iterations is lifted, and |sa|, |tpe|, |kernel_tpe| and a |hc| with a ``gamma_config``, which plan their search over ``max_iterations`` (the cooling schedule, the gamma schedule), take as ``max_iterations`` the iterations that ``max_evaluations`` buys; with ``timeout`` alone they keep their default. Given ``max_iterations`` and a limit, the run stops at whichever comes first. The limits are checked between the rounds of the warmup and between iterations, never in the middle of one, so a run goes past them by at most one round of the warmup and the initial population, which is always evaluated whole, or by one iteration, that is one evaluation for |kernel_tpe| and a whole population for a genetic algorithm or |rs|. With ``timeout``, a run goes past it by the time those evaluations take, which with a slow fitness function can be long. ``evaluations`` and ``seconds`` say what the run spent, and ``stop_reason`` what stopped it: ``"criterion"``, ``"max_evaluations"``, ``"timeout"`` or ``"request_stop"``.
+Every metaheuristic also takes ``max_evaluations``, the evaluations of the fitness function a run may make, warmup included, and ``timeout``, the seconds it may last. Without ``max_iterations``, a budget is what stops the run: the limit of iterations is lifted, and |sa|, |tpe|, |kernel_tpe| and a |hc| with a ``gamma_config``, which plan their search over ``max_iterations`` (the cooling schedule, the gamma schedule), take as ``max_iterations`` the iterations that ``max_evaluations`` buys; with ``timeout`` alone they keep their default. Given ``max_iterations`` and a limit, the run stops at whichever comes first. The limits are checked between the rounds of the warmup and between iterations, never in the middle of one, so a run goes past them by at most one round of the warmup and the initial population, which is always evaluated whole, or by one iteration, that is one evaluation for |kernel_tpe| and a whole population for a genetic algorithm or |rs|. With ``timeout``, a run goes past it by the time those evaluations take, which with a slow fitness function can be long. ``evaluations`` and ``seconds`` say what the run spent, and ``stop_reason`` what stopped it: ``"criterion"``, ``"max_evaluations"``, ``"timeout"`` or ``"request_stop"``.
 
 .. code-block:: python
 
@@ -81,7 +81,7 @@ Every metaheuristic but CVOA also takes ``max_evaluations``, the evaluations of 
     search.run()
     print(search.evaluations, search.stop_reason)   # 117 max_evaluations
 
-A run resumed from a checkpoint (see :doc:`../pausing_and_resuming/index`) carries on with what it had spent, so it stops where an uninterrupted run would. In a distributed run the evaluations of the workers count too.
+A run resumed from a checkpoint (see :doc:`../pausing_and_resuming/index`) carries on with what it had spent, so it stops where an uninterrupted run would. In a distributed run the evaluations of the workers count too. The CVOA launchers take a budget of their own, for the whole pandemic (see :ref:`choosing/index:A budget for a pandemic`).
 
 
 Stopping bad evaluations early: racing
@@ -254,5 +254,22 @@ An infection copies its carrier and changes some of its variables: one, or more 
                                 infection_alteration_limit=RelativeAlteration(0.2))]
 
     best_solution = cvoa_launcher(strains, domain, fitness, seed=0)
+
+A budget for a pandemic
+^^^^^^^^^^^^^^^^^^^^^^^
+
+Every newly infected individual is evaluated, and until social distancing the population of a strain grows geometrically, so a pandemic over a continuous domain with the suggested setup evaluates a great many solutions. Both launchers take ``max_evaluations`` and ``timeout`` for the whole pandemic, shared by all its strains. Unlike the other metaheuristics, the budget is checked before every evaluation and not between iterations: once it is spent, nothing more is evaluated, the iteration in course ends and every strain stops after it. So the pandemic makes exactly ``max_evaluations`` evaluations, or fewer if it ends before.
+
+.. code-block:: python
+
+    calls = []
+
+    def counted_fitness(solution: Solution) -> float:
+        calls.append(solution)
+        return fitness(solution)
+
+    best_solution = cvoa_launcher([StrainProperties("Strain#1")], domain, counted_fitness, seed=0,
+                                  max_evaluations=500)
+    print(len(calls))   # 500
 
 ``cvoa_launcher`` runs each strain in a thread; ``distributed_cvoa_launcher`` runs each strain as a Ray task (see :doc:`../distributed_execution/special`). The launchers, the strain properties and the strain classes are documented in :doc:`../metaheuristics/cvoa`.

@@ -12,8 +12,10 @@ The ``Domain`` class describes the space of the solutions: which variables a sol
 
 * **Basic**: a single value.
 
-    * ``INTEGER``: an integer between a minimum and a maximum, optionally on a grid of a given step that starts at the minimum.
-    * ``REAL``: a floating point number between a minimum and a maximum, optionally on a grid of a given step.
+    * ``INTEGER``: an integer between a minimum and a maximum, optionally on a grid of a given step that starts at the minimum. Its bounds and its step are integers.
+    * ``REAL``: a finite floating point number between a minimum and a maximum, optionally on a grid of a given step that starts at the minimum. Its bounds and its step are finite numbers.
+
+    With a step, only the values on the grid are valid: with a step of 3 from 1, an integer takes 1, 4, 7 and so on, and setting it to 5 raises a ``ValueError``. A real is on the grid within its rounding, so ``0.1 * 3`` is on the grid of 0.1.
     * ``CATEGORICAL``: one value out of a list of categories, which must all be of the same type (``int``, ``float``, ``str`` or ``bool``) and must not repeat. A single category is allowed, to fix a hyperparameter to one value.
 
 * **Structure**: a list whose elements share one definition, which may be basic, a group or another structure, or have one definition per position (see below). A **static** structure has a fixed length; a **dynamic** one has a length between a minimum and a maximum, optionally on a grid of a given step, and the search changes it.

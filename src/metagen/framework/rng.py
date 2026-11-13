@@ -75,15 +75,21 @@ def own_generators(seed: Optional[int]) -> Iterator[None]:
     Give the calling thread its own two generators for the duration of the block.
 
     Every draw the thread makes inside comes from them, so what it draws does not depend
-    on what other threads are drawing. :func:`set_seed` and the other threads keep working
-    on the generators of the process.
+    on what other threads are drawing; :func:`set_seed`, :func:`get_state` and
+    :func:`set_state` called inside work on them too. The other threads keep working on
+    the generators of the process. Blocks may nest: the generators of the outer one are
+    back when the inner one ends.
 
     :param seed: The seed of the thread's generators, or ``None`` for an unpredictable one.
     :type seed: Optional[int]
-    :return: Nothing; the generators of the process are back when the block ends.
+    :return: Nothing; the generators the thread had are back when the block ends.
     :rtype: Iterator[None]
     """
     global _threads_with_own_generators
+    # A run with a seed in a thread nests one of these inside the one a CVOA strain or a
+    # caller may already hold: deleting the generators on the way out left the outer block
+    # on the generators of the process (F-77).
+    outer = (getattr(_thread_generators, "python", None), getattr(_thread_generators, "numpy", None))
     _thread_generators.python = random.Random(seed)
     _thread_generators.numpy = np.random.default_rng(seed)
     with _threads_with_own_generators_lock:
@@ -93,8 +99,45 @@ def own_generators(seed: Optional[int]) -> Iterator[None]:
     finally:
         with _threads_with_own_generators_lock:
             _threads_with_own_generators -= 1
-        del _thread_generators.python
-        del _thread_generators.numpy
+        if outer[0] is None:
+            del _thread_generators.python
+            del _thread_generators.numpy
+        else:
+            _thread_generators.python, _thread_generators.numpy = outer
+
+
+def has_own_generators() -> bool:
+    """
+    Whether the calling thread draws from generators of its own, inside :func:`own_generators`.
+
+    :return: True inside a block of :func:`own_generators` of this thread.
+    :rtype: bool
+    """
+    return bool(_threads_with_own_generators) and hasattr(_thread_generators, "python")
+
+
+@contextmanager
+def seeded(seed: Optional[int]) -> Iterator[None]:
+    """
+    The generators of a run with ``seed``: on the main thread, the process's, seeded with
+    :func:`set_seed`; on any other thread, generators of the thread's own, so that runs
+    with a seed in several threads at once draw what each would draw alone. Without a
+    seed, nothing changes.
+
+    :param seed: The seed of the run, or ``None``.
+    :type seed: Optional[int]
+    :return: Nothing.
+    :rtype: Iterator[None]
+    """
+    # Two runs with a seed in two threads reseeded the generators of the process and drew
+    # from them in turns, so neither gave what it gives alone (F-77, X-04 of the
+    # independent audit). The main thread keeps the generators of the process: a run there
+    # costs the same as before, and leaves them where it always did.
+    if seed is None or threading.current_thread() is threading.main_thread():
+        yield
+        return
+    with own_generators(seed):
+        yield
 
 
 def spawn_seed() -> int:
@@ -111,8 +154,9 @@ def spawn_seed() -> int:
     :return: A seed for one worker.
     :rtype: int
     """
-    # A-06: before this, no distributed run was reproducible.
-    return _python_rng.getrandbits(63)
+    # A-06: before this, no distributed run was reproducible. From the thread's own
+    # generator when it has one, so that a run with a seed in a thread seeds its tasks (F-77).
+    return get_rng().getrandbits(63)
 
 
 def set_seed(seed: Optional[int]) -> None:
@@ -120,7 +164,8 @@ def set_seed(seed: Optional[int]) -> None:
     Seed both MetaGen generators from a single value.
 
     Passing ``None`` reseeds them from a fresh, unpredictable source, which is
-    the state a freshly imported MetaGen starts in.
+    the state a freshly imported MetaGen starts in. Inside :func:`own_generators`, it
+    seeds the generators of the calling thread.
 
     :param seed: The seed to apply, or ``None`` for a non-reproducible run.
     :type seed: Optional[int]
@@ -128,6 +173,10 @@ def set_seed(seed: Optional[int]) -> None:
     :rtype: None
     """
     global _numpy_rng
+    if has_own_generators():
+        _thread_generators.python.seed(seed)
+        _thread_generators.numpy = np.random.default_rng(seed)
+        return
     _python_rng.seed(seed)
     _numpy_rng = np.random.default_rng(seed)
 
@@ -139,7 +188,7 @@ def get_state() -> Dict[str, Any]:
     :return: The state of the standard-library and the NumPy generators.
     :rtype: dict
     """
-    return {"random": _python_rng.getstate(), "numpy": _numpy_rng.bit_generator.state}
+    return {"random": get_rng().getstate(), "numpy": get_numpy_rng().bit_generator.state}
 
 
 def set_state(state: Dict[str, Any]) -> None:
@@ -152,6 +201,11 @@ def set_state(state: Dict[str, Any]) -> None:
     :rtype: None
     """
     global _numpy_rng
+    numpy_rng = np.random.default_rng()
+    numpy_rng.bit_generator.state = state["numpy"]
+    if has_own_generators():
+        _thread_generators.python.setstate(state["random"])
+        _thread_generators.numpy = numpy_rng
+        return
     _python_rng.setstate(state["random"])
-    _numpy_rng = np.random.default_rng()
-    _numpy_rng.bit_generator.state = state["numpy"]
+    _numpy_rng = numpy_rng

@@ -22,9 +22,11 @@ import numpy as np
 from scipy.stats import norm
 
 from metagen.framework import Domain, Solution
+from metagen.framework.domain import DynamicStructureDefinition
 from metagen.framework.rng import get_numpy_rng
 from metagen.framework.solution.types import Categorical, Integer, Permutation, Real, Structure, Subset
 from metagen.metaheuristics.racing import Racing
+from metagen.metaheuristics._parameters import require_integer, require_number
 from metagen.metaheuristics.gamma_schedules import GammaConfig, compute_gamma
 from metagen.metaheuristics.tools import solution_class
 from metagen.metaheuristics.tpe.subset_model import SubsetModel
@@ -77,8 +79,9 @@ class KernelTPE(TPE):
     :type max_iterations: int or None, optional
     :param warmup_iterations: Rounds of random exploration before the search, each
         evaluating ``population_size`` solutions, all of which join the history the
-        model is built on, defaults to 5
-    :type warmup_iterations: int, optional
+        model is built on. None, the default, is 5, or fewer with ``max_evaluations``:
+        the warmup and the initialization then take at most a quarter of the budget.
+    :type warmup_iterations: int or None, optional
     :param n_candidates: Candidates drawn from the model of the best solutions per
         iteration, of which the best scoring one is evaluated, defaults to 24
     :type n_candidates: int, optional
@@ -114,6 +117,7 @@ class KernelTPE(TPE):
     # F-35: the length of a dynamic structure is not modeled, here or in TPE.
 
     default_max_iterations = 100
+    default_warmup_iterations = 5
 
     # Its history is never trimmed and every observation is a kernel, so the warmup's
     # samples join it (F-53): on the behavior bench, 30 seeds, 296 -> 301 wins of 330
@@ -122,7 +126,7 @@ class KernelTPE(TPE):
     keeps_warmup = True
 
     def __init__(self, domain: Domain, fitness_function: Callable[[Solution], float],
-                 max_iterations: Optional[int] = None, warmup_iterations: int = 5, n_candidates: int = 24,
+                 max_iterations: Optional[int] = None, warmup_iterations: Optional[int] = None, n_candidates: int = 24,
                  prior_weight: float = 1.0, gamma_config: Optional[GammaConfig] = None,
                  population_size: int = 20, distributed: bool = False, log_dir: Optional[str] = None,
                  seed: Optional[int] = None, distribution_model: str = "global",
@@ -130,6 +134,8 @@ class KernelTPE(TPE):
                  max_evaluations: Optional[int] = None, timeout: Optional[float] = None,
                  initial_solutions: Optional[Sequence[Mapping[str, Any]]] = None, racing: Optional[Racing] = None,
                  refit: Optional[Callable[[Solution], Any]] = None) -> None:
+        require_integer("n_candidates", n_candidates, 1)
+        require_number("prior_weight", prior_weight, above=0)
         super().__init__(domain, fitness_function, max_iterations=max_iterations,
                          warmup_iterations=warmup_iterations, candidate_pool_size=1, gamma_config=gamma_config,
                          distributed=distributed, log_dir=log_dir, seed=seed, population_size=population_size,
@@ -179,15 +185,40 @@ class KernelTPE(TPE):
         """
         good = _observations(best_solutions)
         bad = _observations(worst_solutions)
+        good_lengths = _lengths(best_solutions)
+        bad_lengths = _lengths(worst_solutions)
         # One model per variable and side, shared by every candidate: building the
         # kernels once here instead of once per candidate costs 24 times less and
         # draws the same numbers in the same order.
         models: Dict[Path, Tuple[_Model, _Model]] = {}
+        length_models: Dict[Path, Tuple[_CategoricalModel, _CategoricalModel]] = {}
         solution_type = solution_class(self.domain)
         candidates: List[Tuple[Solution, List[Tuple[Path, Any, _Model, _Model]]]] = []
         for _ in range(self.n_candidates):
             candidate = solution_type(self.domain, connector=self.domain.get_connector())
             drawn: List[Tuple[Path, Any, _Model, _Model]] = []
+            # The length of a dynamic structure is drawn from a model of the lengths of the
+            # best, as a categorical variable is, before its elements, and scored once: it was
+            # the one the candidate was built with, at random, and the proposals collapsed to
+            # the shortest length (X-06, metagen-auditoria/auditoria-independiente-2026-11/eficacia.md).
+            # Measured, 20 seeds on a dynamic structure whose best length is 8: 14 -> 18 wins
+            # against random sampling, length-1 proposals 73 % -> 33 %; the polynomial problem of
+            # the bench, 10 seeds, mean 0.0215 -> 0.0164. Averaging the terms of the elements, so
+            # that lengths compare, did better on the first (3.20 against 4.20) and broke the
+            # second (5 of 10 wins, mean 0.137): every coefficient counts there.
+            for path, structure in _dynamic_structures(candidate):
+                if path not in good_lengths or not candidate.is_active(cast(str, path[0])):
+                    continue
+                key = path + ("length",)
+                if key not in length_models:
+                    allowed = _allowed_lengths(cast(DynamicStructureDefinition, structure.get_definition()))
+                    length_models[key] = (_CategoricalModel(allowed, good_lengths[path], self.prior_weight),
+                                          _CategoricalModel(allowed, bad_lengths.get(path, []), self.prior_weight))
+                length_good, length_bad = length_models[key]
+                length = int(length_good.choose())
+                if length != len(structure):
+                    structure.set(structure._new_elements(length))
+                drawn.append((key, length, length_good, length_bad))
             for path, leaf in _leaves(candidate):
                 if path not in good:
                     continue
@@ -248,6 +279,43 @@ class KernelTPE(TPE):
 
 
 Leaf = Union[Integer, Real, Categorical, Permutation, Subset]
+
+
+
+def _dynamic_structures(solution: Solution, prefix: Path = ()) -> List[Tuple[Path, Structure]]:
+    """Every dynamic structure of a solution, by the path that reaches it, outer ones first."""
+    found: List[Tuple[Path, Structure]] = []
+    for name, value in solution.get_variables().items():
+        found.extend(_dynamic_structures_of(value, prefix + (name,)))
+    return found
+
+
+def _dynamic_structures_of(value: Any, path: Path) -> List[Tuple[Path, Structure]]:
+    if isinstance(value, Solution):
+        return _dynamic_structures(value, path)
+    if isinstance(value, Structure):
+        found: List[Tuple[Path, Structure]] = []
+        if isinstance(value.get_definition(), DynamicStructureDefinition):
+            found.append((path, value))
+        for index in range(len(value)):
+            found.extend(_dynamic_structures_of(value.get(index), path + (index,)))
+        return found
+    return []
+
+
+def _lengths(solutions: Sequence[Solution]) -> Dict[Path, List[int]]:
+    """The lengths of every dynamic structure, by path, across the given solutions, where active."""
+    observed: Dict[Path, List[int]] = {}
+    for solution in solutions:
+        for path, structure in _dynamic_structures(solution):
+            if solution.is_active(cast(str, path[0])):
+                observed.setdefault(path, []).append(len(structure))
+    return observed
+
+
+def _allowed_lengths(definition: DynamicStructureDefinition) -> List[int]:
+    _, min_length, max_length, step, _ = definition.get_attributes()
+    return list(range(min_length, max_length + 1, step or 1))
 
 
 def _log_densities_by_model(terms: Sequence[Tuple[Any, Any, Any]]) -> List[Tuple[float, float]]:
@@ -362,6 +430,10 @@ class _CategoricalModel:
         self.probabilities = weights / weights.sum()
 
     def draw(self, leaf: Leaf) -> Any:
+        return self.choose()
+
+    def choose(self) -> Any:
+        """A category, drawn with the probabilities of the model."""
         return self.categories[int(get_numpy_rng().choice(len(self.categories), p=self.probabilities))]
 
     def log_density(self, value: Any) -> float:

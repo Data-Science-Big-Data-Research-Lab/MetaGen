@@ -22,6 +22,7 @@ from metagen.framework import Domain, RelativeAlteration, Solution
 from metagen.framework.solution.types import Integer, Real
 from metagen.metaheuristics.racing import Racing
 from metagen.metaheuristics.base import Metaheuristic
+from metagen.metaheuristics._parameters import require_alteration, require_integer
 from metagen.metaheuristics.tools import solution_class
 
 
@@ -119,6 +120,9 @@ class TabuSearch(Metaheuristic):
                  max_evaluations: Optional[int] = None, timeout: Optional[float] = None,
                  initial_solutions: Optional[Sequence[Mapping[str, Any]]] = None, racing: Optional[Racing] = None,
                  refit: Optional[Callable[[Solution], Any]] = None):
+        require_integer("tabu_size", tabu_size, 0)
+        require_alteration("tabu_radius", tabu_radius, zero=True)
+        require_alteration("alteration_limit", alteration_limit)
         super().__init__(domain, fitness_function, population_size, warmup_iterations, distributed, log_dir,
                          seed=seed, distribution_model=distribution_model,
                          checkpoint=checkpoint, checkpoint_every=checkpoint_every,
