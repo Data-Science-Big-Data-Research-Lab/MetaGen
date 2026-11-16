@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### Changes
+
+- **`GA` and `Memetic` breed the children their population has room for** next to its
+  elites, so every child they evaluate enters it: a generation evaluates two children fewer
+  than before, and a population of two or three keeps one elite and always takes a child in.
+  Under the global distribution model every slice still breeds a pair per two individuals
+  and the driver selects among them. Seeded runs of both algorithms, sequential and on
+  islands, give different results.
+- **`TPE`'s docstring** says how it models each kind of variable and builds its candidates.
+
 ## 1.7.0
 
 MetaGen 1.7.0 checks domains and the parameters of the metaheuristics when they are defined,

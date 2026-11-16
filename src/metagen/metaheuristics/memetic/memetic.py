@@ -8,9 +8,8 @@ from metagen.metaheuristics.tools import random_exploration
 from metagen.metaheuristics.base import Metaheuristic
 from metagen.metaheuristics._parameters import require_alteration, require_integer, require_probability
 from metagen.metaheuristics.genetic import GASolution
-from metagen.metaheuristics.genetic.genetic_tools import (yield_two_children, require_crossover,
-                                                tournament_selection)
-from metagen.metaheuristics.memetic.memetic_tools import local_search_of_two_children
+from metagen.metaheuristics.genetic.genetic_tools import breed_children, elites_of, require_crossover
+from metagen.metaheuristics.memetic.memetic_tools import local_search_of_children
 
 
 class Memetic(Metaheuristic):
@@ -153,35 +152,28 @@ class Memetic(Metaheuristic):
         :rtype: Tuple[List[:py:class:`~metagen.framework.Solution`], :py:class:`~metagen.framework.Solution`]
         """
         num_solutions = len(solutions)
-        elite = heapq.nsmallest(2, solutions, key=lambda sol: sol.get_fitness())
+        # As in GA: under the global model a slice breeds a pair per two individuals and
+        # the driver selects; otherwise the children the population has room for.
+        selected_by_the_driver = self.distributed and self.distribution_model == "global"
+        elites = 2 if selected_by_the_driver else elites_of(num_solutions)
+        count = 2 * (num_solutions // 2) if selected_by_the_driver else num_solutions - elites
         best_solution = deepcopy(self._best_so_far())
-        current_solutions = [deepcopy(elite[0]), deepcopy(elite[1])]
+        current_solutions = [deepcopy(solution) for solution in
+                             heapq.nsmallest(elites, solutions, key=lambda sol: sol.get_fitness())]
 
-        for _ in range(num_solutions // 2):
+        def improve(children: List[GASolution]) -> List[GASolution]:
+            # Every child goes through the local search before it enters the population.
+            return cast(List[GASolution], local_search_of_children(
+                children, self.fitness_function, self.neighbor_population_size, self.alteration_limit,
+                self.distribution_level))
 
-            # A-01: the pair is drawn again for every crossover, as in GA. Taking the
-            # two best once, outside the loop, bred the same pair every time and the
-            # population converged on a couple of points. The two best still go
-            # through untouched, as the elite above.
-            father = cast(GASolution, tournament_selection(solutions, self.tournament_size))
-            mother = cast(GASolution, tournament_selection(solutions, self.tournament_size))
-            child1, child2 = yield_two_children((father, mother), self.mutation_rate, self.fitness_function,
-                                                  self.mutation_alteration_limit)
-            lc_child1, lc_child2 = local_search_of_two_children((child1, child2), self.fitness_function,
-                                                                self.neighbor_population_size,
-                                                                self.alteration_limit, self.distribution_level)
-
-            current_solutions.extend([lc_child1, lc_child2])
-
-            if best_solution is None or lc_child1 < best_solution:
-                best_solution = lc_child1
-            if best_solution is None or lc_child2 < best_solution:
-                best_solution = lc_child2
-
-        # Under the global model the driver selects out of everything a worker returns, so
-        # every child it evaluated goes back; otherwise the population keeps its size.
-        if not (self.distributed and self.distribution_model == "global"):
-            current_solutions = current_solutions[:num_solutions]
+        # A-01: the pair is drawn again for every crossover, as in GA.
+        children = breed_children(solutions, count, self.tournament_size, self.mutation_rate,
+                                  self.fitness_function, self.mutation_alteration_limit, improve=improve)
+        current_solutions.extend(children)
+        for child in children:
+            if child < best_solution:
+                best_solution = child
 
         return current_solutions, best_solution
 

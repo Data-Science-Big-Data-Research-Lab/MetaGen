@@ -1968,17 +1968,16 @@ def test_a01_los_cruces_de_una_generacion_no_usan_la_misma_pareja(nombre, monkey
     arreglo: una sola pareja en las cinco, la poblacion pasaba de 10 puntos distintos
     a 2, y desde la segunda generacion los dos padres eran el mismo punto, con lo que
     el cruce devolvia al padre y dejaba de recombinar."""
-    import metagen.metaheuristics.genetic.genetic_algorithm as modulo_ga
-    import metagen.metaheuristics.memetic.memetic as modulo_mm
+    # GA y Memetic crian con genetic_tools.breed_children, que la llama desde alli (F-78).
+    import metagen.metaheuristics.genetic.genetic_tools as modulo
     from metagen.metaheuristics import GA, GAConnector, Memetic
 
-    modulo = {"GA": modulo_ga, "Memetic": modulo_mm}[nombre]
     original = modulo.yield_two_children
     parejas = []
 
-    def espia(padres, mutation_rate, fitness_function, *resto):
+    def espia(padres, mutation_rate, fitness_function, *resto, **opciones):
         parejas.append((id(padres[0]), id(padres[1])))
-        return original(padres, mutation_rate, fitness_function, *resto)
+        return original(padres, mutation_rate, fitness_function, *resto, **opciones)
 
     monkeypatch.setattr(modulo, "yield_two_children", espia)
 
@@ -1990,9 +1989,9 @@ def test_a01_los_cruces_de_una_generacion_no_usan_la_misma_pareja(nombre, monkey
                             neighbor_population_size=3, seed=0)
     algoritmo.run()
 
-    primera_generacion = parejas[:5]          # population_size // 2 cruces
+    primera_generacion = parejas[:4]          # (population_size - 2) / 2 cruces (F-78)
     assert len(set(primera_generacion)) > 1, (
-        f"{nombre} cruza la misma pareja en los cinco cruces de una generacion: "
+        f"{nombre} cruza la misma pareja en todos los cruces de una generacion: "
         f"{primera_generacion}"
     )
 
@@ -4077,3 +4076,59 @@ def test_f77_los_generadores_del_hilo_se_anidan_y_guardan_su_estado():
         assert get_rng().random() == random.Random(1).random()
     # Nada de lo de dentro ha tocado los del proceso.
     assert get_rng().random() == proceso.random()
+
+
+# --------------------------------------------------------------------------------
+# F-78: GA y Memetic criaban una pareja de hijos mas de la que cabia en la poblacion y
+# recortaban la lista por posicion, asi que los dos ultimos se evaluaban (y en Memetic
+# pasaban por su busqueda local) para tirarse; con poblacion 2 no entraba ningun hijo
+# (AUD-003 de AUDITORIA-2026-11-16.md; X-13 e Y-11 de la auditoria independiente).
+# --------------------------------------------------------------------------------
+
+def _f78_dominio():
+    from metagen.metaheuristics import GAConnector
+
+    dominio = Domain(GAConnector())
+    dominio.define_real("x", -5.0, 5.0)
+    dominio.define_real("y", -5.0, 5.0)
+    return dominio
+
+
+@pytest.mark.parametrize("tamano,elites", [(2, 1), (3, 1), (5, 2), (10, 2)])
+@pytest.mark.parametrize("nombre,por_hijo", [("GA", 1), ("Memetic", 4)])
+def test_f78_cada_generacion_evalua_solo_los_hijos_que_entran(nombre, por_hijo, tamano, elites):
+    """F-78: un GA de 10 evaluaba 10 hijos por generacion y conservaba 8; un Memetic de 10
+    gastaba 44 evaluaciones de 154 en hijos descartados. Ahora cada generacion cria los
+    `tamano - elites` hijos que caben (con un numero impar, el ultimo par da uno solo, y
+    solo ese se evalua); con 2 o 3 individuos hay una sola elite."""
+    import metagen.metaheuristics as metaheuristicas
+
+    llamadas = []
+
+    def fitness(solucion):
+        llamadas.append(1)
+        return solucion["x"] ** 2 + solucion["y"] ** 2
+
+    opciones = {"neighbor_population_size": 3} if nombre == "Memetic" else {}
+    busqueda = getattr(metaheuristicas, nombre)(_f78_dominio(), fitness, population_size=tamano, max_iterations=10,
+                                                seed=1, **opciones)
+    busqueda.run()
+    assert len(llamadas) == tamano + 10 * (tamano - elites) * por_hijo
+    assert len(busqueda.current_solutions) == tamano
+
+
+@pytest.mark.parametrize("nombre", ["GA", "Memetic"])
+def test_f78_una_poblacion_de_dos_evoluciona(nombre):
+    """F-78: con poblacion 2 las dos elites ocupaban toda la poblacion y ningun hijo entraba:
+    la poblacion era la inicial para siempre."""
+    import metagen.metaheuristics as metaheuristicas
+
+    opciones = {"neighbor_population_size": 3} if nombre == "Memetic" else {}
+    busqueda = getattr(metaheuristicas, nombre)(_f78_dominio(), lambda s: s["x"] ** 2 + s["y"] ** 2,
+                                                population_size=2, max_iterations=10, seed=1, **opciones)
+    busqueda.run()
+    # La poblacion misma cambia, no solo el mejor visto: antes los hijos podian mejorar
+    # el mejor de la ejecucion sin entrar nunca en la poblacion.
+    medias = [registro["mean"] for registro in busqueda.history]
+    assert len(set(medias)) > 1
+    assert medias[-1] < medias[0]

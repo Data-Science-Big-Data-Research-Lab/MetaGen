@@ -17,12 +17,11 @@
 import heapq
 
 from metagen.framework import Domain, RelativeAlteration, Solution
-from .genetic_tools import (GASolution, yield_two_children, require_crossover,
-                       tournament_selection)
+from .genetic_tools import breed_children, elites_of, require_crossover
 from metagen.metaheuristics.racing import Racing
 from metagen.metaheuristics.base import Metaheuristic
 from metagen.metaheuristics._parameters import require_alteration, require_integer, require_probability
-from typing import Any, Optional, Callable, List, Tuple, cast, Mapping, Sequence
+from typing import Any, Optional, Callable, List, Tuple, Mapping, Sequence
 from copy import deepcopy
 
 from metagen.metaheuristics.tools import random_exploration
@@ -137,32 +136,25 @@ class GA(Metaheuristic):
     def iterate(self, solutions: List[Solution]) -> Tuple[List[Solution], Solution]:
         """Execute one generation of the genetic algorithm"""
         num_solutions = len(solutions)
-        elite = heapq.nsmallest(2, solutions, key=lambda sol: sol.get_fitness())
+        # Under the global model the driver selects out of the parents and every child a
+        # worker returns, so a slice breeds a pair per two individuals and keeps them all;
+        # otherwise the generation breeds the children the population has room for.
+        selected_by_the_driver = self.distributed and self.distribution_model == "global"
+        elites = 2 if selected_by_the_driver else elites_of(num_solutions)
+        count = 2 * (num_solutions // 2) if selected_by_the_driver else num_solutions - elites
         best_solution = deepcopy(self._best_so_far())
-        current_solutions = [deepcopy(elite[0]), deepcopy(elite[1])]
+        current_solutions = [deepcopy(solution) for solution in
+                             heapq.nsmallest(elites, solutions, key=lambda sol: sol.get_fitness())]
 
-        for _ in range(num_solutions // 2):
-
-            # A-01: the pair is drawn again for every crossover. Taking the two best
-            # once, outside the loop, bred the same pair num_solutions // 2 times, so
-            # the generation held a handful of distinct points at most; the population
-            # then converged on one of them and crossing it with itself gave it back.
-            # The two best still go through untouched, as the elite above.
-            father = cast(GASolution, tournament_selection(solutions, self.tournament_size))
-            mother = cast(GASolution, tournament_selection(solutions, self.tournament_size))
-            child1, child2 = yield_two_children((father, mother), self.mutation_rate, self.fitness_function,
-                                                  self.mutation_alteration_limit)
-            current_solutions.extend([child1, child2])
-
-            if best_solution is None or child1 < best_solution:
-                best_solution = child1
-            if best_solution is None or child2 < best_solution:
-                best_solution = child2
-
-        # Under the global model the driver selects out of everything a worker returns, so
-        # every child it evaluated goes back; otherwise the population keeps its size.
-        if not (self.distributed and self.distribution_model == "global"):
-            current_solutions = current_solutions[:num_solutions]
+        # A-01: the pair is drawn again for every crossover. Taking the two best once
+        # bred the same pair every time, so the generation held a handful of distinct
+        # points at most. The best still go through untouched, as the elite above.
+        children = breed_children(solutions, count, self.tournament_size, self.mutation_rate,
+                                  self.fitness_function, self.mutation_alteration_limit)
+        current_solutions.extend(children)
+        for child in children:
+            if child < best_solution:
+                best_solution = child
 
         return current_solutions, best_solution
 

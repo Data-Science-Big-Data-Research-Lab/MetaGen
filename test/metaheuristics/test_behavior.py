@@ -385,15 +385,12 @@ _SA = ("SA is third of the seven overall since F-30 tied the cooling schedule to
        "curved valley, deceptive Schwefel, and a hyperparameter domain it cannot walk "
        "smoothly because two of its four variables are integers and one is categorical")
 
-_GA = ("GA clears random sampling overall since F-33 gave its numeric types a "
-       "real-coded crossover, and since its children mutate within a fifth of each "
-       "variable's range it also holds Sphere, Levy and Zakharov. It still has no local "
-       "search, so a valley it must walk rather than sample defeats it: Rosenbrock and "
-       "deceptive Schwefel. On 160 evaluations, blind recombination does not find one")
+# GA left this table on 16 Nov 2026 (F-78): breeding only the children its population has
+# room for, it clears Rosenbrock and Schwefel too, on 130 evaluations instead of 160.
 
 _SSGA = ("A-01 gave it parent selection and F-33 a crossover that produces new values, "
          "which took it past random sampling overall. What is left is the budget: two "
-         "evaluations per iteration make 40 in all, a quarter of GA's and a fifteenth "
+         "evaluations per iteration make 40 in all, under a third of GA's and a twelfth "
          "of the memetic algorithm's. A-05, which used to be blamed here, was refuted. "
          "Griewank sits on the threshold: over thirty seeds it is 19 of 30 at the mutation "
          "rate of 0.1, 0.5 and 1.0 alike, and on the ten seeds here it reads 5 of 10")
@@ -403,7 +400,7 @@ _DECEPTIVE = ("Schwefel is deceptive: its global optimum sits near the corner of
               "optima between it and the middle, so a climber that only ever moves "
               "uphill is led away from it. It scores exactly what RandomSearch scores, "
               "6 of 10, which is a tie rather than a defeat. F-32 was blamed here and "
-              "is closed; only the memetic algorithm, on 610 evaluations, clears it")
+              "is closed; the genetic and the memetic algorithms clear it")
 
 _POLYNOMIAL_SSGA = ("SSGA spends 40 evaluations on a problem that must settle both a "
                     "length and its coefficients, and sits on the threshold there: over a "
@@ -432,10 +429,9 @@ _IMPROVES_ON_ITS_START = {
 
 _BEATS_RANDOM = {
     **{("Rastrigin", n): r for n, r in (("SSGA", _SSGA), ("TPE", _TPE))},
-    **{("Rosenbrock", n): r for n, r in (("SA", _SA), ("GA", _GA), ("SSGA", _SSGA),
-                                         ("TPE", _TPE), ("Memetic", _DECEPTIVE))},
+    **{("Rosenbrock", n): r for n, r in (("SA", _SA), ("SSGA", _SSGA), ("TPE", _TPE))},
     **{("Griewank", n): r for n, r in (("SSGA", _SSGA),)},
-    **{("Schwefel", n): r for n, r in (("SA", _SA), ("GA", _GA), ("SSGA", _SSGA),
+    **{("Schwefel", n): r for n, r in (("SA", _SA), ("SSGA", _SSGA),
                                        ("TPE", _TPE), ("HillClimbing", _DECEPTIVE),
                                        ("TabuSearch", _TABU))},
     **{("Polynomial", n): r for n, r in (("SSGA", _POLYNOMIAL_SSGA),)},

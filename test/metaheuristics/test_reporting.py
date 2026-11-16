@@ -53,7 +53,9 @@ def test_the_report_of_a_run_holds_the_run_the_domain_the_best_solution_and_thre
 
 
 def test_a_conditional_variable_never_active_is_named_and_not_plotted(tmp_path):
-    run = _ga()
+    # A seed whose run never activates depth; seed 0 does since GA breeds only the children
+    # its population has room for (F-78), and the test was skipped.
+    run = _ga(seed=1)
     if any(record["best_solution"]["depth"] is not None for record in run.history):
         pytest.skip("this run activated the conditional variable")
     page = open(run.report(str(tmp_path / "run.html")), encoding="utf-8").read()

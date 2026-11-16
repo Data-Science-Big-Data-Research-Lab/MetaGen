@@ -85,17 +85,17 @@ def test_the_default_is_local_for_ga_and_ssga_and_the_whole_domain_for_memetic(a
 @pytest.mark.parametrize("algorithm", [GA, SSGA, Memetic], ids=lambda a: a.__name__)
 def test_the_limit_given_to_the_algorithm_reaches_the_mutation(algorithm, monkeypatch):
     """The constructor's value is the one the children are mutated with."""
-    import metagen.metaheuristics.genetic.genetic_algorithm as ga_module
+    import metagen.metaheuristics.genetic.genetic_tools as tools_module
     import metagen.metaheuristics.genetic.steady_state_genetic_algorithm as ssga_module
-    import metagen.metaheuristics.memetic.memetic as memetic_module
 
-    module = {GA: ga_module, SSGA: ssga_module, Memetic: memetic_module}[algorithm]
+    # GA and Memetic breed through genetic_tools.breed_children, which calls it from there.
+    module = ssga_module if algorithm is SSGA else tools_module
     original = module.yield_two_children
     seen = []
 
-    def spy(parents, mutation_rate, fitness_function, mutation_alteration_limit=None):
+    def spy(parents, mutation_rate, fitness_function, mutation_alteration_limit=None, **options):
         seen.append(mutation_alteration_limit)
-        return original(parents, mutation_rate, fitness_function, mutation_alteration_limit)
+        return original(parents, mutation_rate, fitness_function, mutation_alteration_limit, **options)
 
     monkeypatch.setattr(module, "yield_two_children", spy)
     domain, fitness = _problem()
