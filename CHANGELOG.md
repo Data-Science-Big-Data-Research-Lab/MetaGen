@@ -4,6 +4,10 @@
 
 ### Changes
 
+- **`TabuSearch` applies `tabu_radius` to the numbers of a structure**, element by element:
+  a neighbor is tabu when it lies within the radius of a visited solution on every numeric
+  variable, the elements of its structures included, so its tabu list also works on domains
+  of vectors. Seeded runs over structures give different results.
 - **`GA` and `Memetic` breed the children their population has room for** next to its
   elites, so every child they evaluate enters it: a generation evaluates two children fewer
   than before, and a population of two or three keeps one elite and always takes a child in.

@@ -4132,3 +4132,32 @@ def test_f78_una_poblacion_de_dos_evoluciona(nombre):
     medias = [registro["mean"] for registro in busqueda.history]
     assert len(set(medias)) > 1
     assert medias[-1] < medias[0]
+
+
+# --------------------------------------------------------------------------------
+# F-79: el radio tabu de TabuSearch no se aplicaba a los numeros de una estructura, que se
+# comparaba por igualdad (AUD-006 de AUDITORIA-2026-11-16.md).
+# --------------------------------------------------------------------------------
+
+def test_f79_el_radio_tabu_se_aplica_a_los_elementos_de_una_estructura():
+    """F-79: con una estructura de dos reales en [0, 1], un punto a 0,0001 del visitado no
+    era tabu, y con los mismos dos reales sueltos si: en un dominio de vectores la lista tabu
+    no prohibia nada."""
+    from metagen.metaheuristics import TabuSearch
+
+    dominio = Domain()
+    dominio.define_static_structure("v", 2)
+    dominio.set_structure_to_real("v", 0.0, 1.0)
+    dominio.define_dynamic_structure("d", 1, 3)
+    dominio.set_structure_to_integer("d", 0, 100)
+    busqueda = TabuSearch(dominio, lambda solucion: 0.0)
+
+    visitado, cerca, lejos, otra_longitud = (Solution(dominio) for _ in range(4))
+    for solucion, v, d in ((visitado, [0.5, 0.5], [50, 50]), (cerca, [0.5001, 0.5], [50, 51]),
+                           (lejos, [0.9, 0.5], [50, 50]), (otra_longitud, [0.5, 0.5], [50, 50, 50])):
+        solucion.set("v", v)
+        solucion.set("d", d)
+    busqueda.tabu_list.append(visitado)
+    assert busqueda.is_tabu(cerca)
+    assert not busqueda.is_tabu(lejos)
+    assert not busqueda.is_tabu(otra_longitud)
