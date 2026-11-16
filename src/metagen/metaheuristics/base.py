@@ -750,7 +750,41 @@ class Metaheuristic(_Checkpointing, _Budget, ABC):
             return self._run_seeded()
 
     def _run_seeded(self) -> Solution:
+        # The life of a run, in the steps below; it was one method of 110 lines (O-04 and
+        # OF-02 of the independent audit). The order of every call is the same.
         self.stop_reason = None
+        resuming = self._prepare_run()
+        counted = self._counted_fitness()
+        account = self._accountant(counted)
+
+        # Remembered so that only the run() that started Ray stops it. Shutting it
+        # down unconditionally took the runtime away from a cluster the user had
+        # connected to, or from the other metaheuristics in a comparison (F-21).
+        stop_ray = start_ray(self.distributed and IS_RAY_INSTALLED)
+
+        try:
+            if not resuming:
+                self._start_run(account)
+            if self._iterate_until_stopped(counted, account):
+                return self._finish(counted)
+            self._end_run()
+        finally:
+            self.fitness_function = counted.function
+            # Also on the way out of an exception: a runtime this run() started must
+            # not outlive it, or the workers and their memory stay alive until the
+            # interpreter exits (F-44).
+            stop_ray()
+
+        return self._finish(counted)
+
+    def _prepare_run(self) -> bool:
+        """
+        Put the run where it starts: the state saved in ``checkpoint``, if the file exists,
+        or the state of a new run, with the generators seeded.
+
+        :return: Whether the run continues from a checkpoint.
+        :rtype: bool
+        """
         resuming = self.checkpoint is not None and os.path.exists(self.checkpoint)
         if resuming:
             state = self._read_checkpoint(cast(str, self.checkpoint))
@@ -765,27 +799,52 @@ class Metaheuristic(_Checkpointing, _Budget, ABC):
         if resuming:
             self._trim_history_file()
         else:
-            # The state of a run, as the constructor leaves it: a second run() started
-            # from the best and the population of the first, so a new seed gave back the
-            # best of the run before and the curve of bests ran on (F-63).
-            self.current_iteration = -1
-            self.best_solution = None
-            self.current_solutions = []
-            self.best_solution_fitnesses = []
-            self._configuration = self._describe_configuration()
-            self.history = []
-            self._evaluations = 0
-            self._steps = 0
-            self._seconds = 0.0
-            self.best_model, self._best_model_value = None, None
-            if self.history_file is not None and os.path.exists(self.history_file):
-                os.remove(self.history_file)
+            self._reset_run_state()
+        return resuming
+
+    def _reset_run_state(self) -> None:
+        """The state of a new run, as the constructor leaves it, and no history file."""
+        # A second run() started from the best and the population of the first, so a new
+        # seed gave back the best of the run before and the curve of bests ran on (F-63).
+        self.current_iteration = -1
+        self.best_solution = None
+        self.current_solutions = []
+        self.best_solution_fitnesses = []
+        self._configuration = self._describe_configuration()
+        self.history = []
+        self._evaluations = 0
+        self._steps = 0
+        self._seconds = 0.0
+        self.best_model, self._best_model_value = None, None
+        if self.history_file is not None and os.path.exists(self.history_file):
+            os.remove(self.history_file)
+
+    def _counted_fitness(self) -> CountingFitness:
+        """
+        Put the fitness function in a :py:class:`~metagen.metaheuristics.tools.CountingFitness`
+        for the run; ``run()`` puts the function back when it ends.
+
+        :return: The counting fitness function, now ``fitness_function``.
+        :rtype: CountingFitness
+        """
         # Counted on the driver: the history's evaluations, from where a resumed run
         # left them, and the best model, from the one it had.
         counted = CountingFitness(self.fitness_function, racing=self.racing, step_count=self._step_count,
                                   best=None if self._best_model_value is None
                                   else (self._best_model_value, self.best_model))
         self.fitness_function = counted
+        return counted
+
+    def _accountant(self, counted: CountingFitness) -> Callable[[], Optional[str]]:
+        """
+        The function that brings what the run has spent up to date, from what it had spent
+        when it started or resumed, and says which limit it reached.
+
+        :param counted: The counting fitness function of the run.
+        :type counted: CountingFitness
+        :return: The function, which returns ``"max_evaluations"``, ``"timeout"`` or None.
+        :rtype: Callable[[], Optional[str]]
+        """
         evaluations_before, seconds_before, started = self._evaluations, self._seconds, time.perf_counter()
         steps_before = self._steps
 
@@ -796,68 +855,75 @@ class Metaheuristic(_Checkpointing, _Budget, ABC):
             self._seconds = seconds_before + time.perf_counter() - started
             return self._limit_reached()
 
-        # Remembered so that only the run() that started Ray stops it. Shutting it
-        # down unconditionally took the runtime away from a cluster the user had
-        # connected to, or from the other metaheuristics in a comparison (F-21).
-        stop_ray = start_ray(self.distributed and IS_RAY_INSTALLED)
+        return account
 
-        try:
-            if not resuming:
-                self.pre_execution()
+    def _start_run(self, account: Callable[[], Optional[str]]) -> None:
+        """Start a new run: ``pre_execution``, the warmup and the initial population."""
+        self.pre_execution()
 
-                # A budget is also checked between the rounds of the warmup, which can
-                # cost more than a small budget on its own (TPE's defaults are 200
-                # evaluations); the initial population is always evaluated whole.
-                self._warmup(account)
+        # A budget is also checked between the rounds of the warmup, which can
+        # cost more than a small budget on its own (TPE's defaults are 200
+        # evaluations); the initial population is always evaluated whole.
+        self._warmup(account)
 
-                self._initialize()
+        self._initialize()
 
-                self.current_iteration = 0
-                account()
+        self.current_iteration = 0
+        account()
 
-            while True:
-                # Checked between iterations only, where the state is consistent: the
-                # same point the checkpoint is saved at, so a resumed run stops where
-                # an uninterrupted one would.
-                reason = "criterion" if self.stopping_criterion() else self._limit_reached()
-                if reason is not None:
-                    self.stop_reason = reason
-                    break
-                self.pre_iteration()
+    def _iterate_until_stopped(self, counted: CountingFitness, account: Callable[[], Optional[str]]) -> bool:
+        """
+        Iterate until the stopping criterion, a budget or :py:meth:`request_stop` stops the
+        run, recording each iteration and saving the checkpoint after it.
 
-                self._iterate()
+        :param counted: The counting fitness function of the run.
+        :type counted: CountingFitness
+        :param account: The function that brings what the run has spent up to date.
+        :type account: Callable[[], Optional[str]]
+        :return: Whether :py:meth:`request_stop` stopped the run.
+        :rtype: bool
+        """
+        while True:
+            # Checked between iterations only, where the state is consistent: the
+            # same point the checkpoint is saved at, so a resumed run stops where
+            # an uninterrupted one would.
+            reason = "criterion" if self.stopping_criterion() else self._limit_reached()
+            if reason is not None:
+                self.stop_reason = reason
+                return False
+            self.pre_iteration()
 
-                self.post_iteration()
+            self._iterate()
 
-                account()
-                self._record_history()
+            self.post_iteration()
 
-                self.current_iteration += 1
+            account()
+            self._record_history()
 
-                # Saved here, on the driver, once the iteration is complete: the only
-                # point at which the state is consistent. A cut during an iteration
-                # loses that iteration and never corrupts the file.
-                if self.checkpoint is not None and (
-                        self._stop_requested or self.current_iteration % self.checkpoint_every == 0):
-                    self._keep_best_model(counted)
-                    self._write_checkpoint()
-                if self._stop_requested:
-                    self.stop_reason = "request_stop"
-                    if self.logger:
-                        self.logger.writer.flush()
-                    return self._finish(counted)
+            self.current_iteration += 1
 
-            self.post_execution()
-            if self.checkpoint is not None and os.path.exists(self.checkpoint):
-                os.remove(self.checkpoint)
-        finally:
-            self.fitness_function = counted.function
-            # Also on the way out of an exception: a runtime this run() started must
-            # not outlive it, or the workers and their memory stay alive until the
-            # interpreter exits (F-44).
-            stop_ray()
+            self._checkpoint_after_iteration(counted)
+            if self._stop_requested:
+                self.stop_reason = "request_stop"
+                if self.logger:
+                    self.logger.writer.flush()
+                return True
 
-        return self._finish(counted)
+    def _checkpoint_after_iteration(self, counted: CountingFitness) -> None:
+        """Save the checkpoint after an iteration, every ``checkpoint_every`` and when asked to stop."""
+        # Saved here, on the driver, once the iteration is complete: the only
+        # point at which the state is consistent. A cut during an iteration
+        # loses that iteration and never corrupts the file.
+        if self.checkpoint is not None and (
+                self._stop_requested or self.current_iteration % self.checkpoint_every == 0):
+            self._keep_best_model(counted)
+            self._write_checkpoint()
+
+    def _end_run(self) -> None:
+        """End a run that reached its end: ``post_execution``, and its checkpoint file is removed."""
+        self.post_execution()
+        if self.checkpoint is not None and os.path.exists(self.checkpoint):
+            os.remove(self.checkpoint)
 
     def _keep_best_model(self, counted: CountingFitness) -> None:
         """Take the best model the fitness function has returned so far, if any."""
