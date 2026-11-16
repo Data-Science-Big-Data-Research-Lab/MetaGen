@@ -34,7 +34,7 @@ from metagen.framework.rng import get_rng, seeded, set_seed, spawn_seed
 from copy import deepcopy
 
 from metagen.logging.metagen_logger import metagen_logger
-from metagen.metaheuristics.racing import Racing
+from metagen.metaheuristics.racing import Racing, complete, raced_out, step_values
 from metagen.metaheuristics.tools import (CountingFitness, add_calls, random_exploration, save_model,
                                          solution_class)
 
@@ -593,9 +593,8 @@ class Metaheuristic(_Checkpointing, _Budget, ABC):
             # The candidates of this iteration race against the population it starts from.
             step_count = self.fitness_function.step_count
             self.fitness_function.references = [
-                getattr(solution, "step_values") for solution in self.current_solutions
-                if not getattr(solution, "raced_out", False)
-                and len(getattr(solution, "step_values", ())) == step_count]
+                cast(List[float], step_values(solution)) for solution in self.current_solutions
+                if not raced_out(solution) and complete(step_values(solution), step_count)]
         if self.distributed:
             require_ray("a distributed run")
             population, best_individual = self._launch_distributed_method(self.iterate)
@@ -605,8 +604,8 @@ class Metaheuristic(_Checkpointing, _Budget, ABC):
         self.current_solutions = population
 
         # A candidate stopped by the race has an estimated fitness: never the best of the run.
-        if getattr(best_individual, "raced_out", False):
-            whole = [solution for solution in population if not getattr(solution, "raced_out", False)]
+        if raced_out(best_individual):
+            whole = [solution for solution in population if not raced_out(solution)]
             best_individual = min(whole, key=Solution.get_fitness) if whole else self._best_so_far()
 
         # Merged, not assigned, the same way _initialize does since F-03. Assigning

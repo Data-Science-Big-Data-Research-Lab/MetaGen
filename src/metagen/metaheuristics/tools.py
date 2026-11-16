@@ -148,7 +148,7 @@ class CountingFitness:
         return state
 
     def _steps_of(self, solution: Solution, steps: Iterator[Any]) -> float:
-        from metagen.metaheuristics.racing import corrected_mean
+        from metagen.metaheuristics.racing import corrected_mean, record_steps
 
         values: List[float] = []
         references = self.references if self.racing is not None else []
@@ -170,8 +170,7 @@ class CountingFitness:
             elif len(values) != self.step_count:
                 raise ValueError(f"A fitness function that yields its steps must yield as many for every "
                                  f"solution: {len(values)} here, {self.step_count} before.")
-        setattr(solution, "step_values", values)
-        setattr(solution, "raced_out", raced_out)
+        record_steps(solution, values, raced_out)
         return corrected_mean(values, references) if raced_out else sum(values) / len(values)
 
 
