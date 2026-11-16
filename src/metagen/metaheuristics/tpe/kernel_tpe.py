@@ -145,6 +145,53 @@ class KernelTPE(TPE):
                          initial_solutions=initial_solutions, racing=racing, refit=refit)
         self.n_candidates = n_candidates
         self.prior_weight = prior_weight
+        # What each solution of the history contributes to the models, read once: every
+        # iteration walked every solution of the history, which is never trimmed, to read
+        # the same values again, 70 % of the time of the behavior bench (AUD-008 of
+        # metagen-auditoria/AUDITORIA-2026-11-16.md). Keyed by identity, with the solution
+        # itself to tell a reused id apart; the solutions of the history do not change once
+        # evaluated. A cache and not state: a worker of Ray starts it empty, and neither a
+        # checkpoint nor the configuration of a run holds it.
+        self._observed_parts: Dict[int, Tuple[Solution, List[Tuple[Path, Any]], List[Tuple[Path, int]]]] = {}
+
+    def _reset_run_state(self) -> None:
+        super()._reset_run_state()
+        # A new run reads a new history.
+        self._observed_parts = {}
+
+    def _worker_copy(self) -> "KernelTPE":
+        worker = cast(KernelTPE, super()._worker_copy())
+        worker._observed_parts = {}
+        return worker
+
+    def _parts(self, solution: Solution) -> Tuple[List[Tuple[Path, Any]], List[Tuple[Path, int]]]:
+        """The values of the active variables of a solution and the lengths of its active
+        dynamic structures, by path, in the order the models read them."""
+        # Created here when missing: a run resumed with resume() is built from its checkpoint,
+        # which does not hold the cache, without going through __init__.
+        parts = self.__dict__.setdefault("_observed_parts", {})
+        entry = parts.get(id(solution))
+        if entry is None or entry[0] is not solution:
+            values = [(path, leaf.get()) for path, leaf in _leaves(solution)
+                      if solution.is_active(cast(str, path[0]))]
+            lengths = [(path, len(structure)) for path, structure in _dynamic_structures(solution)
+                       if solution.is_active(cast(str, path[0]))]
+            entry = (solution, values, lengths)
+            parts[id(solution)] = entry
+        return entry[1], entry[2]
+
+    def _observed(self, solutions: Sequence[Solution]) -> Tuple[Dict[Path, List[Any]], Dict[Path, List[int]]]:
+        """What :py:func:`_observations` and :py:func:`_lengths` give for these solutions,
+        from each solution's parts."""
+        observed: Dict[Path, List[Any]] = {}
+        lengths: Dict[Path, List[int]] = {}
+        for solution in solutions:
+            values, sizes = self._parts(solution)
+            for path, value in values:
+                observed.setdefault(path, []).append(value)
+            for path, size in sizes:
+                lengths.setdefault(path, []).append(size)
+        return observed, lengths
 
     def iterate(self, solutions: List[Solution]) -> Tuple[List[Solution], Solution]:
         """
@@ -183,10 +230,8 @@ class KernelTPE(TPE):
         :return: The candidate to evaluate, unevaluated.
         :rtype: Solution
         """
-        good = _observations(best_solutions)
-        bad = _observations(worst_solutions)
-        good_lengths = _lengths(best_solutions)
-        bad_lengths = _lengths(worst_solutions)
+        good, good_lengths = self._observed(best_solutions)
+        bad, bad_lengths = self._observed(worst_solutions)
         # One model per variable and side, shared by every candidate: building the
         # kernels once here instead of once per candidate costs 24 times less and
         # draws the same numbers in the same order.

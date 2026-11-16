@@ -37,7 +37,7 @@ if TYPE_CHECKING:
 #: nested function and cannot be pickled, the TensorBoard writer, and where and how
 #: often to save, which the resumed run is given again.
 _NOT_CHECKPOINTED = frozenset({"fitness_function", "logger", "checkpoint", "checkpoint_every",
-                               "_stop_requested", "refit"})
+                               "_stop_requested", "refit", "_observed_parts"})
 
 #: What is not configuration: the state of a run, and where to write. A checkpoint keeps
 #: a description of everything else, and a run with another configuration is not

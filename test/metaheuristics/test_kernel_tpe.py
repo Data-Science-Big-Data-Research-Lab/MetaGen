@@ -145,3 +145,70 @@ def test_it_finds_the_categorical_and_the_integer_that_matter():
 def test_a_seed_reproduces_a_run():
     runs = [KernelTPE(_domain(), _fitness, max_iterations=30, seed=5).run() for _ in range(2)]
     assert runs[0].get_fitness() == runs[1].get_fitness()
+
+
+def _domain_with_a_dynamic_structure_and_a_condition():
+    domain = Domain()
+    domain.define_real("x", -5.0, 5.0)
+    domain.define_categorical("kind", ["a", "b"])
+    domain.define_integer("depth", 1, 9)
+    domain.set_condition("depth", "kind", ["b"])
+    domain.define_dynamic_structure("v", 1, 4)
+    domain.set_structure_to_integer("v", 0, 9)
+    return domain
+
+
+def test_the_parts_read_once_are_what_reading_the_solutions_gives():
+    from metagen.metaheuristics.tpe.kernel_tpe import _lengths
+
+    domain = _domain_with_a_dynamic_structure_and_a_condition()
+    search = KernelTPE(domain, lambda solution: solution["x"] ** 2)
+    set_seed(3)
+    solutions = [Solution(domain) for _ in range(12)]
+    for _ in range(2):
+        # The second time the parts come from the cache: still the same.
+        assert search._observed(solutions) == (_observations(solutions), _lengths(solutions))
+    # A solution that is not the one an id was cached for is read anew.
+    stranger = Solution(domain)
+    search._observed_parts[id(stranger)] = (solutions[0],) + search._observed_parts[id(solutions[0])][1:]
+    assert search._observed([stranger]) == (_observations([stranger]), _lengths([stranger]))
+
+
+def test_the_parts_neither_travel_to_a_worker_nor_survive_a_new_run():
+    domain = _domain_with_a_dynamic_structure_and_a_condition()
+    search = KernelTPE(domain, lambda solution: solution["x"] ** 2, max_iterations=5, warmup_iterations=0,
+                       population_size=6, seed=0)
+    search.run()
+    assert search._observed_parts
+    assert search._worker_copy()._observed_parts == {}
+    first = dict(search._observed_parts)
+    search.run()
+    assert not set(first) & set(search._observed_parts) or all(
+        search._observed_parts[key][0] is not first[key][0] for key in set(first) & set(search._observed_parts))
+
+
+def _fitness_of_the_resumed_run(solution):
+    return solution["x"] ** 2 + len(solution["v"])
+
+
+class _PausingKernelTPE(KernelTPE):
+    """Asks to stop after its sixth iteration, once: a checkpoint needs a class it can import."""
+
+    def post_iteration(self):
+        super().post_iteration()
+        if self.current_iteration == 5 and not getattr(self, "paused", False):
+            self.paused = True
+            self.request_stop()
+
+
+def test_a_run_resumed_from_its_checkpoint_gives_what_an_uninterrupted_one_gives(tmp_path):
+    domain = _domain_with_a_dynamic_structure_and_a_condition()
+    whole = KernelTPE(domain, _fitness_of_the_resumed_run, max_iterations=12, warmup_iterations=1,
+                      population_size=6, seed=4)
+    best = whole.run().get_fitness()
+    path = str(tmp_path / "ktpe.ckpt")
+    paused = _PausingKernelTPE(domain, _fitness_of_the_resumed_run, max_iterations=12, warmup_iterations=1,
+                               population_size=6, seed=4, checkpoint=path)
+    paused.run()
+    assert paused.run().get_fitness() == best
+    assert paused.best_solution_fitnesses == whole.best_solution_fitnesses
