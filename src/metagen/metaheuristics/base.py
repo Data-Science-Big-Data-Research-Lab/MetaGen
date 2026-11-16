@@ -69,7 +69,7 @@ OPTIONS_OF_A_RUN = "{options_of_a_run}"
 #: docstring of :py:class:`Metaheuristic` itself.
 _OPTIONS_OF_A_RUN_DOC = """\
 :param distributed: Whether to run on Ray, defaults to False; see
-    :py:class:`~metagen.metaheuristics.Metaheuristic` for what a distributed run does.
+    :ref:`distributed_execution/distributed:How Distributed Execution Works`.
 :type distributed: bool, optional
 :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
 :type log_dir: str or None, optional
@@ -79,7 +79,7 @@ _OPTIONS_OF_A_RUN_DOC = """\
 :type seed: int or None, optional
 :param distribution_model: How a distributed run makes up the next population out of
     the slices, ``"global"`` (the default: shuffled, selected among all workers) or
-    ``"islands"``; see :py:class:`~metagen.metaheuristics.Metaheuristic`.
+    ``"islands"``; see :ref:`distributed_execution/distributed:How Distributed Execution Works`.
 :type distribution_model: str, optional
 :param checkpoint: File the run saves its state to every ``checkpoint_every``
     iterations, and continues from if it exists when ``run()`` starts; None, the
@@ -125,6 +125,9 @@ def _with_options_of_a_run(doc: Optional[str]) -> Optional[str]:
 
 
 class Metaheuristic(_Checkpointing, _Budget, ABC):
+    # The models of distribution are explained in docs/source/distributed_execution/distributed.rst,
+    # what each costs included; this docstring repeated it whole, two texts to keep alike
+    # (O-04 and OF-02 of the independent audit).
     """
     Abstract base class for metaheuristic algorithms.
 
@@ -147,36 +150,17 @@ class Metaheuristic(_Checkpointing, _Budget, ABC):
         the starting best (default is 0).
     :type warmup_iterations: int, optional
     :param distributed: Whether to run on Ray (default is False): the population is
-        split into one slice per CPU of the cluster and each slice runs ``iterate`` on
-        its own in a worker, every iteration. What happens to the slices afterwards is
-        the ``distribution_model``. Two distributed runs with the same ``seed`` on the
-        same number of CPUs reproduce each other, since every worker task is seeded
-        from the driver's generator.
+        split into one slice per CPU of the cluster and each slice runs ``iterate`` in a
+        worker, every iteration. Two distributed runs with the same ``seed`` on the same
+        number of CPUs reproduce each other. See
+        :ref:`distributed_execution/distributed:How Distributed Execution Works`.
     :type distributed: bool, optional
-    :param distribution_model: How the slices make up the next population, ``"global"``
-        (the default) or ``"islands"``.
-
-        With ``"global"`` the driver shuffles the population before splitting it, so
-        that every iteration mixes the individuals across workers, and once the slices
-        return it selects the next population **from the parents it sent and every
-        candidate that came back**, all workers considered: a (μ+λ) survivor selection
-        by fitness, ``population_size`` strong, which ``select_survivors`` implements
-        and an algorithm may override (TPE merges the histories instead, HillClimbing,
-        TabuSearch and SA keep the fresh candidates only). The budget per iteration
-        does not grow with the CPU count, save in SSGA and KernelTPE, which spend more
-        with more slices: it is the sequential one for HillClimbing,
-        TabuSearch and TPE, and for GA and Memetic when the slices have an even
-        number of individuals (a slice breeds pairs, so an odd slice breeds one child
-        fewer); ``RandomSearch`` keeps one elite per slice and mutates one individual
-        fewer per slice, ``SSGA`` breeds its two children in every slice, and
-        ``KernelTPE`` evaluates one candidate per slice.
-
-        With ``"islands"`` the slices come back with the size they left with and are
-        concatenated in order, so the next split hands the same individuals to the
-        same worker: the islands never exchange individuals and share only the best
-        solution the driver keeps. The algorithm each worker runs is the algorithm on
-        a smaller population, and the number of evaluations, the elitism and the
-        result depend on how many CPUs the cluster has.
+    :param distribution_model: How the slices make up the next population: ``"global"``
+        (the default), where the driver shuffles the population before splitting it and
+        selects the next one out of the parents and every candidate the workers return
+        (:py:meth:`select_survivors`); or ``"islands"``, where every slice stays with its
+        worker for the whole run. What an iteration costs under each model is in
+        :ref:`distributed_execution/distributed:How Distributed Execution Works`.
     :type distribution_model: str, optional
     :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
     :type log_dir: str or None, optional
