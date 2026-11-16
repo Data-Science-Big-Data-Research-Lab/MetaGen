@@ -174,7 +174,13 @@ We welcome contributions from developers of all experience levels! To contribute
   mypy src
   ```
 
-  Both must pass; the continuous integration runs them on Python 3.10 to 3.12.
+  Both must pass; the continuous integration runs them on Python 3.10 to 3.12, and also
+  with the exact versions of `constraints/reference.txt` and with the oldest ones the
+  package supports, `constraints/minimum.txt`:
+
+  ```sh
+  pip install -e .[test] -c constraints/reference.txt
+  ```
 
 ## 📌 Resources
 

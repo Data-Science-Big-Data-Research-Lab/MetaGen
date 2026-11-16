@@ -1,0 +1,9 @@
+# The oldest versions the package is tested with, on Python 3.10: the lower bounds of its
+# dependencies in pyproject.toml, at the first releases of those series with wheels for
+# Python 3.10, and the test tools that work with them. Install with
+#
+#     pip install -e .[test] -c constraints/minimum.txt
+numpy==1.21.6
+scipy==1.7.3
+scikit-learn==1.3.2
+matplotlib==3.7.5
