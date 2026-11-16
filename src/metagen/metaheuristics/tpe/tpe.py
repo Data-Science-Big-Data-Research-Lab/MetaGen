@@ -15,13 +15,37 @@ from .tpe_tools import TPEConnector
 
 
 class TPE(Metaheuristic):
+    # The docstring described a kernel density estimate that samples the promising
+    # regions; it now says what the code does, without changing the code, which is the
+    # TPE the published article evaluates (AUD-001 and AUD-002 of
+    # metagen-auditoria/AUDITORIA-2026-11-16.md). The mixture of kernels sampled from the
+    # model of the best is KernelTPE.
     """
-    Tree-structured Parzen Estimator (TPE) algorithm for optimization problems.
+    Tree-structured Parzen Estimator (TPE) for optimization problems, with one normal
+    density per variable for the best solutions and one for the rest.
 
-    This class implements the TPE metaheuristic which uses kernel density estimation
-    to model the probability of good and bad solutions. The algorithm iteratively
-    samples new solutions from regions of the search space that are more likely to
-    contain good solutions.
+    It keeps a history of the solutions it has evaluated, splits it into the best
+    fraction ``gamma`` and the rest, and builds every candidate variable by variable:
+
+    - **A real or an integer** is modeled by a normal density fitted to its values in
+      the best solutions, ``l``, and another fitted to its values in the rest, ``g``. A
+      candidate starts from a value ``v`` drawn uniformly over the domain, and takes a
+      value drawn from ``l`` with probability ``l(v) / (l(v) + g(v))``, or from ``g``
+      otherwise, clipped to the range and placed on the grid of the step. A variable on
+      a logarithmic scale is modeled on its logarithm.
+    - **A categorical variable** takes one of the categories of the best solutions, each
+      with its frequency among them; when they all share one, a category drawn uniformly.
+    - **A subset** includes every element with the probability it has among the best
+      solutions, together with a prior worth one of them; **a permutation** takes the
+      ordering of one of the best solutions, moved by one swap; **a structure** is built
+      position by position, from the best solutions that have each position.
+
+    Every iteration evaluates ``candidate_pool_size`` candidates and adds the best of
+    them to the history, which keeps its most recent solutions.
+
+    :py:class:`~metagen.metaheuristics.KernelTPE` models each variable with a mixture of
+    kernels instead, draws its candidates from the model of the best solutions and
+    evaluates only the one that maximizes ``l(x) / g(x)``.
 
     What a run costs, in fitness evaluations: ``population_size * (warmup_iterations
     + 1)`` before the first iteration, then ``candidate_pool_size`` per iteration.
