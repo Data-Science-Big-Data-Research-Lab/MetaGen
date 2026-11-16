@@ -560,7 +560,7 @@ def test_f04_el_segundo_hijo_hereda_del_segundo_padre():
         )
 
 
-def test_f20_sa_no_evalua_una_poblacion_entera_al_inicializar():
+def test_f20_sa_no_evalua_una_poblacion_entera_al_inicializar(tmp_path):
     from metagen.metaheuristics import SA
 
     set_seed(6)
@@ -578,7 +578,9 @@ def test_f20_sa_no_evalua_una_poblacion_entera_al_inicializar():
         warmup_iterations=0,
         max_iterations=2,
         neighbor_population_size=1,
-        log_dir="logs/test_SA",
+        # En la carpeta temporal del test: "logs/test_SA", relativo al directorio de
+        # trabajo, dejaba una carpeta nueva en el repositorio en cada ejecucion (AUD-010).
+        log_dir=str(tmp_path / "test_SA"),
     )
     algoritmo.run()
     assert evaluaciones["n"] <= 4, (
@@ -1155,7 +1157,8 @@ def test_p04_la_suite_completa_se_recolecta_sin_los_extras_opcionales():
         )
     repo_root = pathlib.Path(__file__).resolve().parents[2]
     resultado = subprocess.run(
-        [sys.executable, "-m", "pytest", "--collect-only", "-q", "test"],
+        # Sin cache: el pytest hijo corre en el repositorio y escribia .pytest_cache en el (AUD-010).
+        [sys.executable, "-m", "pytest", "--collect-only", "-q", "-p", "no:cacheprovider", "test"],
         cwd=repo_root,
         capture_output=True,
         text=True,
