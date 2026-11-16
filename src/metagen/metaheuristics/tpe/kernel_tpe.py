@@ -384,6 +384,12 @@ def _kernels(values: Sequence[float], low: float, high: float, prior_weight: flo
     number of observations and the prior's width, plus the prior itself, a Gaussian
     centered on the domain as wide as it. Returns the means, widths and weights.
     """
+    # Bergstra et al. (2011) and Hyperopt take the greater of the distances to the left and
+    # right neighbors. Measured on the eleven problems of the behavior bench over 30 seeds
+    # (AUD-005 of metagen-auditoria/AUDITORIA-2026-11-16.md, 16 Nov 2026): 301 wins of 330
+    # against random sampling with either rule, 154-22-154 head to head, and the greater
+    # distance significantly worse on the variable-degree polynomial (11-19, p = 0.009). The
+    # nearest neighbor stays.
     prior_mu = (low + high) / 2.0
     prior_sigma = max(high - low, 1e-12)
     mus = np.array(sorted([*values, prior_mu]), dtype=float)
