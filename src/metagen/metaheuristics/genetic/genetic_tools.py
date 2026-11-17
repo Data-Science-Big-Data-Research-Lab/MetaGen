@@ -113,7 +113,7 @@ class GAReal(types.Real):
                                          math.log(min_value), math.log(max_value))
             log_children = []
             for _ in range(2):
-                child = GAReal(definition, connector=self.connector)
+                child = cast(GAReal, GAReal._holding(definition, self.connector, None))
                 child.set(min(max(math.exp(get_rng().uniform(left, right)), min_value), max_value))
                 log_children.append(child)
             return log_children[0], log_children[1]
@@ -121,7 +121,7 @@ class GAReal(types.Real):
 
         children = []
         for _ in range(2):
-            child = GAReal(definition, connector=self.connector)
+            child = cast(GAReal, GAReal._holding(definition, self.connector, None))
             # Through _generate_numerical so the value lands on the domain's own grid
             # when the definition has a step, anchored at its minimum (F-01).
             child.set(self._generate_numerical(left, right, step, origin=min_value))
@@ -157,7 +157,7 @@ class GAInteger(types.Integer):
                                          math.log(min_value), math.log(max_value))
             log_children = []
             for _ in range(2):
-                child = GAInteger(definition, connector=self.connector)
+                child = cast(GAInteger, GAInteger._holding(definition, self.connector, None))
                 child.set(min(max(int(round(math.exp(get_rng().uniform(left, right)))), min_value), max_value))
                 log_children.append(child)
             return log_children[0], log_children[1]
@@ -165,7 +165,7 @@ class GAInteger(types.Integer):
 
         children = []
         for _ in range(2):
-            child = GAInteger(definition, connector=self.connector)
+            child = cast(GAInteger, GAInteger._holding(definition, self.connector, None))
             child.set(int(round(self._generate_numerical(
                 left, right, step or 1, origin=min_value))))
             children.append(child)
@@ -502,8 +502,10 @@ class GASolution(Solution):
         else:
             variables_to_exchange = []
 
-        child1 = GASolution(self.get_definition(), connector=self.connector)
-        child2 = GASolution(self.get_definition(), connector=self.connector)
+        # Every variable is set below: drawn first, the children threw away a whole random
+        # solution each (AUD-009).
+        child1 = cast(GASolution, GASolution._empty(self.get_definition(), self.connector))
+        child2 = cast(GASolution, GASolution._empty(self.get_definition(), self.connector))
 
         for variable_name, variable_value in self.get_variables().items():  # Iterate over all variables
 

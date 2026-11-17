@@ -385,8 +385,20 @@ _SA = ("SA is third of the seven overall since F-30 tied the cooling schedule to
        "curved valley, deceptive Schwefel, and a hyperparameter domain it cannot walk "
        "smoothly because two of its four variables are integers and one is categorical")
 
-# GA left this table on 16 Nov 2026 (F-78): breeding only the children its population has
-# room for, it clears Rosenbrock and Schwefel too, on 130 evaluations instead of 160.
+# GA left this table on 16 Nov 2026 (F-78), breeding only the children its population has
+# room for, and came back to it for Rosenbrock on 17 Nov (F-81), which moved the random
+# sequence of every seeded run: the cells below were measured again on new seeds, before
+# and after, and the algorithm had not changed, only the draws the ten seeds here get.
+_GA_ROSENBROCK = ("GA on 130 evaluations sits under the threshold on Rosenbrock's curved "
+                  "valley: over four hundred seeds it beats random sampling in 62 to 66 "
+                  "per cent of them, against the 70 the threshold asks, and on the ten "
+                  "seeds here it reads 3 of 10")
+_SSGA_ZAKHAROV = ("SSGA on 40 evaluations beats random sampling on Zakharov in about four "
+                  "seeds of five (81 of a hundred new seeds), and on the ten seeds here it "
+                  "reads 6 of 10")
+_SSGA_SCHWEFEL_START = ("SSGA on 40 evaluations, on deceptive Schwefel, improves on its own "
+                        "starting point in about four seeds of five (82 of a hundred new "
+                        "seeds), and on the ten seeds here it reads 6 of 10")
 
 _SSGA = ("A-01 gave it parent selection and F-33 a crossover that produces new values, "
          "which took it past random sampling overall. What is left is the budget: two "
@@ -419,17 +431,20 @@ _TPE = ("TPE models each variable on its own, which suits a separable bowl. Rose
 
 # Measured, not guessed, and kept per property: a pair can fail one and pass the
 # other, so a single shared table would turn the passes into XPASS(strict).
-# Only TPE is left here. Every other algorithm, RandomSearch included, improves on
-# its own starting point on every problem, which was true of none of them when P-05
-# opened.
+# Only TPE and one cell of SSGA are left here. Every other algorithm, RandomSearch
+# included, improves on its own starting point on every problem, which was true of none
+# of them when P-05 opened.
 _IMPROVES_ON_ITS_START = {
     ("Rosenbrock", "TPE"): _TPE,
     ("Schwefel", "TPE"): _TPE,
+    ("Schwefel", "SSGA"): _SSGA_SCHWEFEL_START,
 }
 
 _BEATS_RANDOM = {
     **{("Rastrigin", n): r for n, r in (("SSGA", _SSGA), ("TPE", _TPE))},
-    **{("Rosenbrock", n): r for n, r in (("SA", _SA), ("SSGA", _SSGA), ("TPE", _TPE))},
+    **{("Rosenbrock", n): r for n, r in (("SA", _SA), ("SSGA", _SSGA), ("TPE", _TPE),
+                                         ("GA", _GA_ROSENBROCK))},
+    **{("Zakharov", n): r for n, r in (("SSGA", _SSGA_ZAKHAROV),)},
     **{("Griewank", n): r for n, r in (("SSGA", _SSGA),)},
     **{("Schwefel", n): r for n, r in (("SA", _SA), ("SSGA", _SSGA),
                                        ("TPE", _TPE), ("HillClimbing", _DECEPTIVE),

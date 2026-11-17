@@ -205,6 +205,16 @@ class Solution:
         """
         return self.__definition
 
+    @classmethod
+    def _empty(cls, definition: BaseDefinition, connector: Any) -> 'Solution':
+        """A solution of the definition with no variable yet, for a caller that sets every one."""
+        solution = cls.__new__(cls)
+        solution.connector = connector
+        solution._Solution__definition = definition  # type: ignore[attr-defined]
+        solution.value = {}
+        solution.fitness = math.inf
+        return solution
+
     def set(self, variable: str, value: Union[InputValue, types.BaseType, 'Solution']) -> None:
         """
         Sets the value of a variable in the solution.
@@ -240,8 +250,11 @@ class Solution:
             base_type_class = cast(Callable[..., types.BaseType],
                                    self.get_connector().get_type(variable_definition))
 
-            type_value: types.BaseType = base_type_class(
-                variable_definition, self.get_connector())
+            # Built holding no value, and then given the one asked for: built by the
+            # constructor it drew a value of its own first, which was lost at once and
+            # moved the sequence of the generators (AUD-009).
+            type_value: types.BaseType = cast(Any, base_type_class)._holding(
+                variable_definition, self.get_connector(), None)
             type_value.set(value)
             self._set_value(variable, type_value)
         elif isinstance(value, dict):

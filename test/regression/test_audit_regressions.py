@@ -4128,7 +4128,7 @@ def test_f78_una_poblacion_de_dos_evoluciona(nombre):
 
     opciones = {"neighbor_population_size": 3} if nombre == "Memetic" else {}
     busqueda = getattr(metaheuristicas, nombre)(_f78_dominio(), lambda s: s["x"] ** 2 + s["y"] ** 2,
-                                                population_size=2, max_iterations=10, seed=1, **opciones)
+                                                population_size=2, max_iterations=10, seed=0, **opciones)
     busqueda.run()
     # La poblacion misma cambia, no solo el mejor visto: antes los hijos podian mejorar
     # el mejor de la ejecucion sin entrar nunca en la poblacion.
@@ -4196,3 +4196,33 @@ def test_f80_la_ultima_evaluacion_del_presupuesto_se_evalua_aunque_otra_cepa_lo_
     assert llamadas == [1]
     # Y a partir de ahi, sin preguntar ni evaluar.
     assert fitness(object()) == math.inf and llamadas == [1]
+
+
+# --------------------------------------------------------------------------------
+# F-81: asignar un valor a una solucion consumia numeros aleatorios, porque el valor se
+# construia sorteando y se sobrescribia al instante; los hijos del cruce nacian como
+# soluciones aleatorias enteras (AUD-009 de AUDITORIA-2026-11-16.md).
+# --------------------------------------------------------------------------------
+
+def test_f81_asignar_un_valor_no_consume_numeros_aleatorios():
+    """F-81: tras `set_seed(1)`, `solucion.set("i", 3)` o asignar una lista a una estructura
+    cambiaban el estado del generador: cualquier asignacion de mas movia la secuencia de
+    toda la ejecucion que venia detras."""
+    from metagen.framework.rng import get_numpy_rng, get_rng, get_state
+
+    dominio = Domain()
+    dominio.define_integer("i", 0, 10)
+    dominio.define_real("r", 0.0, 1.0)
+    dominio.define_categorical("c", ["a", "b"])
+    dominio.define_dynamic_structure("v", 1, 5)
+    dominio.set_structure_to_integer("v", 0, 9)
+    dominio.define_static_structure("w", 2)
+    dominio.set_structure_to_real("w", 0.0, 1.0)
+    solucion = Solution(dominio)
+    set_seed(1)
+    antes = get_state()
+    for nombre, valor in (("i", 3), ("r", 0.5), ("c", "b"), ("v", [1, 2, 3]), ("w", [0.1, 0.2])):
+        solucion.set(nombre, valor)
+    assert get_state()["random"] == antes["random"]
+    assert get_numpy_rng().bit_generator.state == antes["numpy"]
+    assert get_rng().random() == random.Random(1).random()

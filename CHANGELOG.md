@@ -4,6 +4,11 @@
 
 ### Changes
 
+- **Assigning a value to a solution draws no random number.** `Solution.set`, the elements
+  given to a structure and the children of the crossover of the genetic algorithms are
+  built holding the value they are given, so writing a value leaves the random sequence of
+  the run as it was. Seeded runs of `GA`, `SSGA`, `Memetic` and `TriGen` give different
+  results; the other metaheuristics give the same.
 - **A budget for CVOA with several strains in threads** is spent whole: a run with
   `max_evaluations` makes exactly that many evaluations, also when two strains reach the
   last one at once.
