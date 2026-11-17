@@ -63,9 +63,11 @@ class KernelTPE(TPE):
 
     A run costs ``population_size * (warmup_iterations + 1) + max_iterations``
     evaluations: 220 with the defaults. The history is never trimmed, since every
-    observation is a kernel. On a dynamic structure the length is not modeled: a
-    candidate is born with a random length and the positions it has are drawn from
-    the observations that have them. Under the global
+    observation is a kernel. On a dynamic structure the length is modeled as a
+    categorical variable, by the counts of the lengths of the observations with the
+    prior adding ``prior_weight`` to every allowed length: a candidate draws its length
+    from the model of the best, which enters ``l(x) / g(x)`` once, and the positions it has
+    are drawn from the observations that have them. Under the global
     distribution model every slice proposes and evaluates one candidate, so an
     iteration costs as many evaluations as there are slices.
 
@@ -114,7 +116,9 @@ class KernelTPE(TPE):
     # Measured on the behavior bench: the l(x)/g(x) selection on MetaGen's single-Gaussian
     # model won 26 of 100 against random sampling, against 70 for MetaGen's TPE as it is;
     # on the mixture of kernels it wins 98 of 110 on the same 480 evaluations.
-    # F-35: the length of a dynamic structure is not modeled, here or in TPE.
+    # F-35: the length of a dynamic structure was not modeled; since F-71 KernelTPE models it
+    # as a categorical variable (TPE still does not). The docstring said otherwise until
+    # AUD-012 of metagen-auditoria/AUDITORIA-2026-11-16.md.
 
     default_max_iterations = 100
     default_warmup_iterations = 5
