@@ -104,7 +104,8 @@ def msl(cube: Cube, tricluster: Tricluster, views: Views = "distinct", normalize
       conditions on the X axis in turn.
     - ``"time"``: only the view with the times on the X axis, the time-series view.
     - ``"trlab"``: the view with the genes on the X axis counted twice and the one with
-      the times once.
+      the times once, the views of the definition of MSL in the TriGen publications, as
+      TrLab computes it.
 
     MSL is zero when every series has the same shape, the lower the better, and it is
     in ``[0, 2π]``; ``normalized=True`` divides it by ``2π``. A slope along the genes or

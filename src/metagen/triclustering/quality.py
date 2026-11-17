@@ -56,7 +56,8 @@ def grq(cube: Cube, tricluster: Tricluster, views: Views = "distinct") -> float:
     :type cube: Cube
     :param tricluster: The tricluster.
     :type tricluster: Tricluster
-    :param views: The views MSL averages, defaults to ``"distinct"``.
+    :param views: The views MSL averages, defaults to ``"distinct"``; ``"trlab"`` gives the
+        values of the published definition.
     :type views: str, optional
     :return: Its graphical quality.
     :rtype: float
@@ -166,7 +167,8 @@ def triq(cube: Cube, tricluster: Tricluster, bioq: Optional[float] = None,
     :param weights: The weights, by the names ``"grq"``, ``"peq"``, ``"spq"`` and ``"bioq"``;
         they need not add up to 1.
     :type weights: Mapping[str, float], optional
-    :param views: The views of GRQ, defaults to ``"distinct"``.
+    :param views: The views of GRQ, defaults to ``"distinct"``; ``"trlab"`` gives the values
+        of the published definition.
     :type views: str, optional
     :param flat_profiles: How PEQ and SPQ treat flat profiles, defaults to ``"exclude"``.
     :type flat_profiles: str, optional
