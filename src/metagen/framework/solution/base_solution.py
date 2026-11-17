@@ -86,6 +86,35 @@ def _hashable(value: Any) -> Any:
     return raw
 
 
+#: The values that are their own copy, as for a variable (types/base.py, which this module
+#: cannot import at load: it imports this one).
+_IMMUTABLE = (int, float, str, bool, type(None))
+
+#: What a copy of a variable shares with it: its definition and connector.
+_SHARED_BY_A_COPY = frozenset({"_BaseType__definition", "connector"})
+
+
+def _copy_variable(variable: Any, memo: dict[int, Any]) -> Any:
+    """
+    A copy of a variable of a solution, as deepcopy makes it: a variable that holds a number,
+    a string or None besides its definition and connector, which a copy shares, is copied
+    here by its attributes; any other through deepcopy.
+    """
+    # Through deepcopy, a solution of 30 reals took 36 µs to copy, most of it the dispatch of
+    # deepcopy for each variable and for its value; copying is the second cost of the
+    # trajectory algorithms and of CVOA (EF-08 of the independent audit).
+    if id(variable) in memo:
+        return memo[id(variable)]
+    attributes = getattr(variable, "__dict__", None)
+    if type(attributes) is not dict or getattr(type(variable), "__deepcopy__", None) is not types.BaseType.__deepcopy__ \
+            or not all(name in _SHARED_BY_A_COPY or type(value) in _IMMUTABLE for name, value in attributes.items()):
+        return deepcopy(variable, memo)
+    copied = variable.__class__.__new__(variable.__class__)
+    copied.__dict__.update(attributes)
+    memo[id(variable)] = copied
+    return copied
+
+
 class Solution:
     """
     Base abstract class representing a solution in an optimization problem.
@@ -183,7 +212,12 @@ class Solution:
         copied = self.__class__.__new__(self.__class__)
         memo[id(self)] = copied
         for name, value in self.__dict__.items():
-            shared = name in ("_Solution__definition", "connector")
+            if name == "value" and type(value) is dict:
+                copied.__dict__[name] = {variable: _copy_variable(held, memo) for variable, held in value.items()}
+                continue
+            # A number, a string or None is its own copy: deepcopy would hand back the same
+            # object, through its dispatch (EF-08 of the independent audit).
+            shared = name in ("_Solution__definition", "connector") or type(value) in _IMMUTABLE
             copied.__dict__[name] = value if shared else deepcopy(value, memo)
         return copied
 

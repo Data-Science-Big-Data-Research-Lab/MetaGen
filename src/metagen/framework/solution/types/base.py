@@ -26,6 +26,9 @@ if TYPE_CHECKING:
     from metagen.framework import BaseConnector
     from metagen.framework.domain import Base
 
+#: The values that are their own copy.
+_IMMUTABLE = (int, float, str, bool, type(None))
+
 
 
 class BaseType(ABC):
@@ -125,7 +128,9 @@ class BaseType(ABC):
         copied = self.__class__.__new__(self.__class__)
         memo[id(self)] = copied
         for name, value in self.__dict__.items():
-            shared = name in ("_BaseType__definition", "connector")
+            # A number, a string or None is its own copy: deepcopy would hand back the same
+            # object, through its dispatch (EF-08 of the independent audit).
+            shared = name in ("_BaseType__definition", "connector") or type(value) in _IMMUTABLE
             copied.__dict__[name] = value if shared else deepcopy(value, memo)
         return copied
 
