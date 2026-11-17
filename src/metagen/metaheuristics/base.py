@@ -396,7 +396,9 @@ class Metaheuristic(_Checkpointing, _Budget, ABC):
             distribution = assign_load_equally(
                 len(self.current_solutions) if len(self.current_solutions) > 0 else self.population_size,
                 self.minimum_slice)
-        parents = deepcopy(self.current_solutions)
+        # Not copied: the workers get copies of their own through Ray, and nothing on the
+        # driver changes a parent, select_survivors included (E-10 of the independent audit).
+        parents = list(self.current_solutions)
         iterating = self.current_iteration != -1
         # Shuffled before the cut, so that the slices are made of different
         # individuals every iteration: that is what lets them mix across workers.
