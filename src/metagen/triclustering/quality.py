@@ -23,7 +23,8 @@ import numpy as np
 from scipy.stats import rankdata
 
 from metagen.triclustering.cube import Cube
-from metagen.triclustering.measures import TWO_PI, Views, msl
+from metagen.triclustering._lines import TWO_PI
+from metagen.triclustering.measures import Views, msl
 from metagen.triclustering.tricluster import Tricluster
 
 #: What PEQ and SPQ do with a flat profile, one whose value is the same at every time.

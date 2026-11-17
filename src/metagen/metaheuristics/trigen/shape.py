@@ -30,7 +30,7 @@ from metagen.framework.domain import DynamicStructureDefinition
 from metagen.metaheuristics.genetic.genetic_tools import GAConnector, GAStructure
 from metagen.metaheuristics.tools import solution_class
 from metagen.triclustering import surface as plane
-from metagen.metaheuristics.trigen.population import DataHierarchy, Sizes, block, hierarchical, scattered
+from metagen.metaheuristics.trigen.population import DataHierarchy, Sizes, block, hierarchical, random_window, scattered
 from metagen.triclustering import Cube, Tricluster
 from metagen.triclustering.cube import AXES
 
@@ -394,7 +394,7 @@ class PrismShape(Shape):
         seed = (rng.randrange(rows), rng.randrange(columns)) if self.seeds is None else rng.choice(self.seeds)
         pixels = plane.grow_by(seed, rng.randint(*self.pixels), (rows, columns), self.neighborhood, self.box,
                                lambda pixel: rng.random(), self.blocked)
-        return prism(pixels, _window(times, rng.randint(*sizes[2])))
+        return prism(pixels, random_window(times, rng.randint(*sizes[2])))
 
     def block(self, shape: Sequence[int], sizes: Sizes) -> Tricluster:
         rows, columns, times = shape
@@ -408,7 +408,7 @@ class PrismShape(Shape):
         if self.blocked and not self.blocked.isdisjoint(pixels):
             # Over a pixel taken: a surface drawn over the free ones instead.
             return self.scattered(shape, sizes)
-        return prism(pixels, _window(times, rng.randint(*sizes[2])))
+        return prism(pixels, random_window(times, rng.randint(*sizes[2])))
 
     def hierarchical(self, hierarchy: DataHierarchy, sizes: Sizes) -> Tricluster:
         rows, columns, times = (len(levels) for levels in hierarchy.levels)
@@ -546,7 +546,7 @@ class PrismShape(Shape):
         return side, side, times / references[2]
 
     def values(self, cube: Cube, tricluster: Tricluster) -> Optional[np.ndarray]:
-        rows, columns, times = _prism_arrays(tricluster)
+        rows, columns, times = prism_arrays(tricluster)
         return cube.values[rows[:, None], columns[:, None], np.asarray(times)[None, :]][:, None, :]
 
     def check_measure(self, measure: str, views: str) -> None:
@@ -612,11 +612,11 @@ def prism_parts(tricluster: Tricluster) -> Tuple[List[plane.Pixel], Tuple[int, .
     times = tricluster.times
     if tricluster.is_cube:
         return [(gene, condition) for gene in tricluster.genes for condition in tricluster.conditions], times
-    rows, columns, _ = _prism_arrays(tricluster)
+    rows, columns, _ = prism_arrays(tricluster)
     return list(zip(rows.tolist(), columns.tolist())), times
 
 
-def _prism_arrays(tricluster: Tricluster) -> Tuple[np.ndarray, np.ndarray, Tuple[int, ...]]:
+def prism_arrays(tricluster: Tricluster) -> Tuple[np.ndarray, np.ndarray, Tuple[int, ...]]:
     """:py:func:`prism_parts` as the arrays of the rows and the columns of the pixels."""
     # Measuring a prism through the list of its pixels, as tuples, and back to arrays
     # took a seventh of growing a large one (metagen-auditoria/trigen/c5/informe_c5_etapa3_cruce.md, 5).
@@ -652,11 +652,6 @@ def _rectangles(pixels: Tuple[int, int], box: Tuple[int, int], extent: Tuple[int
     low, high = pixels
     return [(height, width) for height in range(1, min(box[0], extent[0]) + 1)
             for width in range(1, min(box[1], extent[1]) + 1) if low <= height * width <= high]
-
-
-def _window(length: int, size: int) -> range:
-    start = get_rng().randint(0, length - size)
-    return range(start, start + size)
 
 
 #: The shapes TriGen knows, by name.

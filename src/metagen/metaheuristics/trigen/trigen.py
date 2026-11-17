@@ -30,7 +30,7 @@ from metagen.logging.metagen_logger import metagen_logger
 from metagen.metaheuristics.trigen.fitness import (NULL_SAMPLES, NULL_SIZES, Measure, Overlap, Scoring,
                                                    SizeReference, TriclusterFitness)
 from metagen.metaheuristics.trigen.population import DataHierarchy, Sizes
-from metagen.metaheuristics.trigen.results import TriGenResult, _plain
+from metagen.metaheuristics.trigen.results import TriGenResult, plain
 from metagen.metaheuristics.trigen.shape import PrismShape, Shape, grow, prism_parts, shape_named  # noqa: F401
 from metagen.metaheuristics.trigen.trigen_ga import TriGenGA, require_integer, validate
 from metagen.triclustering import Cube, Tricluster, null_cube
@@ -471,8 +471,8 @@ class TriGen:
                               mutation_probability=self.mutation_probability, form=form)
             search.run()
             chosen = _choose(search, set(found))
-            record: Dict[str, Any] = {"search": index, "evaluations": search._evaluations,
-                                      "seconds": search._seconds,
+            record: Dict[str, Any] = {"search": index, "evaluations": search.evaluations,
+                                      "seconds": search.seconds,
                                       "best_fitnesses": list(search.best_solution_fitnesses),
                                       "growth_evaluations": 0}
             if chosen is not None and self.growth is not None:
@@ -571,12 +571,12 @@ class TriGen:
             # prisms may lie (metagen-auditoria/trigen/SPEC-parada-etapa3-segmentacion.md, 4).
             if fitted is None or free <= REFIT_SHARE * fitted[0]:
                 fitness.fit_chance()
-                assert fitness._chance is not None
-                fitted = (free, fitness._chance)
+                assert fitness.chance is not None
+                fitted = (free, fitness.chance)
                 if self.started is not None:
                     self.started["chance_evaluations"] += NULL_SIZES * NULL_SAMPLES
             else:
-                fitness._chance = fitted[1]
+                fitness.chance = fitted[1]
         return form, fitness, fitted
 
     def _on_genes(self, positions: List[int]) -> Tuple[Cube, TriclusterFitness, DataHierarchy, Sizes]:
@@ -628,7 +628,7 @@ class TriGen:
         :return: The configuration.
         :rtype: Dict[str, Any]
         """
-        return _plain({"n_triclusters": self.n_triclusters, "generations": self.generations,
+        return plain({"n_triclusters": self.n_triclusters, "generations": self.generations,
                 "population_size": self.population_size, "random_fraction": self.random_fraction,
                 "selection_rate": self.selection_rate, "mutation_probability": self.mutation_probability,
                 "min_sizes": [low for low, _ in self.sizes], "max_sizes": [high for _, high in self.sizes],

@@ -171,7 +171,7 @@ class TriGenResult:
                                                     fitness=record["fitness"]))
                 triclusters.append(tricluster)
                 terms.append(dict(record["terms"]))
-                names.append({axis: [_plain(labels[position]) for position in positions] for axis, labels, positions in
+                names.append({axis: [plain(labels[position]) for position in positions] for axis, labels, positions in
                               zip(AXES, (cube.genes, cube.conditions, cube.times),
                                   (tricluster.genes, tricluster.conditions, tricluster.times))})
         configuration = trigen.started["configuration"]
@@ -208,7 +208,7 @@ class TriGenResult:
                          **({} if tricluster.is_cube else {"cells": [column.tolist() for column in tricluster.cells()]})}
                         for tricluster, names, terms in zip(self.triclusters, self.names, self.terms)],
                     "searches": self.searches}
-        text = json.dumps(_plain(document), indent=1, allow_nan=False) + "\n"
+        text = json.dumps(plain(document), indent=1, allow_nan=False) + "\n"
         directory = os.path.dirname(os.path.abspath(path))
         os.makedirs(directory, exist_ok=True)
         descriptor, temporary = tempfile.mkstemp(prefix=os.path.basename(path) + ".", suffix=".tmp", dir=directory)
@@ -332,7 +332,7 @@ class TriGenResult:
             for index, (tricluster, names) in enumerate(zip(self.triclusters, self.names)):
                 for axis, positions in zip(AXES, (tricluster.genes, tricluster.conditions, tricluster.times)):
                     for position, name in zip(positions, names[axis]):
-                        writer.writerow([index, axis, position, _plain(name)])
+                        writer.writerow([index, axis, position, plain(name)])
 
 
 def _installed_version() -> Optional[str]:
@@ -346,14 +346,14 @@ def _not_json(constant: str) -> Any:
     raise ValueError(f"it holds {constant}, which JSON does not")
 
 
-def _plain(value: Any) -> Any:
+def plain(value: Any) -> Any:
     """A value as JSON holds it: NumPy numbers as numbers, what is not a number (NaN, the
     infinities) as null, tuples as lists, and any other object, dates among them, as its
     text."""
     if isinstance(value, Mapping):
-        return {str(key): _plain(item) for key, item in value.items()}
+        return {str(key): plain(item) for key, item in value.items()}
     if isinstance(value, (list, tuple)):
-        return [_plain(item) for item in value]
+        return [plain(item) for item in value]
     if isinstance(value, (np.datetime64, np.timedelta64)):
         return str(value)
     if isinstance(value, np.generic):

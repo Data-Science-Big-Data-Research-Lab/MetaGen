@@ -133,7 +133,7 @@ def _lowest_window(levels: Sequence[int], size: int) -> List[int]:
     return list(range(start, start + size))
 
 
-def _window(length: int, size: int) -> range:
+def random_window(length: int, size: int) -> range:
     """A window of ``size`` consecutive positions of ``length``, every start as likely."""
     start = get_rng().randint(0, length - size)
     return range(start, start + size)
@@ -164,7 +164,7 @@ def scattered(shape: Sequence[int], sizes: Sizes, ordered: Sequence[int] = ()) -
     :return: The tricluster.
     :rtype: Tricluster
     """
-    return _tricluster([_window(length, _size(bounds)) if dimension in ordered
+    return _tricluster([random_window(length, _size(bounds)) if dimension in ordered
                         else get_rng().sample(range(length), _size(bounds))
                         for dimension, (length, bounds) in enumerate(zip(shape, sizes))])
 
