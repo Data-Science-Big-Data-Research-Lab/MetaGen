@@ -49,6 +49,11 @@ class CVOA(Metaheuristic):
     :py:func:`~metagen.metaheuristics.distributed_cvoa_launcher`, one Ray
     task per strain.
 
+    A strain does not take the options of a run that the other metaheuristics take. The seed
+    and the budget of the pandemic, ``seed``, ``max_evaluations`` and ``timeout``, are given to
+    the launcher, which shares them among the strains; ``history``, ``checkpoint``,
+    ``initial_solutions``, ``racing`` and ``refit`` do not apply to a pandemic.
+
     :param global_state: The pandemic state every strain shares.
     :param domain: The problem domain.
     :type domain: Domain
