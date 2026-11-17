@@ -16,6 +16,7 @@
 """
 from __future__ import annotations
 
+import functools
 import os
 import pickle
 import warnings
@@ -47,11 +48,22 @@ _NOT_CONFIGURATION = _NOT_CHECKPOINTED | frozenset({
     "history", "_evaluations", "_steps", "_seconds", "best_model", "_best_model_value", "_step_count",
     "stop_reason", "log_dir", "history_file"})
 
+@functools.lru_cache(maxsize=None)
 def _package_version() -> str:
+    # Read once per process: the metadata of the distribution do not change during a run,
+    # and reading them was a tenth of every checkpoint (EF-13 of the independent audit).
     try:
         return metadata.version("pymetagen-datalabupo")
     except metadata.PackageNotFoundError:
         return "unknown"
+
+
+def _dump(state: Dict[str, Any], path: str) -> None:
+    """Write a checkpoint state to a file, synced to disk."""
+    with open(path, "wb") as handle:
+        pickle.dump(state, handle)
+        handle.flush()
+        os.fsync(handle.fileno())
 
 
 class _Checkpointing:
@@ -80,15 +92,6 @@ class _Checkpointing:
         directory. A subclass whose state is not all in its attributes extends it.
         """
         attributes = {name: value for name, value in self.__dict__.items() if name not in _NOT_CHECKPOINTED}
-        if self.best_model is not None:
-            try:
-                pickle.dumps(self.best_model)
-            except Exception as error:
-                # A model the checkpoint cannot hold is left out, not the checkpoint: a run
-                # resumed from it keeps the best model it finds from then on.
-                warnings.warn(f"The best model cannot be saved in the checkpoint ({error}); it is left out.",
-                              RuntimeWarning, stacklevel=2)
-                attributes["best_model"], attributes["_best_model_value"] = None, None
         return {
             "version": _package_version(),
             "class": type(self),
@@ -162,10 +165,26 @@ class _Checkpointing:
         directory = os.path.dirname(os.path.abspath(path))
         os.makedirs(directory, exist_ok=True)
         temporary = path + ".tmp"
-        with open(temporary, "wb") as handle:
-            pickle.dump(self._checkpoint_state(), handle)
-            handle.flush()
-            os.fsync(handle.fileno())
+        state = self._checkpoint_state()
+        # Serialized once, and the best model on its own only when the state cannot be: it
+        # was serialized once to try it and once more with the state, two times a large
+        # model at every checkpoint (E-11 and EF-13 of the independent audit).
+        try:
+            _dump(state, temporary)
+        except Exception:
+            if self.best_model is None:
+                raise
+            try:
+                pickle.dumps(self.best_model)
+            except Exception as error:
+                # A model the checkpoint cannot hold is left out, not the checkpoint: a run
+                # resumed from it keeps the best model it finds from then on.
+                warnings.warn(f"The best model cannot be saved in the checkpoint ({error}); it is left out.",
+                              RuntimeWarning, stacklevel=2)
+            else:
+                raise
+            state["algorithm"]["best_model"], state["algorithm"]["_best_model_value"] = None, None
+            _dump(state, temporary)
         os.replace(temporary, path)
 
     @staticmethod
