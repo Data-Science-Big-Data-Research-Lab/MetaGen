@@ -23,7 +23,6 @@ import os
 import platform
 import tempfile
 from dataclasses import dataclass, field
-from importlib import metadata
 from typing import TYPE_CHECKING, Any, Dict, List, Mapping, Optional
 
 import numpy as np
@@ -337,10 +336,10 @@ class TriGenResult:
 
 
 def _installed_version() -> Optional[str]:
-    try:
-        return metadata.version("pymetagen-datalabupo")
-    except metadata.PackageNotFoundError:
-        return None
+    # The one metagen reads when it is imported, None for a source tree never installed
+    # (O-08 of the independent audit).
+    from metagen import __version__
+    return None if __version__ == "unknown" else __version__
 
 
 def _not_json(constant: str) -> Any:

@@ -16,13 +16,12 @@
 """
 from __future__ import annotations
 
-import functools
 import os
 import pickle
 import warnings
-from importlib import metadata
 from typing import TYPE_CHECKING, Any, Dict, Optional, cast
 
+import metagen
 from metagen.framework import Domain
 from metagen.framework import rng as rng_state
 from metagen.metaheuristics.import_helper import is_package_installed
@@ -48,14 +47,11 @@ _NOT_CONFIGURATION = _NOT_CHECKPOINTED | frozenset({
     "history", "_evaluations", "_steps", "_seconds", "best_model", "_best_model_value", "_step_count",
     "stop_reason", "log_dir", "history_file"})
 
-@functools.lru_cache(maxsize=None)
 def _package_version() -> str:
-    # Read once per process: the metadata of the distribution do not change during a run,
-    # and reading them was a tenth of every checkpoint (EF-13 of the independent audit).
-    try:
-        return metadata.version("pymetagen-datalabupo")
-    except metadata.PackageNotFoundError:
-        return "unknown"
+    # The version metagen reads once when it is imported: read here at every checkpoint, it
+    # was a tenth of each one (EF-13), and three modules read it, each its own way (O-08 of
+    # the independent audit).
+    return metagen.__version__
 
 
 def _dump(state: Dict[str, Any], path: str) -> None:
