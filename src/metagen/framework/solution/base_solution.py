@@ -464,9 +464,9 @@ class Solution:
 
         for variable in altered_variables:
             value = self.get(variable)
+            # Mutated in place: it is the variable the solution holds, and setting it again
+            # only repeated the checks of set() (EF-14 of the independent audit).
             value.mutate(alteration_limit=alteration_limit)
-
-            self.set(variable, value)
 
     # ** PRIVATE FUNCTIONS ***
 
@@ -541,8 +541,9 @@ class Solution:
         type_class = cast(Callable[..., Union[types.BaseType, 'Solution']],
                           self.get_connector().get_type(definition))
         variable_definition = self.get_definition().get(variable)
-        self.set(variable, type_class(
-            variable_definition, connector=self.get_connector()))
+        # Straight in: the connector built it for this definition, which is what set() checks
+        # (EF-14 of the independent audit).
+        self._set_value(variable, type_class(variable_definition, connector=self.get_connector()))
 
     # ** SET VALUE METHOD
 
@@ -594,7 +595,13 @@ class Solution:
         """
         if not self.is_active(variable):
             return None
-        return builtin_value(self.value[variable])
+        held = self.value[variable]
+        # A number or a string is what builtin_value returns for it: read here, without its
+        # chain of isinstance, since a fitness function reads every variable at every
+        # evaluation (EF-14 of the independent audit).
+        if type(held.value) in _IMMUTABLE and isinstance(held, types.BaseType):
+            return held.value
+        return builtin_value(held)
 
     def __iter__(self):
         """

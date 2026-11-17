@@ -162,7 +162,9 @@ class IntegerDefinition(Base):
         # numbers.Integral rather than int, so that a numpy integer counts, and bool
         # ruled out explicitly, since it is a subclass of int and True used to pass as
         # a valid integer (A-08).
-        if isinstance(value, bool) or not isinstance(value, numbers.Integral):
+        # type(value) is int first: the check against the abstract class is several times
+        # slower, and an int is what the mutation and the draws give (EF-14 of the independent audit).
+        if type(value) is not int and (isinstance(value, bool) or not isinstance(value, numbers.Integral)):
             res = False
         else:
             numeric = int(value)
@@ -268,7 +270,10 @@ class RealDefinition(Base):
         # numbers.Real rather than float: isinstance(1, float) is False, so a real
         # variable rejected 1, and a numpy float32 too. bool is ruled out for the same
         # reason as in IntegerDefinition (A-08).
-        if isinstance(value, bool) or not isinstance(value, numbers.Real):
+        # A float or an int first: the check against the abstract class is several times slower,
+        # and a float is what the mutation and the draws give (EF-14 of the independent audit).
+        if type(value) is not float and type(value) is not int \
+                and (isinstance(value, bool) or not isinstance(value, numbers.Real)):
             res = False
         else:
             numeric = float(value)
