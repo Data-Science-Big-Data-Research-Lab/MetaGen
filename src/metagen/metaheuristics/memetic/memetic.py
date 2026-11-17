@@ -14,21 +14,18 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-import heapq
-from copy import deepcopy
-from typing import Any, Optional, Callable, Tuple, List, cast, Mapping, Sequence
+from typing import Any, Optional, Callable, List, cast, Mapping, Sequence
 
 from metagen.framework import Domain, RelativeAlteration, Solution
 from metagen.metaheuristics.racing import Racing
-from metagen.metaheuristics.tools import random_exploration
-from metagen.metaheuristics.base import Metaheuristic
 from metagen.metaheuristics._parameters import require_alteration, require_integer, require_probability
 from metagen.metaheuristics.genetic import GASolution
-from metagen.metaheuristics.genetic.genetic_tools import breed_children, elites_of, require_crossover
+from metagen.metaheuristics.genetic.genetic_algorithm import _Generational
+from metagen.metaheuristics.genetic.genetic_tools import require_crossover
 from metagen.metaheuristics.memetic.memetic_tools import local_search_of_children
 
 
-class Memetic(Metaheuristic):
+class Memetic(_Generational):
     """
     This class implements the *Memetic* algorithm. It uses the :py:class:`~metagen.framework.Solution` class as an
     abstraction of an individual for the meta-heuristic.
@@ -142,56 +139,13 @@ class Memetic(Metaheuristic):
         else:
             self.distribution_level = distribution_level
 
-    def initialize(self, num_solutions=10) -> Tuple[List[Solution], Solution]:
-        """Initialize the population with random solutions.
-
-        :param num_solutions: The number of solutions to generate, defaults to 10
-        :type num_solutions: int
-        :return: A tuple containing the initial population and the best solution
-        :rtype: Tuple[List[:py:class:`~metagen.framework.Solution`], :py:class:`~metagen.framework.Solution`]
-        """
-        current_solutions, best_solution = random_exploration(self.domain, self.fitness_function, num_solutions)
-        return current_solutions, best_solution
-
-    def iterate(self, solutions: List[Solution]) -> Tuple[List[Solution], Solution]:
-        """Perform one iteration of the memetic algorithm.
-
-        This method:
-        1. Selects the parents by tournament
-        2. Creates offspring through genetic operations
-        3. Improves offspring through local search
-        4. Updates the population
-
-        :param solutions: The current population
-        :type solutions: List[:py:class:`~metagen.framework.Solution`]
-        :return: A tuple containing the updated population and the best solution
-        :rtype: Tuple[List[:py:class:`~metagen.framework.Solution`], :py:class:`~metagen.framework.Solution`]
-        """
-        num_solutions = len(solutions)
-        # As in GA: under the global model a slice breeds a pair per two individuals and
-        # the driver selects; otherwise the children the population has room for.
-        selected_by_the_driver = self.distributed and self.distribution_model == "global"
-        elites = 2 if selected_by_the_driver else elites_of(num_solutions)
-        count = 2 * (num_solutions // 2) if selected_by_the_driver else num_solutions - elites
-        best_solution = deepcopy(self._best_so_far())
-        current_solutions = [deepcopy(solution) for solution in
-                             heapq.nsmallest(elites, solutions, key=lambda sol: sol.get_fitness())]
-
+    def _improvement(self) -> Optional[Callable[[List[GASolution]], List[GASolution]]]:
+        """Every child goes through the local search before it enters the population."""
         def improve(children: List[GASolution]) -> List[GASolution]:
-            # Every child goes through the local search before it enters the population.
             return cast(List[GASolution], local_search_of_children(
                 children, self.fitness_function, self.neighbor_population_size, self.alteration_limit,
                 self.distribution_level))
-
-        # A-01: the pair is drawn again for every crossover, as in GA.
-        children = breed_children(solutions, count, self.tournament_size, self.mutation_rate,
-                                  self.fitness_function, self.mutation_alteration_limit, improve=improve)
-        current_solutions.extend(children)
-        for child in children:
-            if child < best_solution:
-                best_solution = child
-
-        return current_solutions, best_solution
+        return improve
 
     @property
     def max_generations(self) -> Optional[int]:
@@ -199,14 +153,3 @@ class Memetic(Metaheuristic):
         # Kept under that name alone, it was the one argument of a metaheuristic the report
         # did not show (F-65).
         return self.max_iterations
-
-    def stopping_criterion(self) -> bool:
-        """
-        Check if the stopping criterion is met.
-
-        The stopping criterion is met when the maximum number of generations is reached.
-
-        :return: True if the stopping criterion is met, False otherwise
-        :rtype: bool
-        """
-        return self._iterations_done()

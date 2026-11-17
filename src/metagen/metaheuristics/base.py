@@ -630,10 +630,10 @@ class Metaheuristic(_Checkpointing, _Budget, ABC):
         """
         pass
 
-    @abstractmethod
     def initialize(self, num_solutions=10) -> Tuple[List[Solution], Solution]:
         """
-        Initialize the population/solutions for the metaheuristic.
+        Initialize the population/solutions for the metaheuristic: by default,
+        ``num_solutions`` solutions drawn at random from the domain and evaluated.
 
         Everything the algorithm needs later has to be in what this returns. In
         distributed mode Ray runs it on a pickled copy of the algorithm, so anything
@@ -645,7 +645,9 @@ class Metaheuristic(_Checkpointing, _Budget, ABC):
         :return: A tuple containing the population and the best individual.
         :rtype: Tuple[List[Solution], Solution]
         """
-        pass
+        # The same body was written in GA, SSGA, Memetic and RandomSearch (O-06 and OF-06 of
+        # the independent audit).
+        return random_exploration(self.domain, self.fitness_function, num_solutions)
 
     def pre_iteration(self) -> None:
         """

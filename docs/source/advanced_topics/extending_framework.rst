@@ -99,9 +99,9 @@ The connector maps each definition of the domain to the type that represents it 
 Extending the Metaheuristic class
 ---------------------------------
 
-A metaheuristic inherits from |metaheuristic| and implements **three** methods:
+A metaheuristic inherits from |metaheuristic| and implements **two** methods, ``iterate`` and ``stopping_criterion``, and may replace a third, ``initialize``:
 
-1. ``initialize(num_solutions)`` returns the first population and its best solution.
+1. ``initialize(num_solutions)`` returns the first population and its best solution. By default, ``num_solutions`` solutions drawn at random from the domain and evaluated.
 2. ``iterate(solutions)`` returns the next population and the best solution of the iteration.
 3. ``stopping_criterion()`` says when to stop. It is abstract: a subclass without it cannot be instantiated.
 

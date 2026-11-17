@@ -17,17 +17,77 @@
 import heapq
 
 from metagen.framework import Domain, RelativeAlteration, Solution
-from .genetic_tools import breed_children, elites_of, require_crossover
+from .genetic_tools import GASolution, breed_children, elites_of, require_crossover
 from metagen.metaheuristics.racing import Racing
 from metagen.metaheuristics.base import Metaheuristic
 from metagen.metaheuristics._parameters import require_alteration, require_integer, require_probability
 from typing import Any, Optional, Callable, List, Tuple, Mapping, Sequence
 from copy import deepcopy
 
-from metagen.metaheuristics.tools import random_exploration
 
 
-class GA(Metaheuristic):
+class _Generational(Metaheuristic):
+    """
+    What GA and Memetic share: a generation. The best individuals pass on as elites, and
+    the rest of the population is bred from parents drawn by tournament, crossed over,
+    mutated and evaluated; the memetic algorithm improves each child by a local search
+    before it enters the population.
+    """
+    # GA and Memetic held this generation twice, line by line but for the local search, and
+    # the changes of A-01 and F-78 had to be made in both (O-06 and OF-06 of the independent
+    # audit). The draws are made in the same order as in either copy.
+
+    tournament_size: int
+    mutation_rate: float
+    mutation_alteration_limit: Any
+
+    def _improvement(self) -> Optional[Callable[[List[GASolution]], List[GASolution]]]:
+        """What improves the children of each pair once evaluated, or None to keep them as they are."""
+        return None
+
+    def iterate(self, solutions: List[Solution]) -> Tuple[List[Solution], Solution]:
+        """
+        Execute one generation: the elites pass on, and the rest of the population is
+        bred from parents drawn by tournament.
+
+        :param solutions: The current population.
+        :type solutions: List[Solution]
+        :return: The next population and the best individual so far.
+        :rtype: Tuple[List[Solution], Solution]
+        """
+        num_solutions = len(solutions)
+        # Under the global model the driver selects out of the parents and every child a
+        # worker returns, so a slice breeds a pair per two individuals and keeps them all;
+        # otherwise the generation breeds the children the population has room for.
+        selected_by_the_driver = self.distributed and self.distribution_model == "global"
+        elites = 2 if selected_by_the_driver else elites_of(num_solutions)
+        count = 2 * (num_solutions // 2) if selected_by_the_driver else num_solutions - elites
+        best_solution = deepcopy(self._best_so_far())
+        current_solutions = [deepcopy(solution) for solution in
+                             heapq.nsmallest(elites, solutions, key=lambda sol: sol.get_fitness())]
+        # A-01: the pair is drawn again for every crossover. Taking the two best once
+        # bred the same pair every time, so the generation held a handful of distinct
+        # points at most. The best still go through untouched, as the elite above.
+        children = breed_children(solutions, count, self.tournament_size, self.mutation_rate,
+                                  self.fitness_function, self.mutation_alteration_limit,
+                                  improve=self._improvement())
+        current_solutions.extend(children)
+        for child in children:
+            if child < best_solution:
+                best_solution = child
+        return current_solutions, best_solution
+
+    def stopping_criterion(self) -> bool:
+        """
+        Check if the algorithm should stop: when it has run its number of generations.
+
+        :return: True if the number of generations is reached, False otherwise.
+        :rtype: bool
+        """
+        return self._iterations_done()
+
+
+class GA(_Generational):
     """
     Genetic Algorithm (GA) class for optimization problems.
     
@@ -126,37 +186,3 @@ class GA(Metaheuristic):
         self.max_iterations = self._iterations(max_iterations, 50)
         self.tournament_size = tournament_size
         self.mutation_alteration_limit: Any = mutation_alteration_limit
-
-    def initialize(self, num_solutions=10) -> Tuple[List[Solution], Solution]:
-        """Initialize the population"""
-        # current_solutions, best_solution = yield_ga_population(num_solutions, self.domain, self.fitness_function)
-        current_solutions, best_solution = random_exploration(self.domain, self.fitness_function, num_solutions)
-        return current_solutions, best_solution
-
-    def iterate(self, solutions: List[Solution]) -> Tuple[List[Solution], Solution]:
-        """Execute one generation of the genetic algorithm"""
-        num_solutions = len(solutions)
-        # Under the global model the driver selects out of the parents and every child a
-        # worker returns, so a slice breeds a pair per two individuals and keeps them all;
-        # otherwise the generation breeds the children the population has room for.
-        selected_by_the_driver = self.distributed and self.distribution_model == "global"
-        elites = 2 if selected_by_the_driver else elites_of(num_solutions)
-        count = 2 * (num_solutions // 2) if selected_by_the_driver else num_solutions - elites
-        best_solution = deepcopy(self._best_so_far())
-        current_solutions = [deepcopy(solution) for solution in
-                             heapq.nsmallest(elites, solutions, key=lambda sol: sol.get_fitness())]
-
-        # A-01: the pair is drawn again for every crossover. Taking the two best once
-        # bred the same pair every time, so the generation held a handful of distinct
-        # points at most. The best still go through untouched, as the elite above.
-        children = breed_children(solutions, count, self.tournament_size, self.mutation_rate,
-                                  self.fitness_function, self.mutation_alteration_limit)
-        current_solutions.extend(children)
-        for child in children:
-            if child < best_solution:
-                best_solution = child
-
-        return current_solutions, best_solution
-
-    def stopping_criterion(self) -> bool:
-        return self._iterations_done()

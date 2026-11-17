@@ -25,7 +25,6 @@ from .genetic_tools import (GASolution, yield_two_children, require_crossover,
 from metagen.metaheuristics.racing import Racing
 from metagen.metaheuristics.base import Metaheuristic
 from metagen.metaheuristics._parameters import require_alteration, require_integer, require_probability
-from metagen.metaheuristics.tools import random_exploration
 from ...logging.metagen_logger import metagen_logger
 
 
@@ -130,10 +129,6 @@ class SSGA(Metaheuristic):
         self.max_iterations = self._iterations(max_iterations, 50)
         self.tournament_size = tournament_size
         self.mutation_alteration_limit: Any = mutation_alteration_limit
-
-    def initialize(self, num_solutions=10) -> Tuple[List[Solution], Solution]:
-        current_solutions, best_solution = random_exploration(self.domain, self.fitness_function, num_solutions)
-        return current_solutions, best_solution
 
     def iterate(self, solutions: List[Solution]) -> Tuple[List[Solution], Solution]:
         """

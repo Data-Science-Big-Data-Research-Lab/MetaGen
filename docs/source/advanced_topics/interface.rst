@@ -15,9 +15,9 @@ A metaheuristic can be any class that takes a |domain| and a fitness function an
 Implementing a Custom Metaheuristic
 -----------------------------------
 
-A metaheuristic that extends |metaheuristic| implements three methods:
+A metaheuristic that extends |metaheuristic| implements two methods, ``iterate`` and ``stopping_criterion``, and may replace a third, ``initialize``:
 
-1. ``initialize(num_solutions)`` – returns the first population and its best solution.
+1. ``initialize(num_solutions)`` – returns the first population and its best solution. By default, ``num_solutions`` solutions drawn at random from the domain and evaluated.
 2. ``iterate(solutions)`` – returns the next population and the best solution of the iteration.
 3. ``stopping_criterion()`` – returns ``True`` when the run must stop. It is abstract: a subclass that does not define it cannot be instantiated.
 

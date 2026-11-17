@@ -16,7 +16,6 @@
 """
 from metagen.framework import Domain, Solution
 from metagen.metaheuristics.racing import Racing
-from metagen.metaheuristics.tools import random_exploration
 from metagen.metaheuristics.base import Metaheuristic
 from typing import Optional, List, Tuple, Callable, Any, Mapping, Sequence
 from copy import deepcopy
@@ -79,18 +78,6 @@ class RandomSearch(Metaheuristic):
                          history=history, max_evaluations=max_evaluations, timeout=timeout,
                          initial_solutions=initial_solutions, racing=racing, refit=refit)
         self.max_iterations = self._iterations(max_iterations, 20)
-
-    def initialize(self, num_solutions=10) -> Tuple[List[Solution], Solution]:
-        """
-        Initialize a population of random solutions.
-
-        :param num_solutions: Number of solutions to initialize, defaults to 10
-        :type num_solutions: int, optional
-        :return: A tuple containing the list of solutions and the best solution found
-        :rtype: Tuple[List[Solution], Solution]
-        """
-        current_solutions, best_solution = random_exploration(self.domain, self.fitness_function, num_solutions)
-        return current_solutions, best_solution
 
     def iterate(self, solutions: List[Solution]) -> Tuple[List[Solution], Solution]:
         """
