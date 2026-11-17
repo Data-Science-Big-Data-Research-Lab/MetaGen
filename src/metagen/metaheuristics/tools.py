@@ -264,13 +264,40 @@ def local_search(solution: Solution, fitness_function: Callable[[Solution], floa
     :rtype: Solution
     """
     best_neighbor = deepcopy(solution)
-    for _ in range(neighbor_population_size):
-        neighbor = deepcopy(solution)
-        neighbor.mutate(alteration_limit=alteration_limit)
-        neighbor.evaluate(fitness_function)
+    for neighbor in neighborhood(solution, fitness_function, neighbor_population_size, alteration_limit):
         if neighbor.get_fitness() < best_neighbor.get_fitness():
             best_neighbor = neighbor
     return best_neighbor
+
+
+def neighborhood(around: Solution, fitness_function: Callable[[Solution], float], size: int,
+                 alteration_limit: Any) -> List[Solution]:
+    """
+    Draw and evaluate ``size`` neighbors of a solution: each one a copy of it mutated once
+    within ``alteration_limit``, in the order they are drawn.
+
+    :param around: The solution to draw them around, which is not changed.
+    :type around: Solution
+    :param fitness_function: The function that evaluates a solution.
+    :type fitness_function: Callable[[Solution], float]
+    :param size: How many neighbors to draw.
+    :type size: int
+    :param alteration_limit: How far a mutation may move each variable: a number, a
+        :py:class:`~metagen.framework.RelativeAlteration`, or None for the whole domain.
+    :type alteration_limit: float or RelativeAlteration or None
+    :return: The neighbors, evaluated.
+    :rtype: List[Solution]
+    """
+    # Written in local_search, in TabuSearch and twice in SA (OF-06 of the independent
+    # audit). local_search_with_tabu does not use it: each of its neighbors starts from
+    # the best one so far, on purpose (see there).
+    neighbors = []
+    for _ in range(size):
+        neighbor = deepcopy(around)
+        neighbor.mutate(alteration_limit=alteration_limit)
+        neighbor.evaluate(fitness_function)
+        neighbors.append(neighbor)
+    return neighbors
 
 
 def local_search_with_tabu(solution: Solution, fitness_function: Callable[[Solution], float],

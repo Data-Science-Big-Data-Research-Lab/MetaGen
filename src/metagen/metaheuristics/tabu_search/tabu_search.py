@@ -15,7 +15,6 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 from collections import deque
-from copy import deepcopy
 from typing import Any, Callable, Deque, List, Optional, Tuple, Mapping, Sequence
 
 from metagen.framework import Domain, RelativeAlteration, Solution
@@ -23,7 +22,7 @@ from metagen.framework.solution.types import Integer, Real, Structure
 from metagen.metaheuristics.racing import Racing
 from metagen.metaheuristics.base import Metaheuristic
 from metagen.metaheuristics._parameters import require_alteration, require_integer
-from metagen.metaheuristics.tools import solution_class
+from metagen.metaheuristics.tools import neighborhood, solution_class
 
 
 class TabuSearch(Metaheuristic):
@@ -256,10 +255,4 @@ class TabuSearch(Metaheuristic):
         return bool(value == other)
 
     def _neighborhood(self, around: Solution, size: int) -> List[Solution]:
-        neighborhood = []
-        for _ in range(size):
-            neighbor = deepcopy(around)
-            neighbor.mutate(alteration_limit=self.alteration_limit)
-            neighbor.evaluate(self.fitness_function)
-            neighborhood.append(neighbor)
-        return neighborhood
+        return neighborhood(around, self.fitness_function, size, self.alteration_limit)
