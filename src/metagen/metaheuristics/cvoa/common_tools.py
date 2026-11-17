@@ -239,9 +239,14 @@ class BudgetedFitness:
 
     def __call__(self, solution: Solution) -> float:
         # Once spent, always spent: a copy on a worker of Ray asks the state no more.
-        if not self.spent and not self.state.take_evaluation():
-            self.spent = True
         if self.spent:
+            return math.inf
+        # Decided by what the state answered this call, not by the flag: the strains in
+        # threads share this object, and a strain that took the last evaluation read the
+        # flag another had just set and returned infinity without evaluating, so a budget
+        # of 1000 made 999 (F-80).
+        if not self.state.take_evaluation():
+            self.spent = True
             return math.inf
         return self.function(solution)
 

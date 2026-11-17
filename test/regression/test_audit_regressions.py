@@ -4164,3 +4164,35 @@ def test_f79_el_radio_tabu_se_aplica_a_los_elementos_de_una_estructura():
     assert busqueda.is_tabu(cerca)
     assert not busqueda.is_tabu(lejos)
     assert not busqueda.is_tabu(otra_longitud)
+
+
+# --------------------------------------------------------------------------------
+# F-80: con varias cepas en hilos, la cepa que se llevaba la ultima evaluacion del
+# presupuesto podia devolver infinito sin evaluar (F-76).
+# --------------------------------------------------------------------------------
+
+def test_f80_la_ultima_evaluacion_del_presupuesto_se_evalua_aunque_otra_cepa_lo_agote():
+    """F-80: `BudgetedFitness` decidia por la marca `spent`, que comparten las cepas en hilos:
+    si la cepa A se llevaba la ultima evaluacion y la B, justo despues, veia el presupuesto
+    agotado y ponia la marca, A leia la marca y devolvia infinito sin evaluar; con un
+    presupuesto de 1000 se hacian 999 (en el CI, tres cepas de ProbabilisticCVOA). El
+    intercalado se reproduce con un estado que pone la marca al conceder la evaluacion."""
+    from metagen.metaheuristics.cvoa.common_tools import BudgetedFitness
+
+    llamadas = []
+
+    class EstadoQueSeAgotaEnMedio:
+        envoltorio = None
+
+        def take_evaluation(self):
+            # Otra cepa agota el presupuesto entre la concesion y la evaluacion.
+            self.envoltorio.spent = True
+            return True
+
+    estado = EstadoQueSeAgotaEnMedio()
+    fitness = BudgetedFitness(lambda solucion: llamadas.append(1) or 2.0, estado)
+    estado.envoltorio = fitness
+    assert fitness(object()) == 2.0
+    assert llamadas == [1]
+    # Y a partir de ahi, sin preguntar ni evaluar.
+    assert fitness(object()) == math.inf and llamadas == [1]

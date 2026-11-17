@@ -4,6 +4,9 @@
 
 ### Changes
 
+- **A budget for CVOA with several strains in threads** is spent whole: a run with
+  `max_evaluations` makes exactly that many evaluations, also when two strains reach the
+  last one at once.
 - **`TabuSearch` applies `tabu_radius` to the numbers of a structure**, element by element:
   a neighbor is tabu when it lies within the radius of a visited solution on every numeric
   variable, the elements of its structures included, so its tabu list also works on domains
