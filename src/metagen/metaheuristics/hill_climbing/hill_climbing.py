@@ -144,7 +144,7 @@ class HillClimbing(Metaheuristic):
 
         :param num_solutions: The size of the initial population, defaults to 10
         :type num_solutions: int, optional
-        :return: The initial population and the starting solution.
+        :return: The initial population and the best of it.
         :rtype: Tuple[List[Solution], Solution]
         """
         # The docstrings of initialize and iterate described a tabu search, which this class
@@ -160,7 +160,10 @@ class HillClimbing(Metaheuristic):
         # The population must hold exactly `num_solutions` individuals.
         current_neighborhood.append(first_solution)
 
-        return current_neighborhood, first_solution
+        # The best of everything evaluated, as TabuSearch gives: returning the starting point
+        # dropped a better neighbor, and the first iteration searched from a worse point
+        # (X-14 and Y-07 of the independent audit, 12 runs of 30 with no warmup).
+        return current_neighborhood, min(current_neighborhood, key=Solution.get_fitness)
 
     def iterate(self, solutions: List[Solution]) -> Tuple[List[Solution], Solution]:
         """

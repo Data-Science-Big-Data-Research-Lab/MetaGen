@@ -4226,3 +4226,30 @@ def test_f81_asignar_un_valor_no_consume_numeros_aleatorios():
     assert get_state()["random"] == antes["random"]
     assert get_numpy_rng().bit_generator.state == antes["numpy"]
     assert get_rng().random() == random.Random(1).random()
+
+
+# --------------------------------------------------------------------------------
+# F-82: HillClimbing descartaba el mejor vecino de su vecindario inicial (X-14 e Y-07 de
+# la auditoria independiente).
+# --------------------------------------------------------------------------------
+
+def test_f82_hill_climbing_empieza_por_lo_mejor_que_evaluo_al_inicializar():
+    """F-82: `initialize` evaluaba un punto y sus vecinos y devolvia el punto como mejor, aunque
+    un vecino fuera mejor: sin warmup y con una iteracion, el mejor devuelto no era el mejor
+    evaluado en 12 de 30 ejecuciones."""
+    from metagen.metaheuristics import HillClimbing
+
+    for semilla in range(30):
+        evaluados = []
+
+        def fitness(solucion):
+            valor = (solucion["x"] - 1.3) ** 2 + (solucion["y"] + 0.7) ** 2
+            evaluados.append(valor)
+            return valor
+
+        dominio = Domain()
+        dominio.define_real("x", -5.0, 5.0)
+        dominio.define_real("y", -5.0, 5.0)
+        busqueda = HillClimbing(dominio, fitness, population_size=10, warmup_iterations=0, max_iterations=1,
+                                seed=semilla)
+        assert busqueda.run().get_fitness() == min(evaluados)
