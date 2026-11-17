@@ -15,10 +15,11 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 import math
-from typing import Any, Tuple, cast
+from typing import Any, cast
 
 from metagen.framework.domain import RealDefinition
 
+from ._numeric import _log_window
 from .base import BaseType
 from metagen.framework.alteration import RelativeAlteration
 from metagen.framework.rng import get_rng
@@ -141,25 +142,3 @@ class Real(BaseType):
         # so 1 into a real variable or a numpy scalar would otherwise be stored as it
         # came in. What the user reads back is always a native float.
         super().set(float(value))
-
-
-def _log_window(value: float, min_value: float, max_value: float, alteration_limit: Any) -> Tuple[float, float]:
-    """
-    The interval of the logarithm a mutation draws from, on a logarithmic scale: the
-    whole domain, or the current value's logarithm give or take the alteration limit,
-    itself on the logarithm (a ``RelativeAlteration`` is a share of the orders of
-    magnitude of the range).
-
-    :param value: The current value.
-    :param min_value: The minimum of the domain.
-    :param max_value: The maximum of the domain.
-    :param alteration_limit: A number, a ``RelativeAlteration`` or None.
-    :return: The lowest and highest logarithm.
-    """
-    low, high = math.log(min_value), math.log(max_value)
-    if isinstance(alteration_limit, RelativeAlteration):
-        alteration_limit = alteration_limit.of(low, high)
-    if alteration_limit is None:
-        return low, high
-    center = math.log(value)
-    return max(low, center - alteration_limit), min(high, center + alteration_limit)
