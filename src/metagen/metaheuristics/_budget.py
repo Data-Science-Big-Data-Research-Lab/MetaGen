@@ -28,6 +28,19 @@ if TYPE_CHECKING:
     from metagen.framework import Solution
 
 
+def _deviation(values: List[float], mean: float) -> float:
+    """The population standard deviation of finite values whose mean is given."""
+    # In floating point, with fsum: statistics.pstdev rounds exactly through fractions, which
+    # cost more than mutating and evaluating an individual on a small domain, once per
+    # iteration (E-12 and EF-11 of the independent audit). The two can differ in the last
+    # bit. Squares that overflow fall back to the exact one.
+    try:
+        deviation = math.sqrt(math.fsum((value - mean) * (value - mean) for value in values) / len(values))
+    except OverflowError:
+        return statistics.pstdev(values)
+    return deviation if math.isfinite(deviation) else statistics.pstdev(values)
+
+
 class _Budget:
     """
     What a metaheuristic does to know how much a run has spent and when it must stop, and to
@@ -115,6 +128,7 @@ class _Budget:
         """
         fitnesses = [solution.get_fitness() for solution in self.current_solutions]
         finite = [value for value in fitnesses if math.isfinite(value)]
+        mean = statistics.fmean(finite) if finite else None
         best = self._best_so_far()
         record = {
             "iteration": self.current_iteration,
@@ -123,8 +137,8 @@ class _Budget:
             "seconds": self._seconds,
             "best": best.get_fitness(),
             "iteration_best": min(finite) if finite else None,
-            "mean": statistics.fmean(finite) if finite else None,
-            "std": statistics.pstdev(finite) if finite else None,
+            "mean": mean,
+            "std": _deviation(finite, mean) if mean is not None else None,
             "worst": max(finite) if finite else None,
             "population_size": len(self.current_solutions),
             "best_solution": {name: best[name] for name in best},
