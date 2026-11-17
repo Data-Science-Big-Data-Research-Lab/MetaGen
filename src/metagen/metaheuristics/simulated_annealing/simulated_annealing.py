@@ -70,7 +70,10 @@ class SA(Metaheuristic):
         Defaults to a fifth of each variable's own range; a plain number is an
         absolute amount instead, and None lets a mutation land anywhere in the domain.
     :type alteration_limit: RelativeAlteration or float or None, optional
-    :param initial_temp: Initial temperature for annealing process, defaults to 50.0
+    :param initial_temp: Initial temperature for annealing process, defaults to 50.0. It is
+        on the scale of the fitness: a neighbor worse by ``delta`` is accepted with
+        probability ``exp(-delta / temperature)``, so a fitness whose differences are much
+        smaller or larger than 50 calls for a temperature to match
     :type initial_temp: float, optional
     :param cooling_rate: Rate at which the temperature decreases each iteration.
         Derived from the budget when not given, so that the temperature travels from
@@ -124,6 +127,11 @@ class SA(Metaheuristic):
                  max_evaluations: Optional[int] = None, timeout: Optional[float] = None,
                  initial_solutions: Optional[Sequence[Mapping[str, Any]]] = None, racing: Optional[Racing] = None,
                  refit: Optional[Callable[[Solution], Any]] = None) -> None:
+        # A starting temperature calibrated from the warmup (-mean |f_i - f_j| / ln 0.8, T_min
+        # relative to it) was measured against the fixed 50 on the behavior bench, 30 seeds:
+        # 262 against 260 wins of 330 over random sampling, 57-202-71 head to head; the
+        # schedule cools so fast that most of a run only accepts improvements whatever it
+        # starts at (AUD-014 of metagen-auditoria/AUDITORIA-2026-11-16.md). It stays fixed.
         # F-30: cooling_rate is derived from the budget. F-25: with one neighbor there is
         # nothing to choose between; over the nine functions and thirty seeds, one neighbor
         # won 161 of 270 against random sampling and five won 214, so the default is 5.
