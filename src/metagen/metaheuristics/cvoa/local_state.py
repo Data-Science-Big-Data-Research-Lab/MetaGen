@@ -18,104 +18,73 @@ import threading
 from typing import Any, Dict, Optional
 
 from metagen.framework import Solution
-from metagen.metaheuristics.cvoa.common_tools import IndividualState, PandemicBudget, SolutionKeys, SolutionSet
+from metagen.metaheuristics.cvoa.common_tools import IndividualState, PandemicRecord, SolutionSet
 
 
-# Local pandemic state (multi-threading)
-class LocalPandemicState:
+class LocalPandemicState(PandemicRecord):
+    """The state of a pandemic for the strains that run as threads: each call under a lock."""
+
     def __init__(self, initial_individual: Solution, max_evaluations: Optional[int] = None,
                  timeout: Optional[float] = None):
-        # Lock fot multi-threading safety access to the shared structures.
-        # Reentrant on purpose: isolate_individual_conditional_state holds it and
-        # calls get_individual_state, which takes it again. A plain Lock is not
-        # reentrant, so that thread blocked against itself (F-08). The failure mode
-        # of getting the nesting wrong is a silent hang, which is reason enough to
-        # let a thread reacquire a lock it already owns.
+        # Reentrant on purpose: a call that holds it may call another that takes it again.
+        # A plain Lock is not reentrant, so that thread blocked against itself (F-08). The
+        # failure mode of getting the nesting wrong is a silent hang, which is reason
+        # enough to let a thread reacquire a lock it already owns.
         self.lock = threading.RLock()
-        self.recovered: SolutionKeys = SolutionKeys()
-        self.deaths: SolutionKeys = SolutionKeys()
-        self.isolated: SolutionKeys = SolutionKeys()
-        self.best_individual_found:bool = False
-        self.best_individual:Solution = initial_individual
-        self.budget = PandemicBudget(max_evaluations, timeout)
+        super().__init__(initial_individual, max_evaluations, timeout)
 
     def get_individual_state(self, individual: Solution) -> IndividualState:
         with self.lock:
-            # The key once, not a hash per set (E-03).
-            key = individual._key()
-            return IndividualState(self.recovered.holds(key), self.deaths.holds(key), self.isolated.holds(key))
+            return super().get_individual_state(individual)
 
-    # Recovered
     def get_recovered_len(self) -> int:
         with self.lock:
-            return len(self.recovered)
+            return super().get_recovered_len()
 
-    def get_infected_again(self, individual:Solution) -> None:
-        # Several strains can infect the same recovered point again at once: each read it
-        # as recovered before the other took it out, and remove() raised KeyError.
+    def get_infected_again(self, individual: Solution) -> None:
         with self.lock:
-            self.recovered.discard(individual)
+            super().get_infected_again(individual)
 
-    # Deaths
-    def update_deaths(self, individuals:SolutionSet)-> None:
+    def update_deaths(self, individuals: SolutionSet) -> None:
         with self.lock:
-            self.deaths.update(individuals)
+            super().update_deaths(individuals)
 
-    # Recovered and Deaths
-    def update_recovered_with_deaths(self)-> None:
+    def update_recovered_with_deaths(self) -> None:
         with self.lock:
-            self.recovered.difference_update(self.deaths)
+            super().update_recovered_with_deaths()
 
-    def recover_if_not_dead(self, individual:Solution)-> None:
+    def recover_if_not_dead(self, individual: Solution) -> None:
         with self.lock:
-            if individual not in self.deaths:
-                self.recovered.add(individual)
+            super().recover_if_not_dead(individual)
 
-    # Isolated
     def isolate(self, individual: Solution) -> None:
-        """
-        Count an individual as isolated.
-
-        It does not join the recovered, so the point stays open to be infected again.
-        """
-        # F-45: sending it to the recovered was measured to search worse on binary
-        # domains. The set used to demand a state no individual can have, so it never
-        # held anyone.
         with self.lock:
-            self.isolated.add(individual)
+            super().isolate(individual)
 
-    # Best Individual
-    def update_best_individual(self, individual:Solution) -> None:
-        # Only if it is better: a strain decides it is from the best it read, and another
-        # thread may have put a better one in between (E-09).
+    def update_best_individual(self, individual: Solution) -> None:  # type: ignore[override]
+        # The strains read the best with get_best_individual; only the actor gives it back,
+        # to save a call.
         with self.lock:
-            if individual.get_fitness() < self.best_individual.get_fitness():
-                self.best_individual_found = True
-                self.best_individual = individual
+            super().update_best_individual(individual)
 
     def get_best_individual(self) -> Solution:
         with self.lock:
-            return self.best_individual
+            return super().get_best_individual()
 
     def get_pandemic_report(self) -> Dict[str, Any]:
         with self.lock:
-            return {
-                "recovered": len(self.recovered),
-                 "deaths": len(self.deaths),
-                 "isolated": len(self.isolated),
-                "best_individual": self.best_individual
-            }
+            return super().get_pandemic_report()
 
-    # Budget
     def take_evaluation(self) -> bool:
         with self.lock:
-            return self.budget.take()
+            return super().take_evaluation()
 
     def budget_spent(self) -> bool:
+        # Without a budget, nothing to ask under the lock.
         if not self.budget.limited():
             return False
         with self.lock:
-            return self.budget.spent()
+            return super().budget_spent()
 
     def flush(self) -> None:
         """Nothing: every write is already in the state."""

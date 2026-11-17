@@ -32,6 +32,31 @@ def test_the_best_of_a_pandemic_is_only_replaced_by_a_better_one():
     assert state.get_best_individual()["x"] == 1
 
 
+def _public(cls):
+    return {name for name in vars(cls) if not name.startswith("_")}
+
+
+def test_the_interface_of_the_state_is_the_record_and_the_lock_takes_every_call():
+    # The logic is written once, in PandemicRecord: the state of the threads only takes the
+    # lock around each call of it, and the interface the strains use asks for no more.
+    import inspect
+    from metagen.metaheuristics.cvoa.common_tools import PandemicRecord, PandemicState
+
+    interface = _public(PandemicState) - {"flush"}
+    assert interface <= _public(PandemicRecord)
+    assert _public(PandemicRecord) - {"budget_limited"} <= _public(LocalPandemicState)
+    for name in _public(PandemicRecord) - {"budget_limited"}:
+        assert "self.lock" in inspect.getsource(getattr(LocalPandemicState, name)), name
+
+
+def test_the_proxy_of_the_actor_answers_what_the_interface_asks():
+    pytest.importorskip("ray")
+    from metagen.metaheuristics.cvoa.common_tools import PandemicState
+    from metagen.metaheuristics.cvoa.ray_tools import RemotePandemicStateProxy
+
+    assert _public(PandemicState) <= _public(RemotePandemicStateProxy)
+
+
 def test_the_copy_a_distributed_iteration_sends_leaves_out_what_the_workers_do_not_read():
     domain = Domain()
     domain.define_real("x", -1.0, 1.0)

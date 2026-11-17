@@ -17,6 +17,7 @@
 import copy
 import math
 import time
+from datetime import timedelta
 from collections.abc import MutableSet
 from typing import Any, Callable, Dict, Iterable, Iterator, NamedTuple, Optional, Protocol, Set, Tuple
 
@@ -249,6 +250,123 @@ class BudgetedFitness:
             self.spent = True
             return math.inf
         return self.function(solution)
+
+
+class PandemicRecord:
+    """
+    The state every strain of a pandemic shares: the recovered, the dead, the isolated,
+    the best individual and the budget. :py:class:`LocalPandemicState` holds it under a
+    lock for the strains that run as threads, and the ``RemotePandemicState`` actor holds
+    it for the strains that run on Ray; the logic is this one.
+
+    :param initial_individual: The best individual until a strain finds a better one.
+    :type initial_individual: Solution
+    :param max_evaluations: The most evaluations the pandemic may make; None sets no limit.
+    :type max_evaluations: int or None
+    :param timeout: The most seconds the pandemic may evaluate for; None sets no limit.
+    :type timeout: float or None
+    """
+    # Written twice, once per class, with the comments of F-45 and of the discard in both
+    # (O-07 and OF-09 of the independent audit).
+
+    def __init__(self, initial_individual: Solution, max_evaluations: Optional[int] = None,
+                 timeout: Optional[float] = None):
+        self.budget = PandemicBudget(max_evaluations, timeout)
+        self.recovered: SolutionKeys = SolutionKeys()
+        self.deaths: SolutionKeys = SolutionKeys()
+        self.isolated: SolutionKeys = SolutionKeys()
+        self.best_individual_found: bool = False
+        self.best_individual: Solution = initial_individual
+
+    def get_individual_state(self, individual: Solution) -> IndividualState:
+        # The key once, not a hash per set (E-03).
+        key = individual._key()
+        return IndividualState(self.recovered.holds(key), self.deaths.holds(key), self.isolated.holds(key))
+
+    def get_recovered_len(self) -> int:
+        return len(self.recovered)
+
+    def get_infected_again(self, individual: Solution) -> None:
+        # Several strains or tasks can infect the same recovered point again at once: each
+        # read it as recovered before the other took it out, and remove() raised KeyError.
+        self.recovered.discard(individual)
+
+    def update_deaths(self, individuals: SolutionSet) -> None:
+        self.deaths.update(individuals)
+
+    def update_recovered_with_deaths(self) -> None:
+        self.recovered.difference_update(self.deaths)
+
+    def recover_if_not_dead(self, individual: Solution) -> None:
+        if individual not in self.deaths:
+            self.recovered.add(individual)
+
+    def isolate(self, individual: Solution) -> None:
+        """
+        Count an individual as isolated. It does not join the recovered, so the point
+        stays open to be infected again.
+        """
+        # F-45: sending it to the recovered was measured to search worse on binary
+        # domains. The set used to demand a state no individual can have, so it never
+        # held anyone.
+        self.isolated.add(individual)
+
+    def update_best_individual(self, individual: Solution) -> Solution:
+        """Take an individual as the best if it is better, and give back the best."""
+        # Only if it is better: a strain decides it is from the best it last saw, and
+        # another may have found a better one since (E-09).
+        if individual.get_fitness() < self.best_individual.get_fitness():
+            self.best_individual_found = True
+            self.best_individual = individual
+        return self.best_individual
+
+    def get_best_individual(self) -> Solution:
+        return self.best_individual
+
+    def get_pandemic_report(self) -> Dict[str, Any]:
+        return {
+            "recovered": len(self.recovered),
+            "deaths": len(self.deaths),
+            "isolated": len(self.isolated),
+            "best_individual": self.best_individual
+        }
+
+    def take_evaluation(self) -> bool:
+        return self.budget.take()
+
+    def budget_spent(self) -> bool:
+        return self.budget.spent()
+
+    def budget_limited(self) -> bool:
+        return self.budget.limited()
+
+
+def pandemic_report(results: Iterable[Tuple[str, Solution]], best: Solution, report: Dict[str, Any],
+                    elapsed: timedelta) -> str:
+    """
+    What the launchers log at the end of a pandemic: the best individual of every strain,
+    the best of all, the report of the shared state and the time it took.
+
+    :param results: The identifier of each strain and the best individual it returned.
+    :type results: Iterable[Tuple[str, Solution]]
+    :param best: The best individual of the pandemic.
+    :type best: Solution
+    :param report: What :py:meth:`PandemicRecord.get_pandemic_report` gives.
+    :type report: Dict[str, Any]
+    :param elapsed: How long the strains ran.
+    :type elapsed: timedelta
+    :return: The text to log.
+    :rtype: str
+    """
+    # The same twelve lines were in both launchers (O-07 and OF-09 of the independent audit).
+    return ("\n********** Results by strain **********\n"
+            + "\n".join(f"[{strain_id}] Best individual: {result}" for strain_id, result in results)
+            + "\n\n********** Best result **********\n"
+            + f"Best individual: {best}\n"
+            + "\n********** Pandemic report **********\n"
+            + f"Pandemic report: {report}\n"
+            + "\n********** Performance **********\n"
+            + f"Execution time: {elapsed}\n")
 
 
 class PandemicState(Protocol):

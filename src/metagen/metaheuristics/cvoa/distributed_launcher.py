@@ -32,7 +32,7 @@ from metagen.framework import Domain, Solution
 from metagen.framework.rng import set_seed, spawn_seed
 from metagen.logging.metagen_logger import metagen_logger
 from metagen.metaheuristics._parameters import require_integer, require_number
-from metagen.metaheuristics.cvoa.common_tools import BudgetedFitness, StrainProperties
+from metagen.metaheuristics.cvoa.common_tools import BudgetedFitness, StrainProperties, pandemic_report
 from metagen.metaheuristics.cvoa.cvoa import CVOA
 from metagen.metaheuristics.cvoa.ray_tools import PandemicStateHandle, RemotePandemicState, RemotePandemicStateProxy
 from metagen.metaheuristics.tools import solution_class
@@ -138,18 +138,8 @@ def _run_pandemic(strains: List[StrainProperties], domain: Domain,
 
     best_solution = ray.get(global_state.get_best_individual.remote())
 
-    output = (
-            "\n********** Results by strain **********\n"
-            + "\n".join(f"[{strain_id}] Best individual: {result}" for strain_id, result in
-                        zip([strain.strain_id for strain in strains], results))
-            + "\n\n********** Best result **********\n"
-            + f"Best individual: {best_solution}\n"
-            + "\n********** Pandemic report **********\n"
-            + f"Pandemic report: {ray.get(global_state.get_pandemic_report.remote())}\n"
-            + "\n********** Performance **********\n"
-            + f"Execution time: {timedelta(seconds=t2 - t1)}\n"
-    )
-
+    output = pandemic_report(zip([strain.strain_id for strain in strains], results), best_solution,
+                             ray.get(global_state.get_pandemic_report.remote()), timedelta(seconds=t2 - t1))
     metagen_logger.info(output)
 
     return best_solution

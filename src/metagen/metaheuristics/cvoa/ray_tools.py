@@ -25,7 +25,7 @@ try:
 except ImportError as error:
     raise ImportError(ray_missing("the distributed CVOA")) from error
 from metagen.framework import Solution, Domain
-from metagen.metaheuristics.cvoa.common_tools import (IndividualState, PandemicBudget, PandemicState, SolutionKeys,
+from metagen.metaheuristics.cvoa.common_tools import (IndividualState, PandemicRecord, PandemicState,
                                                      StrainProperties, SolutionSet)
 from metagen.framework.rng import set_seed, spawn_seed
 
@@ -38,73 +38,10 @@ if TYPE_CHECKING:
 # the calls that go through it are annotated at the point of use (P-11).
 PandemicStateHandle: TypeAlias = Any
 
-# Remote pandemic state (ray support)
+# Remote pandemic state (ray support): the logic of PandemicRecord in an actor, which
+# serves one call at a time, plus what the tasks of an iteration read and write at once.
 @ray.remote
-class RemotePandemicState:
-    def __init__(self, initial_individual: Solution, max_evaluations: Optional[int] = None,
-                 timeout: Optional[float] = None):
-        self.budget = PandemicBudget(max_evaluations, timeout)
-        self.recovered: SolutionKeys = SolutionKeys()
-        self.deaths: SolutionKeys = SolutionKeys()
-        self.isolated: SolutionKeys = SolutionKeys()
-        self.best_individual_found: bool = False
-        self.best_individual: Solution = initial_individual
-
-    def get_individual_state(self, individual: Solution) -> IndividualState:
-        # The key once, not a hash per set (E-03).
-        key = individual._key()
-        return IndividualState(self.recovered.holds(key), self.deaths.holds(key), self.isolated.holds(key))
-
-    # Recovered
-    def get_recovered_len(self) -> int:
-        return len(self.recovered)
-
-    def get_infected_again(self, individual: Solution) -> None:
-        # Several tasks can infect the same recovered point again at once: each read it
-        # as recovered before the other took it out, and remove() raised KeyError.
-        self.recovered.discard(individual)
-
-    # Deaths
-    def update_deaths(self, individuals: SolutionSet) -> None:
-        self.deaths.update(individuals)
-
-    # Recovered and Deaths
-    def update_recovered_with_deaths(self) -> None:
-        self.recovered.difference_update(self.deaths)
-
-    def recover_if_not_dead(self, individual: Solution) -> None:
-        if individual not in self.deaths:
-            self.recovered.add(individual)
-
-    # Isolated
-    def isolate(self, individual: Solution) -> None:
-        """
-        Count an individual as isolated. It does not join the recovered, so the point
-        stays open to be infected again.
-        """
-        # F-45.
-        self.isolated.add(individual)
-
-    # Best Individual
-    def update_best_individual(self, individual: Solution) -> Solution:
-        # Only if it is better: a strain decides it is from the best it last saw, and
-        # another may have found a better one since (E-09). Gives back the best.
-        if individual.get_fitness() < self.best_individual.get_fitness():
-            self.best_individual_found = True
-            self.best_individual = individual
-        return self.best_individual
-
-    def get_best_individual(self) -> Solution:
-        return self.best_individual
-
-    def get_pandemic_report(self) -> Dict[str, Any]:
-        return {
-            "recovered": len(self.recovered),
-            "deaths": len(self.deaths),
-            "isolated": len(self.isolated),
-            "best_individual": self.best_individual
-        }
-
+class RemotePandemicState(PandemicRecord):
     # What the tasks of an iteration read and write in one call each (E-09 of the
     # independent audit): one call to the actor per infected individual made the contagion
     # of a pandemic on Ray two orders of magnitude slower than in threads.
@@ -125,16 +62,6 @@ class RemotePandemicState:
     def add_deaths(self, keys: List[Tuple[Any, ...]]) -> None:
         for key in keys:
             self.deaths.add_key(key)
-
-    # Budget
-    def take_evaluation(self) -> bool:
-        return self.budget.take()
-
-    def budget_spent(self) -> bool:
-        return self.budget.spent()
-
-    def budget_limited(self) -> bool:
-        return self.budget.limited()
 
 
 class RemotePandemicStateProxy:
