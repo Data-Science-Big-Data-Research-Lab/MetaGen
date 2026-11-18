@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pymetagen-datalabupo"
-version = "1.7.0"
+version = "1.8.0"
 description = "MetaGen: A framework for metaheuristic development and hyperparameter optimization in machine and deep learning."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -55,6 +55,17 @@ test = [
     "scikit-learn",
     "matplotlib",
 ]
+# What Read the Docs builds the documentation with; docs/requirements.txt, which it installs,
+# lists the same.
+docs = [
+    "sphinx>=8,<10",
+    "sphinx-rtd-theme>=3,<4",
+]
+# The checks the CI runs on the code: mypy, at the version of the CI, and ruff.
+dev = [
+    "mypy==2.4.*",
+    "ruff",
+]
 all = [
     "tensorboard",
     "tensorboardX",
@@ -76,12 +87,17 @@ where = ["src"]
 metagen = ["py.typed"]
 
 [tool.mypy]
+# The bodies of the functions without annotations are checked too: without this, a function
+# with no annotation was not checked at all.
+check_untyped_defs = true
+
+# The third-party packages that ship no types, the optional ones among them: only these are
+# taken as they come. A module of the package that does not exist is an error.
+[[tool.mypy.overrides]]
+module = ["joblib.*", "matplotlib.*", "networkx.*", "ray.*", "scipy.*", "tensorboardX.*", "torch.*", "xarray.*"]
 ignore_missing_imports = true
-# The package ships py.typed, so mypy would resolve these files both as `metagen.x`, through
-# the installed package, and as `src.metagen.x`, by walking the tree, and refuse to check
-# them twice. This pins the mapping to the first.
-mypy_path = "src"
-explicit_package_bases = true
 
 [tool.pytest.ini_options]
-filterwarnings = ["ignore::DeprecationWarning"]
+# The deprecations of other packages are theirs to mend; one issued from the package itself, as
+# when it imports one of the paths that were renamed, fails the test that triggers it.
+filterwarnings = ["ignore::DeprecationWarning", "error::DeprecationWarning:metagen"]

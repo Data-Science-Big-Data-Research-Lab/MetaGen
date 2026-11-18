@@ -30,9 +30,10 @@ from metagen.logging.metagen_logger import metagen_logger
 from metagen.metaheuristics.trigen.fitness import (NULL_SAMPLES, NULL_SIZES, Measure, Overlap, Scoring,
                                                    SizeReference, TriclusterFitness)
 from metagen.metaheuristics.trigen.population import DataHierarchy, Sizes
-from metagen.metaheuristics.trigen.results import TriGenResult, _plain
+from metagen.metaheuristics.trigen.results import TriGenResult, plain
 from metagen.metaheuristics.trigen.shape import PrismShape, Shape, grow, prism_parts, shape_named  # noqa: F401
-from metagen.metaheuristics.trigen.trigen_ga import TriGenGA, require_integer, validate
+from metagen.metaheuristics.trigen._options import check_layout, check_search, check_shape, check_stop
+from metagen.metaheuristics.trigen.trigen_ga import TriGenGA
 from metagen.triclustering import Cube, Tricluster, null_cube
 from metagen.triclustering.cube import AXES
 from metagen.triclustering.measures import Views
@@ -251,73 +252,24 @@ class TriGen:
         # population of 200 over 50 generations is the cheapest configuration as good as the
         # best on most problems, and the values of the published TriGen; the rates of 0.5 and
         # 0.1 are the most robust of their grid (as good as the best on 6 of 8 problems).
-        require_integer("n_triclusters", n_triclusters)
-        if n_triclusters < 1:
-            raise ValueError(f"TriGen finds at least one tricluster, not {n_triclusters}.")
-        validate(population_size, generations, random_fraction, selection_rate, mutation_probability)
-        largest = tuple(cube.shape if max_sizes is None else max_sizes)
-        smallest = tuple(min_sizes)
-        if len(smallest) != 3 or len(largest) != 3:
-            raise ValueError(f"Give one size per dimension ({', '.join(AXES)}).")
-        for axis, low, high, size in zip(AXES, smallest, largest, cube.shape):
-            if not 2 <= low <= high <= size:
-                raise ValueError(f"The sizes of the {axis} must satisfy 2 <= minimum ({low}) <= maximum ({high}) "
-                                 f"<= the {size} {axis} of the cube.")
-        if growth not in ("fitness", "quality", None):
-            raise ValueError(f"growth is 'fitness', 'quality' or None, not {growth!r}.")
-        if hierarchy not in ("coordinates", "cells"):
-            raise ValueError(f"hierarchy is 'coordinates' or 'cells', not {hierarchy!r}.")
-        if isinstance(ordered, str) or any(axis not in AXES for axis in ordered) or len(set(ordered)) != len(ordered):
-            raise ValueError(f"ordered names dimensions of {list(AXES)}, each once, not {ordered!r}.")
+        smallest, largest = check_search(cube, n_triclusters, population_size, generations, random_fraction,
+                                         selection_rate, mutation_probability, min_sizes, max_sizes)
+        check_layout(growth, hierarchy, ordered, neighborhood)
         #: The dimensions with order, by name.
         self.ordered: Tuple[str, ...] = tuple(axis for axis in AXES if axis in ordered)
-        if neighborhood not in (4, 8):
-            raise ValueError(f"neighborhood is 4 or 8, not {neighborhood!r}.")
         self.neighborhood = int(neighborhood)
         #: The fewest and most pixels of a prism; None for the other shapes.
-        self.pixels: Optional[Tuple[int, int]] = None
-        options: Dict[str, Any] = {}
-        if shape == "prism":
-            if shuffle_genes:
-                raise ValueError("A prism lies on the plane of the genes and the conditions in their order: "
-                                 "shuffle_genes does not apply.")
-            if pixels is None:
-                pixels = (smallest[0] * smallest[1], largest[0] * largest[1])
-            if isinstance(pixels, str) or len(pixels) != 2:
-                raise ValueError(f"pixels is the fewest and the most pixels of a prism, not {pixels!r}.")
-            for count in pixels:
-                require_integer("pixels", count)
-            self.pixels = (int(pixels[0]), int(pixels[1]))
-            options = dict(neighborhood=self.neighborhood, pixels=self.pixels, box=(largest[0], largest[1]))
-        elif pixels is not None:
-            raise ValueError("pixels bound the surface of a prism, shape='prism'.")
+        self.pixels: Optional[Tuple[int, int]] = check_shape(shape, shuffle_genes, pixels, smallest, largest)
+        options: Dict[str, Any] = ({} if self.pixels is None else
+                                   dict(neighborhood=self.neighborhood, pixels=self.pixels, box=(largest[0], largest[1])))
         #: The shape of the triclusters it searches.
         self.form: Shape = shape_named(shape, [AXES.index(axis) for axis in self.ordered], **options)
-        if stop not in ("count", "coverage"):
-            raise ValueError(f"stop is 'count' or 'coverage', not {stop!r}.")
-        cover = cover if cover is not None else ("pixels" if shape == "prism" else "genes")
-        if cover not in ("genes", "pixels") or (cover == "pixels" and shape != "prism"):
-            raise ValueError(f"cover is 'genes' or, with shape='prism', 'pixels', not {cover!r}.")
-        if not 0.0 < coverage <= 1.0:
-            raise ValueError(f"coverage is a share in (0, 1], not {coverage}.")
-        if noise_rule not in (None, "null", "decline"):
-            raise ValueError(f"noise_rule is None, 'null' or 'decline', not {noise_rule!r}.")
-        if noise_rule is not None and (stop != "coverage" or scoring != "significance"):
-            raise ValueError("noise_rule applies to stop='coverage' with scoring='significance'.")
-        if not 0.0 < decline < 1.0:
-            raise ValueError(f"decline is a share in (0, 1), not {decline}.")
         # A patience of 2 by default: measured in the Mac over 30 seeds (metagen-auditoria/trigen/
         # parada/etapa1/informe_parada_etapa1.md, 7), the null rule recovers 0.59 of ten planted
         # modules instead of 0.45 with 1, as much as the decline rule with half its noise, at the
         # price of 2.1 triclusters of noise in a cube with nothing instead of 0.8; with 3 the
         # relevance starts to fall.
-        require_integer("patience", patience)
-        if patience < 1:
-            raise ValueError(f"patience is at least 1, not {patience}.")
-        if not isinstance(disjoint, bool):
-            raise ValueError(f"disjoint is True or False, not {disjoint!r}.")
-        if disjoint and shape == "prism" and cover != "pixels":
-            raise ValueError("With a prism, disjoint keeps the pixels of the prisms apart: cover='pixels'.")
+        cover = check_stop(shape, stop, cover, coverage, noise_rule, scoring, decline, patience, disjoint)
         #: Whether no two triclusters share a gene.
         self.disjoint = disjoint
         #: When a run ends and what it counts; see the parameters.
@@ -471,8 +423,8 @@ class TriGen:
                               mutation_probability=self.mutation_probability, form=form)
             search.run()
             chosen = _choose(search, set(found))
-            record: Dict[str, Any] = {"search": index, "evaluations": search._evaluations,
-                                      "seconds": search._seconds,
+            record: Dict[str, Any] = {"search": index, "evaluations": search.evaluations,
+                                      "seconds": search.seconds,
                                       "best_fitnesses": list(search.best_solution_fitnesses),
                                       "growth_evaluations": 0}
             if chosen is not None and self.growth is not None:
@@ -571,12 +523,12 @@ class TriGen:
             # prisms may lie (metagen-auditoria/trigen/SPEC-parada-etapa3-segmentacion.md, 4).
             if fitted is None or free <= REFIT_SHARE * fitted[0]:
                 fitness.fit_chance()
-                assert fitness._chance is not None
-                fitted = (free, fitness._chance)
+                assert fitness.chance is not None
+                fitted = (free, fitness.chance)
                 if self.started is not None:
                     self.started["chance_evaluations"] += NULL_SIZES * NULL_SAMPLES
             else:
-                fitness._chance = fitted[1]
+                fitness.chance = fitted[1]
         return form, fitness, fitted
 
     def _on_genes(self, positions: List[int]) -> Tuple[Cube, TriclusterFitness, DataHierarchy, Sizes]:
@@ -628,7 +580,7 @@ class TriGen:
         :return: The configuration.
         :rtype: Dict[str, Any]
         """
-        return _plain({"n_triclusters": self.n_triclusters, "generations": self.generations,
+        return plain({"n_triclusters": self.n_triclusters, "generations": self.generations,
                 "population_size": self.population_size, "random_fraction": self.random_fraction,
                 "selection_rate": self.selection_rate, "mutation_probability": self.mutation_probability,
                 "min_sizes": [low for low, _ in self.sizes], "max_sizes": [high for _, high in self.sizes],

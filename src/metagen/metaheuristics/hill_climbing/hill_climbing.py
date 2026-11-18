@@ -1,3 +1,19 @@
+"""
+    Copyright (C) 2023 David Gutierrez Avilés and Manuel Jesús Jiménez Navarro
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""
 from collections import deque
 from metagen.framework import Domain, RelativeAlteration, Solution
 from collections.abc import Callable
@@ -20,9 +36,10 @@ class HillClimbing(Metaheuristic):
     moves to the best of them, if it improves. A worse neighbor is never accepted, so
     the search only ever walks uphill.
 
-    It keeps a short memory of the solutions already visited, so as not to evaluate
-    them again. :py:class:`~metagen.metaheuristics.TabuSearch` is the alternative that
-    also accepts worsening moves.
+    It remembers the last ``tabu_size`` best solutions it has moved to, and a neighbor
+    equal to one of them is left out of the neighborhood it keeps as its population.
+    :py:class:`~metagen.metaheuristics.TabuSearch` is the alternative that also accepts
+    worsening moves and forbids the moves its tabu list holds.
 
     :param domain: The problem's domain to explore
     :type domain: Domain
@@ -37,7 +54,8 @@ class HillClimbing(Metaheuristic):
     :type warmup_iterations: int, optional
     :param max_iterations: Maximum number of iterations to run, defaults to 20
     :type max_iterations: int, optional
-    :param tabu_size: Maximum size of the tabu list, defaults to 5
+    :param tabu_size: How many of the best solutions it has moved to it remembers,
+        defaults to 5
     :type tabu_size: int, optional
     :param alteration_limit: How far a neighbor may move from the current solution.
         Defaults to a fifth of each variable's own range; a plain number is an
@@ -52,9 +70,10 @@ class HillClimbing(Metaheuristic):
 
     :ivar max_iterations: Maximum number of iterations to run
     :vartype max_iterations: int
-    :ivar tabu_size: Maximum size of the tabu list
+    :ivar tabu_size: How many of the best solutions it has moved to it remembers
     :vartype tabu_size: int
-    :ivar tabu_list: Solutions already visited, skipped when sampling neighbors
+    :ivar tabu_list: The last best solutions it has moved to, left out of the neighborhood it
+        keeps
     :vartype tabu_list: Deque[Solution]
     :ivar alteration_limit: How far a neighbor may move from the current solution
     :vartype alteration_limit: RelativeAlteration or float or None
@@ -120,11 +139,16 @@ class HillClimbing(Metaheuristic):
 
     def initialize(self, num_solutions: int = 10) -> Tuple[List[Solution], Solution]:
         """
-        Initializes the Tabu Search algorithm.
+        Draw a starting solution and ``num_solutions - 1`` neighbors around it, and evaluate
+        them all.
 
-        Creates an initial solution and explores its neighborhood while respecting
-        the tabu list constraints.
+        :param num_solutions: The size of the initial population, defaults to 10
+        :type num_solutions: int, optional
+        :return: The initial population and the best of it.
+        :rtype: Tuple[List[Solution], Solution]
         """
+        # The docstrings of initialize and iterate described a tabu search, which this class
+        # is not (A-02; OF-15 of the independent audit, AUD-004 of AUDITORIA-2026-11-16.md).
         solution_type = solution_class(self.domain)
         first_solution = solution_type(self.domain, connector=self.domain.get_connector())
         first_solution.evaluate(self.fitness_function)
@@ -136,15 +160,17 @@ class HillClimbing(Metaheuristic):
         # The population must hold exactly `num_solutions` individuals.
         current_neighborhood.append(first_solution)
 
-        return current_neighborhood, first_solution
+        # The best of everything evaluated, as TabuSearch gives: returning the starting point
+        # dropped a better neighbor, and the first iteration searched from a worse point
+        # (X-14 and Y-07 of the independent audit, 12 runs of 30 with no warmup).
+        return current_neighborhood, min(current_neighborhood, key=Solution.get_fitness)
 
     def iterate(self, solutions: List[Solution]) -> Tuple[List[Solution], Solution]:
         """
-        Execute one iteration of the Tabu Search algorithm.
-
-        Explores the neighborhood of the current best solution while respecting
-        the tabu list constraints. The best solution found is added to the tabu list
-        to prevent cycling.
+        Execute one iteration: draw the neighbors around the best solution found so far,
+        each one from the best of the iteration until then, and keep the best of them if
+        it improves. A neighbor equal to a solution of the tabu list is left out of the
+        neighborhood the iteration returns.
 
         :param solutions: Current population of solutions
         :type solutions: List[Solution]
@@ -187,7 +213,7 @@ class HillClimbing(Metaheuristic):
     def post_iteration(self) -> None:
         """
         Remembers the best solution of the iteration in the tabu list, so that the
-        next neighborhood skips it. Runs on the driver, which is why the list
+        next neighborhoods leave it out. Runs on the driver, which is why the list
         survives a distributed run.
         """
         # F-40: appended here and not in iterate, which Ray runs on a copy.

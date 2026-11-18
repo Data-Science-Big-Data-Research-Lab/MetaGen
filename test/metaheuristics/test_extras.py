@@ -37,19 +37,6 @@ def _fitness_for_the_workers():
     return sphere
 
 
-@pytest.fixture(scope="module")
-def ray_runtime():
-    """One Ray runtime for the module. Started here, so that run() finds it running
-    and neither starts nor stops one per test (F-21), and stopped at the end."""
-    ray = pytest.importorskip("ray")
-    started_here = not ray.is_initialized()
-    if started_here:
-        ray.init(num_cpus=2, include_dashboard=False, log_to_driver=False)
-    yield ray
-    if started_here:
-        ray.shutdown()
-
-
 def _distributed(name: str, seed: int):
     domain, ga_domain = _sphere_domain(), _sphere_domain(GAConnector())
     _sphere = _fitness_for_the_workers()

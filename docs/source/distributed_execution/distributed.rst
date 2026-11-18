@@ -67,13 +67,16 @@ Two things follow:
   produces as many candidates as individuals it received, and TPE shares its candidate
   pool among the slices, so ``HillClimbing``, ``TabuSearch`` and TPE cost exactly what
   they cost sequentially; TPE as long as its pool holds at least as many candidates as
-  there are CPUs, since every slice draws at least one. ``GA`` and ``Memetic`` breed pairs, so a slice with an odd
-  number of individuals breeds one child fewer; ``RandomSearch`` keeps one elite copy
+  there are CPUs, since every slice draws at least one. ``GA`` and ``Memetic`` breed a pair
+  per two individuals of each slice, and sequentially the children their population has room
+  for next to its two elites, so they cost the same when the slices hold an odd number of
+  individuals and two children more per iteration when they hold an even one; ``RandomSearch`` keeps one elite copy
   per slice and mutates one individual fewer per slice; ``SSGA`` breeds its two
   children in every slice, and ``KernelTPE``, which evaluates one candidate per
   iteration, evaluates one per slice. For example, with a population of 10 over 15
-  iterations on two CPUs, a run of ``GA`` makes 160 evaluations sequentially and 130
-  distributed, ``RandomSearch`` 145 and 130, and ``SSGA`` 40 and 70.
+  iterations on two CPUs, a run of ``GA`` makes 130 evaluations both sequentially and
+  distributed, and 98 and 128 with a population of 8; ``RandomSearch`` 145 and 130, and
+  ``SSGA`` 40 and 70.
 - **The whole population competes.** Every individual can meet every other across
   iterations, which a population split into fixed islands cannot offer.
 - **Runs are reproducible.** Two distributed runs with the same ``seed`` on the same
@@ -89,8 +92,8 @@ worker runs is the algorithm on a smaller population: with two CPUs, a genetic a
 of 8 individuals is two independent genetic algorithms of 4 for the whole run, TPE
 builds its model over its slice, and ``RandomSearch`` keeps one elite per slice. **The
 number of evaluations changes with the number of CPUs**: for example, with a
-population of 10 over 3 iterations on two CPUs, a run of ``GA`` makes 40 evaluations
-sequentially and 34 on islands, and ``SSGA`` 16 and 22; ``TPE`` spends more on islands,
+population of 10 over 3 iterations on two CPUs, a run of ``GA`` makes 34 evaluations
+sequentially and 28 on islands, and ``SSGA`` 16 and 22; ``TPE`` spends more on islands,
 because every island evaluates a whole candidate pool.
 
 ``SA`` works on a population of one, so it gains nothing from either model.

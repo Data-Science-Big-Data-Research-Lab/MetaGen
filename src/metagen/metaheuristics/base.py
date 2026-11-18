@@ -34,18 +34,14 @@ from metagen.framework.rng import get_rng, seeded, set_seed, spawn_seed
 from copy import deepcopy
 
 from metagen.logging.metagen_logger import metagen_logger
-from metagen.metaheuristics.racing import Racing
+from metagen.metaheuristics.racing import Racing, complete, raced_out, step_values
 from metagen.metaheuristics.tools import (CountingFitness, add_calls, random_exploration, save_model,
                                          solution_class)
 
 IS_RAY_INSTALLED = is_package_installed("ray")
-
-if is_package_installed("tensorboard"):
-    from metagen.logging.tensorboard_logger import TensorBoardLogger
-
-if IS_RAY_INSTALLED:
-    import ray
-    from .distributed_tools import assign_load_equally, call_method, distributed_random_exploration
+# Ray, its dispatchers and the TensorBoard writer are imported where a run uses them: imported
+# here, whenever they were installed, they were a third of the time of importing the package,
+# for runs that are neither distributed nor logged (O-14 of the independent audit).
 
 
 #: The arguments of a constructor that are not part of what :py:meth:`Metaheuristic.parameters`
@@ -69,7 +65,7 @@ OPTIONS_OF_A_RUN = "{options_of_a_run}"
 #: docstring of :py:class:`Metaheuristic` itself.
 _OPTIONS_OF_A_RUN_DOC = """\
 :param distributed: Whether to run on Ray, defaults to False; see
-    :py:class:`~metagen.metaheuristics.Metaheuristic` for what a distributed run does.
+    :ref:`distributed_execution/distributed:How Distributed Execution Works`.
 :type distributed: bool, optional
 :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
 :type log_dir: str or None, optional
@@ -79,7 +75,7 @@ _OPTIONS_OF_A_RUN_DOC = """\
 :type seed: int or None, optional
 :param distribution_model: How a distributed run makes up the next population out of
     the slices, ``"global"`` (the default: shuffled, selected among all workers) or
-    ``"islands"``; see :py:class:`~metagen.metaheuristics.Metaheuristic`.
+    ``"islands"``; see :ref:`distributed_execution/distributed:How Distributed Execution Works`.
 :type distribution_model: str, optional
 :param checkpoint: File the run saves its state to every ``checkpoint_every``
     iterations, and continues from if it exists when ``run()`` starts; None, the
@@ -125,6 +121,9 @@ def _with_options_of_a_run(doc: Optional[str]) -> Optional[str]:
 
 
 class Metaheuristic(_Checkpointing, _Budget, ABC):
+    # The models of distribution are explained in docs/source/distributed_execution/distributed.rst,
+    # what each costs included; this docstring repeated it whole, two texts to keep alike
+    # (O-04 and OF-02 of the independent audit).
     """
     Abstract base class for metaheuristic algorithms.
 
@@ -147,36 +146,17 @@ class Metaheuristic(_Checkpointing, _Budget, ABC):
         the starting best (default is 0).
     :type warmup_iterations: int, optional
     :param distributed: Whether to run on Ray (default is False): the population is
-        split into one slice per CPU of the cluster and each slice runs ``iterate`` on
-        its own in a worker, every iteration. What happens to the slices afterwards is
-        the ``distribution_model``. Two distributed runs with the same ``seed`` on the
-        same number of CPUs reproduce each other, since every worker task is seeded
-        from the driver's generator.
+        split into one slice per CPU of the cluster and each slice runs ``iterate`` in a
+        worker, every iteration. Two distributed runs with the same ``seed`` on the same
+        number of CPUs reproduce each other. See
+        :ref:`distributed_execution/distributed:How Distributed Execution Works`.
     :type distributed: bool, optional
-    :param distribution_model: How the slices make up the next population, ``"global"``
-        (the default) or ``"islands"``.
-
-        With ``"global"`` the driver shuffles the population before splitting it, so
-        that every iteration mixes the individuals across workers, and once the slices
-        return it selects the next population **from the parents it sent and every
-        candidate that came back**, all workers considered: a (μ+λ) survivor selection
-        by fitness, ``population_size`` strong, which ``select_survivors`` implements
-        and an algorithm may override (TPE merges the histories instead, HillClimbing,
-        TabuSearch and SA keep the fresh candidates only). The budget per iteration
-        does not grow with the CPU count, save in SSGA and KernelTPE, which spend more
-        with more slices: it is the sequential one for HillClimbing,
-        TabuSearch and TPE, and for GA and Memetic when the slices have an even
-        number of individuals (a slice breeds pairs, so an odd slice breeds one child
-        fewer); ``RandomSearch`` keeps one elite per slice and mutates one individual
-        fewer per slice, ``SSGA`` breeds its two children in every slice, and
-        ``KernelTPE`` evaluates one candidate per slice.
-
-        With ``"islands"`` the slices come back with the size they left with and are
-        concatenated in order, so the next split hands the same individuals to the
-        same worker: the islands never exchange individuals and share only the best
-        solution the driver keeps. The algorithm each worker runs is the algorithm on
-        a smaller population, and the number of evaluations, the elitism and the
-        result depend on how many CPUs the cluster has.
+    :param distribution_model: How the slices make up the next population: ``"global"``
+        (the default), where the driver shuffles the population before splitting it and
+        selects the next one out of the parents and every candidate the workers return
+        (:py:meth:`select_survivors`); or ``"islands"``, where every slice stays with its
+        worker for the whole run. What an iteration costs under each model is in
+        :ref:`distributed_execution/distributed:How Distributed Execution Works`.
     :type distribution_model: str, optional
     :param log_dir: Directory the TensorBoard logs are written to. None, the default, writes nothing.
     :type log_dir: str or None, optional
@@ -365,9 +345,10 @@ class Metaheuristic(_Checkpointing, _Budget, ABC):
         # configurations left hundreds of directories behind (A-12). It is opt-in
         # now: log_dir is where to write, and None means do not write.
         self.log_dir = log_dir
-        self.logger = (TensorBoardLogger(log_dir=log_dir)
-                       if log_dir is not None and is_package_installed("tensorboard")
-                       else None)
+        self.logger = None
+        if log_dir is not None and is_package_installed("tensorboard"):
+            from metagen.logging.tensorboard_logger import TensorBoardLogger
+            self.logger = TensorBoardLogger(log_dir=log_dir)
         self.checkpoint = checkpoint
         self.checkpoint_every = checkpoint_every
         self._stop_requested = False
@@ -401,6 +382,8 @@ class Metaheuristic(_Checkpointing, _Budget, ABC):
         :return: A tuple containing the population and the best individual.
         :rtype: Tuple[List[Solution], Solution]
         """
+        import ray
+        from metagen.metaheuristics.distributed_tools import assign_load_equally, call_method
         # While initializing there is no population to split yet, so the load is
         # population_size. Reading len(current_solutions) here would size the run
         # after whatever _warmup() left behind, which is one entry per warmup
@@ -412,7 +395,9 @@ class Metaheuristic(_Checkpointing, _Budget, ABC):
             distribution = assign_load_equally(
                 len(self.current_solutions) if len(self.current_solutions) > 0 else self.population_size,
                 self.minimum_slice)
-        parents = deepcopy(self.current_solutions)
+        # Not copied: the workers get copies of their own through Ray, and nothing on the
+        # driver changes a parent, select_survivors included (E-10 of the independent audit).
+        parents = list(self.current_solutions)
         iterating = self.current_iteration != -1
         # Shuffled before the cut, so that the slices are made of different
         # individuals every iteration: that is what lets them mix across workers.
@@ -555,6 +540,7 @@ class Metaheuristic(_Checkpointing, _Budget, ABC):
             for warmup_step in range(self.warmup_iterations):
                 if self.distributed:
                     require_ray("a distributed run")
+                    from metagen.metaheuristics.distributed_tools import distributed_random_exploration
                     metagen_logger.debug(
                         f'[WARMUP {warmup_step + 1}/{self.warmup_iterations}] Distributed warmup step.'
                     )
@@ -593,9 +579,8 @@ class Metaheuristic(_Checkpointing, _Budget, ABC):
             # The candidates of this iteration race against the population it starts from.
             step_count = self.fitness_function.step_count
             self.fitness_function.references = [
-                getattr(solution, "step_values") for solution in self.current_solutions
-                if not getattr(solution, "raced_out", False)
-                and len(getattr(solution, "step_values", ())) == step_count]
+                cast(List[float], step_values(solution)) for solution in self.current_solutions
+                if not raced_out(solution) and complete(step_values(solution), step_count)]
         if self.distributed:
             require_ray("a distributed run")
             population, best_individual = self._launch_distributed_method(self.iterate)
@@ -605,8 +590,8 @@ class Metaheuristic(_Checkpointing, _Budget, ABC):
         self.current_solutions = population
 
         # A candidate stopped by the race has an estimated fitness: never the best of the run.
-        if getattr(best_individual, "raced_out", False):
-            whole = [solution for solution in population if not getattr(solution, "raced_out", False)]
+        if raced_out(best_individual):
+            whole = [solution for solution in population if not raced_out(solution)]
             best_individual = min(whole, key=Solution.get_fitness) if whole else self._best_so_far()
 
         # Merged, not assigned, the same way _initialize does since F-03. Assigning
@@ -645,10 +630,10 @@ class Metaheuristic(_Checkpointing, _Budget, ABC):
         """
         pass
 
-    @abstractmethod
     def initialize(self, num_solutions=10) -> Tuple[List[Solution], Solution]:
         """
-        Initialize the population/solutions for the metaheuristic.
+        Initialize the population/solutions for the metaheuristic: by default,
+        ``num_solutions`` solutions drawn at random from the domain and evaluated.
 
         Everything the algorithm needs later has to be in what this returns. In
         distributed mode Ray runs it on a pickled copy of the algorithm, so anything
@@ -660,7 +645,9 @@ class Metaheuristic(_Checkpointing, _Budget, ABC):
         :return: A tuple containing the population and the best individual.
         :rtype: Tuple[List[Solution], Solution]
         """
-        pass
+        # The same body was written in GA, SSGA, Memetic and RandomSearch (O-06 and OF-06 of
+        # the independent audit).
+        return random_exploration(self.domain, self.fitness_function, num_solutions)
 
     def pre_iteration(self) -> None:
         """
@@ -750,7 +737,41 @@ class Metaheuristic(_Checkpointing, _Budget, ABC):
             return self._run_seeded()
 
     def _run_seeded(self) -> Solution:
+        # The life of a run, in the steps below; it was one method of 110 lines (O-04 and
+        # OF-02 of the independent audit). The order of every call is the same.
         self.stop_reason = None
+        resuming = self._prepare_run()
+        counted = self._counted_fitness()
+        account = self._accountant(counted)
+
+        # Remembered so that only the run() that started Ray stops it. Shutting it
+        # down unconditionally took the runtime away from a cluster the user had
+        # connected to, or from the other metaheuristics in a comparison (F-21).
+        stop_ray = start_ray(self.distributed and IS_RAY_INSTALLED)
+
+        try:
+            if not resuming:
+                self._start_run(account)
+            if self._iterate_until_stopped(counted, account):
+                return self._finish(counted)
+            self._end_run()
+        finally:
+            self.fitness_function = counted.function
+            # Also on the way out of an exception: a runtime this run() started must
+            # not outlive it, or the workers and their memory stay alive until the
+            # interpreter exits (F-44).
+            stop_ray()
+
+        return self._finish(counted)
+
+    def _prepare_run(self) -> bool:
+        """
+        Put the run where it starts: the state saved in ``checkpoint``, if the file exists,
+        or the state of a new run, with the generators seeded.
+
+        :return: Whether the run continues from a checkpoint.
+        :rtype: bool
+        """
         resuming = self.checkpoint is not None and os.path.exists(self.checkpoint)
         if resuming:
             state = self._read_checkpoint(cast(str, self.checkpoint))
@@ -765,27 +786,52 @@ class Metaheuristic(_Checkpointing, _Budget, ABC):
         if resuming:
             self._trim_history_file()
         else:
-            # The state of a run, as the constructor leaves it: a second run() started
-            # from the best and the population of the first, so a new seed gave back the
-            # best of the run before and the curve of bests ran on (F-63).
-            self.current_iteration = -1
-            self.best_solution = None
-            self.current_solutions = []
-            self.best_solution_fitnesses = []
-            self._configuration = self._describe_configuration()
-            self.history = []
-            self._evaluations = 0
-            self._steps = 0
-            self._seconds = 0.0
-            self.best_model, self._best_model_value = None, None
-            if self.history_file is not None and os.path.exists(self.history_file):
-                os.remove(self.history_file)
+            self._reset_run_state()
+        return resuming
+
+    def _reset_run_state(self) -> None:
+        """The state of a new run, as the constructor leaves it, and no history file."""
+        # A second run() started from the best and the population of the first, so a new
+        # seed gave back the best of the run before and the curve of bests ran on (F-63).
+        self.current_iteration = -1
+        self.best_solution = None
+        self.current_solutions = []
+        self.best_solution_fitnesses = []
+        self._configuration = self._describe_configuration()
+        self.history = []
+        self._evaluations = 0
+        self._steps = 0
+        self._seconds = 0.0
+        self.best_model, self._best_model_value = None, None
+        if self.history_file is not None and os.path.exists(self.history_file):
+            os.remove(self.history_file)
+
+    def _counted_fitness(self) -> CountingFitness:
+        """
+        Put the fitness function in a :py:class:`~metagen.metaheuristics.tools.CountingFitness`
+        for the run; ``run()`` puts the function back when it ends.
+
+        :return: The counting fitness function, now ``fitness_function``.
+        :rtype: CountingFitness
+        """
         # Counted on the driver: the history's evaluations, from where a resumed run
         # left them, and the best model, from the one it had.
         counted = CountingFitness(self.fitness_function, racing=self.racing, step_count=self._step_count,
                                   best=None if self._best_model_value is None
                                   else (self._best_model_value, self.best_model))
         self.fitness_function = counted
+        return counted
+
+    def _accountant(self, counted: CountingFitness) -> Callable[[], Optional[str]]:
+        """
+        The function that brings what the run has spent up to date, from what it had spent
+        when it started or resumed, and says which limit it reached.
+
+        :param counted: The counting fitness function of the run.
+        :type counted: CountingFitness
+        :return: The function, which returns ``"max_evaluations"``, ``"timeout"`` or None.
+        :rtype: Callable[[], Optional[str]]
+        """
         evaluations_before, seconds_before, started = self._evaluations, self._seconds, time.perf_counter()
         steps_before = self._steps
 
@@ -796,68 +842,75 @@ class Metaheuristic(_Checkpointing, _Budget, ABC):
             self._seconds = seconds_before + time.perf_counter() - started
             return self._limit_reached()
 
-        # Remembered so that only the run() that started Ray stops it. Shutting it
-        # down unconditionally took the runtime away from a cluster the user had
-        # connected to, or from the other metaheuristics in a comparison (F-21).
-        stop_ray = start_ray(self.distributed and IS_RAY_INSTALLED)
+        return account
 
-        try:
-            if not resuming:
-                self.pre_execution()
+    def _start_run(self, account: Callable[[], Optional[str]]) -> None:
+        """Start a new run: ``pre_execution``, the warmup and the initial population."""
+        self.pre_execution()
 
-                # A budget is also checked between the rounds of the warmup, which can
-                # cost more than a small budget on its own (TPE's defaults are 200
-                # evaluations); the initial population is always evaluated whole.
-                self._warmup(account)
+        # A budget is also checked between the rounds of the warmup, which can
+        # cost more than a small budget on its own (TPE's defaults are 200
+        # evaluations); the initial population is always evaluated whole.
+        self._warmup(account)
 
-                self._initialize()
+        self._initialize()
 
-                self.current_iteration = 0
-                account()
+        self.current_iteration = 0
+        account()
 
-            while True:
-                # Checked between iterations only, where the state is consistent: the
-                # same point the checkpoint is saved at, so a resumed run stops where
-                # an uninterrupted one would.
-                reason = "criterion" if self.stopping_criterion() else self._limit_reached()
-                if reason is not None:
-                    self.stop_reason = reason
-                    break
-                self.pre_iteration()
+    def _iterate_until_stopped(self, counted: CountingFitness, account: Callable[[], Optional[str]]) -> bool:
+        """
+        Iterate until the stopping criterion, a budget or :py:meth:`request_stop` stops the
+        run, recording each iteration and saving the checkpoint after it.
 
-                self._iterate()
+        :param counted: The counting fitness function of the run.
+        :type counted: CountingFitness
+        :param account: The function that brings what the run has spent up to date.
+        :type account: Callable[[], Optional[str]]
+        :return: Whether :py:meth:`request_stop` stopped the run.
+        :rtype: bool
+        """
+        while True:
+            # Checked between iterations only, where the state is consistent: the
+            # same point the checkpoint is saved at, so a resumed run stops where
+            # an uninterrupted one would.
+            reason = "criterion" if self.stopping_criterion() else self._limit_reached()
+            if reason is not None:
+                self.stop_reason = reason
+                return False
+            self.pre_iteration()
 
-                self.post_iteration()
+            self._iterate()
 
-                account()
-                self._record_history()
+            self.post_iteration()
 
-                self.current_iteration += 1
+            account()
+            self._record_history()
 
-                # Saved here, on the driver, once the iteration is complete: the only
-                # point at which the state is consistent. A cut during an iteration
-                # loses that iteration and never corrupts the file.
-                if self.checkpoint is not None and (
-                        self._stop_requested or self.current_iteration % self.checkpoint_every == 0):
-                    self._keep_best_model(counted)
-                    self._write_checkpoint()
-                if self._stop_requested:
-                    self.stop_reason = "request_stop"
-                    if self.logger:
-                        self.logger.writer.flush()
-                    return self._finish(counted)
+            self.current_iteration += 1
 
-            self.post_execution()
-            if self.checkpoint is not None and os.path.exists(self.checkpoint):
-                os.remove(self.checkpoint)
-        finally:
-            self.fitness_function = counted.function
-            # Also on the way out of an exception: a runtime this run() started must
-            # not outlive it, or the workers and their memory stay alive until the
-            # interpreter exits (F-44).
-            stop_ray()
+            self._checkpoint_after_iteration(counted)
+            if self._stop_requested:
+                self.stop_reason = "request_stop"
+                if self.logger:
+                    self.logger.writer.flush()
+                return True
 
-        return self._finish(counted)
+    def _checkpoint_after_iteration(self, counted: CountingFitness) -> None:
+        """Save the checkpoint after an iteration, every ``checkpoint_every`` and when asked to stop."""
+        # Saved here, on the driver, once the iteration is complete: the only
+        # point at which the state is consistent. A cut during an iteration
+        # loses that iteration and never corrupts the file.
+        if self.checkpoint is not None and (
+                self._stop_requested or self.current_iteration % self.checkpoint_every == 0):
+            self._keep_best_model(counted)
+            self._write_checkpoint()
+
+    def _end_run(self) -> None:
+        """End a run that reached its end: ``post_execution``, and its checkpoint file is removed."""
+        self.post_execution()
+        if self.checkpoint is not None and os.path.exists(self.checkpoint):
+            os.remove(self.checkpoint)
 
     def _keep_best_model(self, counted: CountingFitness) -> None:
         """Take the best model the fitness function has returned so far, if any."""

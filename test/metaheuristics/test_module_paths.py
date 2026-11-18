@@ -5,6 +5,7 @@ Each former path imports, is the very module of its current name, and warns once
 name to use instead. Run in a subprocess, because a module already imported by the suite
 would not warn again.
 """
+import importlib.util
 import json
 import subprocess
 import sys
@@ -53,3 +54,13 @@ def test_the_public_names_are_where_they_were():
     assert metaheuristics.GA is GA
     for name in metaheuristics.__all__:
         assert hasattr(metaheuristics, name)
+
+
+def test_the_former_paths_are_gone_by_version_2():
+    # They are kept until version 2.0, as their warning says: a release 2.0 still holding them
+    # would break that promise the other way.
+    import metagen
+
+    major = int(metagen.__version__.split(".")[0]) if metagen.__version__[:1].isdigit() else 0
+    if major >= 2:
+        assert importlib.util.find_spec("metagen.metaheuristics._renamed_modules") is None

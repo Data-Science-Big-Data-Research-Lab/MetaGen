@@ -48,17 +48,6 @@ def _evaluations(path) -> int:
         return sum(1 for _ in handle)
 
 
-@pytest.fixture(scope="module")
-def ray_runtime():
-    ray = pytest.importorskip("ray")
-    started_here = not ray.is_initialized()
-    if started_here:
-        ray.init(num_cpus=2, include_dashboard=False, log_to_driver=False)
-    yield ray
-    if started_here:
-        ray.shutdown()
-
-
 def test_an_unknown_distribution_model_is_refused():
     with pytest.raises(ValueError, match="distribution_model"):
         RandomSearch(_sphere_domain(), _sphere, distribution_model="archipelago")
@@ -119,15 +108,18 @@ def test_the_global_model_selects_on_the_driver_and_the_island_model_does_not(ra
 @pytest.mark.parametrize("name", ["GA", "HillClimbing", "TabuSearch", "TPE", "TPE_odd_pool"])
 def test_the_global_model_costs_what_the_sequential_run_costs(ray_runtime, tmp_path, name):
     """The promise of the global model: an iteration evaluates the fitness as many
-    times on two CPUs as on one. GA needs slices of even size to breed the same
-    number of children, so its population here is 8. A pool of TPE that the CPUs do not
-    divide is shared all the same: 7 on two CPUs are 4 and 3, not 3 and 3."""
+    times on two CPUs as on one. GA breeds a pair per two individuals of a slice under the
+    global model and the children its population has room for next to two elites
+    sequentially, which are as many with slices of odd size, so its population here is 10.
+    A pool of TPE that the CPUs do not divide is shared all the same: 7 on two CPUs are 4
+    and 3, not 3 and 3."""
     domain, ga_domain = _sphere_domain(), _sphere_domain(GAConnector())
 
     def build(distributed, path):
         fitness = _counting_sphere(path)
         return {
-            "GA": lambda: GA(ga_domain, fitness, population_size=8, max_iterations=3, distributed=distributed, seed=0),
+            "GA": lambda: GA(ga_domain, fitness, population_size=10, max_iterations=3, distributed=distributed,
+                             seed=0),
             "HillClimbing": lambda: HillClimbing(domain, fitness, population_size=6, warmup_iterations=1,
                                                  max_iterations=3, distributed=distributed, seed=0),
             "TabuSearch": lambda: TabuSearch(domain, fitness, population_size=6, warmup_iterations=1,
@@ -142,6 +134,16 @@ def test_the_global_model_costs_what_the_sequential_run_costs(ray_runtime, tmp_p
     build(False, sequential).run()
     build(True, distributed).run()
     assert _evaluations(distributed) == _evaluations(sequential)
+
+
+def test_with_slices_of_even_size_the_global_ga_breeds_two_children_more_per_iteration(ray_runtime, tmp_path):
+    """The exception the documentation names: two slices of four breed eight children
+    under the global model, and a sequential run of eight breeds six next to its elites."""
+    sequential, distributed = tmp_path / "sequential", tmp_path / "distributed"
+    for path, options in ((sequential, {}), (distributed, {"distributed": True})):
+        GA(_sphere_domain(GAConnector()), _counting_sphere(path), population_size=8, max_iterations=3, seed=0,
+           **options).run()
+    assert _evaluations(distributed) - _evaluations(sequential) == 2 * 3
 
 
 def test_random_search_mutates_one_individual_fewer_per_slice(ray_runtime, tmp_path):
@@ -415,10 +417,11 @@ def test_the_evaluations_the_documentation_gives_for_each_model(ray_runtime):
 
     distributed, islands = {"distributed": True}, {"distributed": True, "distribution_model": "islands"}
     connector = GAConnector
-    assert spent(GA, 10, 15, connector()) == 160 and spent(GA, 10, 15, connector(), **distributed) == 130
+    assert spent(GA, 10, 15, connector()) == 130 and spent(GA, 10, 15, connector(), **distributed) == 130
+    assert spent(GA, 8, 15, connector()) == 98 and spent(GA, 8, 15, connector(), **distributed) == 128
     assert spent(RandomSearch, 10, 15) == 145 and spent(RandomSearch, 10, 15, **distributed) == 130
     assert spent(SSGA, 10, 15, connector()) == 40 and spent(SSGA, 10, 15, connector(), **distributed) == 70
-    assert spent(GA, 10, 3, connector()) == 40 and spent(GA, 10, 3, connector(), **islands) == 34
+    assert spent(GA, 10, 3, connector()) == 34 and spent(GA, 10, 3, connector(), **islands) == 28
     assert spent(SSGA, 10, 3, connector()) == 16 and spent(SSGA, 10, 3, connector(), **islands) == 22
 
 

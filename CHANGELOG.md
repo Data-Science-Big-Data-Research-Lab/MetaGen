@@ -1,5 +1,84 @@
 # Changelog
 
+## 1.8.0
+
+MetaGen 1.8.0 makes assigning a value to a solution independent of the random sequence of a
+run, so seeded runs of GA, SSGA, the memetic algorithm and TriGen give other results than in
+1.7.0; GA, the memetic algorithm, HillClimbing and TabuSearch make better use of their
+evaluations; and copying and mutating solutions, recording the history, checkpoints, KernelTPE
+and importing the package cost less. Names the package does not use are deprecated until
+version 2.0.
+
+### New
+
+- **A metaheuristic of one's own** implements `iterate` and `stopping_criterion`:
+  `initialize` draws `num_solutions` random solutions of the domain and evaluates them by
+  default, and can be replaced.
+- **`docs` and `dev` extras.** `pip install pymetagen-datalabupo[docs]` installs what the
+  documentation is built with, and `[dev]` the versions of mypy and ruff the checks of the
+  project run.
+
+### Changes
+
+- **Assigning a value to a solution draws no random number.** `Solution.set`, the elements
+  given to a structure and the children of the crossover of the genetic algorithms are
+  built holding the value they are given, so writing a value leaves the random sequence of
+  the run as it was. Seeded runs of `GA`, `SSGA`, `Memetic` and `TriGen` give different
+  results; the other metaheuristics give the same.
+- **`HillClimbing` starts from the best solution it evaluates when it initializes**, the
+  starting point or one of its neighbors, as `TabuSearch` does.
+- **A budget for CVOA with several strains in threads** is spent whole: a run with
+  `max_evaluations` makes exactly that many evaluations, also when two strains reach the
+  last one at once.
+- **`TabuSearch` applies `tabu_radius` to the numbers of a structure**, element by element:
+  a neighbor is tabu when it lies within the radius of a visited solution on every numeric
+  variable, the elements of its structures included, so its tabu list also works on domains
+  of vectors. Seeded runs over structures give different results.
+- **`GA` and `Memetic` breed the children their population has room for** next to its
+  elites, so every child they evaluate enters it and a generation evaluates two children
+  fewer; a population of two or three keeps one elite and always takes a child in.
+  Under the global distribution model every slice still breeds a pair per two individuals
+  and the driver selects among them. Seeded runs of both algorithms, sequential and on
+  islands, give different results.
+- **Docstrings** say how `TPE` models each kind of variable and builds its candidates, what
+  the memory of `HillClimbing` keeps, how `KernelTPE` models the length of a dynamic
+  structure, that the temperature of `SA` is on the scale of the fitness, that
+  `views="trlab"` gives the published definition of MSL, GRQ and TRIQ, and which options of a
+  run a strain of CVOA takes from its launcher.
+- **`metagen.triclustering.data` is a package** of four modules, one for NetCDF, the text
+  files, the genes and GEO; its functions import from the same path.
+- **The dependencies are declared in `pyproject.toml` alone**: `requirements.txt` installs the
+  package with its `test` extra, and `requirements-optional.txt` lists only what the examples
+  and the benchmark need beyond the package.
+
+### Performance
+
+The results of a seeded run are the same, but for the deviation of a record of the history,
+which can differ in its last digit.
+
+- **KernelTPE** reads what each solution of its history contributes once, not at every
+  iteration.
+- **Copying, mutating and reading a solution** skip work they repeated, which the trajectory
+  algorithms and CVOA do the most of.
+- **The history** computes the deviation of each record in floating point.
+- **A checkpoint** serializes the best model once, and a distributed iteration does not copy
+  the population it sends to the workers.
+- **Importing the package** loads Ray and the TensorBoard writer only when a run uses them.
+
+### Deprecated
+
+These still work, with a `DeprecationWarning`, and will be removed in version 2.0:
+
+- `CVOA.infect_individuals`, in favor of `CVOA.infect_individuals_from`, and
+  `CVOA.update_new_infected_population`, in favor of `CVOA.admit`.
+- `BaseDefinition.get_by_index`, `BaseStructureDefinition.is_base` and
+  `BaseStructureDefinition.check_base_value`, and `Primitives.is_basic_vector_sequence_value`
+  and `Primitives.is_layer_vector_sequence_value`.
+- The names of `metagen.framework.solution.literals` other than `Basic`, `BasicVector`,
+  `SolLayer`, `SolLayerVector`, `SolVector` and `InputValue`.
+- The module paths of the 1.x releases that were renamed, such as `metagen.metaheuristics.ga`
+  or `metagen.metaheuristics.cvoa.cvoa_local`; their warning names the path to use.
+
 ## 1.7.0
 
 MetaGen 1.7.0 checks domains and the parameters of the metaheuristics when they are defined,

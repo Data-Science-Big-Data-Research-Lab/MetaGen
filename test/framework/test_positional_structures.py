@@ -13,6 +13,7 @@ from metagen.metaheuristics import (GA, SA, SSGA, HillClimbing, KernelTPE,
                                     cvoa_launcher)
 from metagen.metaheuristics.genetic.genetic_tools import GAConnector
 from metagen.metaheuristics.tools import solution_class
+from conftest import ALGORITHMS
 
 LOW = [1, 6, 11]
 HIGH = [5, 10, 20]
@@ -160,9 +161,6 @@ def test_the_crossover_recombines_position_by_position():
         assert _valid(child1["v"]) and _valid(child2["v"])
         assert sorted([len(child1["v"]), len(child2["v"])]) == \
             sorted([len(first["v"]), len(second["v"])])
-
-
-ALGORITHMS = [RandomSearch, HillClimbing, TabuSearch, SA, GA, SSGA, Memetic, TPE, KernelTPE]
 
 
 @pytest.mark.parametrize("algorithm", ALGORITHMS, ids=lambda a: a.__name__)

@@ -143,6 +143,21 @@ def test_a_copy_shares_the_definitions_and_the_connector_and_nothing_else(soluti
                 assert all(a is not b for a, b in zip(copied.get(), variable.get()))
 
 
+def test_a_copy_of_a_variable_copies_what_it_carries_besides_its_value(solution):
+    # A variable that holds a number is copied by its attributes, sharing its definition and
+    # connector; one that carries anything else is copied whole, as deepcopy does.
+    name = next(name for name, variable in solution.get_variables().items()
+                if isinstance(variable, BaseType) and type(variable.get()) in (int, float))
+    variable = solution.get(name)
+    variable.notes = ["drawn"]
+    twin = copy.deepcopy(solution)
+    copied = twin.get(name)
+    assert copied is not variable and copied.get() == variable.get()
+    assert copied.notes == ["drawn"] and copied.notes is not variable.notes
+    copied.set(variable.get())
+    assert solution.get(name) is variable
+
+
 def test_a_copy_is_equal_until_it_is_mutated(solution):
     twin = copy.deepcopy(solution)
     assert twin == solution

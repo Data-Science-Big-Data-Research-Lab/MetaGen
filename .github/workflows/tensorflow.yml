@@ -1,0 +1,39 @@
+# What needs TensorFlow, which no job of ci.yml installs: the notebook that tunes an LSTM
+# network, the TensorFlow problem of the examples and the TensorFlow example of the
+# documentation. It blocks nothing; it fails if any of them is skipped, so that it never
+# passes without running them.
+name: tensorflow
+
+on:
+  push:
+    branches: [dev, trigen]
+  schedule:
+    - cron: "0 6 * * 1"   # Mondays, from the default branch
+  workflow_dispatch:
+
+jobs:
+  tensorflow:
+    name: what needs TensorFlow
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install the package, the test tooling and TensorFlow
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[test] tensorflow
+
+      - name: Run what needs TensorFlow
+        run: |
+          pytest -q -rs test/documentation/test_notebooks.py test/documentation/test_documentation_examples.py \
+            test/metaheuristics/test_extras.py -k "tensorflow or suc_p4 or notebook" | tee pytest.log
+          if grep -E "SKIPPED.*tensorflow" pytest.log; then
+            echo "A test that needs TensorFlow was skipped with TensorFlow installed."
+            exit 1
+          fi

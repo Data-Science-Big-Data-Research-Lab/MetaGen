@@ -19,15 +19,13 @@ from __future__ import annotations
 import os
 import pickle
 import warnings
-from importlib import metadata
 from typing import TYPE_CHECKING, Any, Dict, Optional, cast
 
+import metagen
 from metagen.framework import Domain
 from metagen.framework import rng as rng_state
 from metagen.metaheuristics.import_helper import is_package_installed
 
-if is_package_installed("tensorboard"):
-    from metagen.logging.tensorboard_logger import TensorBoardLogger
 
 if TYPE_CHECKING:
     from metagen.logging.tensorboard_logger import TensorBoardLogger as _Logger
@@ -37,7 +35,7 @@ if TYPE_CHECKING:
 #: nested function and cannot be pickled, the TensorBoard writer, and where and how
 #: often to save, which the resumed run is given again.
 _NOT_CHECKPOINTED = frozenset({"fitness_function", "logger", "checkpoint", "checkpoint_every",
-                               "_stop_requested", "refit"})
+                               "_stop_requested", "refit", "_observed_parts"})
 
 #: What is not configuration: the state of a run, and where to write. A checkpoint keeps
 #: a description of everything else, and a run with another configuration is not
@@ -48,10 +46,18 @@ _NOT_CONFIGURATION = _NOT_CHECKPOINTED | frozenset({
     "stop_reason", "log_dir", "history_file"})
 
 def _package_version() -> str:
-    try:
-        return metadata.version("pymetagen-datalabupo")
-    except metadata.PackageNotFoundError:
-        return "unknown"
+    # The version metagen reads once when it is imported: read here at every checkpoint, it
+    # was a tenth of each one (EF-13), and three modules read it, each its own way (O-08 of
+    # the independent audit).
+    return metagen.__version__
+
+
+def _dump(state: Dict[str, Any], path: str) -> None:
+    """Write a checkpoint state to a file, synced to disk."""
+    with open(path, "wb") as handle:
+        pickle.dump(state, handle)
+        handle.flush()
+        os.fsync(handle.fileno())
 
 
 class _Checkpointing:
@@ -80,15 +86,6 @@ class _Checkpointing:
         directory. A subclass whose state is not all in its attributes extends it.
         """
         attributes = {name: value for name, value in self.__dict__.items() if name not in _NOT_CHECKPOINTED}
-        if self.best_model is not None:
-            try:
-                pickle.dumps(self.best_model)
-            except Exception as error:
-                # A model the checkpoint cannot hold is left out, not the checkpoint: a run
-                # resumed from it keeps the best model it finds from then on.
-                warnings.warn(f"The best model cannot be saved in the checkpoint ({error}); it is left out.",
-                              RuntimeWarning, stacklevel=2)
-                attributes["best_model"], attributes["_best_model_value"] = None, None
         return {
             "version": _package_version(),
             "class": type(self),
@@ -150,6 +147,7 @@ class _Checkpointing:
         if self.log_dir is not None and is_package_installed("tensorboard"):
             if self.logger:
                 self.logger.close()
+            from metagen.logging.tensorboard_logger import TensorBoardLogger
             self.logger = TensorBoardLogger(log_dir=self.log_dir, run_id=state["tensorboard_run"])
 
     def _write_checkpoint(self) -> None:
@@ -162,10 +160,26 @@ class _Checkpointing:
         directory = os.path.dirname(os.path.abspath(path))
         os.makedirs(directory, exist_ok=True)
         temporary = path + ".tmp"
-        with open(temporary, "wb") as handle:
-            pickle.dump(self._checkpoint_state(), handle)
-            handle.flush()
-            os.fsync(handle.fileno())
+        state = self._checkpoint_state()
+        # Serialized once, and the best model on its own only when the state cannot be: it
+        # was serialized once to try it and once more with the state, two times a large
+        # model at every checkpoint (E-11 and EF-13 of the independent audit).
+        try:
+            _dump(state, temporary)
+        except Exception:
+            if self.best_model is None:
+                raise
+            try:
+                pickle.dumps(self.best_model)
+            except Exception as error:
+                # A model the checkpoint cannot hold is left out, not the checkpoint: a run
+                # resumed from it keeps the best model it finds from then on.
+                warnings.warn(f"The best model cannot be saved in the checkpoint ({error}); it is left out.",
+                              RuntimeWarning, stacklevel=2)
+            else:
+                raise
+            state["algorithm"]["best_model"], state["algorithm"]["_best_model_value"] = None, None
+            _dump(state, temporary)
         os.replace(temporary, path)
 
     @staticmethod

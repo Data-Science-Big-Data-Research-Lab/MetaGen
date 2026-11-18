@@ -26,6 +26,9 @@ if TYPE_CHECKING:
     from metagen.framework import BaseConnector
     from metagen.framework.domain import Base
 
+#: The values that are their own copy.
+_IMMUTABLE = (int, float, str, bool, type(None))
+
 
 
 class BaseType(ABC):
@@ -125,7 +128,9 @@ class BaseType(ABC):
         copied = self.__class__.__new__(self.__class__)
         memo[id(self)] = copied
         for name, value in self.__dict__.items():
-            shared = name in ("_BaseType__definition", "connector")
+            # A number, a string or None is its own copy: deepcopy would hand back the same
+            # object, through its dispatch (EF-08 of the independent audit).
+            shared = name in ("_BaseType__definition", "connector") or type(value) in _IMMUTABLE
             copied.__dict__[name] = value if shared else deepcopy(value, memo)
         return copied
 
@@ -243,11 +248,11 @@ class BaseType(ABC):
         """
         Compare two `BaseType` objects or a `BaseType` object and an object for equality.
 
-        Parameters:
-            other (BaseType or str): The object to compare to.
+        :param other: The object to compare to.
+        :type other: BaseType or str
 
-        Returns:
-            bool: `True` if the objects are equal, `False` otherwise.
+        :return: `True` if the objects are equal, `False` otherwise.
+        :rtype: bool
         """
 
         if isinstance(other, BaseType):
@@ -261,11 +266,9 @@ class BaseType(ABC):
         """
         Add the value of another object to the value of this `BaseType` object.
 
-        Parameters:
-            other: The object to add to this `BaseType` object's value.
+        :param other: The object to add to this `BaseType` object's value.
 
-        Returns:
-            The sum of the two values.
+        :return: The sum of the two values.
         """
 
         return self.value + other
@@ -277,11 +280,9 @@ class BaseType(ABC):
         """
         Subtract the value of another object from the value of this `BaseType` object.
 
-        Parameters:
-            other: The object to subtract from this `BaseType` object's value.
+        :param other: The object to subtract from this `BaseType` object's value.
 
-        Returns:
-            The difference between the two values.
+        :return: The difference between the two values.
         """
 
         return self.value - other
@@ -293,11 +294,11 @@ class BaseType(ABC):
         """
         Compare two `BaseType` objects or a `BaseType` object and a string for inequality.
 
-        Parameters:
-            other (BaseType or str): The object to compare to.
+        :param other: The object to compare to.
+        :type other: BaseType or str
 
-        Returns:
-            bool: `True` if the objects are not equal, `False` otherwise.
+        :return: `True` if the objects are not equal, `False` otherwise.
+        :rtype: bool
         """
         return not self.__eq__(other)
 
@@ -305,11 +306,9 @@ class BaseType(ABC):
         """
         Multiply the value of this `BaseType` object by another object.
 
-        Parameters:
-            other: The object to multiply this `BaseType` object's value by.
+        :param other: The object to multiply this `BaseType` object's value by.
 
-        Returns:
-            The product of the two values.
+        :return: The product of the two values.
         """
         return self.value * other
 
@@ -317,35 +316,29 @@ class BaseType(ABC):
         """
         Multiply the value of another object by the value of this `BaseType` object.
 
-        Parameters:
-            other: The object to multiply by this `BaseType` object's value.
+        :param other: The object to multiply by this `BaseType` object's value.
 
-        Returns:
-            The product of the two values.
+        :return: The product of the two values.
         """
         return other * self.value
 
     def __pow__(self, other):
         """
-        Exponential operation of the value of this `BaseType` object by another object.
+        Raise the value of this `BaseType` object to the power of another object.
 
-        Parameters:
-            other: The object to multiply this `BaseType` object's value by.
+        :param other: The exponent.
 
-        Returns:
-            The product of the two values.
+        :return: The value of this object raised to ``other``.
         """
         return self.value ** other
 
     def __rpow__(self, other):
         """
-        Exponential operation of  the value of another object by the value of this `BaseType` object.
+        Raise another object to the power of the value of this `BaseType` object.
 
-        Parameters:
-            other: The object to multiply by this `BaseType` object's value.
+        :param other: The base.
 
-        Returns:
-            The product of the two values.
+        :return: ``other`` raised to the value of this object.
         """
         return other ** self.value
 

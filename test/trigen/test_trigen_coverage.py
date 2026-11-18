@@ -52,8 +52,10 @@ def test_the_decline_rule_leaves_out_the_first_tricluster_well_below_the_best_so
 
 
 def test_with_patience_a_run_ends_after_that_many_left_out_in_a_row_and_keeps_them_out(tmp_path):
+    # A seed whose run leaves one out, takes the next and ends on two left out in a row; the
+    # seed of the module stopped doing so when F-81 moved the random sequence.
     trigen = TriGen(CUBE, n_triclusters=8, stop="coverage", scoring="significance", noise_rule="decline",
-                    decline=0.95, **SETTINGS)
+                    decline=0.95, **{**SETTINGS, "seed": 1})
     found = trigen.run()
     left = [record["tricluster"] is None and "left_out" in record for record in trigen.history]
     assert trigen.stop_reason == "noise" and left[-2:] == [True, True]
@@ -70,8 +72,9 @@ def test_with_patience_a_run_ends_after_that_many_left_out_in_a_row_and_keeps_th
 
 
 def test_a_patience_of_one_ends_at_the_first_left_out():
+    # The seed of the test above, for the same run with the default patience.
     options = dict(n_triclusters=8, stop="coverage", scoring="significance", noise_rule="decline", decline=0.95,
-                   **SETTINGS)
+                   **{**SETTINGS, "seed": 1})
     trigen = TriGen(CUBE, patience=1, **options)
     found = trigen.run()
     assert trigen.history[-1]["tricluster"] is None and len(trigen.history) == len(found) + 1

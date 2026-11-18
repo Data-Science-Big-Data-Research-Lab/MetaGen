@@ -15,7 +15,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 from copy import deepcopy
-from typing import Optional, cast
+from typing import Any, Optional, TypeVar, cast
 
 from metagen.framework import BaseConnector
 from metagen.framework.domain import (Base, BaseDefinition,
@@ -27,6 +27,9 @@ from metagen.framework.domain import (Base, BaseDefinition,
                                       SubsetDefinition)
 from metagen.framework.domain.literals import CatVal
 from metagen.framework.domain.preconditions import Messages
+
+#: A class of definition, as Domain._definition_class gives it.
+_Definition = TypeVar("_Definition", bound=Base)
 
 
 def _lookup(core: BaseDefinition, name: str) -> Base:
@@ -92,9 +95,18 @@ class Domain:
         # at import time, so every Domain shared one connector and a type registered
         # on any of them rewired all the others (F-12).
         self._connector = BaseConnector() if connector is None else connector
-        base_definition = cast(type[BaseDefinition], self._connector.get_definition(
-            self._connector.get_type(dict)))
+        base_definition = self._definition_class(BaseDefinition, dict)
         self._core: BaseDefinition = base_definition()
+
+    def _definition_class(self, kind: type[_Definition], builtin: Any,
+                          structure: Optional[str] = None) -> type[_Definition]:
+        """
+        The class of definition the connector registers for a builtin type, or for a list
+        with the kind of structure, typed as ``kind``.
+        """
+        # The same cast was written in fifteen methods (OF-13 of the independent audit).
+        key = self._connector.get_type(builtin)
+        return cast(type[_Definition], self._connector.get_definition(key if structure is None else (key, structure)))
 
     def define_integer(self, name: str, min_value: int, max_value: int, step: int | None = None,
                        log: bool = False):
@@ -114,8 +126,7 @@ class Domain:
             order of magnitude weighs the same. It needs a positive minimum and no step.
         :type log: bool
         """
-        integer_definition = cast(type[IntegerDefinition], self._connector.get_definition(
-            self._connector.get_type(int)))
+        integer_definition = self._definition_class(IntegerDefinition, int)
         self._core.define(name, integer_definition(min_value, max_value, step, log=log))
 
     def define_real(self, name: str, min_value: float, max_value: float, step: float | None = None,
@@ -136,8 +147,7 @@ class Domain:
             order of magnitude weighs the same. It needs a positive minimum and no step.
         :type log: bool
         """
-        real_definition = cast(type[RealDefinition], self._connector.get_definition(
-            self._connector.get_type(float)))
+        real_definition = self._definition_class(RealDefinition, float)
         self._core.define(name, real_definition(min_value, max_value, step, log=log))
 
     def define_categorical(self, name: str, categories: CatVal):
@@ -149,8 +159,7 @@ class Domain:
         :type name: str
         :type categories: list of int, float or str
         """
-        categorical_definition = cast(type[CategoricalDefinition], self._connector.get_definition(
-            self._connector.get_type(str)))
+        categorical_definition = self._definition_class(CategoricalDefinition, str)
         self._core.define(name, categorical_definition(categories))
 
     def define_permutation(self, name: str, elements: CatVal):
@@ -170,8 +179,7 @@ class Domain:
         :type elements: list of int, float or str
         :raises ValueError: if the elements are not valid.
         """
-        permutation_definition = cast(type[PermutationDefinition], self._connector.get_definition(
-            self._connector.get_type(tuple)))
+        permutation_definition = self._definition_class(PermutationDefinition, tuple)
         self._core.define(name, permutation_definition(elements))
 
     def define_subset(self, name: str, elements: CatVal, min_size: int = 1, max_size: Optional[int] = None) -> None:
@@ -198,8 +206,7 @@ class Domain:
         :type max_size: int, optional
         :raises ValueError: if the elements or the sizes are not valid.
         """
-        subset_definition = cast(type[SubsetDefinition], self._connector.get_definition(
-            self._connector.get_type(frozenset)))
+        subset_definition = self._definition_class(SubsetDefinition, frozenset)
         self._core.define(name, subset_definition(elements, min_size, max_size))
 
     def define_group(self, name: str):
@@ -208,8 +215,7 @@ class Domain:
         :param name: The group name.
         :type name: str
         """
-        base_definition = cast(type[BaseDefinition], self._connector.get_definition(
-            self._connector.get_type(dict)))
+        base_definition = self._definition_class(BaseDefinition, dict)
 
         self._core.define(name, base_definition())
 
@@ -235,8 +241,7 @@ class Domain:
         """
         group_def: BaseDefinition = _get_group_definition(
             group, _lookup(self._core, group))
-        integer_definition = cast(type[IntegerDefinition], self._connector.get_definition(
-            self._connector.get_type(int)))
+        integer_definition = self._definition_class(IntegerDefinition, int)
         group_def.define(name, integer_definition(min_value, max_value, step, log=log))
 
     def define_real_in_group(self, group: str, name: str, min_value: float, max_value: float,
@@ -261,8 +266,7 @@ class Domain:
         """
         group_def: BaseDefinition = _get_group_definition(
             group, _lookup(self._core, group))
-        real_definition = cast(type[RealDefinition], self._connector.get_definition(
-            self._connector.get_type(float)))
+        real_definition = self._definition_class(RealDefinition, float)
         group_def.define(name, real_definition(min_value, max_value, step, log=log))
 
     def define_categorical_in_group(self, group: str, name: str, categories: CatVal):
@@ -278,8 +282,7 @@ class Domain:
         """
         group_def: BaseDefinition = _get_group_definition(
             group, _lookup(self._core, group))
-        categorical_definition = cast(type[CategoricalDefinition], self._connector.get_definition(
-            self._connector.get_type(str)))
+        categorical_definition = self._definition_class(CategoricalDefinition, str)
         group_def.define(name, categorical_definition(categories))
 
     def link_variable_to_group(self, group: str, var: str, remember: bool = False):
@@ -319,8 +322,7 @@ class Domain:
         :type remember: bool, optional
         """
         base_type: Base | None = _get_base_type(self._core, var, remember)
-        dynamic_structure_definition = cast(type[DynamicStructureDefinition], self._connector.get_definition(
-            (self._connector.get_type(list), 'dynamic')))
+        dynamic_structure_definition = self._definition_class(DynamicStructureDefinition, list, 'dynamic')
         self._core.define(name, dynamic_structure_definition(
             name, base_type, min_len, max_len, step_len))
 
@@ -341,8 +343,7 @@ class Domain:
         :type remember: bool, optional
         """
         base_type: Base | None = _get_base_type(self._core, var, remember)
-        static_structure_definition = cast(type[StaticStructureDefinition], self._connector.get_definition(
-            (self._connector.get_type(list), 'static')))
+        static_structure_definition = self._definition_class(StaticStructureDefinition, list, 'static')
         self._core.define(name, static_structure_definition(
             name, base_type, length))
 
@@ -366,8 +367,7 @@ class Domain:
         """
         structure: BaseStructureDefinition = _get_structure_definition(
             name, _lookup(self._core, name))
-        integer_definition = cast(type[IntegerDefinition], self._connector.get_definition(
-            self._connector.get_type(int)))
+        integer_definition = self._definition_class(IntegerDefinition, int)
         structure.set_base(integer_definition(min_value, max_value, step, log=log))
 
     def set_structure_to_categorical(self, name: str, categories: CatVal):
@@ -381,8 +381,7 @@ class Domain:
         """
         structure: BaseStructureDefinition = _get_structure_definition(
             name, _lookup(self._core, name))
-        categorical_definition = cast(type[CategoricalDefinition], self._connector.get_definition(
-            self._connector.get_type(str)))
+        categorical_definition = self._definition_class(CategoricalDefinition, str)
         structure.set_base(categorical_definition(categories))
 
     def set_structure_to_real(self, name: str, min_value: float, max_value: float,
@@ -405,8 +404,7 @@ class Domain:
         """
         structure: BaseStructureDefinition = _get_structure_definition(
             name, _lookup(self._core, name))
-        real_definition = cast(type[RealDefinition], self._connector.get_definition(
-            self._connector.get_type(float)))
+        real_definition = self._definition_class(RealDefinition, float)
         structure.set_base(real_definition(min_value, max_value, step, log=log))
 
     def set_structure_to_variable(self, name: str, var: str, remember: bool = False):
@@ -491,6 +489,16 @@ class Domain:
         """ It returns the core which contains the all the defined variables.
         """
         return self._core
+
+    def _with_connector(self, connector: BaseConnector) -> "Domain":
+        """
+        A copy of the domain wired to another connector, for a metaheuristic that builds
+        its solutions from types of its own; this domain is left as it was.
+        """
+        # TPE wrote the attribute of its copy itself (OF-10 of the independent audit).
+        copied = deepcopy(self)
+        copied._connector = connector
+        return copied
 
     def get_connector(self) -> BaseConnector:
         """ It returns the defined connector for this domain. 

@@ -1,18 +1,8 @@
-# Optional extras, each also declared in pyproject.toml. Prefer installing them from
-# there, so that the version constraints stay in one place:
+# What the examples and the benchmarks need beyond the package, which pyproject.toml does not
+# declare. The optional extras of the package itself are installed from there:
 #     pip install -e .[all]
-#
-# This file additionally lists what the examples and the benchmarks need, which
-# is not part of the package's own dependencies.
 
-# [tensorboard] extra
-tensorboard
-tensorboardX
-
-# [distributed] extra
-ray>=2.40.0
-
-# Used by the examples under test/ and the notebooks.
+# Used by the examples under examples/ and the notebooks.
 scikit-learn
 tensorflow
 

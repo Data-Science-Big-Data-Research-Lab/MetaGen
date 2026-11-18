@@ -13,9 +13,8 @@ import pytest
 from metagen.framework import Domain
 from metagen.metaheuristics import (GA, SA, SSGA, TPE, GAConnector, HillClimbing, KernelTPE, Memetic,
                                     RandomSearch, TabuSearch)
+from conftest import ALGORITHMS, GENETIC
 
-ALGORITHMS = [RandomSearch, GA, SSGA, SA, HillClimbing, TabuSearch, TPE, KernelTPE, Memetic]
-GENETIC = (GA, SSGA, Memetic)
 OPTIONS = {RandomSearch: {}, GA: {}, SSGA: {}, SA: {}, HillClimbing: {}, TabuSearch: {},
            TPE: dict(warmup_iterations=1, candidate_pool_size=4), KernelTPE: dict(warmup_iterations=1), Memetic: {}}
 
@@ -164,17 +163,6 @@ def test_without_joblib_a_model_is_pickled(tmp_path, monkeypatch):
     path = run.save_best_model(str(tmp_path / "plain.pkl"))
     with open(path, "rb") as handle:
         assert pickle.load(handle) == run.best_model
-
-
-@pytest.fixture(scope="module")
-def ray_runtime():
-    ray = pytest.importorskip("ray")
-    started_here = not ray.is_initialized()
-    if started_here:
-        ray.init(num_cpus=2, include_dashboard=False, log_to_driver=False)
-    yield ray
-    if started_here:
-        ray.shutdown()
 
 
 @pytest.mark.parametrize("model", ["global", "islands"])

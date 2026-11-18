@@ -90,8 +90,8 @@ class Categorical(BaseType):
         """
         Sets the value of the categorical variable, after checking if the value is valid.
 
-        Args:
-            value (Any): The value to be set for the categorical variable.
+        :param value: The value to be set for the categorical variable.
+        :type value: Any
 
         """
         self.check(value)

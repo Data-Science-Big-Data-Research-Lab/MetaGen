@@ -16,7 +16,7 @@
 """
 from metagen.framework import Domain, RelativeAlteration, Solution
 from metagen.metaheuristics.racing import Racing
-from metagen.metaheuristics.tools import random_exploration
+from metagen.metaheuristics.tools import neighborhood, random_exploration
 import math
 from copy import deepcopy
 from typing import Any, Optional, Callable, Tuple, List, cast, Mapping, Sequence
@@ -70,7 +70,10 @@ class SA(Metaheuristic):
         Defaults to a fifth of each variable's own range; a plain number is an
         absolute amount instead, and None lets a mutation land anywhere in the domain.
     :type alteration_limit: RelativeAlteration or float or None, optional
-    :param initial_temp: Initial temperature for annealing process, defaults to 50.0
+    :param initial_temp: Initial temperature for annealing process, defaults to 50.0. It is
+        on the scale of the fitness: a neighbor worse by ``delta`` is accepted with
+        probability ``exp(-delta / temperature)``, so a fitness whose differences are much
+        smaller or larger than 50 calls for a temperature to match
     :type initial_temp: float, optional
     :param cooling_rate: Rate at which the temperature decreases each iteration.
         Derived from the budget when not given, so that the temperature travels from
@@ -124,6 +127,11 @@ class SA(Metaheuristic):
                  max_evaluations: Optional[int] = None, timeout: Optional[float] = None,
                  initial_solutions: Optional[Sequence[Mapping[str, Any]]] = None, racing: Optional[Racing] = None,
                  refit: Optional[Callable[[Solution], Any]] = None) -> None:
+        # A starting temperature calibrated from the warmup (-mean |f_i - f_j| / ln 0.8, T_min
+        # relative to it) was measured against the fixed 50 on the behavior bench, 30 seeds:
+        # 262 against 260 wins of 330 over random sampling, 57-202-71 head to head; the
+        # schedule cools so fast that most of a run only accepts improvements whatever it
+        # starts at (AUD-014 of metagen-auditoria/AUDITORIA-2026-11-16.md). It stays fixed.
         # F-30: cooling_rate is derived from the budget. F-25: with one neighbor there is
         # nothing to choose between; over the nine functions and thirty seeds, one neighbor
         # won 161 of 270 against random sampling and five won 214, so the default is 5.
@@ -217,31 +225,14 @@ class SA(Metaheuristic):
         current_solution = deepcopy(solutions[0])
         best_solution = deepcopy(self._best_so_far())
 
-        # Generate the first neighbor and initialize best_neighbor
-        neighbor = deepcopy(current_solution)
-        neighbor.mutate(alteration_limit=self.alteration_limit)
-        neighbor.evaluate(self.fitness_function)
-
-        # A copy, not an alias: the loop below kept mutating the very object
-        # best_neighbor pointed at, so when the first neighbor turned out to be the
-        # best one, best_fitness announced its value while best_neighbor had become
-        # the last one generated (F-25).
-        best_neighbor = deepcopy(neighbor)
-        best_fitness = neighbor.get_fitness()
-
-        # Generate additional neighbors and update best_neighbor if needed
-        for _ in range(self.neighbor_population_size - 1):
-            # Each neighbor starts from the current solution. Mutating the previous
-            # neighbor again built a chain that wandered away from the point being
-            # explored instead of sampling its neighborhood (F-25).
-            neighbor = deepcopy(current_solution)
-            neighbor.mutate(alteration_limit=self.alteration_limit)
-            neighbor.evaluate(self.fitness_function)
-
-            if neighbor.get_fitness() < best_fitness:
-                best_neighbor = deepcopy(neighbor)
-                best_fitness = neighbor.get_fitness()
-
+        # Every neighbor is drawn from the current solution: mutating the previous neighbor
+        # again built a chain that wandered away from the point being explored instead of
+        # sampling its neighborhood (F-25). The best is the first of the lowest, as the loop
+        # that compared them one by one chose it; none of them is mutated after it is drawn.
+        neighbors = neighborhood(current_solution, self.fitness_function, self.neighbor_population_size,
+                                 self.alteration_limit)
+        best_neighbor = min(neighbors, key=Solution.get_fitness)
+        best_fitness = best_neighbor.get_fitness()
         # Decide whether to accept the best neighbor
         if best_fitness < current_solution.get_fitness():
             current_solution = best_neighbor

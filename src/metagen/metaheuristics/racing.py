@@ -17,7 +17,7 @@
 from __future__ import annotations
 
 import math
-from typing import List, Optional, Sequence
+from typing import Any, List, Optional, Sequence
 
 import numpy as np
 from scipy import stats
@@ -145,3 +145,36 @@ def corrected_mean(partial: Sequence[float], population: Sequence[Sequence[float
 def complete(values: Optional[List[float]], steps: Optional[int]) -> bool:
     """Whether a solution's values per step are all there, so it can be raced against."""
     return values is not None and steps is not None and len(values) == steps
+
+
+# The two attributes a solution evaluated in steps carries, named here and nowhere else: they
+# were strings written in tools.py and read in five places of base.py (O-04 of the
+# independent audit). They are attributes of the solution, as the documentation shows them.
+_STEP_VALUES = "step_values"
+_RACED_OUT = "raced_out"
+
+
+def record_steps(solution: Any, values: List[float], stopped: bool) -> None:
+    """
+    Keep on a solution its values per step and whether the race stopped it, as
+    ``step_values`` and ``raced_out``.
+
+    :param solution: The solution.
+    :type solution: Solution
+    :param values: Its value at each step it took.
+    :type values: List[float]
+    :param stopped: Whether the race stopped it before its last step.
+    :type stopped: bool
+    """
+    setattr(solution, _STEP_VALUES, values)
+    setattr(solution, _RACED_OUT, stopped)
+
+
+def step_values(solution: Any) -> Optional[List[float]]:
+    """The values per step of a solution, or None if it was not evaluated in steps."""
+    return getattr(solution, _STEP_VALUES, None)
+
+
+def raced_out(solution: Any) -> bool:
+    """Whether the race stopped a solution before its last step."""
+    return bool(getattr(solution, _RACED_OUT, False))

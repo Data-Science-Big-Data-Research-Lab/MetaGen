@@ -16,24 +16,20 @@
 """
 from __future__ import annotations
 
-import datetime
 import html
-import io
 import math
 import os
-import platform
-from importlib import metadata
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence, Tuple, Union, cast
+
+from metagen._report_render import (INK, MUTED, SERIES, axes_style as _axes_style, new_figure as _new_figure,
+                                    now as _now, page_head as _page_head, pdf_figures as _pdf_figures,
+                                    pdf_meta as _pdf_meta, pdf_tables as _pdf_tables, svg as _svg, table as _table,
+                                    text as _text)
 
 if TYPE_CHECKING:
     from metagen.metaheuristics.base import Metaheuristic
 
 __all__ = ["report"]
-
-# The categorical colors in a fixed order, the same series always taking the same one; the
-# first three can share a plot with every pair in view.
-SERIES = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#6250d6", "#e34948"]
-INK, MUTED, GRID, SURFACE = "#0b0b0b", "#52514e", "#e8e7e3", "#fcfcfb"
 
 #: The most panels of the trajectory of the best solution, one per variable.
 MOST_VARIABLES = 12
@@ -156,12 +152,6 @@ def _best_solution(run: "Metaheuristic") -> List[Tuple[str, str]]:
     return [(name, _text(value)) for name, value in run.history[-1]["best_solution"].items()]
 
 
-def _text(value: Any) -> str:
-    if isinstance(value, float):
-        return f"{value:.6g}"
-    if isinstance(value, (list, tuple)):
-        return "[" + ", ".join(_text(item) for item in value) + "]"
-    return str(value)
 
 
 # --- The figures -------------------------------------------------------------------------------
@@ -193,27 +183,10 @@ def _never_active(run: "Metaheuristic") -> List[str]:
     return [name for name in names if all(record["best_solution"].get(name) is None for record in run.history)]
 
 
-def _axes_style(axes: Any) -> None:
-    axes.grid(color=GRID, linewidth=0.6)
-    axes.set_axisbelow(True)
-    for side in ("top", "right"):
-        axes.spines[side].set_visible(False)
-    for side in ("left", "bottom"):
-        axes.spines[side].set_color(MUTED)
-    axes.tick_params(colors=MUTED, labelsize=8)
-
-
 def _fitness_scale(axes: Any, values: Sequence[float]) -> None:
     finite = [value for value in values if value is not None and math.isfinite(value)]
     if finite and min(finite) > 0 and max(finite) / min(finite) > 100:
         axes.set_yscale("log")
-
-
-def _new_figure(height: float = 3.2, columns: int = 1, rows: int = 1) -> Tuple[Any, Any]:
-    import matplotlib.pyplot as plt
-    figure, axes = plt.subplots(rows, columns, figsize=(8, height), squeeze=False)
-    figure.patch.set_facecolor(SURFACE)
-    return figure, axes
 
 
 def _convergence(run: "Metaheuristic") -> Any:
@@ -323,53 +296,8 @@ def _cost(run: "Metaheuristic") -> Any:
 
 # --- HTML and PDF ------------------------------------------------------------------------------
 
-def _version() -> str:
-    try:
-        return metadata.version("pymetagen-datalabupo")
-    except metadata.PackageNotFoundError:
-        return "unknown"
-
-
-def _svg(figure: Any) -> str:
-    import matplotlib.pyplot as plt
-    buffer = io.StringIO()
-    figure.savefig(buffer, format="svg", facecolor=figure.get_facecolor())
-    plt.close(figure)
-    text = buffer.getvalue()
-    return text[text.index("<svg"):]
-
-
-def _table(header: Optional[Sequence[str]], rows: Sequence[Sequence[str]]) -> str:
-    """A table, or with no header, a compact one of names and values."""
-    body = "".join("<tr>" + "".join(f"<td>{html.escape(str(cell))}</td>" for cell in row) + "</tr>" for row in rows)
-    if header is None:
-        return f"<table class='pairs'><tbody>{body}</tbody></table>"
-    head = "".join(f"<th>{html.escape(cell)}</th>" for cell in header)
-    return f"<table><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table>"
-
-
-_STYLE = """
-:root { color-scheme: light; }
-body { background: #fcfcfb; color: #0b0b0b; font: 15px/1.5 -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
-       max-width: 960px; margin: 0 auto; padding: 24px 16px 64px; }
-h1 { font-size: 24px; margin: 0 0 4px; } h2 { font-size: 19px; margin: 36px 0 8px; border-bottom: 1px solid #e8e7e3; }
-h3 { font-size: 16px; margin: 24px 0 8px; } .meta { color: #52514e; font-size: 13px; margin-bottom: 24px; }
-table { border-collapse: collapse; margin: 8px 0 16px; font-size: 13px; width: 100%; }
-th, td { text-align: left; padding: 4px 10px 4px 0; border-bottom: 1px solid #e8e7e3; vertical-align: top; }
-th { color: #52514e; font-weight: 600; } table.pairs { width: auto; } table.pairs td:first-child { color: #52514e; padding-right: 32px; }
-figure { margin: 12px 0 24px; } figure svg { width: 100%; height: auto; }
-figcaption { color: #52514e; font-size: 13px; } .wrap { overflow-x: auto; }
-@media print { body { max-width: none; } h2 { break-after: avoid; } figure { break-inside: avoid; } }
-"""
-
-
 def _html(runs: Sequence["Metaheuristic"], names: Sequence[str], heading: str) -> str:
-    when = datetime.datetime.now().astimezone().isoformat(timespec="seconds")
-    parts = [f"<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' "
-             f"content='width=device-width, initial-scale=1'><title>{html.escape(heading)}</title>"
-             f"<style>{_STYLE}</style></head><body>",
-             f"<h1>{html.escape(heading)}</h1><div class='meta'>MetaGen {html.escape(_version())} · Python "
-             f"{platform.python_version()} · {html.escape(when)}</div>"]
+    parts = [_page_head(heading, "", _now())]
     if len(runs) > 1:
         rows = [(name, type(run).__name__, _text(run.history[-1]["best"] if run.history else None),
                  _text(run.evaluations), f"{run.seconds:.2f}", _text(run.stop_reason)) for run, name in zip(runs, names)]
@@ -396,9 +324,8 @@ def _html(runs: Sequence["Metaheuristic"], names: Sequence[str], heading: str) -
 
 
 def _pdf(runs: Sequence["Metaheuristic"], names: Sequence[str], heading: str, path: str) -> None:
-    import matplotlib.pyplot as plt
     from matplotlib.backends.backend_pdf import PdfPages
-    when = datetime.datetime.now().astimezone().isoformat(timespec="seconds")
+    when = _now()
     with PdfPages(path) as pages:
         blocks: List[Tuple[str, Optional[Sequence[str]], Sequence[Sequence[str]]]] = []
         if len(runs) > 1:
@@ -413,99 +340,5 @@ def _pdf(runs: Sequence["Metaheuristic"], names: Sequence[str], heading: str, pa
             best = _best_solution(run)
             if best:
                 blocks.append((f"{prefix}best solution", None, best))
-        _pdf_tables(pages, [heading, f"MetaGen {_version()} · Python {platform.python_version()} · {when}"], blocks)
-        # The figures on A4 pages, one under the other with their captions, as many as fit.
-        page, top = None, 0.0
-        for caption, figure in _figures(runs, names):
-            buffer = io.BytesIO()
-            figure.savefig(buffer, format="png", dpi=200, facecolor=figure.get_facecolor())
-            width, height = figure.get_size_inches()
-            plt.close(figure)
-            shown = 0.88 * (8.27 / 11.69) * height / width       # its height as a share of the page
-            if page is None or top - shown - 0.05 < 0.04:
-                if page is not None:
-                    pages.savefig(page)
-                    plt.close(page)
-                page, top = plt.figure(figsize=(8.27, 11.69)), 0.96
-                page.patch.set_facecolor("white")
-            page.text(0.06, top, caption, va="top", ha="left", fontsize=7.5, color=MUTED, wrap=True)
-            buffer.seek(0)
-            axes = page.add_axes((0.06, top - 0.02 - shown, 0.88, shown))
-            axes.imshow(plt.imread(buffer))
-            axes.axis("off")
-            top -= shown + 0.05
-        if page is not None:
-            pages.savefig(page)
-            plt.close(page)
-
-
-def _pdf_tables(pages: Any, heading: Sequence[str],
-                blocks: Sequence[Tuple[str, Optional[Sequence[str]], Sequence[Sequence[str]]]]) -> None:
-    """
-    A4 pages with a heading and tables, each with its title: a table with a header, or
-    without one a compact table of names and values. A table that does not fit goes on in
-    the next page, with its header again.
-    """
-    import matplotlib.pyplot as plt
-    row_height, left, width = 0.0175, 0.06, 0.88
-    state: Dict[str, Any] = {"page": None, "top": 0.0}
-
-    def new_page() -> None:
-        if state["page"] is not None:
-            pages.savefig(state["page"])
-            plt.close(state["page"])
-        state["page"] = plt.figure(figsize=(8.27, 11.69))
-        state["page"].patch.set_facecolor("white")
-        state["top"] = 0.95
-
-    new_page()
-    state["page"].text(left, state["top"], heading[0], fontsize=14, weight="bold", color=INK, va="top")
-    state["top"] -= 0.026
-    for line in heading[1:]:
-        state["page"].text(left, state["top"], line, fontsize=8, color=MUTED, va="top")
-        state["top"] -= 0.016
-    state["top"] -= 0.012
-    for title, header, rows in blocks:
-        cells = [[str(cell) for cell in row] for row in rows] or [[""] * (len(header) if header else 2)]
-        columns = len(header) if header else len(cells[0])
-        values = [max([len(row[column]) for row in cells if column < len(row)] + [1]) for column in range(columns)]
-        # A name longer than the values of its column goes on two lines
-        labels = [str(name) if len(str(name)) <= values[column] + 2 or " " not in str(name)
-                  else "\n".join(str(name).rsplit(" ", 1)) for column, name in enumerate(header or ())]
-        lengths = [min(max([values[column]] + [len(line) for line in (labels[column] if header else "").split("\n")]),
-                       60) + 2 for column in range(columns)]
-        widths = [length / sum(lengths) for length in lengths] if header else [0.32, 0.68]
-        font = 7.0 if not header or sum(lengths) <= 125 else max(5.0, 7.0 * 125 / sum(lengths))
-        tall = 2 if any("\n" in label for label in labels) else 1
-        start, first = 0, True
-        while start < len(cells):
-            room = int((state["top"] - 0.04 - 0.03) / row_height) - (tall if header else 0)
-            if room < 3:
-                new_page()
-                continue
-            chunk = cells[start:start + room]
-            state["page"].text(left, state["top"], title + ("" if first else " (continued)"), fontsize=10,
-                               weight="bold", color=INK, va="top")
-            state["top"] -= 0.022
-            height = row_height * (len(chunk) + (tall if header else 0))
-            axes = state["page"].add_axes((left, state["top"] - height, width if header else 0.6, height))
-            axes.axis("off")
-            table = axes.table(cellText=chunk, colLabels=labels if header else None, cellLoc="left",
-                               colLoc="left", colWidths=widths, bbox=(0, 0, 1, 1))
-            table.auto_set_font_size(False)
-            table.set_fontsize(font)
-            for (row, column), cell in table.get_celld().items():
-                cell.set_edgecolor(GRID)
-                cell.visible_edges = "B"
-                if header and row == 0:
-                    # The table scales its rows to fill its box, keeping their proportions
-                    cell.set_height(cell.get_height() * tall)
-                    cell.set_facecolor("#f3f2ee")
-                    cell.set_text_props(weight="bold", color=MUTED)
-                elif not header and column == 0:
-                    cell.set_text_props(color=MUTED)
-            state["top"] -= height + 0.03
-            start += len(chunk)
-            first = False
-    pages.savefig(state["page"])
-    plt.close(state["page"])
+        _pdf_tables(pages, [heading, _pdf_meta("", when)], blocks)
+        _pdf_figures(pages, _figures(runs, names))

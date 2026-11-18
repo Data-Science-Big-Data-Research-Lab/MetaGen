@@ -15,6 +15,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 import heapq
+import warnings
 import math
 import threading
 from typing import Callable, List, Optional, Tuple
@@ -48,6 +49,11 @@ class CVOA(Metaheuristic):
     thread per strain, or
     :py:func:`~metagen.metaheuristics.distributed_cvoa_launcher`, one Ray
     task per strain.
+
+    A strain does not take the options of a run that the other metaheuristics take. The seed
+    and the budget of the pandemic, ``seed``, ``max_evaluations`` and ``timeout``, are given to
+    the launcher, which shares them among the strains; ``history``, ``checkpoint``,
+    ``initial_solutions``, ``racing`` and ``refit`` do not apply to a pandemic.
 
     :param global_state: The pandemic state every strain shares.
     :param domain: The problem domain.
@@ -181,7 +187,15 @@ class CVOA(Metaheuristic):
         return self.best_strain_solution
 
     def initialize(self, num_solutions=10) -> Tuple[List[Solution], Solution]:
+        """
+        Start the strain from its patient zero: one solution drawn at random from the
+        domain and evaluated, the first infected individual and the best of the strain.
 
+        :param num_solutions: Not used: a strain always starts from one individual.
+        :type num_solutions: int
+        :return: The infected population, the patient zero alone, and the best of the strain.
+        :rtype: Tuple[List[Solution], Solution]
+        """
         # 1. Yield the patient zero (pz).
         pz: Solution = self.solution_type(self.domain, connector=self.domain.get_connector())
         pz.evaluate(self.fitness_function)
@@ -196,6 +210,18 @@ class CVOA(Metaheuristic):
         return list(self.infected), self._best_of_strain()
 
     def iterate(self, solutions: List[Solution]) -> Tuple[List[Solution], Solution]:
+        """
+        One step of the pandemic: the strain chooses its superspreaders and its dead, the
+        shared state takes the dead and the recovered, every infected individual infects
+        new ones, and the newly infected,
+        with the best individual of the strain, are the infected population of the next
+        step. When nobody is newly infected, the epidemic of the strain ends.
+
+        :param solutions: The infected population.
+        :type solutions: List[Solution]
+        :return: The new infected population and the best of the strain.
+        :rtype: Tuple[List[Solution], Solution]
+        """
 
         # 1. Spreading the disease.
 
@@ -382,7 +408,8 @@ class CVOA(Metaheuristic):
         return len(new_infected_population) > size
 
     def infect_individuals(self, carrier_individual: Solution, travel_distance: int, n_infected: int) -> SolutionSet:
-        """The contagion of one carrier with the strain's own state, properties and time."""
+        """The contagion of one carrier with the strain's own state, properties and time. Deprecated: it will be removed in version 2.0."""
+        warnings.warn("CVOA.infect_individuals is deprecated and will be removed in version 2.0; use CVOA.infect_individuals_from.", DeprecationWarning, stacklevel=2)
         return type(self).infect_individuals_from(self.global_state, self.fitness_function, self.strain_properties,
                                                   carrier_individual, travel_distance, n_infected, self.time)
 
@@ -394,7 +421,10 @@ class CVOA(Metaheuristic):
         :param new_infected_individual: The new infected individual that will be inserted into the netx iteration set.
         :type new_infected_population: set of :py:class:`~metagen.framework.Solution`
         :type new_infected_individual: :py:class:`~metagen.framework.Solution`
+
+        Deprecated: it will be removed in version 2.0.
         """
+        warnings.warn("CVOA.update_new_infected_population is deprecated and will be removed in version 2.0; use CVOA.admit.", DeprecationWarning, stacklevel=2)
         type(self).admit(self.global_state, self.strain_properties, new_infected_population, new_infected_individual)
 
     def update_pandemic_global_state(self) -> None:
@@ -443,6 +473,15 @@ class CVOA(Metaheuristic):
             self.best_strain_solution = individual
 
     def stopping_criterion(self) -> bool:
+        """
+        Whether the strain stops: when nobody is infected any more, when the pandemic
+        has lasted ``pandemic_duration`` steps, when the best of the strain has not
+        improved for ``max_iterations_without_improvement`` steps (if the strain sets
+        it), or when the budget of the pandemic is spent.
+
+        :return: True if the strain stops, False otherwise.
+        :rtype: bool
+        """
 
         # When the strain is stopped?
 
@@ -468,12 +507,23 @@ class CVOA(Metaheuristic):
         return first_condition or second_condition or third_condition or self.global_state.budget_spent()
 
     def post_execution(self) -> None:
+        """Send what the strain wrote last to the shared state, and log how the pandemic ended."""
         # On Ray, what the strain wrote last on the shared state reaches it now (E-09).
         self.global_state.flush()
         self._log(f"Pandemic finished at {self.time} with best individual: {self.best_strain_solution}")
         super().post_execution()
 
     def r0_report(self, new_infections: int) -> str:
+        """
+        A line on the spread of the strain: the newly infected, the recovered of the
+        pandemic and their ratio, R0, which is the newly infected alone while nobody has
+        recovered.
+
+        :param new_infections: How many individuals were newly infected in the step.
+        :type new_infections: int
+        :return: The line.
+        :rtype: str
+        """
         recovered = self.global_state.get_recovered_len()
         r0: float = new_infections
         if recovered != 0:

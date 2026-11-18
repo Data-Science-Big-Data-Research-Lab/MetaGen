@@ -25,8 +25,8 @@ from metagen.framework import Solution
 from metagen.framework.rng import get_numpy_rng
 from metagen.triclustering import Cube, Tricluster, lsl, msl, msr3d, triq
 from metagen.triclustering.cube import AXES
-from metagen.triclustering.measures import (Views, _average_values, _line_angle, _msl_adding_genes, _prism_moves,
-                                            _segment_angles)
+from metagen.triclustering._lines import average_values, line_angle, msl_adding_genes, prism_moves, segment_angles
+from metagen.triclustering.measures import Views
 from metagen.triclustering.quality import FlatProfiles
 
 if TYPE_CHECKING:
@@ -275,7 +275,7 @@ class TriclusterFitness:
         """
         values = self.form.values(self.cube, tricluster)
         if values is not None:
-            return _average_values(values, "time", True, _segment_angles if self.measure == "msl" else _line_angle)
+            return average_values(values, "time", True, segment_angles if self.measure == "msl" else line_angle)
         if self.measure == "msl":
             return msl(self.cube, tricluster, views=self.views, normalized=True)
         if self.measure == "lsl":
@@ -306,7 +306,7 @@ class TriclusterFitness:
         """
         if self.measure != "msl":
             return None
-        quality = _msl_adding_genes(self.cube, tricluster, candidates, views=self.views, normalized=True)
+        quality = msl_adding_genes(self.cube, tricluster, candidates, views=self.views, normalized=True)
         if quality_only or len(candidates) == 0:
             return quality
         genes, conditions, times = len(tricluster.genes) + 1, len(tricluster.conditions), len(tricluster.times)
@@ -430,17 +430,17 @@ class TriclusterFitness:
     def _moving(self, tricluster: Tricluster, added: Sequence[Tuple[int, int]], removed: Sequence[Tuple[int, int]],
                 significance: bool) -> Tuple[np.ndarray, np.ndarray, float]:
         """:py:meth:`moving_pixels` of the quality term or, with ``significance``, of z alone."""
-        from metagen.metaheuristics.trigen.shape import _prism_arrays
+        from metagen.metaheuristics.trigen.shape import prism_arrays
         values = self.form.values(self.cube, tricluster)
         assert values is not None
-        rows, columns, times = _prism_arrays(tricluster)
+        rows, columns, times = prism_arrays(tricluster)
         window = np.asarray(times)[None, :]
         rows_added = np.array([pixel[0] for pixel in added], dtype=np.int64)
         columns_added = np.array([pixel[1] for pixel in added], dtype=np.int64)
         others = self.cube.values[rows_added[:, None], columns_added[:, None], window][:, None, :]
         place = {pixel: index for index, pixel in enumerate(zip(rows.tolist(), columns.tolist()))}
-        more, fewer, bound = _prism_moves(values, others, [place[pixel] for pixel in removed],
-                                          _segment_angles if self.measure == "msl" else _line_angle)
+        more, fewer, bound = prism_moves(values, others, [place[pixel] for pixel in removed],
+                                          segment_angles if self.measure == "msl" else line_angle)
         if not significance:
             return more, fewer, bound
         assert self._chance is not None
@@ -459,6 +459,23 @@ class TriclusterFitness:
                                                 + 4 * eps * (np.abs(z) + 1.0))))
             results.append(z)
         return results[0], results[1], error
+
+    @property
+    def chance(self) -> Optional[Tuple[np.ndarray, np.ndarray]]:
+        """
+        The model of chance of the significance: the mean and the deviation of the quality of
+        random triclusters, by size, once fitted, and None before.
+
+        :return: The two arrays, or None.
+        :rtype: Tuple[numpy.ndarray, numpy.ndarray] or None
+        """
+        # A property, so that TriGen can give a fitness the model fitted for another: it wrote
+        # and read the attribute behind it (O-08 of the independent audit).
+        return self._chance
+
+    @chance.setter
+    def chance(self, model: Optional[Tuple[np.ndarray, np.ndarray]]) -> None:
+        self._chance = model
 
     def fit_chance(self) -> None:
         """

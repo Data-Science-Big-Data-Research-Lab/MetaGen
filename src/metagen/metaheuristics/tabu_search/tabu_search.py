@@ -15,15 +15,14 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 from collections import deque
-from copy import deepcopy
 from typing import Any, Callable, Deque, List, Optional, Tuple, Mapping, Sequence
 
 from metagen.framework import Domain, RelativeAlteration, Solution
-from metagen.framework.solution.types import Integer, Real
+from metagen.framework.solution.types import Integer, Real, Structure
 from metagen.metaheuristics.racing import Racing
 from metagen.metaheuristics.base import Metaheuristic
 from metagen.metaheuristics._parameters import require_alteration, require_integer
-from metagen.metaheuristics.tools import solution_class
+from metagen.metaheuristics.tools import neighborhood, solution_class
 
 
 class TabuSearch(Metaheuristic):
@@ -230,27 +229,30 @@ class TabuSearch(Metaheuristic):
             # in only one of them, the variable it depends on differs and fails below.
             if not solution.is_active(name):
                 continue
-            other = visited.get(name)
-            if isinstance(value, Solution) and isinstance(other, Solution):
-                if not self._within_radius(value, other):
-                    return False
-            elif isinstance(value, (Integer, Real)) and isinstance(other, (Integer, Real)):
-                _, min_value, max_value, _ = value.get_definition().get_attributes()
-                if isinstance(self.tabu_radius, RelativeAlteration):
-                    radius = self.tabu_radius.of(min_value, max_value)
-                else:
-                    radius = self.tabu_radius or 0
-                if abs(value.get() - other.get()) > radius:
-                    return False
-            elif value != other:
+            if not self._close(value, visited.get(name)):
                 return False
         return True
 
+    def _close(self, value: Any, other: Any) -> bool:
+        """Whether two values of a variable lie within ``tabu_radius`` of each other: a group
+        variable by variable, a number by the radius, a structure element by element, and
+        anything else only when equal."""
+        if isinstance(value, Solution) and isinstance(other, Solution):
+            return self._within_radius(value, other)
+        if isinstance(value, (Integer, Real)) and isinstance(other, (Integer, Real)):
+            _, min_value, max_value, _ = value.get_definition().get_attributes()
+            if isinstance(self.tabu_radius, RelativeAlteration):
+                radius = self.tabu_radius.of(min_value, max_value)
+            else:
+                radius = self.tabu_radius or 0
+            return abs(value.get() - other.get()) <= radius
+        if isinstance(value, Structure) and isinstance(other, Structure):
+            # The elements of a structure were compared for equality, so a vector of reals
+            # was never within the radius of another and its tabu list forbade nothing
+            # (AUD-006 of metagen-auditoria/AUDITORIA-2026-11-16.md).
+            elements, others = value.get(), other.get()
+            return len(elements) == len(others) and all(self._close(a, b) for a, b in zip(elements, others))
+        return bool(value == other)
+
     def _neighborhood(self, around: Solution, size: int) -> List[Solution]:
-        neighborhood = []
-        for _ in range(size):
-            neighbor = deepcopy(around)
-            neighbor.mutate(alteration_limit=self.alteration_limit)
-            neighbor.evaluate(self.fitness_function)
-            neighborhood.append(neighbor)
-        return neighborhood
+        return neighborhood(around, self.fitness_function, size, self.alteration_limit)

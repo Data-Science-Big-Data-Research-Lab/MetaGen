@@ -9,6 +9,14 @@ import pytest
 
 from metagen.framework import BaseConnector, Domain, Solution
 from metagen.framework.rng import set_seed
+from metagen.metaheuristics import GA, SA, SSGA, TPE, HillClimbing, KernelTPE, Memetic, RandomSearch, TabuSearch
+
+#: Every metaheuristic of the package that searches a Domain on its own: what the tests that
+#: run "every algorithm" run. A test in test_public_api.py checks it against the package.
+ALGORITHMS = [RandomSearch, HillClimbing, TabuSearch, SA, GA, SSGA, Memetic, TPE, KernelTPE]
+#: The ones that cross solutions over, and so need a Domain built with GAConnector.
+GENETIC = (GA, SSGA, Memetic)
+# Both were written in seven modules, in two orders (O-11 and OF-11 of the independent audit).
 
 
 def build_full_domain(connector: Optional[BaseConnector] = None) -> Domain:
@@ -84,3 +92,17 @@ def solution(full_domain: Domain) -> Solution:
     """A freshly initialized solution of the full domain, from a fixed seed."""
     set_seed(0)
     return Solution(full_domain)
+
+
+@pytest.fixture(scope="module")
+def ray_runtime():
+    """One Ray runtime for a module. Started here, so that run() finds it running
+    and neither starts nor stops one per test (F-21), and stopped at the end."""
+    # It was written in four modules (O-11 and OF-11 of the independent audit).
+    ray = pytest.importorskip("ray")
+    started_here = not ray.is_initialized()
+    if started_here:
+        ray.init(num_cpus=2, include_dashboard=False, log_to_driver=False)
+    yield ray
+    if started_here:
+        ray.shutdown()

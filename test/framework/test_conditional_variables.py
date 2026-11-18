@@ -13,6 +13,7 @@ from metagen.metaheuristics import (GA, SA, SSGA, HillClimbing, KernelTPE, Memet
 from metagen.metaheuristics.cvoa.cvoa import CVOA
 from metagen.metaheuristics.genetic.genetic_tools import GAConnector
 from metagen.metaheuristics.tools import solution_class
+from conftest import ALGORITHMS
 
 
 def _domain(connector=None):
@@ -122,9 +123,6 @@ def test_kernel_tpe_models_a_variable_only_where_it_was_active():
     observed = _observations(solutions)
     assert observed[("momentum",)] == [0.7, 0.8]
     assert len(observed[("solver",)]) == 4
-
-
-ALGORITHMS = [RandomSearch, HillClimbing, TabuSearch, SA, GA, SSGA, Memetic, TPE, KernelTPE]
 
 
 def _fitness_and_log():

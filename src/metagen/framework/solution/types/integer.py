@@ -19,6 +19,7 @@ from typing import Any, cast
 
 from metagen.framework.domain.core import IntegerDefinition
 
+from ._numeric import _log_draw, _log_window
 from .base import BaseType
 from metagen.framework.alteration import RelativeAlteration
 from metagen.framework.rng import get_rng
@@ -154,8 +155,6 @@ class Integer(BaseType):
         the alteration limit, which reaches at least the neighboring integers, and never
         the current value, as on a linear scale.
         """
-        from .real import _log_window
-
         current = self.get()
         low_log, high_log = _log_window(current, min_value, max_value, alteration_limit)
         low = max(min_value, min(current - 1, math.floor(math.exp(low_log))))
@@ -174,8 +173,8 @@ class Integer(BaseType):
         """
         Sets the value of the Integer variable, after checking if the value is valid.
 
-        Args:
-            value (Any): The value to be set for the Integer variable.
+        :param value: The value to be set for the Integer variable.
+        :type value: Any
 
         """
         self.check(value)
@@ -184,10 +183,3 @@ class Integer(BaseType):
         # so 1 into a real variable or a numpy scalar would otherwise be stored as it
         # came in. What the user reads back is always a native int.
         super().set(int(value))
-
-
-def _log_draw(min_value: int, max_value: int) -> int:
-    """An integer of [min_value, max_value] drawn uniformly on the logarithm, each integer
-    taking the stretch of the logarithm closer to it than to its neighbors."""
-    drawn = math.exp(get_rng().uniform(math.log(min_value - 0.5), math.log(max_value + 0.5)))
-    return min(max(int(round(drawn)), min_value), max_value)

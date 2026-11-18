@@ -94,3 +94,56 @@ def test_the_api_reference_documents_the_public_names():
 
 def test_the_version_is_the_installed_one():
     assert metagen.__version__ == metadata.version("pymetagen-datalabupo")
+
+
+def test_the_algorithms_the_suite_runs_are_every_metaheuristic_the_package_exports():
+    # A metaheuristic added to the package and not to the list in conftest.py would go
+    # untested by every test that runs "every algorithm", and nothing would say so.
+    import inspect
+    import metagen.metaheuristics as metaheuristics
+    from conftest import ALGORITHMS, GENETIC
+    from metagen.framework import Domain
+    from metagen.metaheuristics import Metaheuristic
+
+    # Not searches of a Domain on their own: a strain of CVOA runs through a launcher, and
+    # TriGenGA is the search of TriGen, on its own domain. By name: DistributedCVOA needs Ray.
+    apart = {"CVOA", "ProbabilisticCVOA", "DistributedCVOA", "TriGenGA"}
+    exported = {getattr(metaheuristics, name) for name in metaheuristics.__all__ if name not in apart}
+    concrete = {cls for cls in exported if inspect.isclass(cls) and issubclass(cls, Metaheuristic)
+                and not inspect.isabstract(cls)}
+    assert set(ALGORITHMS) == concrete
+
+    domain = Domain()
+    domain.define_real("x", -1.0, 1.0)
+    refused = set()
+    for algorithm in ALGORITHMS:
+        try:
+            algorithm(domain, lambda solution: solution["x"] ** 2)
+        except ValueError:
+            refused.add(algorithm)
+    assert refused == set(GENETIC)
+
+
+def test_what_is_removed_in_version_2_warns_and_still_works():
+    # Unused by the package, and public: kept until version 2.0, with a warning.
+    from metagen.framework import Domain
+    from metagen.framework.domain.preconditions import Primitives
+
+    domain = Domain()
+    domain.define_real("x", 0.0, 1.0)
+    domain.define_static_structure("v", 2)
+    domain.set_structure_to_integer("v", 0, 9)
+    core = domain.get_core()
+    structure = core.get("v")
+    with pytest.warns(DeprecationWarning, match="version 2.0"):
+        assert core.get_by_index(0) is core.get("x")
+    with pytest.warns(DeprecationWarning, match="version 2.0"):
+        assert structure.is_base()
+    with pytest.warns(DeprecationWarning, match="version 2.0"):
+        assert structure.check_base_value(3) and not structure.check_base_value(12)
+    with pytest.warns(DeprecationWarning, match="version 2.0"):
+        assert Primitives.is_basic_vector_sequence_value([1, 2])
+    with pytest.warns(DeprecationWarning, match="version 2.0"):
+        assert not Primitives.is_layer_vector_sequence_value(3)
+    with pytest.warns(DeprecationWarning, match="version 2.0"):
+        from metagen.framework.solution.literals import VectorDef  # noqa: F401

@@ -41,6 +41,48 @@ jobs:
         # run here.
         run: pytest test -q -rxX
 
+  reference:
+    # The exact versions of constraints/reference.txt, so that a change in a dependency
+    # shows apart from a change in MetaGen.
+    name: tests (reference environment)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install the package and the test tooling, at the reference versions
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[test] -c constraints/reference.txt
+
+      - name: Run the suite that must stay green
+        run: pytest test -q -rxX
+
+  minimum:
+    # The lower bounds the package declares, at constraints/minimum.txt. The behavior
+    # bench is left out: its thresholds are counts measured with other versions.
+    name: tests (minimum versions)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: pip
+
+      - name: Install the package and the test tooling, at the minimum versions
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[test] -c constraints/minimum.txt
+
+      - name: Run the suite but the behavior bench
+        run: pytest test -q -rxX --ignore=test/metaheuristics/test_behavior.py
+
   extras:
     name: tests with every extra
     runs-on: ubuntu-latest
@@ -148,8 +190,7 @@ jobs:
       - name: Install the package and mypy
         run: |
           python -m pip install --upgrade pip
-          pip install -e .
-          pip install mypy
+          pip install -e .[dev]
 
       - name: Type-check the sources
         run: mypy src

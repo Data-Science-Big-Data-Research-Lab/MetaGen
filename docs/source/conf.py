@@ -14,8 +14,12 @@ project = 'MetaGen'
 copyright = '2023, David Gutiérrez Avilés, José Francisco Torres, Manuel Jesús Jiménez-Navarro, and Francisco Martínez-Álvarez'
 author = 'David Gutiérrez Avilés, José Francisco Torres, Manuel Jesús Jiménez-Navarro, and Francisco Martínez-Álvarez'
 
-# The full version, including alpha/beta/rc tags
-release = '1.7.0'
+# The version of the package, read from pyproject.toml: Read the Docs builds without installing
+# the package, so the installed metadata are not there to ask.
+import tomllib
+
+with open(pathlib.Path(__file__).parents[2] / "pyproject.toml", "rb") as _pyproject:
+    release = tomllib.load(_pyproject)["project"]["version"]
 
 autosectionlabel_prefix_document = True
 # -- General configuration ---------------------------------------------------

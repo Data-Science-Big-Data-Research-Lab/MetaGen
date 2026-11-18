@@ -1,17 +1,13 @@
-"""Tests de regresión de la auditoría de código (commit 74f104e).
+"""Tests de regresión de las auditorías: uno por hallazgo reproducible.
 
-Cada test comprueba el comportamiento **correcto**, el que debería tener MetaGen
-una vez arreglado el hallazgo, y está marcado ``xfail(strict=True)`` porque hoy
-falla. El flujo de trabajo es:
+Cada test comprueba el comportamiento **correcto**, el que tiene MetaGen desde que se
+arregló el hallazgo, y falla con el código de antes del arreglo. Cita el hallazgo que
+protege por su identificador (F-xx, A-xx, P-xx), y su sección de
+``metagen-auditoria/AUDIT.md`` explica el diagnóstico y el arreglo.
 
-1. Arreglas el hallazgo F-xx en ``src/``.
-2. El test pasa a XPASS y, por el ``strict=True``, pytest lo reporta como fallo.
-3. Quitas el marcador ``@pytest.mark.xfail`` de ese test.
-4. ``pytest test/framework_test test/regression`` vuelve a verde, y a partir de
-   ahí el test protege el arreglo.
-
-Mientras no se arregle nada, la suite sigue en verde: los xfail cuentan como
-esperados. Cada test cita el hallazgo que protege por su identificador.
+Un hallazgo nuevo que aún no se arregla entra marcado ``xfail(strict=True)``: cuando se
+arregla, el test pasa a XPASS, que por el ``strict=True`` pytest cuenta como fallo, y se le
+quita el marcador. La suite que debe estar verde es el árbol entero, ``pytest test``.
 """
 
 import copy
@@ -560,7 +556,7 @@ def test_f04_el_segundo_hijo_hereda_del_segundo_padre():
         )
 
 
-def test_f20_sa_no_evalua_una_poblacion_entera_al_inicializar():
+def test_f20_sa_no_evalua_una_poblacion_entera_al_inicializar(tmp_path):
     from metagen.metaheuristics import SA
 
     set_seed(6)
@@ -578,7 +574,9 @@ def test_f20_sa_no_evalua_una_poblacion_entera_al_inicializar():
         warmup_iterations=0,
         max_iterations=2,
         neighbor_population_size=1,
-        log_dir="logs/test_SA",
+        # En la carpeta temporal del test: "logs/test_SA", relativo al directorio de
+        # trabajo, dejaba una carpeta nueva en el repositorio en cada ejecucion (AUD-010).
+        log_dir=str(tmp_path / "test_SA"),
     )
     algoritmo.run()
     assert evaluaciones["n"] <= 4, (
@@ -1069,7 +1067,8 @@ def test_p08_los_extras_declaran_un_requisito_por_linea():
     # elemento de la lista, y ninguno lleva dos pegados.
     for requisito in requisitos:
         assert ";" not in requisito, f"el extra sigue usando ';': {requisito!r}"
-    assert set(extras) == {"tensorboard", "distributed", "netcdf", "report", "test", "all"}
+    # Y los de las herramientas, que no son del paquete: la documentacion y los chequeos del CI.
+    assert set(extras) == {"tensorboard", "distributed", "netcdf", "report", "test", "all", "docs", "dev"}
     assert set(extras["all"]) == (set(extras["tensorboard"]) | set(extras["distributed"]) | set(extras["netcdf"])
                                   | set(extras["report"]))
 
@@ -1155,7 +1154,8 @@ def test_p04_la_suite_completa_se_recolecta_sin_los_extras_opcionales():
         )
     repo_root = pathlib.Path(__file__).resolve().parents[2]
     resultado = subprocess.run(
-        [sys.executable, "-m", "pytest", "--collect-only", "-q", "test"],
+        # Sin cache: el pytest hijo corre en el repositorio y escribia .pytest_cache en el (AUD-010).
+        [sys.executable, "-m", "pytest", "--collect-only", "-q", "-p", "no:cacheprovider", "test"],
         cwd=repo_root,
         capture_output=True,
         text=True,
@@ -1968,17 +1968,16 @@ def test_a01_los_cruces_de_una_generacion_no_usan_la_misma_pareja(nombre, monkey
     arreglo: una sola pareja en las cinco, la poblacion pasaba de 10 puntos distintos
     a 2, y desde la segunda generacion los dos padres eran el mismo punto, con lo que
     el cruce devolvia al padre y dejaba de recombinar."""
-    import metagen.metaheuristics.genetic.genetic_algorithm as modulo_ga
-    import metagen.metaheuristics.memetic.memetic as modulo_mm
+    # GA y Memetic crian con genetic_tools.breed_children, que la llama desde alli (F-78).
+    import metagen.metaheuristics.genetic.genetic_tools as modulo
     from metagen.metaheuristics import GA, GAConnector, Memetic
 
-    modulo = {"GA": modulo_ga, "Memetic": modulo_mm}[nombre]
     original = modulo.yield_two_children
     parejas = []
 
-    def espia(padres, mutation_rate, fitness_function, *resto):
+    def espia(padres, mutation_rate, fitness_function, *resto, **opciones):
         parejas.append((id(padres[0]), id(padres[1])))
-        return original(padres, mutation_rate, fitness_function, *resto)
+        return original(padres, mutation_rate, fitness_function, *resto, **opciones)
 
     monkeypatch.setattr(modulo, "yield_two_children", espia)
 
@@ -1990,9 +1989,9 @@ def test_a01_los_cruces_de_una_generacion_no_usan_la_misma_pareja(nombre, monkey
                             neighbor_population_size=3, seed=0)
     algoritmo.run()
 
-    primera_generacion = parejas[:5]          # population_size // 2 cruces
+    primera_generacion = parejas[:4]          # (population_size - 2) / 2 cruces (F-78)
     assert len(set(primera_generacion)) > 1, (
-        f"{nombre} cruza la misma pareja en los cinco cruces de una generacion: "
+        f"{nombre} cruza la misma pareja en todos los cruces de una generacion: "
         f"{primera_generacion}"
     )
 
@@ -4077,3 +4076,177 @@ def test_f77_los_generadores_del_hilo_se_anidan_y_guardan_su_estado():
         assert get_rng().random() == random.Random(1).random()
     # Nada de lo de dentro ha tocado los del proceso.
     assert get_rng().random() == proceso.random()
+
+
+# --------------------------------------------------------------------------------
+# F-78: GA y Memetic criaban una pareja de hijos mas de la que cabia en la poblacion y
+# recortaban la lista por posicion, asi que los dos ultimos se evaluaban (y en Memetic
+# pasaban por su busqueda local) para tirarse; con poblacion 2 no entraba ningun hijo
+# (AUD-003 de AUDITORIA-2026-11-16.md; X-13 e Y-11 de la auditoria independiente).
+# --------------------------------------------------------------------------------
+
+def _f78_dominio():
+    from metagen.metaheuristics import GAConnector
+
+    dominio = Domain(GAConnector())
+    dominio.define_real("x", -5.0, 5.0)
+    dominio.define_real("y", -5.0, 5.0)
+    return dominio
+
+
+@pytest.mark.parametrize("tamano,elites", [(2, 1), (3, 1), (5, 2), (10, 2)])
+@pytest.mark.parametrize("nombre,por_hijo", [("GA", 1), ("Memetic", 4)])
+def test_f78_cada_generacion_evalua_solo_los_hijos_que_entran(nombre, por_hijo, tamano, elites):
+    """F-78: un GA de 10 evaluaba 10 hijos por generacion y conservaba 8; un Memetic de 10
+    gastaba 44 evaluaciones de 154 en hijos descartados. Ahora cada generacion cria los
+    `tamano - elites` hijos que caben (con un numero impar, el ultimo par da uno solo, y
+    solo ese se evalua); con 2 o 3 individuos hay una sola elite."""
+    import metagen.metaheuristics as metaheuristicas
+
+    llamadas = []
+
+    def fitness(solucion):
+        llamadas.append(1)
+        return solucion["x"] ** 2 + solucion["y"] ** 2
+
+    opciones = {"neighbor_population_size": 3} if nombre == "Memetic" else {}
+    busqueda = getattr(metaheuristicas, nombre)(_f78_dominio(), fitness, population_size=tamano, max_iterations=10,
+                                                seed=1, **opciones)
+    busqueda.run()
+    assert len(llamadas) == tamano + 10 * (tamano - elites) * por_hijo
+    assert len(busqueda.current_solutions) == tamano
+
+
+@pytest.mark.parametrize("nombre", ["GA", "Memetic"])
+def test_f78_una_poblacion_de_dos_evoluciona(nombre):
+    """F-78: con poblacion 2 las dos elites ocupaban toda la poblacion y ningun hijo entraba:
+    la poblacion era la inicial para siempre."""
+    import metagen.metaheuristics as metaheuristicas
+
+    opciones = {"neighbor_population_size": 3} if nombre == "Memetic" else {}
+    busqueda = getattr(metaheuristicas, nombre)(_f78_dominio(), lambda s: s["x"] ** 2 + s["y"] ** 2,
+                                                population_size=2, max_iterations=10, seed=0, **opciones)
+    busqueda.run()
+    # La poblacion misma cambia, no solo el mejor visto: antes los hijos podian mejorar
+    # el mejor de la ejecucion sin entrar nunca en la poblacion.
+    medias = [registro["mean"] for registro in busqueda.history]
+    assert len(set(medias)) > 1
+    assert medias[-1] < medias[0]
+
+
+# --------------------------------------------------------------------------------
+# F-79: el radio tabu de TabuSearch no se aplicaba a los numeros de una estructura, que se
+# comparaba por igualdad (AUD-006 de AUDITORIA-2026-11-16.md).
+# --------------------------------------------------------------------------------
+
+def test_f79_el_radio_tabu_se_aplica_a_los_elementos_de_una_estructura():
+    """F-79: con una estructura de dos reales en [0, 1], un punto a 0,0001 del visitado no
+    era tabu, y con los mismos dos reales sueltos si: en un dominio de vectores la lista tabu
+    no prohibia nada."""
+    from metagen.metaheuristics import TabuSearch
+
+    dominio = Domain()
+    dominio.define_static_structure("v", 2)
+    dominio.set_structure_to_real("v", 0.0, 1.0)
+    dominio.define_dynamic_structure("d", 1, 3)
+    dominio.set_structure_to_integer("d", 0, 100)
+    busqueda = TabuSearch(dominio, lambda solucion: 0.0)
+
+    visitado, cerca, lejos, otra_longitud = (Solution(dominio) for _ in range(4))
+    for solucion, v, d in ((visitado, [0.5, 0.5], [50, 50]), (cerca, [0.5001, 0.5], [50, 51]),
+                           (lejos, [0.9, 0.5], [50, 50]), (otra_longitud, [0.5, 0.5], [50, 50, 50])):
+        solucion.set("v", v)
+        solucion.set("d", d)
+    busqueda.tabu_list.append(visitado)
+    assert busqueda.is_tabu(cerca)
+    assert not busqueda.is_tabu(lejos)
+    assert not busqueda.is_tabu(otra_longitud)
+
+
+# --------------------------------------------------------------------------------
+# F-80: con varias cepas en hilos, la cepa que se llevaba la ultima evaluacion del
+# presupuesto podia devolver infinito sin evaluar (F-76).
+# --------------------------------------------------------------------------------
+
+def test_f80_la_ultima_evaluacion_del_presupuesto_se_evalua_aunque_otra_cepa_lo_agote():
+    """F-80: `BudgetedFitness` decidia por la marca `spent`, que comparten las cepas en hilos:
+    si la cepa A se llevaba la ultima evaluacion y la B, justo despues, veia el presupuesto
+    agotado y ponia la marca, A leia la marca y devolvia infinito sin evaluar; con un
+    presupuesto de 1000 se hacian 999 (en el CI, tres cepas de ProbabilisticCVOA). El
+    intercalado se reproduce con un estado que pone la marca al conceder la evaluacion."""
+    from metagen.metaheuristics.cvoa.common_tools import BudgetedFitness
+
+    llamadas = []
+
+    class EstadoQueSeAgotaEnMedio:
+        envoltorio = None
+
+        def take_evaluation(self):
+            # Otra cepa agota el presupuesto entre la concesion y la evaluacion.
+            self.envoltorio.spent = True
+            return True
+
+    estado = EstadoQueSeAgotaEnMedio()
+    fitness = BudgetedFitness(lambda solucion: llamadas.append(1) or 2.0, estado)
+    estado.envoltorio = fitness
+    assert fitness(object()) == 2.0
+    assert llamadas == [1]
+    # Y a partir de ahi, sin preguntar ni evaluar.
+    assert fitness(object()) == math.inf and llamadas == [1]
+
+
+# --------------------------------------------------------------------------------
+# F-81: asignar un valor a una solucion consumia numeros aleatorios, porque el valor se
+# construia sorteando y se sobrescribia al instante; los hijos del cruce nacian como
+# soluciones aleatorias enteras (AUD-009 de AUDITORIA-2026-11-16.md).
+# --------------------------------------------------------------------------------
+
+def test_f81_asignar_un_valor_no_consume_numeros_aleatorios():
+    """F-81: tras `set_seed(1)`, `solucion.set("i", 3)` o asignar una lista a una estructura
+    cambiaban el estado del generador: cualquier asignacion de mas movia la secuencia de
+    toda la ejecucion que venia detras."""
+    from metagen.framework.rng import get_numpy_rng, get_rng, get_state
+
+    dominio = Domain()
+    dominio.define_integer("i", 0, 10)
+    dominio.define_real("r", 0.0, 1.0)
+    dominio.define_categorical("c", ["a", "b"])
+    dominio.define_dynamic_structure("v", 1, 5)
+    dominio.set_structure_to_integer("v", 0, 9)
+    dominio.define_static_structure("w", 2)
+    dominio.set_structure_to_real("w", 0.0, 1.0)
+    solucion = Solution(dominio)
+    set_seed(1)
+    antes = get_state()
+    for nombre, valor in (("i", 3), ("r", 0.5), ("c", "b"), ("v", [1, 2, 3]), ("w", [0.1, 0.2])):
+        solucion.set(nombre, valor)
+    assert get_state()["random"] == antes["random"]
+    assert get_numpy_rng().bit_generator.state == antes["numpy"]
+    assert get_rng().random() == random.Random(1).random()
+
+
+# --------------------------------------------------------------------------------
+# F-82: HillClimbing descartaba el mejor vecino de su vecindario inicial (X-14 e Y-07 de
+# la auditoria independiente).
+# --------------------------------------------------------------------------------
+
+def test_f82_hill_climbing_empieza_por_lo_mejor_que_evaluo_al_inicializar():
+    """F-82: `initialize` evaluaba un punto y sus vecinos y devolvia el punto como mejor, aunque
+    un vecino fuera mejor: sin warmup y con una iteracion, el mejor devuelto no era el mejor
+    evaluado en 12 de 30 ejecuciones."""
+    from metagen.metaheuristics import HillClimbing
+
+    for semilla in range(30):
+        evaluados = []
+
+        def fitness(solucion):
+            valor = (solucion["x"] - 1.3) ** 2 + (solucion["y"] + 0.7) ** 2
+            evaluados.append(valor)
+            return valor
+
+        dominio = Domain()
+        dominio.define_real("x", -5.0, 5.0)
+        dominio.define_real("y", -5.0, 5.0)
+        busqueda = HillClimbing(dominio, fitness, population_size=10, warmup_iterations=0, max_iterations=1,
+                                seed=semilla)
+        assert busqueda.run().get_fitness() == min(evaluados)

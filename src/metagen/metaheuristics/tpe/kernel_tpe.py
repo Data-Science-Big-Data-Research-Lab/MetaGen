@@ -63,9 +63,11 @@ class KernelTPE(TPE):
 
     A run costs ``population_size * (warmup_iterations + 1) + max_iterations``
     evaluations: 220 with the defaults. The history is never trimmed, since every
-    observation is a kernel. On a dynamic structure the length is not modeled: a
-    candidate is born with a random length and the positions it has are drawn from
-    the observations that have them. Under the global
+    observation is a kernel. On a dynamic structure the length is modeled as a
+    categorical variable, by the counts of the lengths of the observations with the
+    prior adding ``prior_weight`` to every allowed length: a candidate draws its length
+    from the model of the best, which enters ``l(x) / g(x)`` once, and the positions it has
+    are drawn from the observations that have them. Under the global
     distribution model every slice proposes and evaluates one candidate, so an
     iteration costs as many evaluations as there are slices.
 
@@ -114,7 +116,9 @@ class KernelTPE(TPE):
     # Measured on the behavior bench: the l(x)/g(x) selection on MetaGen's single-Gaussian
     # model won 26 of 100 against random sampling, against 70 for MetaGen's TPE as it is;
     # on the mixture of kernels it wins 98 of 110 on the same 480 evaluations.
-    # F-35: the length of a dynamic structure is not modeled, here or in TPE.
+    # F-35: the length of a dynamic structure was not modeled; since F-71 KernelTPE models it
+    # as a categorical variable (TPE still does not). The docstring said otherwise until
+    # AUD-012 of metagen-auditoria/AUDITORIA-2026-11-16.md.
 
     default_max_iterations = 100
     default_warmup_iterations = 5
@@ -145,6 +149,53 @@ class KernelTPE(TPE):
                          initial_solutions=initial_solutions, racing=racing, refit=refit)
         self.n_candidates = n_candidates
         self.prior_weight = prior_weight
+        # What each solution of the history contributes to the models, read once: every
+        # iteration walked every solution of the history, which is never trimmed, to read
+        # the same values again, 70 % of the time of the behavior bench (AUD-008 of
+        # metagen-auditoria/AUDITORIA-2026-11-16.md). Keyed by identity, with the solution
+        # itself to tell a reused id apart; the solutions of the history do not change once
+        # evaluated. A cache and not state: a worker of Ray starts it empty, and neither a
+        # checkpoint nor the configuration of a run holds it.
+        self._observed_parts: Dict[int, Tuple[Solution, List[Tuple[Path, Any]], List[Tuple[Path, int]]]] = {}
+
+    def _reset_run_state(self) -> None:
+        super()._reset_run_state()
+        # A new run reads a new history.
+        self._observed_parts = {}
+
+    def _worker_copy(self) -> "KernelTPE":
+        worker = cast(KernelTPE, super()._worker_copy())
+        worker._observed_parts = {}
+        return worker
+
+    def _parts(self, solution: Solution) -> Tuple[List[Tuple[Path, Any]], List[Tuple[Path, int]]]:
+        """The values of the active variables of a solution and the lengths of its active
+        dynamic structures, by path, in the order the models read them."""
+        # Created here when missing: a run resumed with resume() is built from its checkpoint,
+        # which does not hold the cache, without going through __init__.
+        parts = self.__dict__.setdefault("_observed_parts", {})
+        entry = parts.get(id(solution))
+        if entry is None or entry[0] is not solution:
+            values = [(path, leaf.get()) for path, leaf in _leaves(solution)
+                      if solution.is_active(cast(str, path[0]))]
+            lengths = [(path, len(structure)) for path, structure in _dynamic_structures(solution)
+                       if solution.is_active(cast(str, path[0]))]
+            entry = (solution, values, lengths)
+            parts[id(solution)] = entry
+        return entry[1], entry[2]
+
+    def _observed(self, solutions: Sequence[Solution]) -> Tuple[Dict[Path, List[Any]], Dict[Path, List[int]]]:
+        """What :py:func:`_observations` and :py:func:`_lengths` give for these solutions,
+        from each solution's parts."""
+        observed: Dict[Path, List[Any]] = {}
+        lengths: Dict[Path, List[int]] = {}
+        for solution in solutions:
+            values, sizes = self._parts(solution)
+            for path, value in values:
+                observed.setdefault(path, []).append(value)
+            for path, size in sizes:
+                lengths.setdefault(path, []).append(size)
+        return observed, lengths
 
     def iterate(self, solutions: List[Solution]) -> Tuple[List[Solution], Solution]:
         """
@@ -183,10 +234,8 @@ class KernelTPE(TPE):
         :return: The candidate to evaluate, unevaluated.
         :rtype: Solution
         """
-        good = _observations(best_solutions)
-        bad = _observations(worst_solutions)
-        good_lengths = _lengths(best_solutions)
-        bad_lengths = _lengths(worst_solutions)
+        good, good_lengths = self._observed(best_solutions)
+        bad, bad_lengths = self._observed(worst_solutions)
         # One model per variable and side, shared by every candidate: building the
         # kernels once here instead of once per candidate costs 24 times less and
         # draws the same numbers in the same order.
@@ -384,6 +433,12 @@ def _kernels(values: Sequence[float], low: float, high: float, prior_weight: flo
     number of observations and the prior's width, plus the prior itself, a Gaussian
     centered on the domain as wide as it. Returns the means, widths and weights.
     """
+    # Bergstra et al. (2011) and Hyperopt take the greater of the distances to the left and
+    # right neighbors. Measured on the eleven problems of the behavior bench over 30 seeds
+    # (AUD-005 of metagen-auditoria/AUDITORIA-2026-11-16.md, 16 Nov 2026): 301 wins of 330
+    # against random sampling with either rule, 154-22-154 head to head, and the greater
+    # distance significantly worse on the variable-degree polynomial (11-19, p = 0.009). The
+    # nearest neighbor stays.
     prior_mu = (low + high) / 2.0
     prior_sigma = max(high - low, 1e-12)
     mus = np.array(sorted([*values, prior_mu]), dtype=float)

@@ -98,7 +98,7 @@ def _serve_gds_from_a_small_copy(monkeypatch):
         with gzip.open(path, "wt") as handle:
             handle.write("\n".join(lines) + "\n")
 
-    monkeypatch.setattr(data, "_download", download)
+    monkeypatch.setattr(data.geo, "_download", download)
 
 
 @pytest.fixture

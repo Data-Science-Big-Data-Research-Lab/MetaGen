@@ -50,7 +50,7 @@ Every metaheuristic also keeps a record of each iteration in its ``history`` att
     table = pd.read_json("runs/random_search.jsonl", lines=True)
     table[["iteration", "evaluations", "best", "mean"]]
 
-The file is written as the run goes, so it can be read while the run is in progress. A new run starts it again, and a run continued from a checkpoint (see :doc:`../pausing_and_resuming/index`) continues it. In a distributed run the evaluations happen in the workers and are recorded as ``None``.
+The file is written as the run goes, so it can be read while the run is in progress. A new run starts it again, and a run continued from a checkpoint (see :doc:`../pausing_and_resuming/index`) continues it. In a distributed run the evaluations of the workers are counted too.
 
 Reports
 -------

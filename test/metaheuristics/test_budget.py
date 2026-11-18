@@ -11,9 +11,7 @@ import pytest
 from metagen.framework import Domain
 from metagen.metaheuristics import (GA, SA, SSGA, TPE, GAConnector, HillClimbing, KernelTPE, Memetic,
                                     RandomSearch, TabuSearch)
-
-ALGORITHMS = [RandomSearch, GA, SSGA, SA, HillClimbing, TabuSearch, TPE, KernelTPE, Memetic]
-GENETIC = (GA, SSGA, Memetic)
+from conftest import ALGORITHMS, GENETIC
 
 
 def _domain(algorithm) -> Domain:

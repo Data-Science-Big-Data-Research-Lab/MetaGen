@@ -173,7 +173,7 @@ def test_the_residue_keeps_its_precision_far_from_zero():
 
 
 def test_a_nan_comes_through_the_pair_differences():
-    from metagen.triclustering.measures import _pair_sums
+    from metagen.triclustering._lines import _pair_sums
     assert math.isnan(_pair_sums(np.array([[[1.0, np.nan, 2.0]]]), axis=2))
     assert _pair_sums(np.full((1, 1, 4), 0.1), axis=2) == 0.0
 
@@ -271,7 +271,7 @@ def test_the_normalized_msr3d_takes_the_scale_of_the_data_out():
 @pytest.mark.parametrize("views", ["distinct", "time", "trlab"])
 def test_msl_with_each_gene_added_at_once_is_msl_with_it(views):
     from metagen.triclustering import Cube, Tricluster, msl
-    from metagen.triclustering.measures import _msl_adding_genes
+    from metagen.triclustering._lines import msl_adding_genes as _msl_adding_genes
     rng = np.random.default_rng(11)
     for _ in range(40):
         genes, conditions, times = int(rng.integers(6, 40)), int(rng.integers(2, 7)), int(rng.integers(2, 9))

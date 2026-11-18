@@ -341,15 +341,12 @@ class Structure(BaseType):
             key: Any = base if by_base else value
             element_class = cast(Callable[..., BaseType | Solution],
                                  self.get_connector().get_type(key))
-            if type(value) is int and isinstance(base, IntegerDefinition) and not base.log \
-                    and getattr(element_class, "initialize", None) is Integer.initialize:
-                # The draw its constructor makes, then the value checked and set as below,
-                # without building the random integer in between (see _new_elements).
-                _, low, high, step = base.get_attributes()
-                get_rng().randrange(low, high + 1, step or 1)
-                integer = cast(Type[Integer], element_class)._holding(base, self.get_connector(), None)
-                integer.set(value)
-                return integer
+            if not isinstance(value, dict):
+                # Built holding no value and then given it, without the draw its
+                # constructor made and the value threw away (AUD-009).
+                element = cast(Any, element_class)._holding(base, self.get_connector(), None)
+                element.set(value)
+                return cast(BaseType, element)
             converted = element_class(base, connector=self.get_connector())
 
             # The constructor initializes the instance at random, so the input

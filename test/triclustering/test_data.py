@@ -413,7 +413,7 @@ def test_fetching_a_gds_downloads_it_once_from_its_place_in_geo(tmp_path, monkey
         asked.append(url)
         _gds(path, zipped=True)
 
-    monkeypatch.setattr(data_module, "_download", download)
+    monkeypatch.setattr(data_module.geo, "_download", download)
     path = fetch_gds("GDS4510", folder=str(tmp_path / "geo"))
     assert path == str(tmp_path / "geo" / "GDS4510_full.soft.gz")
     assert asked == ["https://ftp.ncbi.nlm.nih.gov/geo/datasets/GDS4nnn/GDS4510/soft/GDS4510_full.soft.gz"]
@@ -434,10 +434,10 @@ def test_fetching_what_geo_does_not_have_or_cannot_serve_says_so_and_leaves_noth
         raise urllib.error.URLError("no route to host")
 
     folder = tmp_path / "geo"
-    monkeypatch.setattr(data_module, "_download", missing)
+    monkeypatch.setattr(data_module.geo, "_download", missing)
     with pytest.raises(ValueError, match="GEO has no DataSet GDS9999999"):
         fetch_gds("GDS9999999", folder=str(folder))
-    monkeypatch.setattr(data_module, "_download", offline)
+    monkeypatch.setattr(data_module.geo, "_download", offline)
     with pytest.raises(RuntimeError, match="could not be reached"):
         fetch_gds("GDS1", folder=str(folder))
     assert list(folder.iterdir()) == []

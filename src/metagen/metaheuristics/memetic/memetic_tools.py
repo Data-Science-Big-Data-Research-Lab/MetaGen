@@ -1,8 +1,55 @@
-from typing import Tuple, Callable, List
+"""
+    Copyright (C) 2023 David Gutierrez Avilés and Manuel Jesús Jiménez Navarro
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""
+from typing import Callable, List, Sequence, Tuple
 
 from metagen.framework import Solution
 # The one implementation. This module carried a byte-for-byte copy of it (A-09).
 from metagen.metaheuristics.tools import local_search
+
+
+def local_search_of_children(children: Sequence[Solution], fitness_function: Callable[[Solution], float],
+                             neighbor_population_size: int, alteration_limit: float,
+                             distribution_level: int = 0) -> List[Solution]:
+    """
+    Performs local search on children to improve their fitness, one or more of them.
+
+    :param children: The children to improve
+    :param fitness_function: Function to evaluate solution fitness
+    :param neighbor_population_size: Number of neighbors to generate in local search
+    :param alteration_limit: Maximum allowed change in solution during local search
+    :param distribution_level: Level of distribution for parallel processing, defaults to 0
+    :type children: Sequence[:py:class:`~metagen.framework.Solution`]
+    :type fitness_function: Callable[[:py:class:`~metagen.framework.Solution`], float]
+    :type neighbor_population_size: int
+    :type alteration_limit: float
+    :type distribution_level: int
+    :return: The improved children, in order
+    :rtype: List[:py:class:`~metagen.framework.Solution`]
+    """
+    if distribution_level > 0:
+        # Imported here, and not at the top of the module, so that a memetic run
+        # that never distributes does not need Ray installed (F-24).
+        from metagen.metaheuristics.memetic.memetic_distributed_tools import \
+            distributed_population_local_search
+
+        return distributed_population_local_search(list(children), fitness_function, neighbor_population_size,
+                                                   alteration_limit, distribution_level)
+    return population_local_search(list(children), fitness_function, neighbor_population_size, alteration_limit,
+                                   distribution_level)
 
 
 def local_search_of_two_children(parents: Tuple[Solution, Solution], fitness_function: Callable[[Solution], float],
@@ -23,19 +70,9 @@ def local_search_of_two_children(parents: Tuple[Solution, Solution], fitness_fun
     :return: Tuple containing two improved solutions
     :rtype: Tuple[:py:class:`~metagen.framework.Solution`, :py:class:`~metagen.framework.Solution`]
     """
-    if distribution_level > 0:
-        # Imported here, and not at the top of the module, so that a memetic run
-        # that never distributes does not need Ray installed (F-24).
-        from metagen.metaheuristics.memetic.memetic_distributed_tools import \
-            distributed_population_local_search
-
-        children_aux = distributed_population_local_search(list(parents), fitness_function, neighbor_population_size, alteration_limit, distribution_level)
-        children = (children_aux[0], children_aux[1])
-    else:
-        children_aux = population_local_search(list(parents), fitness_function, neighbor_population_size, alteration_limit, distribution_level)
-        children = (children_aux[0], children_aux[1])
-
-    return children
+    children = local_search_of_children(list(parents), fitness_function, neighbor_population_size, alteration_limit,
+                                        distribution_level)
+    return children[0], children[1]
 
 
 def population_local_search(population: List[Solution], fitness_function: Callable[[Solution], float], neighbor_population_size: int, alteration_limit: float, distribution_level:int) -> List[Solution]:

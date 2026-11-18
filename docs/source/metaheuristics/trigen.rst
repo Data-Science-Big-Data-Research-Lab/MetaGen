@@ -34,13 +34,13 @@ Finding planted triclusters
     trigen = TriGen(cube, n_triclusters=2, generations=50, population_size=100,
                     min_sizes=(5, 2, 3), max_sizes=(30, 6, 8), seed=0)
     found = trigen.run()
-    print([tricluster.size for tricluster in found])                    # [(16, 4, 5), (18, 2, 3)]
-    print([round(tricluster.fitness, 3) for tricluster in found])       # [0.075, 0.211]
-    print([round(triq(cube, tricluster), 3) for tricluster in found])   # [0.994, 0.846]
+    print([tricluster.size for tricluster in found])                    # [(16, 4, 5), (8, 3, 3)]
+    print([round(tricluster.fitness, 3) for tricluster in found])       # [0.077, 0.215]
+    print([round(triq(cube, tricluster), 3) for tricluster in found])   # [0.992, 0.811]
     # The share of the cells found that belong to a planted tricluster.
-    print(round(relevance(found, planted, cell_precision), 3))          # 0.833
+    print(round(relevance(found, planted, cell_precision), 3))          # 0.667
     # How much of each planted tricluster is found, on average.
-    print(round(recovery(found, planted), 3))                           # 0.471
+    print(round(recovery(found, planted), 3))                           # 0.377
 
 Each tricluster keeps the fitness it had when it was found, against the triclusters found before it. ``trigen.history`` holds, per search, the tricluster, every term of its fitness, the evaluations and seconds it took and the evaluations its growth took; with ``history="trigen.jsonl"`` it is also written to a file, a line per search. ``trigen.hierarchy`` counts how many triclusters found hold each gene, condition and time.
 
@@ -60,9 +60,9 @@ The search is not blind to the order of the genes in the cube: the initial popul
     trigen = TriGen(cube, n_triclusters=2, generations=50, population_size=100,
                     min_sizes=(5, 2, 3), max_sizes=(30, 6, 8), shuffle_genes=True, seed=0)
     found = trigen.run()
-    print([tricluster.size for tricluster in found])     # [(18, 4, 5), (15, 2, 3)]
-    print(found[0].genes[:5])                            # (2, 10, 20, 28, 30)
-    print(round(recovery(found, planted), 3))            # 0.557
+    print([tricluster.size for tricluster in found])     # [(17, 4, 5), (16, 2, 3)]
+    print(found[0].genes[:5])                            # (2, 11, 20, 28, 30)
+    print(round(recovery(found, planted), 3))            # 0.549
 
 The fitness and the terms of each tricluster are those of the order its run saw; with ``views="time"`` they do not depend on the order. A seed reproduces the order, and a saved run keeps the option, so ``TriGenResult.trigen(cube)`` runs it again in the same order.
 
@@ -82,8 +82,8 @@ For TriGen, by default, no dimension has an order: a tricluster holds any genes,
     trigen = TriGen(cube, n_triclusters=2, generations=30, population_size=80, min_sizes=(5, 2, 3),
                     max_sizes=(30, 6, 8), scoring="significance", ordered=("times",), seed=0)
     found = trigen.run()
-    print([tricluster.times for tricluster in found])          # [(2, 3, 4, 5, 6), (2, 3, 4, 5, 6)]
-    print(round(recovery(found, planted), 3))                  # 0.5
+    print([tricluster.times for tricluster in found])          # [(2, 3, 4, 5, 6), (4, 5, 6, 7)]
+    print(round(recovery(found, planted), 3))                  # 0.833
 
 A window holds consecutive positions only: when the same genes and conditions follow a pattern in two stretches of time apart, a tricluster that holds both also holds the times between them. Without an order, the two stretches can be one tricluster on their times alone. A saved run keeps the dimensions with order.
 
@@ -129,9 +129,9 @@ What the triclusters found have taken can be counted by coordinates, dimension b
     trigen = TriGen(cube, n_triclusters=2, generations=50, population_size=100, min_sizes=(5, 2, 3),
                     max_sizes=(30, 6, 8), overlap="cells", hierarchy="cells", seed=0)
     found = trigen.run()
-    print([tricluster.size for tricluster in found])        # [(16, 4, 5), (23, 3, 3)]
+    print([tricluster.size for tricluster in found])        # [(16, 4, 5), (17, 2, 4)]
     # How many triclusters found hold each cell.
-    print(int(trigen.hierarchy.cells.sum()))                 # 527
+    print(int(trigen.hierarchy.cells.sum()))                 # 456
 
 The significance already compares the cells two triclusters share, so ``overlap`` leaves it as it is; ``hierarchy`` applies to both scorings. A saved run keeps both options.
 
@@ -149,10 +149,10 @@ With the significance, growing by the fitness also prunes by default (``pruning`
 
     cube, planted = plant((100, 10, 12), [(20, 4, 6), (15, 3, 5)], pattern="additive", noise=0.05, seed=0)
     trigen = TriGen(cube, n_triclusters=2, generations=50, population_size=100, min_sizes=(5, 2, 3),
-                    scoring="significance", seed=0)
+                    scoring="significance", seed=1)
     found = trigen.run()
     print([tricluster.size for tricluster in found])                # [(20, 4, 6), (15, 3, 5)]
-    print([round(record["terms"]["z"], 1) for record in trigen.history])   # [40.2, 29.5]
+    print([round(record["terms"]["z"], 1) for record in trigen.history])   # [39.3, 28.1]
     print(round(relevance(found, planted, cell_precision), 3))      # 1.0
     print(round(recovery(found, planted), 3))                       # 1.0
 
@@ -229,7 +229,7 @@ Saving a run
     print(result.triclusters == trigen.triclusters)            # True
     print(result.data["label"], result.matches(cube))          # planted example True
     print(result.configuration["generations"], result.configuration["seed"])   # 10 0
-    print(result.names[0]["genes"][:3])                        # ['gene0', 'gene1', 'gene6']
+    print(result.names[0]["genes"][:3])                        # ['gene1', 'gene18', 'gene19']
     print(result.trigen(cube).run() == result.triclusters)     # True
     result.to_csv("triclusters.csv")
 
@@ -301,7 +301,7 @@ Runs with different seeds may find different triclusters. :py:func:`~metagen.tri
     threshold = max(found.stability for run in stability([trigen.result() for trigen in nulls]) for found in run)
     print([found.stability > threshold for found in real[0]])          # [True, True, False]
     core = real[0][0].core
-    print(len(core), len(set(core) & set(planted[0].genes)))           # 21 19
+    print(len(core), len(set(core) & set(planted[0].genes)))           # 20 19
 
 The runs are compared by the names of the genes, so they may search the genes in orders of their own, as ``shuffle_genes`` does. ``stability`` also takes the runs as lists of the gene names of their triclusters, with the number of genes of the data as ``population``.
 

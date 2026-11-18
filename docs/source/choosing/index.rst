@@ -30,7 +30,7 @@ Which one to use
       - One walking point that accepts a worse neighbor with a probability that falls as the temperature cools; the cooling schedule is tied to ``max_iterations``.
       - ``warmup + 1 + neighbor_population_size × max_iterations``
     * - |ga|
-      - A generational genetic algorithm: tournament selection, a blend (BLX-alpha) crossover on numeric variables, local mutation and two elites.
+      - A generational genetic algorithm: tournament selection, a blend (BLX-alpha) crossover on numeric variables, local mutation and two elites (one in a population of two or three).
       - ``population_size × (max_iterations + 1)``
     * - |ssga|
       - The steady-state variant: two children per iteration replace the two worst.

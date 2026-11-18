@@ -19,7 +19,7 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 import math
 from copy import deepcopy
-from typing import Any, Protocol, Tuple, cast
+from typing import Any, List, Optional, Protocol, Tuple, cast
 
 import metagen.framework.solution as types
 from metagen.framework import BaseConnector, Solution, Domain
@@ -113,7 +113,7 @@ class GAReal(types.Real):
                                          math.log(min_value), math.log(max_value))
             log_children = []
             for _ in range(2):
-                child = GAReal(definition, connector=self.connector)
+                child = cast(GAReal, GAReal._holding(definition, self.connector, None))
                 child.set(min(max(math.exp(get_rng().uniform(left, right)), min_value), max_value))
                 log_children.append(child)
             return log_children[0], log_children[1]
@@ -121,7 +121,7 @@ class GAReal(types.Real):
 
         children = []
         for _ in range(2):
-            child = GAReal(definition, connector=self.connector)
+            child = cast(GAReal, GAReal._holding(definition, self.connector, None))
             # Through _generate_numerical so the value lands on the domain's own grid
             # when the definition has a step, anchored at its minimum (F-01).
             child.set(self._generate_numerical(left, right, step, origin=min_value))
@@ -157,7 +157,7 @@ class GAInteger(types.Integer):
                                          math.log(min_value), math.log(max_value))
             log_children = []
             for _ in range(2):
-                child = GAInteger(definition, connector=self.connector)
+                child = cast(GAInteger, GAInteger._holding(definition, self.connector, None))
                 child.set(min(max(int(round(math.exp(get_rng().uniform(left, right)))), min_value), max_value))
                 log_children.append(child)
             return log_children[0], log_children[1]
@@ -165,7 +165,7 @@ class GAInteger(types.Integer):
 
         children = []
         for _ in range(2):
-            child = GAInteger(definition, connector=self.connector)
+            child = cast(GAInteger, GAInteger._holding(definition, self.connector, None))
             child.set(int(round(self._generate_numerical(
                 left, right, step or 1, origin=min_value))))
             children.append(child)
@@ -502,8 +502,10 @@ class GASolution(Solution):
         else:
             variables_to_exchange = []
 
-        child1 = GASolution(self.get_definition(), connector=self.connector)
-        child2 = GASolution(self.get_definition(), connector=self.connector)
+        # Every variable is set below: drawn first, the children threw away a whole random
+        # solution each (AUD-009).
+        child1 = cast(GASolution, GASolution._empty(self.get_definition(), self.connector))
+        child2 = cast(GASolution, GASolution._empty(self.get_definition(), self.connector))
 
         for variable_name, variable_value in self.get_variables().items():  # Iterate over all variables
 
@@ -622,7 +624,7 @@ def tournament_selection(solutions: Sequence[Solution], tournament_size: int = 2
 
 def yield_two_children(parents: Tuple[GASolution, GASolution], mutation_rate: float,
                       fitness_function: Callable[[Solution], float],
-                      mutation_alteration_limit: Any = None) -> Tuple[GASolution, GASolution]:
+                      mutation_alteration_limit: Any = None, evaluate: bool = True) -> Tuple[GASolution, GASolution]:
     """
     Generate two children solutions through crossover and mutation operations.
 
@@ -637,6 +639,9 @@ def yield_two_children(parents: Tuple[GASolution, GASolution], mutation_rate: fl
         number (an absolute amount) or None, the default, which redraws each mutated
         variable over its whole domain
     :type mutation_alteration_limit: RelativeAlteration or float or None, optional
+    :param evaluate: Whether to evaluate the children, defaults to True; without it the
+        caller evaluates the ones it keeps
+    :type evaluate: bool, optional
     :return: A tuple containing two new solutions (children)
     :rtype: Tuple[GASolution, GASolution]
     """
@@ -648,7 +653,67 @@ def yield_two_children(parents: Tuple[GASolution, GASolution], mutation_rate: fl
     if get_rng().uniform(0, 1) <= mutation_rate:
         child2.mutate(alteration_limit=mutation_alteration_limit)
 
-    child1.evaluate(fitness_function)
-    child2.evaluate(fitness_function)
+    if evaluate:
+        child1.evaluate(fitness_function)
+        child2.evaluate(fitness_function)
 
     return child1, child2
+
+
+def elites_of(population_size: int) -> int:
+    """
+    How many of the best individuals a generation of GA or Memetic passes on untouched: two,
+    or one in a population of two or three, so that at least one child enters it.
+
+    :param population_size: The size of the population.
+    :type population_size: int
+    :return: The number of elites.
+    :rtype: int
+    """
+    # With two elites a population of two was the elites alone and never changed (AUD-003 of
+    # metagen-auditoria/AUDITORIA-2026-11-16.md, X-13 of the independent audit).
+    return 2 if population_size >= 4 else 1
+
+
+def breed_children(solutions: Sequence[Solution], count: int, tournament_size: int, mutation_rate: float,
+                   fitness_function: Callable[[Solution], float], mutation_alteration_limit: Any = None,
+                   improve: Optional[Callable[[List[GASolution]], List[GASolution]]] = None) -> List[GASolution]:
+    """
+    Breed ``count`` evaluated children from parents drawn by tournament, a pair at a time:
+    with an odd count the last pair gives one child, and only that one is evaluated.
+
+    :param solutions: The population the parents are drawn from.
+    :type solutions: Sequence[Solution]
+    :param count: How many children to breed.
+    :type count: int
+    :param tournament_size: How many individuals compete for each parent.
+    :type tournament_size: int
+    :param mutation_rate: The probability that each child mutates.
+    :type mutation_rate: float
+    :param fitness_function: The fitness function.
+    :type fitness_function: Callable[[Solution], float]
+    :param mutation_alteration_limit: How far a mutated child may move; see
+        :py:func:`yield_two_children`.
+    :type mutation_alteration_limit: RelativeAlteration or float or None, optional
+    :param improve: What to do with the children of each pair once evaluated, such as a
+        local search, which returns them improved; None keeps them as they are.
+    :type improve: Callable[[List[GASolution]], List[GASolution]], optional
+    :return: The children, in the order they were bred.
+    :rtype: List[GASolution]
+    """
+    # Breeding a pair more than the population holds and cutting the list by position spent
+    # the evaluations of two children, and in Memetic their local searches, on individuals
+    # that never entered it: 10 % of a GA of 20 and 20 % of a Memetic of 10 (AUD-003).
+    children: List[GASolution] = []
+    while len(children) < count:
+        father = cast(GASolution, tournament_selection(solutions, tournament_size))
+        mother = cast(GASolution, tournament_selection(solutions, tournament_size))
+        pair = yield_two_children((father, mother), mutation_rate, fitness_function, mutation_alteration_limit,
+                                  evaluate=False)
+        kept = list(pair[:count - len(children)])
+        for child in kept:
+            child.evaluate(fitness_function)
+        if improve is not None:
+            kept = improve(kept)
+        children.extend(kept)
+    return children

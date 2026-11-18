@@ -1,3 +1,19 @@
+"""
+    Copyright (C) 2023 David Gutierrez Avilés and Manuel Jesús Jiménez Navarro
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""
 from concurrent.futures.thread import ThreadPoolExecutor
 from datetime import timedelta
 from time import time
@@ -8,7 +24,7 @@ from metagen.framework.rng import own_generators, set_seed, spawn_seed
 from metagen.logging.metagen_logger import metagen_logger
 
 from metagen.metaheuristics._parameters import require_integer, require_number
-from metagen.metaheuristics.cvoa.common_tools import BudgetedFitness, StrainProperties
+from metagen.metaheuristics.cvoa.common_tools import BudgetedFitness, StrainProperties, pandemic_report
 from metagen.metaheuristics.cvoa.cvoa import CVOA
 from metagen.metaheuristics.cvoa.local_state import LocalPandemicState
 from metagen.metaheuristics.tools import solution_class
@@ -89,17 +105,8 @@ def cvoa_launcher(strains: List[StrainProperties], domain: Domain, fitness_funct
 
     best_solution = global_state.get_best_individual()
 
-    output = (
-            "\n********** Results by strain **********\n"
-            + "\n".join(f"[{strain_id}] Best individual: {future.result()}" for strain_id, future in futures.items())
-            + "\n\n********** Best result **********\n"
-            + f"Best individual: {best_solution}\n"
-            + "\n********** Pandemic report **********\n"
-            + f"Pandemic report: {global_state.get_pandemic_report()}\n"
-            + "\n********** Performance **********\n"
-            + f"Execution time: {timedelta(seconds=t2 - t1)}\n"
-    )
-
+    output = pandemic_report(((strain_id, future.result()) for strain_id, future in futures.items()),
+                             best_solution, global_state.get_pandemic_report(), timedelta(seconds=t2 - t1))
     metagen_logger.info(output)
 
 
