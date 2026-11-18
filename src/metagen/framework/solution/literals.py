@@ -14,49 +14,62 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-from typing import Dict, Final, List, Literal, Tuple, TypeAlias, Union
-
-INTEGER: Final = "INTEGER"
-REAL: Final = "REAL"
-CATEGORICAL: Final = "CATEGORICAL"
-LAYER: Final = "LAYER"
-VECTOR: Final = "VECTOR"
-SEQUENCE: Final = "SEQUENCE"
-BASIC: Final = "BASIC"
-NUMERICAL: Final = "NUMERICAL"
-BASICS: Final = ("INTEGER", "REAL", "CATEGORICAL")
-NUMERICALS: Final = ("INTEGER", "REAL")
-INTEGER_TYPE = Literal["INTEGER"]
-REAL_TYPE = Literal["REAL"]
-CATEGORICAL_TYPE = Literal["CATEGORICAL"]
-LAYER_TYPE = Literal["LAYER"]
-VECTOR_TYPE = Literal["VECTOR"]
-SEQUENCE_TYPE = Literal["SEQUENCE"]
-METAGEN_TYPE = Literal["INTEGER", "REAL", "CATEGORICAL", "LAYER", "VECTOR", "SEQUENCE", "BASIC", "NUMERICAL"]
+import warnings
+from typing import Any, Dict, List, Literal, Tuple, TypeAlias, Union
 
 Basic: TypeAlias = Union[int, float, str]
-Categories: TypeAlias = Union[List[int], List[float], List[str]]
 BasicVector: TypeAlias = Union[List[int], List[float], List[str]]
 
 SolLayer: TypeAlias = Dict[str, Basic]
 SolLayerVector: TypeAlias = List[SolLayer]
 SolVector: TypeAlias = Union[BasicVector, SolLayerVector]
 InputValue: TypeAlias = Union[Basic, SolLayer, SolVector]
-OutputValue: TypeAlias = Union[None, Basic, SolLayer, SolVector]
 
-SolStructure: TypeAlias = Dict[str, InputValue]
-IntegerDef: TypeAlias = Tuple[INTEGER_TYPE, int, int, int]
-RealDef: TypeAlias = Tuple[REAL_TYPE, float, float, float]
-CategoricalDef: TypeAlias = Tuple[CATEGORICAL_TYPE, Categories]
-BasicDef: TypeAlias = Union[IntegerDef, RealDef, CategoricalDef]
-NumericalDef: TypeAlias = Union[IntegerDef, RealDef]
-NumericalAttributes: TypeAlias = Union[Tuple[int, int, int], Tuple[float, float, float]]
-LayerAttributes: TypeAlias = Union[Dict[str, BasicDef], Dict]
-BasicAttributes: TypeAlias = Union[NumericalAttributes, Categories]
-LayerDef: TypeAlias = Tuple[LAYER_TYPE, LayerAttributes]
-ComponentDef: TypeAlias = Union[BasicDef, LayerDef]
-VectorDef: TypeAlias = Tuple[VECTOR_TYPE, int, int, int, Union[ComponentDef, None]]
-SequenceDef: TypeAlias = Tuple[SEQUENCE_TYPE, int, Union[ComponentDef, None]]
-VectorAttributes: TypeAlias = Tuple[int, int, int]
-VarDefinition: TypeAlias = Union[IntegerDef, RealDef, CategoricalDef, LayerDef, VectorDef, SequenceDef]
-DefStructure: TypeAlias = Dict[str, VarDefinition]
+
+def _old_names() -> Dict[str, Any]:
+    """The names of the first versions of the package, which it does not use."""
+    INTEGER_TYPE = Literal["INTEGER"]
+    REAL_TYPE = Literal["REAL"]
+    CATEGORICAL_TYPE = Literal["CATEGORICAL"]
+    LAYER_TYPE = Literal["LAYER"]
+    VECTOR_TYPE = Literal["VECTOR"]
+    SEQUENCE_TYPE = Literal["SEQUENCE"]
+    Categories = Union[List[int], List[float], List[str]]
+    IntegerDef = Tuple[INTEGER_TYPE, int, int, int]
+    RealDef = Tuple[REAL_TYPE, float, float, float]
+    CategoricalDef = Tuple[CATEGORICAL_TYPE, Categories]
+    BasicDef = Union[IntegerDef, RealDef, CategoricalDef]
+    NumericalAttributes = Union[Tuple[int, int, int], Tuple[float, float, float]]
+    LayerAttributes = Union[Dict[str, BasicDef], Dict]
+    LayerDef = Tuple[LAYER_TYPE, LayerAttributes]
+    ComponentDef = Union[BasicDef, LayerDef]
+    VectorDef = Tuple[VECTOR_TYPE, int, int, int, Union[ComponentDef, None]]
+    SequenceDef = Tuple[SEQUENCE_TYPE, int, Union[ComponentDef, None]]
+    VarDefinition = Union[IntegerDef, RealDef, CategoricalDef, LayerDef, VectorDef, SequenceDef]
+    return {
+        "INTEGER": "INTEGER", "REAL": "REAL", "CATEGORICAL": "CATEGORICAL", "LAYER": "LAYER",
+        "VECTOR": "VECTOR", "SEQUENCE": "SEQUENCE", "BASIC": "BASIC", "NUMERICAL": "NUMERICAL",
+        "BASICS": ("INTEGER", "REAL", "CATEGORICAL"), "NUMERICALS": ("INTEGER", "REAL"),
+        "INTEGER_TYPE": INTEGER_TYPE, "REAL_TYPE": REAL_TYPE, "CATEGORICAL_TYPE": CATEGORICAL_TYPE,
+        "LAYER_TYPE": LAYER_TYPE, "VECTOR_TYPE": VECTOR_TYPE, "SEQUENCE_TYPE": SEQUENCE_TYPE,
+        "METAGEN_TYPE": Literal["INTEGER", "REAL", "CATEGORICAL", "LAYER", "VECTOR", "SEQUENCE", "BASIC", "NUMERICAL"],
+        "Categories": Categories, "OutputValue": Union[None, Basic, SolLayer, SolVector],
+        "SolStructure": Dict[str, InputValue], "IntegerDef": IntegerDef, "RealDef": RealDef,
+        "CategoricalDef": CategoricalDef, "BasicDef": BasicDef, "NumericalDef": Union[IntegerDef, RealDef],
+        "NumericalAttributes": NumericalAttributes, "LayerAttributes": LayerAttributes,
+        "BasicAttributes": Union[NumericalAttributes, Categories], "LayerDef": LayerDef,
+        "ComponentDef": ComponentDef, "VectorDef": VectorDef, "SequenceDef": SequenceDef,
+        "VectorAttributes": Tuple[int, int, int], "VarDefinition": VarDefinition,
+        "DefStructure": Dict[str, VarDefinition],
+    }
+
+
+def __getattr__(name: str) -> Any:
+    # Some forty names, of which the package uses three (OF-13 of the independent audit):
+    # the rest can still be imported, with a warning, until version 2.0.
+    old = _old_names()
+    if name in old:
+        warnings.warn(f"metagen.framework.solution.literals.{name} is deprecated and will be removed in "
+                      f"version 2.0.", DeprecationWarning, stacklevel=2)
+        return old[name]
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

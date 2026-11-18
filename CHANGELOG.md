@@ -26,6 +26,18 @@
   islands, give different results.
 - **`TPE`'s docstring** says how it models each kind of variable and builds its candidates.
 
+### Deprecated
+
+These still work, with a `DeprecationWarning`, and will be removed in version 2.0:
+
+- `CVOA.infect_individuals`, in favor of `CVOA.infect_individuals_from`, and
+  `CVOA.update_new_infected_population`, in favor of `CVOA.admit`.
+- `BaseDefinition.get_by_index`, `BaseStructureDefinition.is_base` and
+  `BaseStructureDefinition.check_base_value`, and `Primitives.is_basic_vector_sequence_value`
+  and `Primitives.is_layer_vector_sequence_value`.
+- The names of `metagen.framework.solution.literals` other than `Basic`, `BasicVector`,
+  `SolLayer`, `SolLayerVector`, `SolVector` and `InputValue`.
+
 ## 1.7.0
 
 MetaGen 1.7.0 checks domains and the parameters of the metaheuristics when they are defined,
