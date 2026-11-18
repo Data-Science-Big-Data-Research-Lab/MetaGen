@@ -1,51 +1,24 @@
 """
-The module paths of earlier releases keep working.
-
-Each former path imports, is the very module of its current name, and warns once with the
-name to use instead. Run in a subprocess, because a module already imported by the suite
-would not warn again.
+The module paths of the 1.x releases that were renamed are gone in 2.0: importing one fails,
+as for any module that does not exist. The current paths are the ones the documentation uses.
 """
-import importlib.util
-import json
-import subprocess
-import sys
+import importlib
 
 import pytest
 
-from metagen.metaheuristics._renamed_modules import RENAMED_MODULES
-
-_PROBE = r"""
-import importlib, json, sys, warnings
-from metagen.metaheuristics._renamed_modules import RENAMED_MODULES
-results = {}
-for former, current in RENAMED_MODULES.items():
-    if former.startswith("mm.mm_distributed") or former == "cvoa.distributed_tools" or former == "cvoa.cvoa_distributed":
-        try:
-            import ray  # noqa: F401
-        except ImportError:
-            continue
-    with warnings.catch_warnings(record=True) as caught:
-        warnings.simplefilter("always")
-        old = importlib.import_module("metagen.metaheuristics." + former)
-    new = importlib.import_module("metagen.metaheuristics." + current)
-    warned = [str(w.message) for w in caught if issubclass(w.category, DeprecationWarning)]
-    results[former] = {"same": old is new, "warned": any(current in m for m in warned)}
-print(json.dumps(results))
-"""
+#: The paths the 1.x releases kept importable, with a warning, until 2.0.
+FORMER_PATHS = [
+    "cvoa.cvoa_distributed", "cvoa.cvoa_local", "cvoa.cvoa_probabilistic",
+    "cvoa.distributed_tools", "cvoa.local_tools", "ga", "ga.ga", "ga.ga_tools", "ga.ssga", "hc",
+    "hc.hill_climbing", "mm", "mm.memetic", "mm.mm_distributed_tools", "mm.mm_tools", "rs",
+    "rs.random_search", "sa", "sa.sa", "ts", "ts.tabu_search"
+]
 
 
-@pytest.fixture(scope="module")
-def probe():
-    output = subprocess.run([sys.executable, "-c", _PROBE], capture_output=True, text=True, check=True).stdout
-    return json.loads(output.strip().splitlines()[-1])
-
-
-@pytest.mark.parametrize("former", sorted(RENAMED_MODULES))
-def test_a_former_module_path_is_the_current_module_and_warns(probe, former):
-    if former not in probe:
-        pytest.skip("needs Ray")
-    assert probe[former]["same"], f"metagen.metaheuristics.{former} is not the current module"
-    assert probe[former]["warned"], f"importing metagen.metaheuristics.{former} does not name its current path"
+@pytest.mark.parametrize("former", FORMER_PATHS)
+def test_a_former_module_path_does_not_import(former):
+    with pytest.raises(ModuleNotFoundError):
+        importlib.import_module("metagen.metaheuristics." + former)
 
 
 def test_the_public_names_are_where_they_were():
@@ -54,13 +27,3 @@ def test_the_public_names_are_where_they_were():
     assert metaheuristics.GA is GA
     for name in metaheuristics.__all__:
         assert hasattr(metaheuristics, name)
-
-
-def test_the_former_paths_are_gone_by_version_2():
-    # They are kept until version 2.0, as their warning says: a release 2.0 still holding them
-    # would break that promise the other way.
-    import metagen
-
-    major = int(metagen.__version__.split(".")[0]) if metagen.__version__[:1].isdigit() else 0
-    if major >= 2:
-        assert importlib.util.find_spec("metagen.metaheuristics._renamed_modules") is None

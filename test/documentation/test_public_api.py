@@ -124,26 +124,18 @@ def test_the_algorithms_the_suite_runs_are_every_metaheuristic_the_package_expor
     assert refused == set(GENETIC)
 
 
-def test_what_is_removed_in_version_2_warns_and_still_works():
-    # Unused by the package, and public: kept until version 2.0, with a warning.
-    from metagen.framework import Domain
-    from metagen.framework.domain.preconditions import Primitives
 
-    domain = Domain()
-    domain.define_real("x", 0.0, 1.0)
-    domain.define_static_structure("v", 2)
-    domain.set_structure_to_integer("v", 0, 9)
-    core = domain.get_core()
-    structure = core.get("v")
-    with pytest.warns(DeprecationWarning, match="version 2.0"):
-        assert core.get_by_index(0) is core.get("x")
-    with pytest.warns(DeprecationWarning, match="version 2.0"):
-        assert structure.is_base()
-    with pytest.warns(DeprecationWarning, match="version 2.0"):
-        assert structure.check_base_value(3) and not structure.check_base_value(12)
-    with pytest.warns(DeprecationWarning, match="version 2.0"):
-        assert Primitives.is_basic_vector_sequence_value([1, 2])
-    with pytest.warns(DeprecationWarning, match="version 2.0"):
-        assert not Primitives.is_layer_vector_sequence_value(3)
-    with pytest.warns(DeprecationWarning, match="version 2.0"):
+def test_what_version_2_removed_is_gone():
+    # Deprecated in 1.8.0 and removed in 2.0.0.
+    from metagen.framework.domain import BaseDefinition, BaseStructureDefinition
+    from metagen.framework.domain.preconditions import Primitives
+    from metagen.metaheuristics import CVOA
+
+    for owner, name in ((CVOA, "infect_individuals"), (CVOA, "update_new_infected_population"),
+                        (BaseDefinition, "get_by_index"), (BaseStructureDefinition, "is_base"),
+                        (BaseStructureDefinition, "check_base_value"),
+                        (Primitives, "is_basic_vector_sequence_value"),
+                        (Primitives, "is_layer_vector_sequence_value")):
+        assert not hasattr(owner, name), f"{owner.__name__}.{name}"
+    with pytest.raises(ImportError):
         from metagen.framework.solution.literals import VectorDef  # noqa: F401

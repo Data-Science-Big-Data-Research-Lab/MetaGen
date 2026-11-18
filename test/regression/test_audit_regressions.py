@@ -2935,7 +2935,8 @@ def test_f45_el_aislado_se_cuenta_y_no_bloquea_el_punto(update_isolated):
     en ProbabilisticCVOA."""
     cepa, estado, portador = _portador_y_cepa_local(update_isolated)
 
-    nuevos = cepa.infect_individuals(portador, 1, 5)
+    nuevos = type(cepa).infect_individuals_from(cepa.global_state, cepa.fitness_function, cepa.strain_properties,
+                                                portador, 1, 5, cepa.time)
 
     assert len(nuevos) == 0, "con p_isolation = 1 nadie entra en la poblacion"
     assert estado.get_pandemic_report()["isolated"] == 5, "el informe no cuenta a los aislados"
@@ -2965,7 +2966,8 @@ def test_f45_el_aislado_se_cuenta_en_distribuido():
         estado = RemotePandemicState.remote(Solution(dominio))
         cepa = DistributedCVOA(estado, dominio, fitness, propiedades)
         cepa.time = 1
-        nuevos = cepa.infect_individuals(portador, 1, 5)
+        nuevos = type(cepa).infect_individuals_from(cepa.global_state, cepa.fitness_function, cepa.strain_properties,
+                                                    portador, 1, 5, cepa.time)
         assert len(nuevos) == 0
         # La cepa envia al actor lo que ha escrito antes de la siguiente lectura y al terminar (E-09).
         cepa.global_state.flush()

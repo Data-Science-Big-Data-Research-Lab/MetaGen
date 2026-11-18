@@ -14,7 +14,6 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-from metagen.metaheuristics import _renamed_modules
 from metagen.metaheuristics.base import Metaheuristic
 from metagen.metaheuristics.cvoa import CVOA, ProbabilisticCVOA, StrainProperties, cvoa_launcher
 from metagen.metaheuristics.gamma_schedules import GammaConfig
@@ -32,9 +31,6 @@ from metagen.metaheuristics.trigen.shape import prism_parts
 from metagen.metaheuristics.tools import local_search, local_search_with_tabu, random_exploration, solution_class
 from metagen.metaheuristics.import_helper import is_package_installed
 from metagen.metaheuristics.racing import Racing
-
-# The module paths of earlier releases (metagen.metaheuristics.ga, ...rs, ...) stay importable.
-_renamed_modules.install()
 
 # Memetic is exported whether or not Ray is installed: memetic_tools imports it only
 # for a distributed run (F-24).

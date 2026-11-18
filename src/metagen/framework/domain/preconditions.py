@@ -15,9 +15,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 import math
-import warnings
 import numbers
-from itertools import pairwise
 from typing import Any, Final, Literal, Tuple, final
 
 
@@ -51,26 +49,6 @@ class Primitives:
             r = all(isinstance(k, str) and Primitives.is_basic_value(v)
                     for k, v in list(value.items()))
         return r
-
-    @staticmethod
-    def is_basic_vector_sequence_value(value: Any) -> bool:
-        """Deprecated: it will be removed in version 2.0."""
-        warnings.warn("Primitives.is_basic_vector_sequence_value is deprecated and will be removed in version 2.0.", DeprecationWarning, stacklevel=2)
-        r = False
-        if isinstance(value, list):
-            r = all(type(x) == type(y) and Primitives.is_basic_value(x)
-                    for x, y in pairwise(value))
-        return r
-
-    @staticmethod
-    def is_layer_vector_sequence_value(value: Any) -> bool:
-        """Deprecated: it will be removed in version 2.0."""
-        warnings.warn("Primitives.is_layer_vector_sequence_value is deprecated and will be removed in version 2.0.", DeprecationWarning, stacklevel=2)
-        r = False
-        if isinstance(value, list):
-            r = all(Primitives.is_layer_value(x) for x in value)
-        return r
-
 
 @final
 class Messages:

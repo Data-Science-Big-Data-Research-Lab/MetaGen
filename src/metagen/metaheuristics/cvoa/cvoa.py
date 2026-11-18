@@ -15,7 +15,6 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 import heapq
-import warnings
 import math
 import threading
 from typing import Callable, List, Optional, Tuple
@@ -406,26 +405,6 @@ class CVOA(Metaheuristic):
                 new_infected_population.add(new_infected_individual)
                 state.get_infected_again(new_infected_individual)
         return len(new_infected_population) > size
-
-    def infect_individuals(self, carrier_individual: Solution, travel_distance: int, n_infected: int) -> SolutionSet:
-        """The contagion of one carrier with the strain's own state, properties and time. Deprecated: it will be removed in version 2.0."""
-        warnings.warn("CVOA.infect_individuals is deprecated and will be removed in version 2.0; use CVOA.infect_individuals_from.", DeprecationWarning, stacklevel=2)
-        return type(self).infect_individuals_from(self.global_state, self.fitness_function, self.strain_properties,
-                                                  carrier_individual, travel_distance, n_infected, self.time)
-
-    def update_new_infected_population(self, new_infected_population: SolutionSet,
-                                       new_infected_individual: Solution) -> None:
-        """ It updates the next infected population with a new infected individual.
-
-        :param new_infected_population: The population of the next iteration.
-        :param new_infected_individual: The new infected individual that will be inserted into the netx iteration set.
-        :type new_infected_population: set of :py:class:`~metagen.framework.Solution`
-        :type new_infected_individual: :py:class:`~metagen.framework.Solution`
-
-        Deprecated: it will be removed in version 2.0.
-        """
-        warnings.warn("CVOA.update_new_infected_population is deprecated and will be removed in version 2.0; use CVOA.admit.", DeprecationWarning, stacklevel=2)
-        type(self).admit(self.global_state, self.strain_properties, new_infected_population, new_infected_individual)
 
     def update_pandemic_global_state(self) -> None:
         """

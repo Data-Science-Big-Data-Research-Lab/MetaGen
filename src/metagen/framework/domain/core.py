@@ -16,7 +16,6 @@
 """
 from __future__ import annotations
 
-import warnings
 import math
 import numbers
 from abc import ABC, abstractmethod
@@ -624,19 +623,6 @@ class BaseDefinition(Base):
         """
         return self.__value[name]
 
-    def get_by_index(self, index: int) -> Base:
-        """
-        Returns the definition of a variable by its index in the variable list.
-
-        :param index: An integer representing the index of the variable.
-
-        :return: An instance of a Base class representing the definition of the variable.
-
-        Deprecated: it will be removed in version 2.0.
-        """
-        warnings.warn("BaseDefinition.get_by_index is deprecated and will be removed in version 2.0.", DeprecationWarning, stacklevel=2)
-        return self.__value[self.__var_list[index]]
-
     def check(self, name: str, value: MetaVal) -> bool:
         """
         Checks whether a given value is valid for a variable.
@@ -917,31 +903,6 @@ class BaseStructureDefinition(ABC):
         :return: True if the structure is positional, otherwise False.
         """
         return self.__positions is not None
-
-    def is_base(self):
-        """
-        Check if the base type is defined, as a shared base or per position.
-
-        :return: True if the base type is defined, otherwise False.
-
-        Deprecated: it will be removed in version 2.0.
-        """
-        warnings.warn("BaseStructureDefinition.is_base is deprecated and will be removed in version 2.0.", DeprecationWarning, stacklevel=2)
-        return self.__base is not None or self.__positions is not None
-
-    def check_base_value(self, val: MetaVal, index: int | None = None) -> bool:
-        """
-        Check if the base type value is valid.
-
-        :param val: The value to check.
-        :param index: The position the value is for; needed by a positional structure.
-        :type index: int or None, optional
-        :return: True if the value is valid, otherwise False.
-
-        Deprecated: it will be removed in version 2.0.
-        """
-        warnings.warn("BaseStructureDefinition.check_base_value is deprecated and will be removed in version 2.0.", DeprecationWarning, stacklevel=2)
-        return self.get_base(index).check_value(val)
 
     def _base_attributes(self) -> StrBaseAttr:
         """
