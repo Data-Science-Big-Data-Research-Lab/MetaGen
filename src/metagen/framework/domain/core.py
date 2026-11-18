@@ -80,7 +80,119 @@ class Base(ABC):
         return self._meta_type
 
 
-class IntegerDefinition(Base):
+class _NumericDefinition(Base):
+    """
+    What an integer and a real definition share: a minimum, a maximum, an optional step from
+    the minimum and an optional logarithmic scale. A subclass says what counts as one of its
+    numbers and when a number lies on the grid of its step.
+    """
+    # IntegerDefinition and RealDefinition were the same hundred lines twice, and every change
+    # to the numbers (F-58, F-75, the logarithmic scale) had to be made in both (O-10 and OF-16
+    # of the independent audit). Since 2.0.0: the attributes are this class's, so a Domain
+    # pickled by a 1.x release does not load.
+
+    def __init__(self, meta_type: METAGEN_TYPE, min_value: Any, max_value: Any, step: Any = None,
+                 log: bool = False):
+        self._check_range(min_value, max_value, step)
+        Preconditions.log_scale(min_value, step, log)
+        Base.__init__(self, meta_type)
+        self.__min_value = min_value
+        self.__max_value = max_value
+        self.__step = step
+        self.__log: bool = bool(log)
+
+    @staticmethod
+    @abstractmethod
+    def _check_range(min_value: Any, max_value: Any, step: Any) -> None:
+        """Refuse a minimum, maximum and step that do not make a range of this kind of number."""
+
+    @staticmethod
+    @abstractmethod
+    def _is_number(value: Any) -> bool:
+        """Whether a value is a number of this kind, whatever its magnitude."""
+
+    @abstractmethod
+    def _on_grid(self, numeric: Any) -> bool:
+        """Whether a number within the range lies on the grid of the step, from the minimum."""
+
+    @property
+    def min_value(self) -> Any:
+        """
+        The smallest value the variable takes.
+
+        :return: The minimum.
+        """
+        return self.__min_value
+
+    @property
+    def max_value(self) -> Any:
+        """
+        The largest value the variable takes.
+
+        :return: The maximum.
+        """
+        return self.__max_value
+
+    @property
+    def step(self) -> Any:
+        """
+        The step of the grid of values, from the minimum, or None for every value of the range.
+
+        :return: The step, or None.
+        """
+        return self.__step
+
+    @property
+    def log(self) -> bool:
+        """
+        Whether the variable is searched on a logarithmic scale: drawn, mutated, crossed
+        and modeled on the logarithm of its value, so that each order of magnitude of
+        the range weighs the same.
+
+        :return: True on a logarithmic scale.
+        :rtype: bool
+        """
+        return self.__log
+
+    def get_attributes(self) -> Any:
+        """
+        Returns the type, the minimum, the maximum and the step of the definition.
+
+        :return: A tuple with the type, minimum value, maximum value and step value.
+        """
+        return self.get_type(), self.__min_value, self.__max_value, self.__step
+
+    def check_value(self, value: Any) -> bool:
+        """
+        Checks if the provided value is a valid number of the definition: of its kind,
+        within its range and on the grid of its step.
+
+        :param value: The value to be checked.
+        :type value: Any
+        :return: True if the value is valid, False otherwise.
+        :rtype: bool
+        """
+        if not self._is_number(value):
+            return False
+        numeric = float(value) if self.get_type() == R else int(value)
+        # NaN is no number of any range: every comparison with it is false, so it passed (F-75).
+        if math.isnan(numeric) or numeric < self.__min_value or numeric > self.__max_value:
+            return False
+        return self.__step is None or self._on_grid(numeric)
+
+    def __str__(self):
+        """
+        Returns a string representation of the definition: its type and its attributes.
+
+        :return: A string representation of the definition.
+        :rtype: str
+        """
+        return "[" + super().get_type() + "] " + "{Minimum = " + str(self.__min_value) + \
+            ", Maximum = " + str(self.__max_value) + \
+            ", Step = " + str(self.__step) + (", Log" if self.__log else "") + "}"
+
+
+class IntegerDefinition(_NumericDefinition):
     """
     Represents an integer type with defined minimum, maximum and step values.
 
@@ -95,10 +207,6 @@ class IntegerDefinition(Base):
     :type log: bool
 
     :raises ValueError: If the `min_value`, `max_value` or `step` values do not meet the integer range requirements.
-
-    :ivar __min_value: The minimum value allowed for the integer type.
-    :ivar __max_value: The maximum value allowed for the integer type.
-    :ivar __step: The step value for the integer type. Defaults to None if not provided.
 
     :return: An instance of the IntegerDefinition class.
     :rtype: IntegerDefinition
@@ -119,25 +227,23 @@ class IntegerDefinition(Base):
 
         :raises ValueError: If the `min_value`, `max_value` or `step` values do not meet the integer range requirements.
         """
+        super().__init__(I, min_value, max_value, step, log)
+
+    @staticmethod
+    def _check_range(min_value: Any, max_value: Any, step: Any) -> None:
         Preconditions.Integer.range(min_value, max_value, step)
-        Preconditions.log_scale(min_value, step, log)
-        Base.__init__(self, I)
-        self.__min_value: int = min_value
-        self.__max_value: int = max_value
-        self.__step: int | None = step
-        self.__log: bool = bool(log)
 
-    @property
-    def log(self) -> bool:
-        """
-        Whether the variable is searched on a logarithmic scale: drawn, mutated, crossed
-        and modeled on the logarithm of its value, so that each order of magnitude of
-        the range weighs the same.
+    @staticmethod
+    def _is_number(value: Any) -> bool:
+        # numbers.Integral rather than int, so that a numpy integer counts, and bool ruled out
+        # explicitly, since it is a subclass of int and True passed as a valid integer (A-08).
+        # type(value) is int first: the check against the abstract class is several times
+        # slower, and an int is what the mutation and the draws give (EF-14 of the independent audit).
+        return type(value) is int or (not isinstance(value, bool) and isinstance(value, numbers.Integral))
 
-        :return: True on a logarithmic scale.
-        :rtype: bool
-        """
-        return self.__log
+    def _on_grid(self, numeric: Any) -> bool:
+        # With a step of 5 from 0, 3 was taken and reached the user's fitness function (F-75).
+        return (numeric - self.min_value) % self.step == 0
 
     def get_attributes(self) -> IntAttr:
         """
@@ -146,49 +252,10 @@ class IntegerDefinition(Base):
         :return: A tuple containing the integer type, minimum value, maximum value and step value of the IntegerDefinition instance.
         :rtype: IntAttr
         """
-        return I, self.__min_value, self.__max_value, self.__step
-
-    def check_value(self, value: Any) -> bool:
-        """
-        Checks if the provided value is a valid integer within the range of the IntegerDefinition instance.
-
-        :param value: The value to be checked.
-        :type value: Any
-        :return: True if the value is a valid integer within the range of the IntegerDefinition instance, False otherwise.
-        :rtype: bool
-        """
-        res: bool = True
-
-        # numbers.Integral rather than int, so that a numpy integer counts, and bool
-        # ruled out explicitly, since it is a subclass of int and True used to pass as
-        # a valid integer (A-08).
-        # type(value) is int first: the check against the abstract class is several times
-        # slower, and an int is what the mutation and the draws give (EF-14 of the independent audit).
-        if type(value) is not int and (isinstance(value, bool) or not isinstance(value, numbers.Integral)):
-            res = False
-        else:
-            numeric = int(value)
-            if numeric < self.__min_value or numeric > self.__max_value:
-                res = False
-            # On the grid of the step, from the minimum: with a step of 5 from 0, 3 was taken
-            # and reached the user's fitness function (F-75).
-            elif self.__step is not None and (numeric - self.__min_value) % self.__step != 0:
-                res = False
-        return res
-
-    def __str__(self):
-        """
-        Returns a string representation of the IntegerDefinition instance.
-
-        :return: A string representation of the IntegerDefinition instance, including its type and attribute values.
-        :rtype: str
-        """
-        return "[" + super().get_type() + "] " + "{Minimum = " + str(self.__min_value) + \
-            ", Maximum = " + str(self.__max_value) + \
-            ", Step = " + str(self.__step) + (", Log" if self.__log else "") + "}"
+        return cast(IntAttr, super().get_attributes())
 
 
-class RealDefinition(Base):
+class RealDefinition(_NumericDefinition):
     """
     Represents a real number type with defined minimum, maximum and step values.
 
@@ -203,10 +270,6 @@ class RealDefinition(Base):
     :type log: bool
 
     :raises ValueError: If the `min_value`, `max_value` or `step` values do not meet the real number range requirements.
-
-    :ivar __min_value: The minimum value allowed for the real number type.
-    :ivar __max_value: The maximum value allowed for the real number type.
-    :ivar __step: The step value for the real number type. Defaults to None if not provided.
 
     :return: An instance of the RealDefinition class.
     :rtype: RealDefinition
@@ -227,25 +290,24 @@ class RealDefinition(Base):
 
         :raises ValueError: If the `min_value`, `max_value` or `step` values do not meet the real number range requirements.
         """
+        super().__init__(R, min_value, max_value, step, log)
+
+    @staticmethod
+    def _check_range(min_value: Any, max_value: Any, step: Any) -> None:
         Preconditions.Real.range(min_value, max_value, step)
-        Preconditions.log_scale(min_value, step, log)
-        Base.__init__(self, R)
-        self.__min_value: float = min_value
-        self.__max_value: float = max_value
-        self.__step: float | None = step
-        self.__log: bool = bool(log)
 
-    @property
-    def log(self) -> bool:
-        """
-        Whether the variable is searched on a logarithmic scale: drawn, mutated, crossed
-        and modeled on the logarithm of its value, so that each order of magnitude of
-        the range weighs the same.
+    @staticmethod
+    def _is_number(value: Any) -> bool:
+        # numbers.Real rather than float: isinstance(1, float) is False, so a real variable
+        # rejected 1, and a numpy float32 too; bool ruled out as for an integer (A-08). A float
+        # or an int first, for speed (EF-14 of the independent audit).
+        return type(value) is float or type(value) is int \
+            or (not isinstance(value, bool) and isinstance(value, numbers.Real))
 
-        :return: True on a logarithmic scale.
-        :rtype: bool
-        """
-        return self.__log
+    def _on_grid(self, numeric: Any) -> bool:
+        # Up to the rounding of the division: with a step of 0.25, 0.3 was taken (F-75).
+        position = (numeric - self.min_value) / self.step
+        return abs(position - round(position)) <= 1e-9 * max(1.0, abs(position))
 
     def get_attributes(self) -> RealAttr:
         """
@@ -254,49 +316,7 @@ class RealDefinition(Base):
         :return: A tuple containing the real number type, minimum value, maximum value and step value of the RealDefinition instance.
         :rtype: RealAttr
         """
-        return R, self.__min_value, self.__max_value, self.__step
-
-    def check_value(self, value: Any) -> bool:
-        """
-        Checks if the provided value is a valid real number within the range of the RealDefinition instance.
-
-        :param value: The value to be checked.
-        :type value: Any
-        :return: True if the value is a valid real number within the range of the RealDefinition instance, False otherwise.
-        :rtype: bool
-        """
-        res: bool = True
-
-        # numbers.Real rather than float: isinstance(1, float) is False, so a real
-        # variable rejected 1, and a numpy float32 too. bool is ruled out for the same
-        # reason as in IntegerDefinition (A-08).
-        # A float or an int first: the check against the abstract class is several times slower,
-        # and a float is what the mutation and the draws give (EF-14 of the independent audit).
-        if type(value) is not float and type(value) is not int \
-                and (isinstance(value, bool) or not isinstance(value, numbers.Real)):
-            res = False
-        else:
-            numeric = float(value)
-            # NaN is no number of any range: every comparison with it is false, so it passed (F-75).
-            if math.isnan(numeric) or numeric < self.__min_value or numeric > self.__max_value:
-                res = False
-            # On the grid of the step, from the minimum, up to the rounding of the division:
-            # with a step of 0.25, 0.3 was taken (F-75).
-            elif self.__step is not None:
-                position = (numeric - self.__min_value) / self.__step
-                res = abs(position - round(position)) <= 1e-9 * max(1.0, abs(position))
-        return res
-
-    def __str__(self):
-        """
-        Returns a string representation of the RealDefinition instance.
-
-        :return: A string representation of the RealDefinition instance, including its type and attribute values.
-        :rtype: str
-        """
-        return "[" + super().get_type() + "] " + "{Minimum = " + str(self.__min_value) + \
-            ", Maximum = " + str(self.__max_value) + \
-            ", Step = " + str(self.__step) + (", Log" if self.__log else "") + "}"
+        return cast(RealAttr, super().get_attributes())
 
 
 class CategoricalDefinition(Base):

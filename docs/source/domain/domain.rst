@@ -212,13 +212,13 @@ IntegerDefinition
 ----------------------------
 .. autoclass:: metagen.framework.domain.IntegerDefinition
     :members:
-    :show-inheritance:
+    :inherited-members:
 
 RealDefinition
 ----------------------------
 .. autoclass:: metagen.framework.domain.RealDefinition
     :members:
-    :show-inheritance:
+    :inherited-members:
 
 CategoricalDefinition
 ----------------------------

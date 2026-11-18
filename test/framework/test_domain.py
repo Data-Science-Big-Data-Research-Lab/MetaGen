@@ -3,6 +3,7 @@ definition then reports. The cases come from the original CSV-driven tests, inli
 import pytest
 
 from metagen.framework import Domain
+from metagen.framework.domain import IntegerDefinition, RealDefinition
 from metagen.framework.domain.literals import C as CATEGORICAL, I as INTEGER, R as REAL
 
 INTEGER_RANGES = [
@@ -94,3 +95,20 @@ def test_an_undefined_variable_is_not_in_the_domain():
     assert not domain.get_core().is_variable("nothing")
     with pytest.raises(KeyError):
         domain.get_core().get("nothing")
+
+
+@pytest.mark.parametrize("definition,expected", [
+    (IntegerDefinition(0, 10, 2), (0, 10, 2, False)),
+    (IntegerDefinition(1, 1000, log=True), (1, 1000, None, True)),
+    (RealDefinition(-1.5, 2.5, 0.5), (-1.5, 2.5, 0.5, False)),
+    (RealDefinition(1e-4, 1.0, log=True), (1e-4, 1.0, None, True)),
+])
+def test_a_numeric_definition_names_its_bounds_and_survives_pickle(definition, expected):
+    # The bounds by name, besides get_attributes: what the 2.0 definitions add.
+    import pickle
+
+    assert (definition.min_value, definition.max_value, definition.step, definition.log) == expected
+    assert definition.get_attributes()[1:] == expected[:3]
+    copy = pickle.loads(pickle.dumps(definition))
+    assert copy.get_attributes() == definition.get_attributes() and copy.log == definition.log
+    assert str(copy) == str(definition)
