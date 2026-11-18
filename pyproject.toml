@@ -55,6 +55,17 @@ test = [
     "scikit-learn",
     "matplotlib",
 ]
+# What Read the Docs builds the documentation with; docs/requirements.txt, which it installs,
+# lists the same.
+docs = [
+    "sphinx>=8,<10",
+    "sphinx-rtd-theme>=3,<4",
+]
+# The checks the CI runs on the code: mypy, at the version of the CI, and ruff.
+dev = [
+    "mypy==2.4.*",
+    "ruff",
+]
 all = [
     "tensorboard",
     "tensorboardX",
@@ -79,11 +90,6 @@ metagen = ["py.typed"]
 # The bodies of the functions without annotations are checked too: without this, a function
 # with no annotation was not checked at all.
 check_untyped_defs = true
-# The package ships py.typed, so mypy would resolve these files both as `metagen.x`, through
-# the installed package, and as `src.metagen.x`, by walking the tree, and refuse to check
-# them twice. This pins the mapping to the first.
-mypy_path = "src"
-explicit_package_bases = true
 
 # The third-party packages that ship no types, the optional ones among them: only these are
 # taken as they come. A module of the package that does not exist is an error.
