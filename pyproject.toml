@@ -76,12 +76,25 @@ where = ["src"]
 metagen = ["py.typed"]
 
 [tool.mypy]
-ignore_missing_imports = true
+# The bodies of the functions without annotations are checked too: without this, a function
+# with no annotation was not checked at all.
+check_untyped_defs = true
 # The package ships py.typed, so mypy would resolve these files both as `metagen.x`, through
 # the installed package, and as `src.metagen.x`, by walking the tree, and refuse to check
 # them twice. This pins the mapping to the first.
 mypy_path = "src"
 explicit_package_bases = true
+
+# The third-party packages that ship no types, the optional ones among them: only these are
+# taken as they come. A module of the package that does not exist is an error.
+[[tool.mypy.overrides]]
+module = ["joblib.*", "matplotlib.*", "networkx.*", "ray.*", "scipy.*", "tensorboardX.*", "torch.*", "xarray.*"]
+ignore_missing_imports = true
+
+# Not yet: two calls of resample on a variable typed as BaseType | Solution, in the classes of TPE.
+[[tool.mypy.overrides]]
+module = ["metagen.metaheuristics.tpe.tpe_tools"]
+check_untyped_defs = false
 
 [tool.pytest.ini_options]
 filterwarnings = ["ignore::DeprecationWarning"]
