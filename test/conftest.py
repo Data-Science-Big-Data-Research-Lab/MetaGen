@@ -9,6 +9,14 @@ import pytest
 
 from metagen.framework import BaseConnector, Domain, Solution
 from metagen.framework.rng import set_seed
+from metagen.metaheuristics import GA, SA, SSGA, TPE, HillClimbing, KernelTPE, Memetic, RandomSearch, TabuSearch
+
+#: Every metaheuristic of the package that searches a Domain on its own: what the tests that
+#: run "every algorithm" run. A test in test_public_api.py checks it against the package.
+ALGORITHMS = [RandomSearch, HillClimbing, TabuSearch, SA, GA, SSGA, Memetic, TPE, KernelTPE]
+#: The ones that cross solutions over, and so need a Domain built with GAConnector.
+GENETIC = (GA, SSGA, Memetic)
+# Both were written in seven modules, in two orders (O-11 and OF-11 of the independent audit).
 
 
 def build_full_domain(connector: Optional[BaseConnector] = None) -> Domain:

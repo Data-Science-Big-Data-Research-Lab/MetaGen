@@ -12,6 +12,7 @@ from metagen.metaheuristics import (GA, SA, SSGA, HillClimbing, KernelTPE, Memet
 from metagen.metaheuristics.cvoa.cvoa import CVOA
 from metagen.metaheuristics.genetic.genetic_tools import GAConnector
 from metagen.metaheuristics.tools import solution_class
+from conftest import ALGORITHMS
 
 CITIES = [1, 2, 3, 4, 5, 6, 7, 8]
 
@@ -133,9 +134,6 @@ def test_a_structure_can_hold_permutations():
     for _ in range(20):
         solution.mutate()
         assert all(sorted(route) == ["a", "b", "c", "d"] for route in solution["routes"])
-
-
-ALGORITHMS = [RandomSearch, HillClimbing, TabuSearch, SA, GA, SSGA, Memetic, TPE, KernelTPE]
 
 
 def _fitness_and_log():

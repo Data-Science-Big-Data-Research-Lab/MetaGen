@@ -13,9 +13,8 @@ import pytest
 from metagen.framework import Domain
 from metagen.metaheuristics import (GA, SA, SSGA, TPE, GAConnector, HillClimbing, KernelTPE, Memetic,
                                     RandomSearch, TabuSearch)
+from conftest import ALGORITHMS, GENETIC
 
-ALGORITHMS = [RandomSearch, GA, SSGA, SA, HillClimbing, TabuSearch, TPE, KernelTPE, Memetic]
-GENETIC = (GA, SSGA, Memetic)
 OPTIONS = {RandomSearch: {}, GA: {}, SSGA: {}, SA: {}, HillClimbing: {}, TabuSearch: {},
            TPE: dict(warmup_iterations=1, candidate_pool_size=4), KernelTPE: dict(warmup_iterations=1), Memetic: {}}
 

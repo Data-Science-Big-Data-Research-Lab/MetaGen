@@ -94,3 +94,32 @@ def test_the_api_reference_documents_the_public_names():
 
 def test_the_version_is_the_installed_one():
     assert metagen.__version__ == metadata.version("pymetagen-datalabupo")
+
+
+def test_the_algorithms_the_suite_runs_are_every_metaheuristic_the_package_exports():
+    # A metaheuristic added to the package and not to the list in conftest.py would go
+    # untested by every test that runs "every algorithm", and nothing would say so.
+    import inspect
+    import metagen.metaheuristics as metaheuristics
+    from conftest import ALGORITHMS, GENETIC
+    from metagen.framework import Domain
+    from metagen.metaheuristics import Metaheuristic
+
+    exported = {getattr(metaheuristics, name) for name in metaheuristics.__all__}
+    concrete = {cls for cls in exported if inspect.isclass(cls) and issubclass(cls, Metaheuristic)
+                and not inspect.isabstract(cls)}
+    # Not searches of a Domain on their own: a strain of CVOA runs through a launcher, and
+    # TriGenGA is the search of TriGen, on its own domain.
+    apart = {metaheuristics.CVOA, metaheuristics.ProbabilisticCVOA, metaheuristics.DistributedCVOA,
+             metaheuristics.TriGenGA}
+    assert set(ALGORITHMS) == concrete - apart
+
+    domain = Domain()
+    domain.define_real("x", -1.0, 1.0)
+    refused = set()
+    for algorithm in ALGORITHMS:
+        try:
+            algorithm(domain, lambda solution: solution["x"] ** 2)
+        except ValueError:
+            refused.add(algorithm)
+    assert refused == set(GENETIC)

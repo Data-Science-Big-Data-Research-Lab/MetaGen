@@ -9,9 +9,8 @@ import pytest
 from metagen.framework import Domain
 from metagen.metaheuristics import (GA, SA, SSGA, TPE, GAConnector, HillClimbing, KernelTPE, Memetic,
                                     RandomSearch, TabuSearch)
+from conftest import ALGORITHMS, GENETIC
 
-ALGORITHMS = [RandomSearch, GA, SSGA, SA, HillClimbing, TabuSearch, TPE, KernelTPE, Memetic]
-GENETIC = (GA, SSGA, Memetic)
 OPTIMUM = {"x": 1.25, "y": -0.5}
 
 

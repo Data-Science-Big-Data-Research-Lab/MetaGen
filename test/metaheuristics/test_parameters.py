@@ -15,6 +15,7 @@ from metagen.logging import metagen_logger as logger_module
 from metagen.metaheuristics import (GA, SSGA, GAConnector, HillClimbing, KernelTPE, Memetic,
                                     RandomSearch, TabuSearch, TPE)
 from metagen.metaheuristics.gamma_schedules import GammaConfig, compute_gamma
+from conftest import ALGORITHMS
 
 
 def _sphere(connector=None):
@@ -179,7 +180,7 @@ _LEFT_OUT = {
     SA: {"population_size"},
 }
 
-_ALGORITHMS = (RandomSearch, GA, SSGA, SA, HillClimbing, TabuSearch, TPE, KernelTPE, Memetic)
+_ALGORITHMS = tuple(ALGORITHMS)
 
 
 def _base_options():
