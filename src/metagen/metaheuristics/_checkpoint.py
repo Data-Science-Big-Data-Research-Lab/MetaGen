@@ -26,8 +26,6 @@ from metagen.framework import Domain
 from metagen.framework import rng as rng_state
 from metagen.metaheuristics.import_helper import is_package_installed
 
-if is_package_installed("tensorboard"):
-    from metagen.logging.tensorboard_logger import TensorBoardLogger
 
 if TYPE_CHECKING:
     from metagen.logging.tensorboard_logger import TensorBoardLogger as _Logger
@@ -149,6 +147,7 @@ class _Checkpointing:
         if self.log_dir is not None and is_package_installed("tensorboard"):
             if self.logger:
                 self.logger.close()
+            from metagen.logging.tensorboard_logger import TensorBoardLogger
             self.logger = TensorBoardLogger(log_dir=self.log_dir, run_id=state["tensorboard_run"])
 
     def _write_checkpoint(self) -> None:

@@ -39,13 +39,9 @@ from metagen.metaheuristics.tools import (CountingFitness, add_calls, random_exp
                                          solution_class)
 
 IS_RAY_INSTALLED = is_package_installed("ray")
-
-if is_package_installed("tensorboard"):
-    from metagen.logging.tensorboard_logger import TensorBoardLogger
-
-if IS_RAY_INSTALLED:
-    import ray
-    from .distributed_tools import assign_load_equally, call_method, distributed_random_exploration
+# Ray, its dispatchers and the TensorBoard writer are imported where a run uses them: imported
+# here, whenever they were installed, they were a third of the time of importing the package,
+# for runs that are neither distributed nor logged (O-14 of the independent audit).
 
 
 #: The arguments of a constructor that are not part of what :py:meth:`Metaheuristic.parameters`
@@ -349,9 +345,10 @@ class Metaheuristic(_Checkpointing, _Budget, ABC):
         # configurations left hundreds of directories behind (A-12). It is opt-in
         # now: log_dir is where to write, and None means do not write.
         self.log_dir = log_dir
-        self.logger = (TensorBoardLogger(log_dir=log_dir)
-                       if log_dir is not None and is_package_installed("tensorboard")
-                       else None)
+        self.logger = None
+        if log_dir is not None and is_package_installed("tensorboard"):
+            from metagen.logging.tensorboard_logger import TensorBoardLogger
+            self.logger = TensorBoardLogger(log_dir=log_dir)
         self.checkpoint = checkpoint
         self.checkpoint_every = checkpoint_every
         self._stop_requested = False
@@ -385,6 +382,8 @@ class Metaheuristic(_Checkpointing, _Budget, ABC):
         :return: A tuple containing the population and the best individual.
         :rtype: Tuple[List[Solution], Solution]
         """
+        import ray
+        from metagen.metaheuristics.distributed_tools import assign_load_equally, call_method
         # While initializing there is no population to split yet, so the load is
         # population_size. Reading len(current_solutions) here would size the run
         # after whatever _warmup() left behind, which is one entry per warmup
@@ -541,6 +540,7 @@ class Metaheuristic(_Checkpointing, _Budget, ABC):
             for warmup_step in range(self.warmup_iterations):
                 if self.distributed:
                     require_ray("a distributed run")
+                    from metagen.metaheuristics.distributed_tools import distributed_random_exploration
                     metagen_logger.debug(
                         f'[WARMUP {warmup_step + 1}/{self.warmup_iterations}] Distributed warmup step.'
                     )

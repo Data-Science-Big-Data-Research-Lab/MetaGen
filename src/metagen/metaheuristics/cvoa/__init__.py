@@ -20,10 +20,17 @@ from .cvoa import CVOA
 from .local_launcher import cvoa_launcher
 from metagen.metaheuristics.import_helper import is_package_installed
 
+__all__ = ["CVOA", "ProbabilisticCVOA", "StrainProperties", "cvoa_launcher"]
 if is_package_installed("ray"):
-    from .distributed_launcher import distributed_cvoa_launcher
-    __all__ = ["CVOA", "ProbabilisticCVOA", "StrainProperties", "cvoa_launcher", "distributed_cvoa_launcher"]
-else:
-    __all__ = ["CVOA", "ProbabilisticCVOA", "StrainProperties", "cvoa_launcher"]
+    __all__ += ["distributed_cvoa_launcher"]
+
+
+def __getattr__(name: str) -> object:
+    # The launcher on Ray, imported when it is first asked for: imported with the package, it
+    # started Ray's own import for every run (O-14 of the independent audit).
+    if name == "distributed_cvoa_launcher":
+        from .distributed_launcher import distributed_cvoa_launcher
+        return distributed_cvoa_launcher
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
