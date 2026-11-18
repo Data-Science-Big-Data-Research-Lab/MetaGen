@@ -173,8 +173,8 @@ class Integer(BaseType):
         """
         Sets the value of the Integer variable, after checking if the value is valid.
 
-        Args:
-            value (Any): The value to be set for the Integer variable.
+        :param value: The value to be set for the Integer variable.
+        :type value: Any
 
         """
         self.check(value)

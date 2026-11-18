@@ -132,8 +132,8 @@ class Real(BaseType):
         """
         Sets the value of the Real variable, after checking if the value is valid.
 
-        Args:
-            value (Any): The value to be set for the Real variable.
+        :param value: The value to be set for the Real variable.
+        :type value: Any
 
         """
         self.check(value)
