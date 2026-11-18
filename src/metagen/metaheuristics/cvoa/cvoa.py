@@ -186,7 +186,15 @@ class CVOA(Metaheuristic):
         return self.best_strain_solution
 
     def initialize(self, num_solutions=10) -> Tuple[List[Solution], Solution]:
+        """
+        Start the strain from its patient zero: one solution drawn at random from the
+        domain and evaluated, the first infected individual and the best of the strain.
 
+        :param num_solutions: Not used: a strain always starts from one individual.
+        :type num_solutions: int
+        :return: The infected population, the patient zero alone, and the best of the strain.
+        :rtype: Tuple[List[Solution], Solution]
+        """
         # 1. Yield the patient zero (pz).
         pz: Solution = self.solution_type(self.domain, connector=self.domain.get_connector())
         pz.evaluate(self.fitness_function)
@@ -201,6 +209,18 @@ class CVOA(Metaheuristic):
         return list(self.infected), self._best_of_strain()
 
     def iterate(self, solutions: List[Solution]) -> Tuple[List[Solution], Solution]:
+        """
+        One step of the pandemic: the strain chooses its superspreaders and its dead, the
+        shared state takes the dead and the recovered, every infected individual infects
+        new ones, and the newly infected,
+        with the best individual of the strain, are the infected population of the next
+        step. When nobody is newly infected, the epidemic of the strain ends.
+
+        :param solutions: The infected population.
+        :type solutions: List[Solution]
+        :return: The new infected population and the best of the strain.
+        :rtype: Tuple[List[Solution], Solution]
+        """
 
         # 1. Spreading the disease.
 
@@ -448,6 +468,15 @@ class CVOA(Metaheuristic):
             self.best_strain_solution = individual
 
     def stopping_criterion(self) -> bool:
+        """
+        Whether the strain stops: when nobody is infected any more, when the pandemic
+        has lasted ``pandemic_duration`` steps, when the best of the strain has not
+        improved for ``max_iterations_without_improvement`` steps (if the strain sets
+        it), or when the budget of the pandemic is spent.
+
+        :return: True if the strain stops, False otherwise.
+        :rtype: bool
+        """
 
         # When the strain is stopped?
 
@@ -473,12 +502,23 @@ class CVOA(Metaheuristic):
         return first_condition or second_condition or third_condition or self.global_state.budget_spent()
 
     def post_execution(self) -> None:
+        """Send what the strain wrote last to the shared state, and log how the pandemic ended."""
         # On Ray, what the strain wrote last on the shared state reaches it now (E-09).
         self.global_state.flush()
         self._log(f"Pandemic finished at {self.time} with best individual: {self.best_strain_solution}")
         super().post_execution()
 
     def r0_report(self, new_infections: int) -> str:
+        """
+        A line on the spread of the strain: the newly infected, the recovered of the
+        pandemic and their ratio, R0, which is the newly infected alone while nobody has
+        recovered.
+
+        :param new_infections: How many individuals were newly infected in the step.
+        :type new_infections: int
+        :return: The line.
+        :rtype: str
+        """
         recovered = self.global_state.get_recovered_len()
         r0: float = new_infections
         if recovered != 0:
