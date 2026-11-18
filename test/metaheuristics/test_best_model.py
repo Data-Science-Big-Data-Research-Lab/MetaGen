@@ -166,17 +166,6 @@ def test_without_joblib_a_model_is_pickled(tmp_path, monkeypatch):
         assert pickle.load(handle) == run.best_model
 
 
-@pytest.fixture(scope="module")
-def ray_runtime():
-    ray = pytest.importorskip("ray")
-    started_here = not ray.is_initialized()
-    if started_here:
-        ray.init(num_cpus=2, include_dashboard=False, log_to_driver=False)
-    yield ray
-    if started_here:
-        ray.shutdown()
-
-
 @pytest.mark.parametrize("model", ["global", "islands"])
 def test_on_ray_the_best_model_comes_back_from_the_worker_that_trained_it(ray_runtime, model):
     def trained(solution):

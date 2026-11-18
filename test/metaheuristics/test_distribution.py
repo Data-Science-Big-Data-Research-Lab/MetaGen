@@ -48,17 +48,6 @@ def _evaluations(path) -> int:
         return sum(1 for _ in handle)
 
 
-@pytest.fixture(scope="module")
-def ray_runtime():
-    ray = pytest.importorskip("ray")
-    started_here = not ray.is_initialized()
-    if started_here:
-        ray.init(num_cpus=2, include_dashboard=False, log_to_driver=False)
-    yield ray
-    if started_here:
-        ray.shutdown()
-
-
 def test_an_unknown_distribution_model_is_refused():
     with pytest.raises(ValueError, match="distribution_model"):
         RandomSearch(_sphere_domain(), _sphere, distribution_model="archipelago")

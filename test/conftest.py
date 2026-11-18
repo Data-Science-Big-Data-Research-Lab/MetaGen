@@ -84,3 +84,17 @@ def solution(full_domain: Domain) -> Solution:
     """A freshly initialized solution of the full domain, from a fixed seed."""
     set_seed(0)
     return Solution(full_domain)
+
+
+@pytest.fixture(scope="module")
+def ray_runtime():
+    """One Ray runtime for a module. Started here, so that run() finds it running
+    and neither starts nor stops one per test (F-21), and stopped at the end."""
+    # It was written in four modules (O-11 and OF-11 of the independent audit).
+    ray = pytest.importorskip("ray")
+    started_here = not ray.is_initialized()
+    if started_here:
+        ray.init(num_cpus=2, include_dashboard=False, log_to_driver=False)
+    yield ray
+    if started_here:
+        ray.shutdown()

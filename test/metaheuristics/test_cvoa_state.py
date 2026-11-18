@@ -71,17 +71,6 @@ def test_the_copy_a_distributed_iteration_sends_leaves_out_what_the_workers_do_n
     assert worker.best_solution is search.best_solution
 
 
-@pytest.fixture(scope="module")
-def ray_runtime():
-    ray = pytest.importorskip("ray")
-    started_here = not ray.is_initialized()
-    if started_here:
-        ray.init(num_cpus=2, include_dashboard=False, log_to_driver=False)
-    yield ray
-    if started_here:
-        ray.shutdown()
-
-
 def test_a_task_sees_the_state_of_the_iteration_with_its_own_changes(ray_runtime):
     from metagen.metaheuristics.cvoa.ray_tools import _IterationView
 

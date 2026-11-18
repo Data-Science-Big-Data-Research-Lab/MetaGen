@@ -1,17 +1,13 @@
-"""Tests de regresión de la auditoría de código (commit 74f104e).
+"""Tests de regresión de las auditorías: uno por hallazgo reproducible.
 
-Cada test comprueba el comportamiento **correcto**, el que debería tener MetaGen
-una vez arreglado el hallazgo, y está marcado ``xfail(strict=True)`` porque hoy
-falla. El flujo de trabajo es:
+Cada test comprueba el comportamiento **correcto**, el que tiene MetaGen desde que se
+arregló el hallazgo, y falla con el código de antes del arreglo. Cita el hallazgo que
+protege por su identificador (F-xx, A-xx, P-xx), y su sección de
+``metagen-auditoria/AUDIT.md`` explica el diagnóstico y el arreglo.
 
-1. Arreglas el hallazgo F-xx en ``src/``.
-2. El test pasa a XPASS y, por el ``strict=True``, pytest lo reporta como fallo.
-3. Quitas el marcador ``@pytest.mark.xfail`` de ese test.
-4. ``pytest test/framework_test test/regression`` vuelve a verde, y a partir de
-   ahí el test protege el arreglo.
-
-Mientras no se arregle nada, la suite sigue en verde: los xfail cuentan como
-esperados. Cada test cita el hallazgo que protege por su identificador.
+Un hallazgo nuevo que aún no se arregla entra marcado ``xfail(strict=True)``: cuando se
+arregla, el test pasa a XPASS, que por el ``strict=True`` pytest cuenta como fallo, y se le
+quita el marcador. La suite que debe estar verde es el árbol entero, ``pytest test``.
 """
 
 import copy
