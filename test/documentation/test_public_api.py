@@ -105,14 +105,13 @@ def test_the_algorithms_the_suite_runs_are_every_metaheuristic_the_package_expor
     from metagen.framework import Domain
     from metagen.metaheuristics import Metaheuristic
 
-    exported = {getattr(metaheuristics, name) for name in metaheuristics.__all__}
+    # Not searches of a Domain on their own: a strain of CVOA runs through a launcher, and
+    # TriGenGA is the search of TriGen, on its own domain. By name: DistributedCVOA needs Ray.
+    apart = {"CVOA", "ProbabilisticCVOA", "DistributedCVOA", "TriGenGA"}
+    exported = {getattr(metaheuristics, name) for name in metaheuristics.__all__ if name not in apart}
     concrete = {cls for cls in exported if inspect.isclass(cls) and issubclass(cls, Metaheuristic)
                 and not inspect.isabstract(cls)}
-    # Not searches of a Domain on their own: a strain of CVOA runs through a launcher, and
-    # TriGenGA is the search of TriGen, on its own domain.
-    apart = {metaheuristics.CVOA, metaheuristics.ProbabilisticCVOA, metaheuristics.DistributedCVOA,
-             metaheuristics.TriGenGA}
-    assert set(ALGORITHMS) == concrete - apart
+    assert set(ALGORITHMS) == concrete
 
     domain = Domain()
     domain.define_real("x", -1.0, 1.0)
