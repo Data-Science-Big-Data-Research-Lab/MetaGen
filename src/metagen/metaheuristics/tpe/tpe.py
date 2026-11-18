@@ -25,7 +25,6 @@ from typing import Callable, List, Tuple, Optional, cast, Any, Mapping, Sequence
 from metagen.framework import Domain, Solution
 from metagen.metaheuristics.tools import solution_class
 from metagen.metaheuristics.tpe.tpe_tools import TPESolution
-from copy import deepcopy
 from metagen.metaheuristics.gamma_schedules import GammaConfig, compute_gamma
 from .tpe_tools import TPEConnector
 
@@ -142,8 +141,7 @@ class TPE(Metaheuristic):
         # and type classes. Rewiring the one it was given left it modified for good,
         # so comparing several metaheuristics in a loop depended on the order they
         # ran in (F-13). It works on a copy of its own instead.
-        domain = deepcopy(domain)
-        domain._connector = TPEConnector()
+        domain = domain._with_connector(TPEConnector())
 
         require_integer("population_size", population_size, 1)
         require_integer("warmup_iterations", warmup_iterations, 0, optional=True)

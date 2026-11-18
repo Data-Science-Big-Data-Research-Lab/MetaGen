@@ -91,11 +91,6 @@ explicit_package_bases = true
 module = ["joblib.*", "matplotlib.*", "networkx.*", "ray.*", "scipy.*", "tensorboardX.*", "torch.*", "xarray.*"]
 ignore_missing_imports = true
 
-# Not yet: two calls of resample on a variable typed as BaseType | Solution, in the classes of TPE.
-[[tool.mypy.overrides]]
-module = ["metagen.metaheuristics.tpe.tpe_tools"]
-check_untyped_defs = false
-
 [tool.pytest.ini_options]
 # The deprecations of other packages are theirs to mend; one issued from the package itself, as
 # when it imports one of the paths that were renamed, fails the test that triggers it.

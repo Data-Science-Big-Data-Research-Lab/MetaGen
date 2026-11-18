@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import math
 from functools import lru_cache
-from typing import Tuple
+from typing import Any, List, Tuple, cast
 
 import metagen.framework.solution as types
 from metagen.framework import BaseConnector, Solution
@@ -248,26 +248,23 @@ class TPEStructure(types.Structure):
 
 class TPESolution(Solution):
     """
-    Represents a Solution type for the Genetic Algorithm (GA).
-
-    This class extends the base Solution type to add genetic algorithm specific operations
-    like crossover between solutions.
+    A solution of :py:class:`~metagen.metaheuristics.TPE`: a solution that draws new values
+    for its variables from the best and the worst solutions of the history.
 
     :ivar connector: The connector used to link different types
     :vartype connector: BaseConnector
     """
 
-    def resample(self, best_solutions, worst_solutions):
+    def resample(self, best_solutions: List[Solution], worst_solutions: List[Solution]) -> None:
         """
-        Performs crossover operation with another GASolution instance.
+        Draw a new value for every variable from the values it takes in the best and in the
+        worst solutions; a variable inactive in all the best or in all the worst keeps its value.
 
-        :param other: Another GASolution instance to perform crossover with
-        :type other: GASolution
-        :return: A tuple containing two new GASolution instances (children)
-        :rtype: Tuple[GASolution, GASolution]
-        :raises AssertionError: If the solutions have different variable keys
+        :param best_solutions: The best solutions of the history.
+        :type best_solutions: List[Solution]
+        :param worst_solutions: The rest of the history.
+        :type worst_solutions: List[Solution]
         """
-
         for variable_name, variable_value in self.get_variables().items():
             # A conditional variable is modeled only from the solutions in which it was
             # active; its values elsewhere meant nothing.
@@ -276,27 +273,28 @@ class TPESolution(Solution):
             if not best_values or not worst_values:
                 continue
 
-            variable_value.resample(best_values, worst_values)
+            # Every variable of a TPESolution is one of the TPE types, or a TPESolution for a group,
+            # and all of them resample; the declared type of the variables does not say so.
+            cast(Any, variable_value).resample(best_values, worst_values)
 
 
 class TPEConnector(BaseConnector):
     """
-    Represents the custom Connector for the Genetic Algorithm (GA).
+    The connector of :py:class:`~metagen.metaheuristics.TPE`, which builds each variable as a
+    type that resamples itself:
 
-    This connector links the following classes:
-    * BaseDefinition - GASolution - dict
-    * IntegerDefinition - types.Integer - int
-    * RealDefinition - types.Real - float
-    * CategoricalDefinition - types.Categorical - str
-    * StaticStructureDefinition - GAStructure - list
-
-    The Solution and Structure original classes have been replaced by custom GA classes.
-    When instantiating a StaticStructureDefinition, the GAStructure will be employed.
+    * BaseDefinition - TPESolution - dict
+    * IntegerDefinition - TPEInteger - int
+    * RealDefinition - TPEReal - float
+    * CategoricalDefinition - TPECategorical - str
+    * StaticStructureDefinition and DynamicStructureDefinition - TPEStructure - list
+    * PermutationDefinition - TPEPermutation - tuple
+    * SubsetDefinition - TPESubset - frozenset
     """
 
     def __init__(self) -> None:
         """
-        Initialize the GAConnector with predefined type mappings for GA operations.
+        Register the types of TPE for every kind of definition.
         """
         super().__init__()
 

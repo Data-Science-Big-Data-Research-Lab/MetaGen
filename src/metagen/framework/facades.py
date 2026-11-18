@@ -490,6 +490,16 @@ class Domain:
         """
         return self._core
 
+    def _with_connector(self, connector: BaseConnector) -> "Domain":
+        """
+        A copy of the domain wired to another connector, for a metaheuristic that builds
+        its solutions from types of its own; this domain is left as it was.
+        """
+        # TPE wrote the attribute of its copy itself (OF-10 of the independent audit).
+        copied = deepcopy(self)
+        copied._connector = connector
+        return copied
+
     def get_connector(self) -> BaseConnector:
         """ It returns the defined connector for this domain. 
         """
