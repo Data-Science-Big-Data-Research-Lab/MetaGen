@@ -1,6 +1,22 @@
 # Changelog
 
-## Unreleased
+## 1.8.0
+
+MetaGen 1.8.0 makes assigning a value to a solution independent of the random sequence of a
+run, so seeded runs of GA, SSGA, the memetic algorithm and TriGen give other results than in
+1.7.0; GA, the memetic algorithm, HillClimbing and TabuSearch make better use of their
+evaluations; and copying and mutating solutions, recording the history, checkpoints, KernelTPE
+and importing the package cost less. Names the package does not use are deprecated until
+version 2.0.
+
+### New
+
+- **A metaheuristic of one's own** implements `iterate` and `stopping_criterion`:
+  `initialize` draws `num_solutions` random solutions of the domain and evaluates them by
+  default, and can be replaced.
+- **`docs` and `dev` extras.** `pip install pymetagen-datalabupo[docs]` installs what the
+  documentation is built with, and `[dev]` the versions of mypy and ruff the checks of the
+  project run.
 
 ### Changes
 
@@ -19,12 +35,35 @@
   variable, the elements of its structures included, so its tabu list also works on domains
   of vectors. Seeded runs over structures give different results.
 - **`GA` and `Memetic` breed the children their population has room for** next to its
-  elites, so every child they evaluate enters it: a generation evaluates two children fewer
-  than before, and a population of two or three keeps one elite and always takes a child in.
+  elites, so every child they evaluate enters it and a generation evaluates two children
+  fewer; a population of two or three keeps one elite and always takes a child in.
   Under the global distribution model every slice still breeds a pair per two individuals
   and the driver selects among them. Seeded runs of both algorithms, sequential and on
   islands, give different results.
-- **`TPE`'s docstring** says how it models each kind of variable and builds its candidates.
+- **Docstrings** say how `TPE` models each kind of variable and builds its candidates, what
+  the memory of `HillClimbing` keeps, how `KernelTPE` models the length of a dynamic
+  structure, that the temperature of `SA` is on the scale of the fitness, that
+  `views="trlab"` gives the published definition of MSL, GRQ and TRIQ, and which options of a
+  run a strain of CVOA takes from its launcher.
+- **`metagen.triclustering.data` is a package** of four modules, one for NetCDF, the text
+  files, the genes and GEO; its functions import from the same path.
+- **The dependencies are declared in `pyproject.toml` alone**: `requirements.txt` installs the
+  package with its `test` extra, and `requirements-optional.txt` lists only what the examples
+  and the benchmark need beyond the package.
+
+### Performance
+
+The results of a seeded run are the same, but for the deviation of a record of the history,
+which can differ in its last digit.
+
+- **KernelTPE** reads what each solution of its history contributes once, not at every
+  iteration.
+- **Copying, mutating and reading a solution** skip work they repeated, which the trajectory
+  algorithms and CVOA do the most of.
+- **The history** computes the deviation of each record in floating point.
+- **A checkpoint** serializes the best model once, and a distributed iteration does not copy
+  the population it sends to the workers.
+- **Importing the package** loads Ray and the TensorBoard writer only when a run uses them.
 
 ### Deprecated
 
