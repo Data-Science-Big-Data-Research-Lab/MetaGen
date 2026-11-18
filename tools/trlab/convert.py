@@ -43,7 +43,8 @@ from scipy.io import netcdf_file
 
 from metagen.metaheuristics import TriGenResult
 from metagen.triclustering import Cube, Tricluster
-from metagen.triclustering.data import _converted, _coordinate
+from metagen.triclustering.data.netcdf import coordinate_of
+from metagen.triclustering.data.text import converted
 
 # TrLab's fitness names, as MetaGen's quality measure and views.
 FITNESS = {"msl": ("msl", "trlab"), "mslts": ("msl", "time"), "lsl": ("lsl", "trlab"), "lslts": ("lsl", "time"),
@@ -84,7 +85,7 @@ def read_dataset(folder: str, element: ElementTree.Element) -> Tuple[np.ndarray,
         child = element.find(key)
         names[key] = [line.strip() for line in _lines(os.path.join(folder, child.text or ""))] if child is not None else []
     # Times written as plain numbers are kept as numbers.
-    names["times"] = _converted(names["times"]) or []
+    names["times"] = converted(names["times"]) or []
     return values, names
 
 
@@ -97,7 +98,7 @@ def write_dataset(path: str, values: np.ndarray, names: Dict[str, List[str]], at
                                           (names["genes"], names["samples"], names["times"])):
             handle.createDimension(dimension, size)
             labels = given if len(given) == size else list(range(size))
-            kind, data = _coordinate(labels)
+            kind, data = coordinate_of(labels)
             if kind == "c":
                 handle.createDimension(f"{dimension}_strlen", max(1, data.shape[1]))
                 variable = handle.createVariable(dimension, "c", (dimension, f"{dimension}_strlen"))
