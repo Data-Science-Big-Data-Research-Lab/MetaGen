@@ -1,5 +1,30 @@
 # Changelog
 
+## Unreleased
+
+Version 2.0.0, in preparation.
+
+### Removed
+
+What 1.8.0 deprecated:
+
+- The module paths of the 1.x releases that were renamed, such as `metagen.metaheuristics.ga`
+  or `metagen.metaheuristics.cvoa.cvoa_local`: importing one fails, as for any module that does
+  not exist; the documentation uses the current ones.
+- `CVOA.infect_individuals` and `CVOA.update_new_infected_population`; use
+  `CVOA.infect_individuals_from` and `CVOA.admit`.
+- `BaseDefinition.get_by_index`, `BaseStructureDefinition.is_base`,
+  `BaseStructureDefinition.check_base_value`, `Primitives.is_basic_vector_sequence_value`
+  and `Primitives.is_layer_vector_sequence_value`.
+- The names of `metagen.framework.solution.literals` other than `Basic`, `BasicVector`,
+  `SolLayer`, `SolLayerVector`, `SolVector` and `InputValue`.
+
+### Changes
+
+- **`IntegerDefinition` and `RealDefinition` name their bounds**: `min_value`, `max_value` and
+  `step`, besides `log` and `get_attributes()`. Both are built on one numeric definition, so
+  a `Domain` saved with `pickle` by a 1.x release does not load in 2.0; define it again.
+
 ## 1.8.0
 
 MetaGen 1.8.0 makes assigning a value to a solution independent of the random sequence of a
