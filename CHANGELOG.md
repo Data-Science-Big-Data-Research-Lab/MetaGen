@@ -37,6 +37,8 @@ These still work, with a `DeprecationWarning`, and will be removed in version 2.
   and `Primitives.is_layer_vector_sequence_value`.
 - The names of `metagen.framework.solution.literals` other than `Basic`, `BasicVector`,
   `SolLayer`, `SolLayerVector`, `SolVector` and `InputValue`.
+- The module paths of the 1.x releases that were renamed, such as `metagen.metaheuristics.ga`
+  or `metagen.metaheuristics.cvoa.cvoa_local`; their warning names the path to use.
 
 ## 1.7.0
 

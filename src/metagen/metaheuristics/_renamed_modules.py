@@ -19,9 +19,14 @@ Module paths of earlier releases, kept importable.
 
 The modules of the metaheuristics are named after their algorithm. Code written against
 the earlier short names (``metagen.metaheuristics.ga``, ``...rs``, ``...cvoa.cvoa_local``...)
-keeps working: importing one of them returns the module under its current name, the same
-object, and emits a ``DeprecationWarning`` that gives the name to use instead.
+keeps working until version 2.0: importing one of them returns the module under its current
+name, the same object, and emits a ``DeprecationWarning`` that gives the name to use instead.
+The paths are those of the 1.x releases; the module paths of the 0.x releases are not kept.
 """
+# Version 2.0 is the date the auditor asked for (O-17 of the independent audit): the warning
+# gave none, and test_module_paths.py fails if the package reaches 2.0 with this module still
+# here. The paths of 0.2.0 are left out on purpose: there ts.tabu.TabuSearch was the algorithm
+# that is HillClimbing today, and a path that led to another algorithm would mislead.
 import importlib
 import importlib.abc
 import importlib.machinery
@@ -70,8 +75,8 @@ class _RenamedModuleFinder(importlib.abc.MetaPathFinder, importlib.abc.Loader):
 
     def create_module(self, spec: importlib.machinery.ModuleSpec) -> ModuleType:
         current = _PREFIX + RENAMED_MODULES[spec.name[len(_PREFIX):]]
-        warnings.warn(f"{spec.name} is now {current}; the former path will be removed in a future "
-                      f"major version.", DeprecationWarning, stacklevel=2)
+        warnings.warn(f"{spec.name} is now {current}; the former path will be removed in version 2.0.",
+                      DeprecationWarning, stacklevel=2)
         return importlib.import_module(current)
 
     def exec_module(self, module: ModuleType) -> None:
